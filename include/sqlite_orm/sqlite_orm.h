@@ -2171,6 +2171,14 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_from2 = polyfill::bool_constant<is_from2_v<T>>;
 
+    //  `from_t` and `from2_t` are two DSL spellings of the one FROM clause production,
+    //  hence grouping them is what corresponds to the SQL grammar
+    template<class T>
+    extern const bool is_any_from_v;
+
+    template<class T>
+    using is_any_from = polyfill::bool_constant<is_any_from_v<T>>;
+
     template<class T>
     extern const bool is_any_join_v;
 
@@ -2842,14 +2850,8 @@ namespace sqlite_orm::internal {
      *  or 0 if the type is not a statement-level clause.
      */
     template<class T>
-    constexpr size_t select_clause_rank_v = clause_rank_v<T,
-                                                          mpl::disjunction_fn<is_from, is_from2>::template fn,
-                                                          is_any_join,
-                                                          is_where,
-                                                          is_group_by,
-                                                          is_window_defn,
-                                                          is_order_by,
-                                                          is_limit>;
+    constexpr size_t select_clause_rank_v =
+        clause_rank_v<T, is_any_from, is_any_join, is_where, is_group_by, is_window_defn, is_order_by, is_limit>;
 
     /*
      *  Implementation note: a derived struct in favor of an alias template, because it is passed on as a
@@ -5903,6 +5905,9 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_from2_v = polyfill::is_specialization_of_v<T, from2_t>;
+
+    template<class T>
+    constexpr bool is_any_from_v = polyfill::disjunction_v<is_from<T>, is_from2<T>>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -9460,8 +9465,7 @@ namespace sqlite_orm::internal {
         static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
         static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
         static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
-        static_assert(mpl::invoke_t<mpl::counts<mpl::disjunction_fn<is_from, is_from2>>, T>::value <= 1,
-                      "a single query cannot contain > 1 FROM blocks");
+        static_assert(count_tuple<T, is_any_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
         static_assert(std::tuple_size<T>::value == count_tuple<T, is_select_clause>::value,
                       "a query argument must be a FROM, JOIN, WHERE, GROUP BY, WINDOW, ORDER BY or LIMIT clause");
         static_assert(check_select_clause_order_v<T>,
@@ -24155,8 +24159,7 @@ namespace sqlite_orm::internal {
 
             ss << streaming_serialized(get_column_names(sel.col, subCtx));
             using conditions_tuple = typename statement_type::conditions_type;
-            constexpr bool hasExplicitFrom =
-                tuple_has<conditions_tuple, mpl::disjunction_fn<is_from, is_from2>::template fn>::value;
+            constexpr bool hasExplicitFrom = tuple_has<conditions_tuple, is_any_from>::value;
             if constexpr (!hasExplicitFrom) {
                 using joins_index_sequence = filter_tuple_sequence_t<conditions_tuple, is_any_join>;
 

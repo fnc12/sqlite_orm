@@ -18,6 +18,8 @@ namespace {
 
 TEST_CASE("statement clause classification and order are computed at compile time") {
     using From = decltype(from<User>());
+    //  the table-valued-function spelling of FROM; only its type matters for the clause traits
+    using From2 = internal::from2_t<User>;
     using Join = decltype(cross_join<Visit>());
     using Where = decltype(where(c(&User::id) > 0));
     using GroupBy = decltype(group_by(&User::id));
@@ -27,6 +29,7 @@ TEST_CASE("statement clause classification and order are computed at compile tim
 
     SECTION("clause ranks follow the canonical clause order") {
         STATIC_REQUIRE(select_clause_rank_v<From> == 1);
+        STATIC_REQUIRE(select_clause_rank_v<From2> == 1);
         STATIC_REQUIRE(select_clause_rank_v<Join> == 2);
         STATIC_REQUIRE(select_clause_rank_v<Where> == 3);
         STATIC_REQUIRE(select_clause_rank_v<GroupBy> == 4);
@@ -45,6 +48,7 @@ TEST_CASE("statement clause classification and order are computed at compile tim
         STATIC_REQUIRE(check_select_clause_order_v<std::tuple<>>);
         STATIC_REQUIRE(check_select_clause_order_v<std::tuple<Where>>);
         STATIC_REQUIRE(check_select_clause_order_v<std::tuple<From, Join, Where, GroupBy, Window, OrderBy, Limit>>);
+        STATIC_REQUIRE(check_select_clause_order_v<std::tuple<From2, Join, Where>>);
         STATIC_REQUIRE(check_select_clause_order_v<std::tuple<Join, Join, Where>>);
     }
     SECTION("a wrong order is rejected") {

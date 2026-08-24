@@ -76,14 +76,8 @@ namespace sqlite_orm::internal {
      *  or 0 if the type is not a statement-level clause.
      */
     template<class T>
-    constexpr size_t select_clause_rank_v = clause_rank_v<T,
-                                                          mpl::disjunction_fn<is_from, is_from2>::template fn,
-                                                          is_any_join,
-                                                          is_where,
-                                                          is_group_by,
-                                                          is_window_defn,
-                                                          is_order_by,
-                                                          is_limit>;
+    constexpr size_t select_clause_rank_v =
+        clause_rank_v<T, is_any_from, is_any_join, is_where, is_group_by, is_window_defn, is_order_by, is_limit>;
 
     /*
      *  Implementation note: a derived struct in favor of an alias template, because it is passed on as a
