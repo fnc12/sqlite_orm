@@ -2277,13 +2277,13 @@ namespace sqlite_orm::internal {
     extern const bool is_column_pointer_v;
 
     template<class T>
-    struct is_column_pointer : polyfill::bool_constant<is_column_pointer_v<T>> {};
+    using is_column_pointer = polyfill::bool_constant<is_column_pointer_v<T>>;
 
     template<class T>
     extern const bool is_quoted_expression_v;
 
     template<class T>
-    struct is_quoted_expression : polyfill::bool_constant<is_quoted_expression_v<T>> {};
+    using is_quoted_expression = polyfill::bool_constant<is_quoted_expression_v<T>>;
 }
 
 // #include "traits/semantic_traits_fwd.h"
