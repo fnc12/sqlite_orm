@@ -346,7 +346,7 @@ namespace sqlite_orm::internal::mpl {
     }
 
     /*
-     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list (possibly projected),
      *  and returns the index constant of the first element for which the predicate returns true.
      */
     template<class PredicateQ>
@@ -372,7 +372,7 @@ namespace sqlite_orm::internal::mpl {
     using finds_fn = finds<quote_fn<PredicateFn>>;
 
     /*
-     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list (possibly projected),
      *  and returns the index constant of the first element for which the predicate returns true.
      */
     template<class PredicateQ>
@@ -399,7 +399,7 @@ namespace sqlite_orm::internal::mpl {
     using counts_fn = counts<quote_fn<PredicateFn>>;
 
     /*
-     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list (possibly projected),
      *  and returns the index constant of the first element for which the predicate returns true.
      */
     template<class TraitQ>

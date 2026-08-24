@@ -21,7 +21,7 @@
 #include "alias_traits.h"
 #include "cte_moniker.h"
 #include "vocabulary/node_traits.h"
-#include "vocabulary/algorithms/clause_traits.h"
+#include "vocabulary/node_algorithms.h"
 #include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 #include "vocabulary/traits/semantic_traits_fwd.h"  // Included to specialize traits
@@ -390,19 +390,19 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Cs>
-    constexpr bool clauses_are_correctly_ordered() {
+    template<class T, size_t... Idx>
+    SQLITE_ORM_CONSTEVAL bool clauses_are_correctly_ordered(std::index_sequence<Idx...>) {
         int lastRank = 0;
         bool ordered = true;
-        (((ordered = ordered && (clause_rank_v<Cs> >= lastRank)), (lastRank = clause_rank_v<Cs>)), ...);
+        (((ordered = ordered && (clause_rank_v<std::tuple_element_t<Idx, T>> >= lastRank)),
+          (lastRank = clause_rank_v<std::tuple_element_t<Idx, T>>)),
+         ...);
         return ordered;
     }
 
     template<class Tpl>
-    struct check_clause_order;
-
-    template<class... Cs>
-    struct check_clause_order<std::tuple<Cs...>> : polyfill::bool_constant<clauses_are_correctly_ordered<Cs...>()> {};
+    constexpr bool check_clause_order_v =
+        clauses_are_correctly_ordered<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{});
 
     template<class T>
     constexpr void validate_conditions() {
@@ -414,7 +414,7 @@ namespace sqlite_orm::internal {
                       "a single query cannot contain > 1 FROM blocks");
         static_assert(std::tuple_size<T>::value == count_tuple<T, is_statement_clause>::value,
                       "a query argument must be a FROM, JOIN, WHERE, GROUP BY, WINDOW, ORDER BY or LIMIT clause");
-        static_assert(check_clause_order<T>::value,
+        static_assert(check_clause_order_v<T>,
                       "SQL clauses must be listed in the canonical order: FROM, JOINs, WHERE, GROUP BY, WINDOW, "
                       "ORDER BY, LIMIT");
         static_assert(std::tuple_size<T>::value == count_tuple<T, clause_holds_no_clause>::value,
