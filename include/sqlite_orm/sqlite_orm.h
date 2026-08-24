@@ -1111,6 +1111,21 @@ namespace sqlite_orm::internal::mpl {
     };
 
     /*
+     *  Bind the argument of a unary quoted metafunction, such that the resulting quoted metafunction
+     *  expects the trait metafunction to invoke.
+     *  In other words, it answers whether the bound type satisfies the trait metafunction passed to it.
+     *  
+     *  This inverts what `bind_front`/`bind_back` bind: those fix the arguments of a known metafunction,
+     *  whereas here the argument is fixed and the metafunction varies. It is what allows a single type
+     *  to be tested against a list of traits.
+     */
+    template<class T>
+    struct satisfied_by {
+        template<class TraitQ>
+        using fn = typename defer<TraitQ, T>::type;
+    };
+
+    /*
      *  Quoted metafunction equivalent to `polyfill::always_false`.
      *  It ignores arguments passed to the metafunction, and always returns the specified type.
      */
@@ -1388,6 +1403,12 @@ namespace sqlite_orm::internal {
     using finds_if_has = mpl::finds<check_if<TraitFn>>;
 
     /*
+     *  Quoted metafunction that finds the index of the trait metafunction in a tuple that is satisfied by the given type.
+     */
+    template<class T>
+    using finds_satisfied_by = mpl::finds<mpl::satisfied_by<T>>;
+
+    /*
      *  Quoted metafunction that finds the index of the given type in a tuple.
      */
     template<class Type>
@@ -1481,6 +1502,18 @@ namespace sqlite_orm::internal {
      */
     template<class Pack, template<class...> class TraitFn, template<class...> class ProjOp = polyfill::type_identity_t>
     using find_tuple_element = mpl::invoke_t<finds_if_has<TraitFn>, Pack, mpl::quote_fn<ProjOp>>;
+
+    /*
+     *  Higher-order metafunction returning the first index constant of the trait metafunction in a tuple
+     *  that is satisfied by the specified type (possibly projected).
+     *  
+     *  In contrast to `find_tuple_element`, the tuple holds the trait metafunctions and the type to test is fixed,
+     *  which is what allows a single type to be located within an ordered list of traits.
+     *  
+     *  `ProjOp` is a metafunction
+     */
+    template<class Pack, class T, template<class...> class ProjOp = polyfill::type_identity_t>
+    using find_tuple_satisfied_by = mpl::invoke_t<finds_satisfied_by<T>, Pack, mpl::quote_fn<ProjOp>>;
 
     /*
      *  Higher-order metafunction returning the first index constant of the desired type in a tuple (possibly projected).
@@ -2744,24 +2777,47 @@ namespace sqlite_orm::internal {
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
+// #include "../../functional/mpl.h"
+
 // #include "../../tuple_helper/tuple_traits.h"
 
 // #include "../node_traits.h"
 
 namespace sqlite_orm::internal {
     /**
+     *  Position of the first clause trait satisfied by `T` within the given list of clause traits,
+     *  or `sizeof...(Clause)` if `T` satisfies none of them.
+     */
+    template<class T, template<class...> class... Clause>
+    constexpr size_t clause_position_v = find_tuple_satisfied_by<mpl::pack<mpl::quote_fn<Clause>...>, T>::value;
+
+    /**
+     *  Rank of `T` as a statement-level clause, in the canonical order given by the list of clause traits,
+     *  or 0 if `T` is not one of those clauses.
+     *
+     *  Implementation note: this is deliberately not a predicate but an ordinal projection - it is the
+     *  mechanism both `is_..._clause` and the clause order check are built on. The traits are listed in
+     *  the order the clauses must be streamed in, so the rank of a clause is its 1-based position in
+     *  that list; the miss position maps to 0 so that "not a clause" and "first clause" stay distinct.
+     */
+    template<class T, template<class...> class... Clause>
+    constexpr int clause_rank_v =
+        clause_position_v<T, Clause...> == sizeof...(Clause) ? 0
+                                                             : static_cast<int>(clause_position_v<T, Clause...>) + 1;
+
+    /**
      *  Rank of a statement-level clause as part of the select-core and tail of the factored-select-stmt,
      *  or 0 if the type is not a statement-level clause.
      */
     template<class T>
-    constexpr int select_clause_rank_v = polyfill::disjunction<is_from<T>, is_from2<T>>::value ? 1
-                                         : is_any_join<T>::value                               ? 2
-                                         : is_where<T>::value                                  ? 3
-                                         : is_group_by<T>::value                               ? 4
-                                         : is_window_defn<T>::value                            ? 5
-                                         : is_order_by<T>::value                               ? 6
-                                         : is_limit<T>::value                                  ? 7
-                                                                                               : 0;
+    constexpr int select_clause_rank_v = clause_rank_v<T,
+                                                       mpl::disjunction_fn<is_from, is_from2>::template fn,
+                                                       is_any_join,
+                                                       is_where,
+                                                       is_group_by,
+                                                       is_window_defn,
+                                                       is_order_by,
+                                                       is_limit>;
 
     template<class T>
     using is_select_clause = polyfill::bool_constant<select_clause_rank_v<T> != 0>;

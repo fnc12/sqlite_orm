@@ -38,6 +38,18 @@ namespace sqlite_orm::internal {
     using find_tuple_element = mpl::invoke_t<finds_if_has<TraitFn>, Pack, mpl::quote_fn<ProjOp>>;
 
     /*
+     *  Higher-order metafunction returning the first index constant of the trait metafunction in a tuple
+     *  that is satisfied by the specified type (possibly projected).
+     *  
+     *  In contrast to `find_tuple_element`, the tuple holds the trait metafunctions and the type to test is fixed,
+     *  which is what allows a single type to be located within an ordered list of traits.
+     *  
+     *  `ProjOp` is a metafunction
+     */
+    template<class Pack, class T, template<class...> class ProjOp = polyfill::type_identity_t>
+    using find_tuple_satisfied_by = mpl::invoke_t<finds_satisfied_by<T>, Pack, mpl::quote_fn<ProjOp>>;
+
+    /*
      *  Higher-order metafunction returning the first index constant of the desired type in a tuple (possibly projected).
      *  
      *  `ProjOp` is a metafunction

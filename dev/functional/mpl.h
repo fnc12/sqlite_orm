@@ -201,6 +201,21 @@ namespace sqlite_orm::internal::mpl {
     };
 
     /*
+     *  Bind the argument of a unary quoted metafunction, such that the resulting quoted metafunction
+     *  expects the trait metafunction to invoke.
+     *  In other words, it answers whether the bound type satisfies the trait metafunction passed to it.
+     *  
+     *  This inverts what `bind_front`/`bind_back` bind: those fix the arguments of a known metafunction,
+     *  whereas here the argument is fixed and the metafunction varies. It is what allows a single type
+     *  to be tested against a list of traits.
+     */
+    template<class T>
+    struct satisfied_by {
+        template<class TraitQ>
+        using fn = typename defer<TraitQ, T>::type;
+    };
+
+    /*
      *  Quoted metafunction equivalent to `polyfill::always_false`.
      *  It ignores arguments passed to the metafunction, and always returns the specified type.
      */
@@ -476,6 +491,12 @@ namespace sqlite_orm::internal {
      */
     template<template<class...> class TraitFn>
     using finds_if_has = mpl::finds<check_if<TraitFn>>;
+
+    /*
+     *  Quoted metafunction that finds the index of the trait metafunction in a tuple that is satisfied by the given type.
+     */
+    template<class T>
+    using finds_satisfied_by = mpl::finds<mpl::satisfied_by<T>>;
 
     /*
      *  Quoted metafunction that finds the index of the given type in a tuple.
