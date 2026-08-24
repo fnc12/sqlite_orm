@@ -9552,9 +9552,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::union_t<E...> union_(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
-        static_assert((polyfill::disjunction_v<polyfill::bool_constant<internal::is_select_v<E>>,
-                                               polyfill::bool_constant<internal::is_compound_operator_v<E>>> &&
-                       ...),
+        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
                       "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}, false};
     }
@@ -9567,9 +9565,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::union_t<E...> union_all(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
-        static_assert((polyfill::disjunction_v<polyfill::bool_constant<internal::is_select_v<E>>,
-                                               polyfill::bool_constant<internal::is_compound_operator_v<E>>> &&
-                       ...),
+        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
                       "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}, true};
     }
@@ -9582,9 +9578,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::except_t<E...> except(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
-        static_assert((polyfill::disjunction_v<polyfill::bool_constant<internal::is_select_v<E>>,
-                                               polyfill::bool_constant<internal::is_compound_operator_v<E>>> &&
-                       ...),
+        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
                       "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}};
     }
@@ -9592,9 +9586,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::intersect_t<E...> intersect(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
-        static_assert((polyfill::disjunction_v<polyfill::bool_constant<internal::is_select_v<E>>,
-                                               polyfill::bool_constant<internal::is_compound_operator_v<E>>> &&
-                       ...),
+        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
                       "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}};
     }
@@ -29000,7 +28992,7 @@ namespace sqlite_orm::internal {
         using expression_type = T;
         using offset_expression_type = O;
 
-        T limit;
+        expression_type limit;
         optional_container<O> offset;
     };
 

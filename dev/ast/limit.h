@@ -21,7 +21,7 @@ namespace sqlite_orm::internal {
         using expression_type = T;
         using offset_expression_type = O;
 
-        T limit;
+        expression_type limit;
         optional_container<O> offset;
     };
 
