@@ -47,10 +47,9 @@ namespace sqlite_orm::internal::mpl {
      *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
      */
     template<class T, class SFINAE = void>
-    inline constexpr bool is_quoted_metafuntion_v = false;
+    constexpr bool is_quoted_metafuntion_v = false;
     template<class Q>
-    inline constexpr bool is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> =
-        true;
+    constexpr bool is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
 
     template<class T>
     struct is_quoted_metafuntion : polyfill::bool_constant<is_quoted_metafuntion_v<T>> {};

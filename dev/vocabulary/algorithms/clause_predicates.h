@@ -11,6 +11,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple_size
 #include <type_traits>  //  std::enable_if
+#include <initializer_list>
 #endif
 
 #include "../../functional/cxx_type_traits_polyfill.h"
@@ -18,6 +19,7 @@
 #include "../../tuple_helper/tuple_traits.h"
 #include "../node_traits.h"
 
+// generic statement clause algorithms
 namespace sqlite_orm::internal {
     /**
      *  Position of the first clause trait satisfied by `T` within the given list of clause traits,
@@ -36,26 +38,70 @@ namespace sqlite_orm::internal {
      *  that list; the miss position maps to 0 so that "not a clause" and "first clause" stay distinct.
      */
     template<class T, template<class...> class... Clause>
-    constexpr int clause_rank_v =
-        clause_position_v<T, Clause...> == sizeof...(Clause) ? 0
-                                                             : static_cast<int>(clause_position_v<T, Clause...>) + 1;
+    constexpr size_t clause_rank_v =
+        clause_position_v<T, Clause...> == sizeof...(Clause) ? 0 : clause_position_v<T, Clause...> + 1;
 
+    /*
+     *  Checks that clause ranks are in non-descending order, i.e. that no clause is preceded by a clause
+     *  of higher rank. Equal ranks are allowed, since a statement may repeat a clause - e.g. several JOINs.
+     */
+    constexpr bool clause_ranks_are_ordered(std::initializer_list<size_t> ranks) {
+        size_t lastRank = 0;
+        for (size_t rank: ranks) {
+            if (rank < lastRank) {
+                return false;
+            }
+            lastRank = rank;
+        }
+        return true;
+    }
+
+    /**
+     *  Checks that the clauses in a pack appear in the canonical order of the statement they belong to.
+     *
+     *  `RankOp` is a metafunction yielding the rank of a clause, e.g. `select_clause_rank`.
+     */
+    template<class Pack, template<class...> class RankOp>
+    constexpr bool clauses_are_correctly_ordered_v = false;
+
+    template<template<class...> class Pack, class... T, template<class...> class RankOp>
+    constexpr bool clauses_are_correctly_ordered_v<Pack<T...>, RankOp> =
+        clause_ranks_are_ordered({RankOp<T>::value...});
+}
+
+// select statement clause algorithms
+namespace sqlite_orm::internal {
     /**
      *  Rank of a statement-level clause as part of the select-core and tail of the factored-select-stmt,
      *  or 0 if the type is not a statement-level clause.
      */
     template<class T>
-    constexpr int select_clause_rank_v = clause_rank_v<T,
-                                                       mpl::disjunction_fn<is_from, is_from2>::template fn,
-                                                       is_any_join,
-                                                       is_where,
-                                                       is_group_by,
-                                                       is_window_defn,
-                                                       is_order_by,
-                                                       is_limit>;
+    constexpr size_t select_clause_rank_v = clause_rank_v<T,
+                                                          mpl::disjunction_fn<is_from, is_from2>::template fn,
+                                                          is_any_join,
+                                                          is_where,
+                                                          is_group_by,
+                                                          is_window_defn,
+                                                          is_order_by,
+                                                          is_limit>;
+
+    /*
+     *  Implementation note: a derived struct in favor of an alias template, because it is passed on as a
+     *  template-template argument - type replacement of an alias template having a non-type template parameter
+     *  from a dependent expression in it may fail [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
+     */
+    template<class T>
+    struct select_clause_rank : polyfill::index_constant<select_clause_rank_v<T>> {};
 
     template<class T>
     using is_select_clause = polyfill::bool_constant<select_clause_rank_v<T> != 0>;
+
+    /**
+     *  Checks that the clauses in the conditions pack of a select statement are listed
+     *  in the canonical clause order.
+     */
+    template<class Tpl>
+    constexpr bool check_select_clause_order_v = clauses_are_correctly_ordered_v<Tpl, select_clause_rank>;
 
     /**
      *  Checks that the expressions nested in a clause are not statement-level clauses themselves:

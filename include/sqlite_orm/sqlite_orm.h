@@ -196,7 +196,9 @@ using std::nullptr_t;
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 // Type replacement may fail if an alias template has a non-type template parameter from a dependent expression in it,
 // `e.g. template<class T> using is_something = std::bool_constant<is_something_v<T>>;`
-// Remedy, e.g.: use a derived struct: `template<class T> struct is_somthing : std::bool_constant<is_something_v<T>>;`
+// Remedies:
+// a. use a derived struct: `template<class T> struct is_something : std::bool_constant<is_something_v<T>>;`
+// b. hoist the result into a constexpr value: `static constexpr auto value = is_something_v<T>; using is_something : std::bool_constant<value>;`
 #define SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
 #endif
 
@@ -957,10 +959,9 @@ namespace sqlite_orm::internal::mpl {
      *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
      */
     template<class T, class SFINAE = void>
-    inline constexpr bool is_quoted_metafuntion_v = false;
+    constexpr bool is_quoted_metafuntion_v = false;
     template<class Q>
-    inline constexpr bool is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> =
-        true;
+    constexpr bool is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
 
     template<class T>
     struct is_quoted_metafuntion : polyfill::bool_constant<is_quoted_metafuntion_v<T>> {};
@@ -2773,6 +2774,7 @@ namespace sqlite_orm::internal {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple_size
 #include <type_traits>  //  std::enable_if
+#include <initializer_list>
 #endif
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
@@ -2783,6 +2785,7 @@ namespace sqlite_orm::internal {
 
 // #include "../node_traits.h"
 
+// generic statement clause algorithms
 namespace sqlite_orm::internal {
     /**
      *  Position of the first clause trait satisfied by `T` within the given list of clause traits,
@@ -2801,26 +2804,70 @@ namespace sqlite_orm::internal {
      *  that list; the miss position maps to 0 so that "not a clause" and "first clause" stay distinct.
      */
     template<class T, template<class...> class... Clause>
-    constexpr int clause_rank_v =
-        clause_position_v<T, Clause...> == sizeof...(Clause) ? 0
-                                                             : static_cast<int>(clause_position_v<T, Clause...>) + 1;
+    constexpr size_t clause_rank_v =
+        clause_position_v<T, Clause...> == sizeof...(Clause) ? 0 : clause_position_v<T, Clause...> + 1;
 
+    /*
+     *  Checks that clause ranks are in non-descending order, i.e. that no clause is preceded by a clause
+     *  of higher rank. Equal ranks are allowed, since a statement may repeat a clause - e.g. several JOINs.
+     */
+    constexpr bool clause_ranks_are_ordered(std::initializer_list<size_t> ranks) {
+        size_t lastRank = 0;
+        for (size_t rank: ranks) {
+            if (rank < lastRank) {
+                return false;
+            }
+            lastRank = rank;
+        }
+        return true;
+    }
+
+    /**
+     *  Checks that the clauses in a pack appear in the canonical order of the statement they belong to.
+     *
+     *  `RankOp` is a metafunction yielding the rank of a clause, e.g. `select_clause_rank`.
+     */
+    template<class Pack, template<class...> class RankOp>
+    constexpr bool clauses_are_correctly_ordered_v = false;
+
+    template<template<class...> class Pack, class... T, template<class...> class RankOp>
+    constexpr bool clauses_are_correctly_ordered_v<Pack<T...>, RankOp> =
+        clause_ranks_are_ordered({RankOp<T>::value...});
+}
+
+// select statement clause algorithms
+namespace sqlite_orm::internal {
     /**
      *  Rank of a statement-level clause as part of the select-core and tail of the factored-select-stmt,
      *  or 0 if the type is not a statement-level clause.
      */
     template<class T>
-    constexpr int select_clause_rank_v = clause_rank_v<T,
-                                                       mpl::disjunction_fn<is_from, is_from2>::template fn,
-                                                       is_any_join,
-                                                       is_where,
-                                                       is_group_by,
-                                                       is_window_defn,
-                                                       is_order_by,
-                                                       is_limit>;
+    constexpr size_t select_clause_rank_v = clause_rank_v<T,
+                                                          mpl::disjunction_fn<is_from, is_from2>::template fn,
+                                                          is_any_join,
+                                                          is_where,
+                                                          is_group_by,
+                                                          is_window_defn,
+                                                          is_order_by,
+                                                          is_limit>;
+
+    /*
+     *  Implementation note: a derived struct in favor of an alias template, because it is passed on as a
+     *  template-template argument - type replacement of an alias template having a non-type template parameter
+     *  from a dependent expression in it may fail [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
+     */
+    template<class T>
+    struct select_clause_rank : polyfill::index_constant<select_clause_rank_v<T>> {};
 
     template<class T>
     using is_select_clause = polyfill::bool_constant<select_clause_rank_v<T> != 0>;
+
+    /**
+     *  Checks that the clauses in the conditions pack of a select statement are listed
+     *  in the canonical clause order.
+     */
+    template<class Tpl>
+    constexpr bool check_select_clause_order_v = clauses_are_correctly_ordered_v<Tpl, select_clause_rank>;
 
     /**
      *  Checks that the expressions nested in a clause are not statement-level clauses themselves:
@@ -9407,20 +9454,6 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, size_t... Idx>
-    SQLITE_ORM_CONSTEVAL bool clauses_are_correctly_ordered(std::index_sequence<Idx...>) {
-        int lastRank = 0;
-        bool ordered = true;
-        (((ordered = ordered && (select_clause_rank_v<std::tuple_element_t<Idx, T>> >= lastRank)),
-          (lastRank = select_clause_rank_v<std::tuple_element_t<Idx, T>>)),
-         ...);
-        return ordered;
-    }
-
-    template<class Tpl>
-    constexpr bool check_clause_order_v =
-        clauses_are_correctly_ordered<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{});
-
     template<class T>
     constexpr void validate_conditions() {
         static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
@@ -9431,7 +9464,7 @@ namespace sqlite_orm::internal {
                       "a single query cannot contain > 1 FROM blocks");
         static_assert(std::tuple_size<T>::value == count_tuple<T, is_select_clause>::value,
                       "a query argument must be a FROM, JOIN, WHERE, GROUP BY, WINDOW, ORDER BY or LIMIT clause");
-        static_assert(check_clause_order_v<T>,
+        static_assert(check_select_clause_order_v<T>,
                       "SQL clauses must be listed in the canonical order: FROM, JOINs, WHERE, GROUP BY, WINDOW, "
                       "ORDER BY, LIMIT");
         static_assert(std::tuple_size<T>::value == count_tuple<T, select_clause_nests_no_clause>::value,

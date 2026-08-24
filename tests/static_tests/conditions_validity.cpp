@@ -3,7 +3,7 @@
 
 using namespace sqlite_orm;
 using internal::is_select_clause;
-using internal::select_clause_rank_v, internal::select_clause_nests_no_clause_v, internal::check_clause_order_v;
+using internal::select_clause_rank_v, internal::select_clause_nests_no_clause_v, internal::check_select_clause_order_v;
 
 namespace {
     struct User {
@@ -42,17 +42,17 @@ TEST_CASE("statement clause classification and order are computed at compile tim
         STATIC_REQUIRE(is_select_clause<Where>::value);
     }
     SECTION("the canonical order is accepted") {
-        STATIC_REQUIRE(check_clause_order_v<std::tuple<>>);
-        STATIC_REQUIRE(check_clause_order_v<std::tuple<Where>>);
-        STATIC_REQUIRE(check_clause_order_v<std::tuple<From, Join, Where, GroupBy, Window, OrderBy, Limit>>);
-        STATIC_REQUIRE(check_clause_order_v<std::tuple<Join, Join, Where>>);
+        STATIC_REQUIRE(check_select_clause_order_v<std::tuple<>>);
+        STATIC_REQUIRE(check_select_clause_order_v<std::tuple<Where>>);
+        STATIC_REQUIRE(check_select_clause_order_v<std::tuple<From, Join, Where, GroupBy, Window, OrderBy, Limit>>);
+        STATIC_REQUIRE(check_select_clause_order_v<std::tuple<Join, Join, Where>>);
     }
     SECTION("a wrong order is rejected") {
-        STATIC_REQUIRE_FALSE(check_clause_order_v<std::tuple<GroupBy, Where>>);
-        STATIC_REQUIRE_FALSE(check_clause_order_v<std::tuple<Limit, OrderBy>>);
-        STATIC_REQUIRE_FALSE(check_clause_order_v<std::tuple<OrderBy, Window>>);
-        STATIC_REQUIRE_FALSE(check_clause_order_v<std::tuple<Where, Join>>);
-        STATIC_REQUIRE_FALSE(check_clause_order_v<std::tuple<OrderBy, From>>);
+        STATIC_REQUIRE_FALSE(check_select_clause_order_v<std::tuple<GroupBy, Where>>);
+        STATIC_REQUIRE_FALSE(check_select_clause_order_v<std::tuple<Limit, OrderBy>>);
+        STATIC_REQUIRE_FALSE(check_select_clause_order_v<std::tuple<OrderBy, Window>>);
+        STATIC_REQUIRE_FALSE(check_select_clause_order_v<std::tuple<Where, Join>>);
+        STATIC_REQUIRE_FALSE(check_select_clause_order_v<std::tuple<OrderBy, From>>);
     }
     SECTION("clauses holding expressions are valid") {
         STATIC_REQUIRE(select_clause_nests_no_clause_v<Where>);
