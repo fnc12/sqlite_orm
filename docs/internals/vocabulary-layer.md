@@ -75,7 +75,8 @@ vocabulary/
                             node_projections.h. Never includes a definition file.
                             Safe for broad inclusion.
 
-    node_algorithms.h       Umbrella, declaration-only: predicates.h, index_filters.h,
+    node_algorithms.h       Umbrella, declaration-only: ddl_predicates.h,
+                            clause_predicates.h, index_filters.h,
                             accessors.h, field_predicates_fwd.h,
                             field_predicates_concepts.h. Deliberately does NOT include
                             field_predicates.h.
@@ -203,7 +204,8 @@ being composed into a judgment; it is still extraction.
 
 | File | Contents |
 |---|---|
-| `algorithms/predicates.h` | Closed, composed alias-template validity checks with no significant header-weight dependency, e.g. `is_pkcol_implicitly_insertable`. Single file; no split needed. |
+| `algorithms/ddl_predicates.h` | Closed, composed alias-template checks of whether a node is an admissible element of a column or table definition, with no significant header-weight dependency, e.g. `is_pkcol_implicitly_insertable`, `is_base_table_element_or_constraint`. Single file; no split needed. |
+| `algorithms/clause_predicates.h` | Closed checks of whether a node is an admissible statement-level clause, and of the canonical order clauses must appear in: `select_clause_rank_v`, `is_select_clause`, `select_clause_nests_no_clause`. One file across statement kinds, because they all share a single ranking mechanism. |
 | `algorithms/index_filters.h` | Closed alias templates that scan a node's `Elements` tuple and yield an `index_sequence` of matching positions — **not** a filtered tuple. E.g. `col_index_sequence_of`, `col_index_sequence_with_field_type`. Built on `filter_tuple_sequence_t` + grammar traits + projections. |
 | `algorithms/accessors.h` | Closed runtime and compile-time accessors that retrieve a node's relevant sub-part, or the node itself, uniformly across dissimilar grammar families: `access_main_select`/`main_select_t`, `access_main_dml`/`main_dml_t`, `access_column_expression`. This is the concrete payoff of the semantic traits. |
 | `algorithms/field_predicates_fwd.h` | Declarations of the closed field-level predicates, split off for dependency weight: `is_rowid_alias_capable_v`, and (C++17 only) `is_hidden_column_of_vtab_v`. |

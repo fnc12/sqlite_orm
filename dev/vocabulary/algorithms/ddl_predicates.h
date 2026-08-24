@@ -1,6 +1,10 @@
 #pragma once
 
-/** @file Closed composed alias templates for checking the validity of nodes.
+/** @file Closed predicates for checking the validity of the elements of a DDL statement.
+ *
+ *  These answer whether a node is an admissible member of a column or table definition -
+ *  the classification questions specific to a single DDL node, as opposed to the
+ *  type-and-order questions about statement clauses in `clause_predicates.h`.
  */
 
 #include "../../functional/mpl.h"
