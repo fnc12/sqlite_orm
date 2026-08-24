@@ -1,11 +1,15 @@
 #pragma once
 
-/** @file Closed predicates classifying the statement-level clauses of a select statement by type and order.
+/** @file Closed predicates classifying the statement-level clauses of a statement by type and order.
  *
- *  A statement-level clause (FROM, JOIN, WHERE, GROUP BY, WINDOW, ORDER BY, LIMIT) may only
- *  appear in the conditions pack of a statement, in the canonical clause order, and may only
- *  hold expressions - the serializer streams clauses positionally, so any other arrangement
- *  would generate invalid SQL.
+ *  A statement-level clause may only appear in the conditions pack of a statement, in the canonical
+ *  clause order, and may only hold expressions - the serializer streams clauses positionally,
+ *  so any other arrangement would generate invalid SQL.
+ *
+ *  The generic algorithms take the clauses of a statement as an ordered list of clause traits,
+ *  or as the rank metafunction derived from it, so that a statement kind is expressed by declaring
+ *  its own list. The select statement (FROM, JOIN, WHERE, GROUP BY, WINDOW, ORDER BY, LIMIT)
+ *  is the first such list.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
