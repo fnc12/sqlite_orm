@@ -2,7 +2,9 @@
 #include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
+using internal::is_delete_clause, internal::check_delete_clause_order_v;
 using internal::is_select_clause, internal::is_statement_clause;
+using internal::is_update_clause, internal::check_update_clause_order_v;
 using internal::select_clause_rank_v, internal::check_select_clause_order_v;
 
 namespace {
@@ -14,9 +16,7 @@ namespace {
         int id = 0;
         int userId = 0;
     };
-}
 
-TEST_CASE("statement clause classification and order are computed at compile time") {
     using From = decltype(from<User>());
     //  the table-valued-function spelling of FROM; only its type matters for the clause traits
     using From2 = internal::from2_t<User>;
@@ -26,7 +26,9 @@ TEST_CASE("statement clause classification and order are computed at compile tim
     using OrderBy = decltype(order_by(&User::id));
     using Limit = decltype(limit(5));
     using Window = decltype(window("w", partition_by(&User::id)));
+}
 
+TEST_CASE("statement clause classification and order are computed at compile time") {
     SECTION("clause ranks follow the canonical clause order") {
         STATIC_REQUIRE(select_clause_rank_v<From> == 1);
         STATIC_REQUIRE(select_clause_rank_v<From2> == 1);
@@ -97,5 +99,45 @@ TEST_CASE("statement clause classification and order are computed at compile tim
         STATIC_REQUIRE_FALSE(internal::is_order_by<Where>::value);
         STATIC_REQUIRE_FALSE(internal::is_order_by<Limit>::value);
         STATIC_REQUIRE_FALSE(internal::is_order_by<decltype(c(&User::id) > 0)>::value);
+    }
+}
+
+TEST_CASE("the DML statements take their own subset of the clauses") {
+    SECTION("a delete statement takes WHERE, ORDER BY and LIMIT") {
+        STATIC_REQUIRE(is_delete_clause<Where>::value);
+        STATIC_REQUIRE(is_delete_clause<OrderBy>::value);
+        STATIC_REQUIRE(is_delete_clause<Limit>::value);
+        STATIC_REQUIRE_FALSE(is_delete_clause<From>::value);
+        STATIC_REQUIRE_FALSE(is_delete_clause<Join>::value);
+        STATIC_REQUIRE_FALSE(is_delete_clause<GroupBy>::value);
+        STATIC_REQUIRE_FALSE(is_delete_clause<Window>::value);
+    }
+    //  the FROM clause of `UPDATE ... SET ... FROM ...` and its joins exist as of SQLite 3.33.0
+    SECTION("an update statement additionally takes FROM and its joins") {
+#if (SQLITE_VERSION_NUMBER >= 3033000)
+        STATIC_REQUIRE(is_update_clause<From>::value);
+        STATIC_REQUIRE(is_update_clause<Join>::value);
+#else
+        STATIC_REQUIRE_FALSE(is_update_clause<From>::value);
+        STATIC_REQUIRE_FALSE(is_update_clause<Join>::value);
+#endif
+        STATIC_REQUIRE(is_update_clause<Where>::value);
+        STATIC_REQUIRE(is_update_clause<OrderBy>::value);
+        STATIC_REQUIRE(is_update_clause<Limit>::value);
+        STATIC_REQUIRE_FALSE(is_update_clause<GroupBy>::value);
+        STATIC_REQUIRE_FALSE(is_update_clause<Window>::value);
+    }
+    SECTION("each keeps its own canonical order") {
+        STATIC_REQUIRE(check_delete_clause_order_v<std::tuple<Where, OrderBy, Limit>>);
+        STATIC_REQUIRE_FALSE(check_delete_clause_order_v<std::tuple<Limit, Where>>);
+        STATIC_REQUIRE(check_update_clause_order_v<std::tuple<Where, OrderBy, Limit>>);
+        STATIC_REQUIRE_FALSE(check_update_clause_order_v<std::tuple<OrderBy, Where>>);
+    }
+    //  both lists are subsets of the select clauses, which is what `is_statement_clause` relies on
+    SECTION("every DML clause is also a select clause") {
+        STATIC_REQUIRE(is_select_clause<Where>::value);
+        STATIC_REQUIRE(is_select_clause<OrderBy>::value);
+        STATIC_REQUIRE(is_select_clause<Limit>::value);
+        STATIC_REQUIRE(is_statement_clause<Where>::value);
     }
 }

@@ -101,15 +101,77 @@ namespace sqlite_orm::internal {
     constexpr bool check_select_clause_order_v = clauses_are_correctly_ordered_v<Tpl, select_clause_rank>;
 }
 
+// delete statement clause algorithms
+namespace sqlite_orm::internal {
+    /**
+     *  Rank of a statement-level clause of a DELETE statement, or 0 if the type is not one of them.
+     *
+     *  ORDER BY and LIMIT are only accepted by an SQLite built with SQLITE_ENABLE_UPDATE_DELETE_LIMIT.
+     *  That is a build option of the library we link against and cannot be detected from here, so they
+     *  are admitted and left to SQLite to reject.
+     */
+    template<class T>
+    constexpr size_t delete_clause_rank_v = clause_rank_v<T, is_where, is_order_by, is_limit>;
+
+    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    template<class T>
+    struct delete_clause_rank : polyfill::index_constant<delete_clause_rank_v<T>> {};
+
+    template<class T>
+    using is_delete_clause = polyfill::bool_constant<delete_clause_rank_v<T> != 0>;
+
+    /**
+     *  Checks that the clauses in the conditions pack of a delete statement are listed
+     *  in the canonical clause order.
+     */
+    template<class Tpl>
+    constexpr bool check_delete_clause_order_v = clauses_are_correctly_ordered_v<Tpl, delete_clause_rank>;
+}
+
+// update statement clause algorithms
+namespace sqlite_orm::internal {
+    /**
+     *  Rank of a statement-level clause of an UPDATE statement, or 0 if the type is not one of them.
+     *
+     *  The FROM clause of `UPDATE ... SET ... FROM ...`, and the joins it may carry, exist as of SQLite 3.33.0.
+     *  For ORDER BY and LIMIT the same applies as for a delete statement.
+     */
+    template<class T>
+    constexpr size_t update_clause_rank_v = clause_rank_v<T,
+#if (SQLITE_VERSION_NUMBER >= 3033000)
+                                                          is_any_from,
+                                                          is_any_join,
+#endif
+                                                          is_where,
+                                                          is_order_by,
+                                                          is_limit>;
+
+    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    template<class T>
+    struct update_clause_rank : polyfill::index_constant<update_clause_rank_v<T>> {};
+
+    template<class T>
+    using is_update_clause = polyfill::bool_constant<update_clause_rank_v<T> != 0>;
+
+    /**
+     *  Checks that the clauses in the conditions pack of an update statement are listed
+     *  in the canonical clause order.
+     */
+    template<class Tpl>
+    constexpr bool check_update_clause_order_v = clauses_are_correctly_ordered_v<Tpl, update_clause_rank>;
+}
+
 // clauses of any statement kind
 namespace sqlite_orm::internal {
     /**
      *  Whether a node is a statement-level clause of any statement kind.
      *
-     *  Every statement kind currently shares the select clauses - `remove_all()`, `update_all()` and the
-     *  `get_all()` family all validate their conditions pack against them - so this is presently the union
-     *  of a single list. It carries its own name because a clause factory has to reject a nested clause
-     *  regardless of which statement its result will end up in.
+     *  The delete and update clause lists are subsets of the select one, so the select list is presently
+     *  the union. Extend this should a statement kind ever admit a clause the select statement does not.
+     *  It carries its own name because a clause factory has to reject a nested clause regardless of which
+     *  statement its result will end up in.
      */
     template<class T>
     using is_statement_clause = is_select_clause<T>;
