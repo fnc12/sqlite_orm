@@ -12,7 +12,6 @@ namespace sqlite_orm::internal {
     template<class T>
     struct exists_t : condition_t, negatable_t {
         using expression_type = T;
-        using self = exists_t<expression_type>;
 
         expression_type expression;
 

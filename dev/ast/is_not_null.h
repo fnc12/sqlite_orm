@@ -5,8 +5,7 @@
 #endif
 
 #include "../tags.h"
-#include "../functional/config.h"
-#include "../vocabulary/algorithms/operand_predicates.h"
+#include "../vocabulary/node_algorithms.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -15,7 +14,6 @@ namespace sqlite_orm::internal {
     template<class T>
     struct is_not_null_t : condition_t, negatable_t {
         using argument_type = T;
-        using self = is_not_null_t<argument_type>;
 
         argument_type argument;
 

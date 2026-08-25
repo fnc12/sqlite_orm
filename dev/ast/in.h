@@ -21,8 +21,6 @@ namespace sqlite_orm::internal {
      */
     template<class L, class A>
     struct dynamic_in_t : condition_t, in_base, negatable_t {
-        using self = dynamic_in_t<L, A>;
-
         L left;  //  left expression
         A argument;  //  in arg
 

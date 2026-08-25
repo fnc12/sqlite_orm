@@ -96,7 +96,6 @@ namespace sqlite_orm::internal {
      */
     template<class... DBO>
     struct storage_t : storage_base {
-        using self_type = storage_t;
         using db_objects_type = db_objects_tuple<DBO...>;
 
         /**
@@ -134,7 +133,7 @@ namespace sqlite_orm::internal {
          *  
          *  Hence, friend was replaced by `obtain_db_objects()` and `pick_const_impl()`.
          */
-        friend const db_objects_type& obtain_db_objects(const self_type& storage) noexcept {
+        friend const db_objects_type& obtain_db_objects(const storage_t& storage) noexcept {
             return storage.db_objects;
         }
 
@@ -301,7 +300,7 @@ namespace sqlite_orm::internal {
          *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
          */
         template<class T, class O = mapped_type_proxy_t<T>, class... Args>
-        mapped_view<O, self_type, Args...> iterate(Args&&... args) {
+        mapped_view<O, storage_t, Args...> iterate(Args&&... args) {
             this->assert_mapped_type<O>();
 
             auto conRef = this->get_connection();
@@ -889,7 +888,7 @@ namespace sqlite_orm::internal {
             class Ex = polyfill::remove_cvref_t<E>,
             std::enable_if_t<!is_prepared_statement<Ex>::value && !is_mapped<db_objects_type, Ex>::value, bool> = true>
         std::string dump(E&& expression, bool parametrized = false) const {
-            static_assert(is_preparable_statement_v<self_type, Ex>, "Expression must be a high-level statement");
+            static_assert(is_preparable_statement_v<storage_t, Ex>, "Expression must be a high-level statement");
 
             if constexpr (is_select_v<Ex>) {
                 auto e2 = std::forward<E>(expression);
