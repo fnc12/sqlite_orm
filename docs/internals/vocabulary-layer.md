@@ -76,8 +76,8 @@ vocabulary/
                             Safe for broad inclusion.
 
     node_algorithms.h       Umbrella, declaration-only: ddl_predicates.h,
-                            clause_predicates.h, index_filters.h,
-                            accessors.h, field_predicates_fwd.h,
+                            clause_predicates.h, operand_predicates.h,
+                            index_filters.h, accessors.h, field_predicates_fwd.h,
                             field_predicates_concepts.h. Deliberately does NOT include
                             field_predicates.h.
 ```
@@ -138,7 +138,7 @@ Four axes are keyed on a DSL node; one is keyed on a raw C++ type.
 | **Semantic** | `traits/semantic_traits_fwd.h` | a DSL node | What cross-cutting role does this play, across *dissimilar* grammar families? |
 | **Structural** | `traits/structural_traits_fwd.h` | a DSL node | Is this a DSL-tree-only node with no SQL grammar counterpart? |
 | **Operand** | `traits/operand_traits_fwd.h` | a DSL node | Can this node appear as an operand in an expression context? |
-| **Field** | `algorithms/field_predicates_fwd.h` | a raw C++ type | Does this C++ type qualify for a SQL-level role? |
+| **Field** | `algorithms/field_predicates_fwd.h` | a raw C++ type | Does this C++ type qualify for a SQL-level role — bindable, printable, rowid-alias capable? |
 
 All four node axes are **open**: the primary template is declared in the `_fwd.h` file, and
 each node specializes it **in the node's own header**.
@@ -206,10 +206,12 @@ being composed into a judgment; it is still extraction.
 |---|---|
 | `algorithms/ddl_predicates.h` | Closed, composed alias-template checks of whether a node is an admissible element of a column or table definition, with no significant header-weight dependency, e.g. `is_pkcol_implicitly_insertable`, `is_base_table_element_or_constraint`. Single file; no split needed. |
 | `algorithms/clause_predicates.h` | Closed checks of whether a node is an admissible statement-level clause, and of the canonical order clauses must appear in: `select_clause_rank_v`, `is_select_clause`, `select_clause_nests_no_clause`. One file across statement kinds, because they all share a single ranking mechanism. |
+| `algorithms/operand_predicates.h` | Closed checks of whether a type may appear as an operand of a named expression factory (`eq()`, `and_()`, `add()`, `assign()`, …): `is_referencable_operand`, `is_operand_or_bindable`, `are_valid_operands`. Composes the operand traits with grammar traits and the field-level `is_bindable` — which is why it takes `field_predicates_fwd.h` rather than the definition file. |
 | `algorithms/index_filters.h` | Closed alias templates that scan a node's `Elements` tuple and yield an `index_sequence` of matching positions — **not** a filtered tuple. E.g. `col_index_sequence_of`, `col_index_sequence_with_field_type`. Built on `filter_tuple_sequence_t` + grammar traits + projections. |
 | `algorithms/accessors.h` | Closed runtime and compile-time accessors that retrieve a node's relevant sub-part, or the node itself, uniformly across dissimilar grammar families: `access_main_select`/`main_select_t`, `access_main_dml`/`main_dml_t`, `access_column_expression`. This is the concrete payoff of the semantic traits. |
-| `algorithms/field_predicates_fwd.h` | Declarations of the closed field-level predicates, split off for dependency weight: `is_rowid_alias_capable_v`, and (C++17 only) `is_hidden_column_of_vtab_v`. |
-| `algorithms/field_predicates.h` | Their definitions, which need `type_printer.h` and `member_traits/`. Reached only through the `node_algorithm_definitions.h` manifest. |
+| `algorithms/field_predicates_fwd.h` | Declarations of the closed field-level predicates, split off for dependency weight: `is_rowid_alias_capable_v`, `is_bindable_v`, `is_printable_v`, and (C++17 only) `is_hidden_column_of_vtab_v`. |
+| — where their definitions live | `is_rowid_alias_capable_v` is a capability *derived from* the field type, so it is defined in `field_predicates.h` with the other computed predicates. `is_bindable_v` and `is_printable_v` instead test whether a customization point is instantiable for the type, so each stays with the point it tests — `statement_binder.h` and `field_printer.h` respectively, which include the `_fwd` header to define them. |
+| `algorithms/field_predicates.h` | The definitions of the *derived* field predicates — `is_rowid_alias_capable_v`, and (C++17 only) `is_hidden_column_of_vtab_v` — which need `type_printer.h` and `member_traits/`. Reached only through the `node_algorithm_definitions.h` manifest. |
 | `algorithms/field_predicates_concepts.h` | The `hidden_column_of_vtab` / `hidden_field_of_vtab` concepts, plus the C++17 fallback, under one guard. See [Concepts](#concepts-a-hard-constraint-on-splitting). |
 
 ## Open vs. closed

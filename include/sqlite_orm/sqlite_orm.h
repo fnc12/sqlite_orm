@@ -2536,6 +2536,33 @@ namespace sqlite_orm::internal {
 
     template<class F>
     using is_rowid_alias_capable = polyfill::bool_constant<is_rowid_alias_capable_v<F>>;
+
+    /*
+     *  Whether a field type can be bound as a parameter of a prepared statement.
+     *
+     *  In contrast to `is_rowid_alias_capable`, which is a capability derived from the field type itself,
+     *  this is tied to whether the `statement_binder` customization point is instantiable for it -
+     *  hence its definition stays with `statement_binder` in `statement_binder.h`.
+     */
+    template<class T, class SFINAE = void>
+    extern const bool is_bindable_v;
+
+    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    template<class T>
+    struct is_bindable : polyfill::bool_constant<is_bindable_v<T>> {};
+
+    /*
+     *  Whether a field type can be printed as a human-readable string.
+     *
+     *  Like `is_bindable`, this is tied to whether the `field_printer` customization point is
+     *  instantiable for it - hence its definition stays with `field_printer` in `field_printer.h`.
+     */
+    template<class T, class SFINAE = void>
+    extern const bool is_printable_v;
+
+    template<class T>
+    struct is_printable : polyfill::bool_constant<is_printable_v<T>> {};
 }
 
 // #include "algorithms/field_predicates_concepts.h"
@@ -2938,10 +2965,10 @@ namespace sqlite_orm::internal {
 
 // #include "../node_traits.h"
 
-namespace sqlite_orm::internal {
-    template<class T>
-    struct is_bindable;
+// #include "field_predicates_fwd.h"
+// is_bindable
 
+namespace sqlite_orm::internal {
     /**
      *  Whether a type may be referenced as a column expression by a named expression factory:
      *  a member pointer or anything the overloaded operators accept.
@@ -4246,6 +4273,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "vocabulary/algorithms/field_predicates_fwd.h"
+// Included to define is_printable_v
 // #include "type_traits.h"
 
 // #include "is_std_ptr.h"
@@ -4296,19 +4325,15 @@ namespace sqlite_orm::internal {
     /*
      *  Implementation note: the technique of indirect expression testing is because
      *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
-     *  It must also be a type that differs from those for `is_preparable_v`, `is_bindable_v`.
+     *  It must also be a type that differs from those for `is_preparable_statement_v`, `is_bindable_v`.
      */
     template<class Printer>
     struct indirectly_test_printable;
 
-    template<class T, class SFINAE = void>
-    inline constexpr bool is_printable_v = false;
+    template<class T, class SFINAE>
+    constexpr bool is_printable_v = false;
     template<class T>
-    inline constexpr bool is_printable_v<T, polyfill::void_t<indirectly_test_printable<decltype(field_printer<T>{})>>> =
-        true;
-
-    template<class T>
-    struct is_printable : polyfill::bool_constant<is_printable_v<T>> {};
+    constexpr bool is_printable_v<T, polyfill::void_t<indirectly_test_printable<decltype(field_printer<T>{})>>> = true;
 }
 
 namespace sqlite_orm {
@@ -10062,6 +10087,8 @@ namespace sqlite_orm::internal {
 
 // #include "functional/cxx_functional_polyfill.h"
 // std::invoke
+// #include "vocabulary/algorithms/field_predicates_fwd.h"
+// Included to define is_bindable_v
 // #include "type_traits.h"
 
 // #include "is_std_ptr.h"
@@ -10664,19 +10691,15 @@ namespace sqlite_orm::internal {
     /*
      *  Implementation note: the technique of indirect expression testing is because
      *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
-     *  It must also be a type that differs from those for `is_printable_v`, `is_preparable_v`.
+     *  It must also be a type that differs from those for `is_printable_v`, `is_preparable_statement_v`.
      */
     template<class Binder>
     struct indirectly_test_bindable;
 
-    template<class T, class SFINAE = void>
-    inline constexpr bool is_bindable_v = false;
+    template<class T, class SFINAE>
+    constexpr bool is_bindable_v = false;
     template<class T>
-    inline constexpr bool
-        is_bindable_v<T, polyfill::void_t<indirectly_test_bindable<decltype(statement_binder<T>{})>>> = true;
-
-    template<class T>
-    struct is_bindable : polyfill::bool_constant<is_bindable_v<T>> {};
+    constexpr bool is_bindable_v<T, polyfill::void_t<indirectly_test_bindable<decltype(statement_binder<T>{})>>> = true;
 }
 
 // `statement_binder` specializations;
@@ -25912,9 +25935,9 @@ namespace sqlite_orm::internal {
     struct indirectly_test_preparable;
 
     template<class S, class E, class SFINAE = void>
-    inline constexpr bool is_preparable_v = false;
+    inline constexpr bool is_preparable_statement_v = false;
     template<class S, class E>
-    inline constexpr bool is_preparable_v<
+    inline constexpr bool is_preparable_statement_v<
         S,
         E,
         polyfill::void_t<indirectly_test_preparable<decltype(std::declval<S>().prepare(std::declval<E>()))>>> = true;
@@ -26727,7 +26750,7 @@ namespace sqlite_orm::internal {
             class Ex = polyfill::remove_cvref_t<E>,
             std::enable_if_t<!is_prepared_statement<Ex>::value && !is_mapped<db_objects_type, Ex>::value, bool> = true>
         std::string dump(E&& expression, bool parametrized = false) const {
-            static_assert(is_preparable_v<self_type, Ex>, "Expression must be a high-level statement");
+            static_assert(is_preparable_statement_v<self_type, Ex>, "Expression must be a high-level statement");
 
             if constexpr (is_select_v<Ex>) {
                 auto e2 = std::forward<E>(expression);

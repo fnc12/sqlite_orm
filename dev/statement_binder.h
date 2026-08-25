@@ -19,6 +19,7 @@
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"  // std::invoke
+#include "vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_bindable_v
 #include "type_traits.h"
 #include "is_std_ptr.h"
 #include "tuple_helper/tuple_filter.h"
@@ -40,19 +41,15 @@ namespace sqlite_orm::internal {
     /*
      *  Implementation note: the technique of indirect expression testing is because
      *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
-     *  It must also be a type that differs from those for `is_printable_v`, `is_preparable_v`.
+     *  It must also be a type that differs from those for `is_printable_v`, `is_preparable_statement_v`.
      */
     template<class Binder>
     struct indirectly_test_bindable;
 
-    template<class T, class SFINAE = void>
-    inline constexpr bool is_bindable_v = false;
+    template<class T, class SFINAE>
+    constexpr bool is_bindable_v = false;
     template<class T>
-    inline constexpr bool
-        is_bindable_v<T, polyfill::void_t<indirectly_test_bindable<decltype(statement_binder<T>{})>>> = true;
-
-    template<class T>
-    struct is_bindable : polyfill::bool_constant<is_bindable_v<T>> {};
+    constexpr bool is_bindable_v<T, polyfill::void_t<indirectly_test_bindable<decltype(statement_binder<T>{})>>> = true;
 }
 
 // `statement_binder` specializations;

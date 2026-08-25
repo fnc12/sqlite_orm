@@ -74,9 +74,9 @@ namespace sqlite_orm::internal {
     struct indirectly_test_preparable;
 
     template<class S, class E, class SFINAE = void>
-    inline constexpr bool is_preparable_v = false;
+    inline constexpr bool is_preparable_statement_v = false;
     template<class S, class E>
-    inline constexpr bool is_preparable_v<
+    inline constexpr bool is_preparable_statement_v<
         S,
         E,
         polyfill::void_t<indirectly_test_preparable<decltype(std::declval<S>().prepare(std::declval<E>()))>>> = true;
@@ -889,7 +889,7 @@ namespace sqlite_orm::internal {
             class Ex = polyfill::remove_cvref_t<E>,
             std::enable_if_t<!is_prepared_statement<Ex>::value && !is_mapped<db_objects_type, Ex>::value, bool> = true>
         std::string dump(E&& expression, bool parametrized = false) const {
-            static_assert(is_preparable_v<self_type, Ex>, "Expression must be a high-level statement");
+            static_assert(is_preparable_statement_v<self_type, Ex>, "Expression must be a high-level statement");
 
             if constexpr (is_select_v<Ex>) {
                 auto e2 = std::forward<E>(expression);

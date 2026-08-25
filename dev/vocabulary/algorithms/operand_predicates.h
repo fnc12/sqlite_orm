@@ -18,11 +18,9 @@
 
 #include "../../functional/cxx_type_traits_polyfill.h"
 #include "../node_traits.h"
+#include "field_predicates_fwd.h"  // is_bindable
 
 namespace sqlite_orm::internal {
-    template<class T>
-    struct is_bindable;
-
     /**
      *  Whether a type may be referenced as a column expression by a named expression factory:
      *  a member pointer or anything the overloaded operators accept.
