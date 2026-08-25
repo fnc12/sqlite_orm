@@ -4473,6 +4473,8 @@ namespace sqlite_orm {
 // Included to specialize traits
 // #include "vocabulary/traits/operand_traits_fwd.h"
 // Included to specialize traits
+// #include "vocabulary/node_algorithms.h"
+// is_operand_or_bindable, are_valid_operands
 // #include "serialize_result_type.h"
 
 // #include "functional/cxx_string_view.h"
@@ -4540,8 +4542,6 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_conditional_operand_v = std::is_base_of<condition_t, T>::value;
 }
-
-// #include "vocabulary/algorithms/operand_predicates.h"
 
 namespace sqlite_orm::internal {
     template<class L, class R, class... Ds>
@@ -5426,10 +5426,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "vocabulary/node_algorithms.h"
-// unwrap_expression
+// unwrap_expression, is_operand_or_bindable, are_valid_operands
 // #include "vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
-// #include "vocabulary/algorithms/operand_predicates.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -12604,7 +12603,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../tags.h"
 
-// #include "../vocabulary/algorithms/operand_predicates.h"
+// #include "../vocabulary/node_algorithms.h"
+// is_operand_or_bindable
 
 namespace sqlite_orm::internal {
 
@@ -12731,9 +12731,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif
-// #include "tags.h"
 
-// #include "../vocabulary/algorithms/operand_predicates.h"
+// #include "../tags.h"
+
+// #include "../vocabulary/node_algorithms.h"
+// is_operand_or_bindable
 
 namespace sqlite_orm::internal {
     /**
@@ -16745,11 +16747,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
-// #include "../vocabulary/traits/operand_traits_fwd.h"
-// Included to specialize traits
+#endif
+
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-#endif
+// #include "../vocabulary/traits/operand_traits_fwd.h"
+// Included to specialize traits
 
 namespace sqlite_orm::internal {
     template<class T>
@@ -16781,11 +16784,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../tags.h"
-
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// #include "../tags.h"
+
+// #include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
     template<class T>

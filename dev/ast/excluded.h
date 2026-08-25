@@ -2,9 +2,10 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
-#include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
-#include "../functional/cxx_type_traits_polyfill.h"
 #endif
+
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     template<class T>

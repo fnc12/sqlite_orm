@@ -8,7 +8,7 @@
 #endif
 
 #include "../tags.h"
-#include "../vocabulary/algorithms/operand_predicates.h"
+#include "../vocabulary/node_algorithms.h"  // is_operand_or_bindable
 
 namespace sqlite_orm::internal {
 

@@ -26,9 +26,8 @@
 #include "literal.h"
 #include "ast/cross_join.h"
 #include "ast/rank.h"
-#include "vocabulary/node_algorithms.h"  // unwrap_expression
+#include "vocabulary/node_algorithms.h"  // unwrap_expression, is_operand_or_bindable, are_valid_operands
 #include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
-#include "vocabulary/algorithms/operand_predicates.h"
 
 namespace sqlite_orm::internal {
     /**

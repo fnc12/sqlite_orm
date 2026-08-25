@@ -7,9 +7,9 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
+#include "vocabulary/node_algorithms.h"  // is_operand_or_bindable, are_valid_operands
 #include "serialize_result_type.h"
 #include "tags.h"
-#include "vocabulary/algorithms/operand_predicates.h"
 
 namespace sqlite_orm::internal {
     template<class L, class R, class... Ds>
