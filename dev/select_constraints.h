@@ -394,8 +394,13 @@ namespace sqlite_orm::internal {
         }
     };
 
+    /**
+     *  Checks the relations that only the conditions pack as a whole can answer: how often a clause may
+     *  appear in it, that every argument is a clause at all, and that they are listed in the canonical order.
+     *  Whether a single clause holds an admissible expression is checked by the clause factory that built it.
+     */
     template<class T>
-    constexpr void validate_conditions() {
+    constexpr void validate_select_clauses() {
         static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
         static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
         static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
@@ -469,7 +474,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class... Args>
     constexpr internal::select_t<T, Args...> select(T t, Args... args) {
         using args_tuple = std::tuple<Args...>;
-        internal::validate_conditions<args_tuple>();
+        internal::validate_select_clauses<args_tuple>();
         return {std::move(t), {std::forward<Args>(args)...}};
     }
 
