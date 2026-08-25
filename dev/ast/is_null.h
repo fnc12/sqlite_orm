@@ -6,6 +6,7 @@
 
 #include "../tags.h"
 #include "../functional/config.h"
+#include "../vocabulary/algorithms/operand_predicates.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -29,6 +30,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T>
     internal::is_null_t<T> is_null(T t) {
+        static_assert(internal::is_operand_or_bindable<T>::value,
+                      "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(t)};
     }
 }

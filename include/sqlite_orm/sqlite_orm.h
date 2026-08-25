@@ -2916,6 +2916,61 @@ namespace sqlite_orm::internal {
         polyfill::disjunction<is_select_clause<expression_type_t<T>>, is_select_clause<offset_expression_type_t<T>>>>;
 }
 
+// #include "algorithms/operand_predicates.h"
+
+/** @file Combined operand predicates gating the named expression factories.
+ *
+ *  The named factories (`eq()`, `and_()`, `add()`, `assign()`, ...) accept everything their
+ *  operator counterparts accept, plus a raw member pointer (which the named factories
+ *  reference without the `c()` wrapper), plus a bindable value - the named factories are
+ *  also the only spelling for literal-only SQL expressions such as `SELECT 60 | 13`.
+ *  Everything else - arbitrary structs, containers, statement clauses - cannot be
+ *  serialized into SQL and is rejected at the factory.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <functional>  //  std::reference_wrapper
+#include <tuple>  //  std::tuple
+#include <type_traits>  //  std::is_member_pointer
+#endif
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
+// #include "../node_traits.h"
+
+namespace sqlite_orm::internal {
+    template<class T>
+    struct is_bindable;
+
+    /**
+     *  Whether a type may be referenced as a column expression by a named expression factory:
+     *  a member pointer or anything the overloaded operators accept.
+     */
+    template<class T>
+    using is_referencable_operand = polyfill::disjunction<is_operator_argument<T>, std::is_member_pointer<T>>;
+
+    /**
+     *  Whether a type may appear as an operand of a named expression factory.
+     */
+    template<class T>
+    using is_operand_or_bindable = polyfill::disjunction<is_operator_argument<T>,
+                                                         std::is_member_pointer<T>,
+                                                         is_arithmetic_operand<T>,
+                                                         is_conditional_operand<T>,
+                                                         is_chainable_operand<T>,
+                                                         is_bindable<T>,
+                                                         //  a scalar subquery
+                                                         is_select<T>,
+                                                         is_compound_operator<T>,
+                                                         //  a row value
+                                                         polyfill::is_specialization_of<T, std::tuple>,
+                                                         //  a value bound by reference in a prepared statement
+                                                         polyfill::is_specialization_of<T, std::reference_wrapper>>;
+
+    template<class L, class R>
+    using are_valid_operands = polyfill::conjunction<is_operand_or_bindable<L>, is_operand_or_bindable<R>>;
+}
+
 // #include "algorithms/accessors.h"
 
 /** @file Accessor functions for uniformly obtaining a node's relevant sub-expression or itself,
@@ -4461,6 +4516,8 @@ namespace sqlite_orm::internal {
     constexpr bool is_conditional_operand_v = std::is_base_of<condition_t, T>::value;
 }
 
+// #include "vocabulary/algorithms/operand_predicates.h"
+
 namespace sqlite_orm::internal {
     template<class L, class R, class... Ds>
     struct binary_operator : Ds... {
@@ -4658,11 +4715,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class L, class R>
     constexpr internal::conc_t<L, R> conc(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "conc() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
     template<class T>
     constexpr internal::unary_minus_t<T> minus(T t) {
+        static_assert(internal::is_operand_or_bindable<T>::value,
+                      "minus() argument must be a bindable value or one of sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(t)};
     }
 
@@ -4671,6 +4734,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class L, class R>
     constexpr internal::add_t<L, R> add(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "add() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
@@ -4679,6 +4745,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class L, class R>
     constexpr internal::sub_t<L, R> sub(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "sub() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
@@ -4687,6 +4756,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class L, class R>
     constexpr internal::mul_t<L, R> mul(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "mul() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
@@ -4697,6 +4769,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class L, class R>
     constexpr internal::div_t<L, R> div(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "div() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
@@ -4705,36 +4780,57 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class L, class R>
     constexpr internal::mod_t<L, R> mod(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "mod() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
     constexpr internal::bitwise_shift_left_t<L, R> bitwise_shift_left(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "bitwise_shift_left() arguments must be bindable values or sqlite_orm-recognized operands: "
+                      "member pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
     constexpr internal::bitwise_shift_right_t<L, R> bitwise_shift_right(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "bitwise_shift_right() arguments must be bindable values or sqlite_orm-recognized operands: "
+                      "member pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
     constexpr internal::bitwise_and_t<L, R> bitwise_and(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "bitwise_and() arguments must be bindable values or sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
     constexpr internal::bitwise_or_t<L, R> bitwise_or(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "bitwise_or() arguments must be bindable values or sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
     template<class T>
     constexpr internal::bitwise_not_t<T> bitwise_not(T t) {
+        static_assert(internal::is_operand_or_bindable<T>::value,
+                      "bitwise_not() argument must be a bindable value or one of sqlite_orm-recognized operands: "
+                      "member pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(t)};
     }
 
     template<class L, class R>
     internal::assign_t<L, R> assign(L l, R r) {
+        static_assert(internal::is_referencable_operand<L>::value,
+                      "the assignment target must be one of sqlite_orm-recognized operands: member pointers, column "
+                      "pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 }
@@ -5308,6 +5404,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // unwrap_expression
 // #include "vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
+// #include "vocabulary/algorithms/operand_predicates.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -6163,6 +6260,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class L, class R>
     constexpr auto and_(L l, R r) {
         using namespace ::sqlite_orm::internal;
+        static_assert(are_valid_operands<L, R>::value,
+                      "and_() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
         return and_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>>{unwrap_expression(std::forward<L>(l)),
                                                                                unwrap_expression(std::forward<R>(r))};
     }
@@ -6170,17 +6270,26 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class L, class R>
     constexpr auto or_(L l, R r) {
         using namespace ::sqlite_orm::internal;
+        static_assert(are_valid_operands<L, R>::value,
+                      "or_() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
         return or_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>>{unwrap_expression(std::forward<L>(l)),
                                                                               unwrap_expression(std::forward<R>(r))};
     }
 
     template<class L, class R>
     constexpr internal::is_equal_t<L, R> is_equal(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "is_equal() arguments must be bindable values or sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
     constexpr internal::is_equal_t<L, R> eq(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "eq() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
@@ -6196,36 +6305,57 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<class L, class R>
     constexpr internal::is_not_equal_t<L, R> is_not_equal(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "is_not_equal() arguments must be bindable values or sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
     constexpr internal::is_not_equal_t<L, R> ne(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "ne() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
     constexpr internal::greater_than_t<L, R> greater_than(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "greater_than() arguments must be bindable values or sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
     constexpr internal::greater_than_t<L, R> gt(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "gt() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
     constexpr internal::greater_or_equal_t<L, R> greater_or_equal(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "greater_or_equal() arguments must be bindable values or sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
     constexpr internal::greater_or_equal_t<L, R> ge(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "ge() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
     constexpr internal::less_than_t<L, R> less_than(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "less_than() arguments must be bindable values or sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
@@ -6235,16 +6365,25 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class L, class R>
     [[deprecated("Use the accurately named function `less_than(...)` instead")]] internal::less_than_t<L, R>
     lesser_than(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "lesser_than() arguments must be bindable values or sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
     constexpr internal::less_than_t<L, R> lt(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "lt() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
     constexpr internal::less_or_equal_t<L, R> less_or_equal(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "less_or_equal() arguments must be bindable values or sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
@@ -6254,11 +6393,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class L, class R>
     [[deprecated("Use the accurately named function `less_or_equal(...)` instead")]] internal::less_or_equal_t<L, R>
     lesser_or_equal(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "lesser_or_equal() arguments must be bindable values or sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
     constexpr internal::less_or_equal_t<L, R> le(L l, R r) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "le() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(l), std::move(r)};
     }
 
@@ -6326,6 +6471,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class A, class T>
     constexpr internal::like_t<A, T, void> like(A a, T t) {
+        static_assert(internal::is_operand_or_bindable<A>::value,
+                      "the matched expression must be a bindable value or one of sqlite_orm-recognized operands: "
+                      "member pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(a), std::move(t), {}};
     }
 
@@ -6335,6 +6483,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class A, class T, class E>
     constexpr internal::like_t<A, T, E> like(A a, T t, E e) {
+        static_assert(internal::is_operand_or_bindable<A>::value,
+                      "the matched expression must be a bindable value or one of sqlite_orm-recognized operands: "
+                      "member pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(a), std::move(t), {std::move(e)}};
     }
 
@@ -6344,6 +6495,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class A, class T>
     constexpr internal::glob_t<A, T> glob(A a, T t) {
+        static_assert(internal::is_operand_or_bindable<A>::value,
+                      "the matched expression must be a bindable value or one of sqlite_orm-recognized operands: "
+                      "member pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(a), std::move(t)};
     }
 }
@@ -9428,6 +9582,10 @@ namespace sqlite_orm::internal {
         optional_container<else_expression_type> else_expression;
     };
 
+    template<class T>
+    constexpr bool
+        is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, simple_case_t>::value>> = true;
+
     /**
      *  T is a case expression type
      *  E is else type (void is ELSE is omitted)
@@ -12370,6 +12528,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  // std::move
+// #include "../vocabulary/traits/operand_traits_fwd.h"
+// Included to specialize traits
 #endif  //  SQLITE_ORM_IMPORT_STD_MODULE
 
 namespace sqlite_orm::internal {
@@ -12386,6 +12546,9 @@ namespace sqlite_orm::internal {
 
         expression_type expression;
     };
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, cast_t>::value>> = true;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -12409,6 +12572,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
 // #include "../tags.h"
+
+// #include "../vocabulary/algorithms/operand_predicates.h"
 
 namespace sqlite_orm::internal {
 
@@ -12451,6 +12616,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class L, class E>
     internal::dynamic_in_t<L, std::vector<E>> in(L left, std::vector<E> values) {
+        static_assert(internal::is_operand_or_bindable<L>::value,
+                      "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(left), std::move(values), false};
     }
 
@@ -12463,6 +12631,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class L, class E>
     internal::dynamic_in_t<L, std::vector<E>> in(L left, std::initializer_list<E> values) {
+        static_assert(internal::is_operand_or_bindable<L>::value,
+                      "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(left), std::move(values), false};
     }
 
@@ -12475,6 +12646,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class L, class A>
     internal::dynamic_in_t<L, A> in(L left, A argument) {
+        static_assert(internal::is_operand_or_bindable<L>::value,
+                      "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(left), std::move(argument), false};
     }
 
@@ -12487,6 +12661,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class L, class E>
     internal::dynamic_in_t<L, std::vector<E>> not_in(L left, std::vector<E> values) {
+        static_assert(internal::is_operand_or_bindable<L>::value,
+                      "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(left), std::move(values), true};
     }
 
@@ -12499,6 +12676,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class L, class E>
     internal::dynamic_in_t<L, std::vector<E>> not_in(L left, std::initializer_list<E> values) {
+        static_assert(internal::is_operand_or_bindable<L>::value,
+                      "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(left), std::move(values), true};
     }
 
@@ -12511,6 +12691,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class L, class A>
     internal::dynamic_in_t<L, A> not_in(L left, A argument) {
+        static_assert(internal::is_operand_or_bindable<L>::value,
+                      "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(left), std::move(argument), true};
     }
 }
@@ -12520,6 +12703,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 // #include "tags.h"
+
+// #include "../vocabulary/algorithms/operand_predicates.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -12547,6 +12732,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class A, class T>
     internal::between_t<A, T> between(A expression, T lower, T upper) {
+        static_assert(internal::is_operand_or_bindable<A>::value,
+                      "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(expression), std::move(lower), std::move(upper)};
     }
 }
@@ -12559,6 +12747,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../tags.h"
 
 // #include "../functional/config.h"
+
+// #include "../vocabulary/algorithms/operand_predicates.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -12582,6 +12772,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T>
     internal::is_null_t<T> is_null(T t) {
+        static_assert(internal::is_operand_or_bindable<T>::value,
+                      "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(t)};
     }
 }
@@ -12594,6 +12787,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../tags.h"
 
 // #include "../functional/config.h"
+
+// #include "../vocabulary/algorithms/operand_predicates.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -12617,6 +12812,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T>
     internal::is_not_null_t<T> is_not_null(T t) {
+        static_assert(internal::is_operand_or_bindable<T>::value,
+                      "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(t)};
     }
 }
@@ -16524,6 +16722,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
+// #include "../vocabulary/traits/operand_traits_fwd.h"
+// Included to specialize traits
+// #include "../functional/cxx_type_traits_polyfill.h"
+
 #endif
 
 namespace sqlite_orm::internal {
@@ -16533,6 +16735,10 @@ namespace sqlite_orm::internal {
 
         expression_type expression;
     };
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, excluded_t>::value>> =
+        true;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -16553,6 +16759,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
 // #include "../tags.h"
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
 
 namespace sqlite_orm::internal {
     template<class T>
@@ -16577,6 +16787,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T>
     internal::exists_t<T> exists(T expression) {
+        static_assert(polyfill::disjunction<internal::is_select<T>, internal::is_compound_operator<T>>::value,
+                      "exists() requires a select statement");
         return {std::move(expression)};
     }
 }
@@ -21319,6 +21531,9 @@ namespace sqlite_orm::internal {
 
 // #include "../optional_container.h"
 
+// #include "../vocabulary/traits/operand_traits_fwd.h"
+// Included to specialize traits
+
 // NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
 // (Could be implemented with a normal trigger that insert or update an internal table and then retreive
 // the event in the C++ code, to call the C++ user callback, with update hooks: https://www.sqlite.org/c3ref/update_hook.html)
@@ -21525,6 +21740,12 @@ namespace sqlite_orm::internal {
 
         expression_type expression;
     };
+
+    template<class T>
+    constexpr bool is_operator_argument_v<
+        T,
+        std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<T, new_t>,
+                                               polyfill::is_specialization_of<T, old_t>>::value>> = true;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

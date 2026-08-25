@@ -8,4 +8,5 @@
 #include "algorithms/index_filters.h"
 #include "algorithms/ddl_predicates.h"
 #include "algorithms/clause_predicates.h"
+#include "algorithms/operand_predicates.h"
 #include "algorithms/accessors.h"
