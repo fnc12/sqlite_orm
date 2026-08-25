@@ -170,6 +170,38 @@ namespace sqlite_orm::internal {
     using is_group_by = polyfill::bool_constant<is_group_by_v<T>>;
 
     template<class T>
+    extern const bool is_from_v;
+
+    template<class T>
+    using is_from = polyfill::bool_constant<is_from_v<T>>;
+
+    template<class T>
+    extern const bool is_from2_v;
+
+    template<class T>
+    using is_from2 = polyfill::bool_constant<is_from2_v<T>>;
+
+    //  `from_t` and `from2_t` are two DSL spellings of the one FROM clause production,
+    //  hence grouping them is what corresponds to the SQL grammar
+    template<class T>
+    extern const bool is_any_from_v;
+
+    template<class T>
+    using is_any_from = polyfill::bool_constant<is_any_from_v<T>>;
+
+    template<class T>
+    extern const bool is_any_join_v;
+
+    template<class T>
+    using is_any_join = polyfill::bool_constant<is_any_join_v<T>>;
+
+    template<class T>
+    extern const bool is_window_defn_v;
+
+    template<class T>
+    using is_window_defn = polyfill::bool_constant<is_window_defn_v<T>>;
+
+    template<class T>
     constexpr bool is_limit_v = false;
 
     template<class T>

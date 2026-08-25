@@ -593,9 +593,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct statement_serializer<window_defn_t<Args...>, void> {
-        using statement_type = window_defn_t<Args...>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_window_defn<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -2272,8 +2272,7 @@ namespace sqlite_orm::internal {
 
             ss << streaming_serialized(get_column_names(sel.col, subCtx));
             using conditions_tuple = typename statement_type::conditions_type;
-            constexpr bool hasExplicitFrom =
-                tuple_has<conditions_tuple, mpl::disjunction_fn<is_from, is_from2>::template fn>::value;
+            constexpr bool hasExplicitFrom = tuple_has<conditions_tuple, is_any_from>::value;
             if constexpr (!hasExplicitFrom) {
                 using joins_index_sequence = filter_tuple_sequence_t<conditions_tuple, is_any_join>;
 

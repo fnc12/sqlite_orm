@@ -54,6 +54,12 @@ namespace sqlite_orm::internal {
     using expression_type_t = typename T::expression_type;
 
     template<typename T>
+    using args_type_t = typename T::args_type;
+
+    template<typename T>
+    using offset_expression_type_t = typename T::offset_expression_type;
+
+    template<typename T>
     using expressions_tuple_t = typename T::expressions_tuple;
 
     template<typename T>

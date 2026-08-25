@@ -308,8 +308,8 @@ namespace sqlite_orm::internal {
     template<class F, class... Args>
     struct node_tuple<over_t<F, Args...>, void> : node_tuple_for<F, Args...> {};
 
-    template<class... Args>
-    struct node_tuple<window_defn_t<Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_window_defn<T>::value>> : node_tuple<args_type_t<T>> {};
 
     template<>
     struct node_tuple<row_number_t, void> {

@@ -48,7 +48,9 @@
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 // Type replacement may fail if an alias template has a non-type template parameter from a dependent expression in it,
 // `e.g. template<class T> using is_something = std::bool_constant<is_something_v<T>>;`
-// Remedy, e.g.: use a derived struct: `template<class T> struct is_somthing : std::bool_constant<is_something_v<T>>;`
+// Remedies:
+// a. use a derived struct: `template<class T> struct is_something : std::bool_constant<is_something_v<T>>;`
+// b. hoist the result into a constexpr value: `static constexpr auto value = is_something_v<T>; using is_something : std::bool_constant<value>;`
 #define SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
 #endif
 

@@ -21,6 +21,7 @@
 #include "alias_traits.h"
 #include "cte_moniker.h"
 #include "vocabulary/node_traits.h"
+#include "vocabulary/node_algorithms.h"
 #include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 #include "vocabulary/traits/semantic_traits_fwd.h"  // Included to specialize traits
@@ -395,8 +396,14 @@ namespace sqlite_orm::internal {
         static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
         static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
         static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
-        static_assert(mpl::invoke_t<mpl::counts<mpl::disjunction_fn<is_from, is_from2>>, T>::value <= 1,
-                      "a single query cannot contain > 1 FROM blocks");
+        static_assert(count_tuple<T, is_any_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
+        static_assert(std::tuple_size<T>::value == count_tuple<T, is_select_clause>::value,
+                      "a query argument must be a FROM, JOIN, WHERE, GROUP BY, WINDOW, ORDER BY or LIMIT clause");
+        static_assert(check_select_clause_order_v<T>,
+                      "SQL clauses must be listed in the canonical order: FROM, JOINs, WHERE, GROUP BY, WINDOW, "
+                      "ORDER BY, LIMIT");
+        static_assert(std::tuple_size<T>::value == count_tuple<T, select_clause_nests_no_clause>::value,
+                      "a clause argument cannot be another clause");
     }
 }
 
@@ -438,6 +445,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Args>
     constexpr internal::columns_t<Args...> columns(Args... args) {
+        static_assert(internal::count_tuple<std::tuple<Args...>, internal::is_select_clause>::value == 0,
+                      "a statement clause cannot be used as a column expression");
         return {{std::forward<Args>(args)...}};
     }
 
@@ -447,6 +456,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Args>
     constexpr internal::struct_t<T, Args...> struct_(Args... args) {
+        static_assert(internal::count_tuple<std::tuple<Args...>, internal::is_select_clause>::value == 0,
+                      "a statement clause cannot be used as a column expression");
         return {{std::forward<Args>(args)...}};
     }
 
@@ -468,6 +479,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::union_t<E...> union_(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
+                      "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}, false};
     }
 
@@ -479,6 +492,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::union_t<E...> union_all(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
+                      "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}, true};
     }
 
@@ -490,12 +505,16 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::except_t<E...> except(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
+                      "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
     template<class... E>
     constexpr internal::intersect_t<E...> intersect(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
+                      "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}};
     }
 

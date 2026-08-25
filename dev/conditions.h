@@ -607,10 +607,10 @@ namespace sqlite_orm::internal {
     using is_constrained_join = polyfill::is_detected<on_type_t, T>;
 
     template<class T>
-    using is_any_join = mpl::invoke_t<mpl::disjunction<check_if<is_constrained_join>,
-                                                       check_if_is_template<cross_join_t>,
-                                                       check_if_is_template<natural_join_t>>,
-                                      T>;
+    constexpr bool is_any_join_v = mpl::invoke_t<mpl::disjunction<check_if<is_constrained_join>,
+                                                                  check_if_is_template<cross_join_t>,
+                                                                  check_if_is_template<natural_join_t>>,
+                                                 T>::value;
 
     template<class... Tables>
     struct from_t {
@@ -618,7 +618,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    using is_from = polyfill::is_specialization_of<T, from_t>;
+    constexpr bool is_from_v = polyfill::is_specialization_of_v<T, from_t>;
 
     template<class... TableExpr>
     struct from2_t {
@@ -628,7 +628,10 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    using is_from2 = polyfill::is_specialization_of<T, from2_t>;
+    constexpr bool is_from2_v = polyfill::is_specialization_of_v<T, from2_t>;
+
+    template<class T>
+    constexpr bool is_any_from_v = polyfill::disjunction_v<is_from<T>, is_from2<T>>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

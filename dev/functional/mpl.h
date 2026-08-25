@@ -47,10 +47,9 @@ namespace sqlite_orm::internal::mpl {
      *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
      */
     template<class T, class SFINAE = void>
-    inline constexpr bool is_quoted_metafuntion_v = false;
+    constexpr bool is_quoted_metafuntion_v = false;
     template<class Q>
-    inline constexpr bool is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> =
-        true;
+    constexpr bool is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
 
     template<class T>
     struct is_quoted_metafuntion : polyfill::bool_constant<is_quoted_metafuntion_v<T>> {};
@@ -201,6 +200,21 @@ namespace sqlite_orm::internal::mpl {
     };
 
     /*
+     *  Bind the argument of a unary quoted metafunction, such that the resulting quoted metafunction
+     *  expects the trait metafunction to invoke.
+     *  In other words, it answers whether the bound type satisfies the trait metafunction passed to it.
+     *  
+     *  This inverts what `bind_front`/`bind_back` bind: those fix the arguments of a known metafunction,
+     *  whereas here the argument is fixed and the metafunction varies. It is what allows a single type
+     *  to be tested against a list of traits.
+     */
+    template<class T>
+    struct satisfied_by {
+        template<class TraitQ>
+        using fn = typename defer<TraitQ, T>::type;
+    };
+
+    /*
      *  Quoted metafunction equivalent to `polyfill::always_false`.
      *  It ignores arguments passed to the metafunction, and always returns the specified type.
      */
@@ -346,7 +360,7 @@ namespace sqlite_orm::internal::mpl {
     }
 
     /*
-     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list (possibly projected),
      *  and returns the index constant of the first element for which the predicate returns true.
      */
     template<class PredicateQ>
@@ -372,7 +386,7 @@ namespace sqlite_orm::internal::mpl {
     using finds_fn = finds<quote_fn<PredicateFn>>;
 
     /*
-     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list (possibly projected),
      *  and returns the index constant of the first element for which the predicate returns true.
      */
     template<class PredicateQ>
@@ -399,7 +413,7 @@ namespace sqlite_orm::internal::mpl {
     using counts_fn = counts<quote_fn<PredicateFn>>;
 
     /*
-     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list (possibly projected),
      *  and returns the index constant of the first element for which the predicate returns true.
      */
     template<class TraitQ>
@@ -476,6 +490,12 @@ namespace sqlite_orm::internal {
      */
     template<template<class...> class TraitFn>
     using finds_if_has = mpl::finds<check_if<TraitFn>>;
+
+    /*
+     *  Quoted metafunction that finds the index of the trait metafunction in a tuple that is satisfied by the given type.
+     */
+    template<class T>
+    using finds_satisfied_by = mpl::finds<mpl::satisfied_by<T>>;
 
     /*
      *  Quoted metafunction that finds the index of the given type in a tuple.

@@ -8,6 +8,7 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
 
@@ -64,8 +65,8 @@ namespace sqlite_orm::internal {
 
     template<class... Args>
     struct partition_by_t {
-        using arguments_type = std::tuple<Args...>;
-        arguments_type arguments;
+        using args_type = std::tuple<Args...>;
+        args_type arguments;
     };
 
     template<class T>
@@ -81,10 +82,10 @@ namespace sqlite_orm::internal {
     template<class F, class... Args>
     struct over_t {
         using function_type = F;
-        using arguments_type = std::tuple<Args...>;
+        using args_type = std::tuple<Args...>;
 
         function_type function;
-        arguments_type arguments;
+        args_type arguments;
     };
 
     template<class T>
@@ -96,15 +97,12 @@ namespace sqlite_orm::internal {
     template<class... Args>
     struct window_defn_t {
         std::string name;
-        using arguments_type = std::tuple<Args...>;
-        arguments_type arguments;
+        using args_type = std::tuple<Args...>;
+        args_type arguments;
     };
 
     template<class T>
-    inline constexpr bool is_window_defn_v = polyfill::is_specialization_of_v<T, window_defn_t>;
-
-    template<class T>
-    using is_window_defn = polyfill::bool_constant<is_window_defn_v<T>>;
+    constexpr bool is_window_defn_v = polyfill::is_specialization_of_v<T, window_defn_t>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

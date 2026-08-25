@@ -196,7 +196,9 @@ using std::nullptr_t;
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 // Type replacement may fail if an alias template has a non-type template parameter from a dependent expression in it,
 // `e.g. template<class T> using is_something = std::bool_constant<is_something_v<T>>;`
-// Remedy, e.g.: use a derived struct: `template<class T> struct is_somthing : std::bool_constant<is_something_v<T>>;`
+// Remedies:
+// a. use a derived struct: `template<class T> struct is_something : std::bool_constant<is_something_v<T>>;`
+// b. hoist the result into a constexpr value: `static constexpr auto value = is_something_v<T>; using is_something : std::bool_constant<value>;`
 #define SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
 #endif
 
@@ -957,10 +959,9 @@ namespace sqlite_orm::internal::mpl {
      *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
      */
     template<class T, class SFINAE = void>
-    inline constexpr bool is_quoted_metafuntion_v = false;
+    constexpr bool is_quoted_metafuntion_v = false;
     template<class Q>
-    inline constexpr bool is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> =
-        true;
+    constexpr bool is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
 
     template<class T>
     struct is_quoted_metafuntion : polyfill::bool_constant<is_quoted_metafuntion_v<T>> {};
@@ -1111,6 +1112,21 @@ namespace sqlite_orm::internal::mpl {
     };
 
     /*
+     *  Bind the argument of a unary quoted metafunction, such that the resulting quoted metafunction
+     *  expects the trait metafunction to invoke.
+     *  In other words, it answers whether the bound type satisfies the trait metafunction passed to it.
+     *  
+     *  This inverts what `bind_front`/`bind_back` bind: those fix the arguments of a known metafunction,
+     *  whereas here the argument is fixed and the metafunction varies. It is what allows a single type
+     *  to be tested against a list of traits.
+     */
+    template<class T>
+    struct satisfied_by {
+        template<class TraitQ>
+        using fn = typename defer<TraitQ, T>::type;
+    };
+
+    /*
      *  Quoted metafunction equivalent to `polyfill::always_false`.
      *  It ignores arguments passed to the metafunction, and always returns the specified type.
      */
@@ -1256,7 +1272,7 @@ namespace sqlite_orm::internal::mpl {
     }
 
     /*
-     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list (possibly projected),
      *  and returns the index constant of the first element for which the predicate returns true.
      */
     template<class PredicateQ>
@@ -1282,7 +1298,7 @@ namespace sqlite_orm::internal::mpl {
     using finds_fn = finds<quote_fn<PredicateFn>>;
 
     /*
-     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list (possibly projected),
      *  and returns the index constant of the first element for which the predicate returns true.
      */
     template<class PredicateQ>
@@ -1309,7 +1325,7 @@ namespace sqlite_orm::internal::mpl {
     using counts_fn = counts<quote_fn<PredicateFn>>;
 
     /*
-     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list (possibly projected),
      *  and returns the index constant of the first element for which the predicate returns true.
      */
     template<class TraitQ>
@@ -1386,6 +1402,12 @@ namespace sqlite_orm::internal {
      */
     template<template<class...> class TraitFn>
     using finds_if_has = mpl::finds<check_if<TraitFn>>;
+
+    /*
+     *  Quoted metafunction that finds the index of the trait metafunction in a tuple that is satisfied by the given type.
+     */
+    template<class T>
+    using finds_satisfied_by = mpl::finds<mpl::satisfied_by<T>>;
 
     /*
      *  Quoted metafunction that finds the index of the given type in a tuple.
@@ -1481,6 +1503,18 @@ namespace sqlite_orm::internal {
      */
     template<class Pack, template<class...> class TraitFn, template<class...> class ProjOp = polyfill::type_identity_t>
     using find_tuple_element = mpl::invoke_t<finds_if_has<TraitFn>, Pack, mpl::quote_fn<ProjOp>>;
+
+    /*
+     *  Higher-order metafunction returning the first index constant of the trait metafunction in a tuple
+     *  that is satisfied by the specified type (possibly projected).
+     *  
+     *  In contrast to `find_tuple_element`, the tuple holds the trait metafunctions and the type to test is fixed,
+     *  which is what allows a single type to be located within an ordered list of traits.
+     *  
+     *  `ProjOp` is a metafunction
+     */
+    template<class Pack, class T, template<class...> class ProjOp = polyfill::type_identity_t>
+    using find_tuple_satisfied_by = mpl::invoke_t<finds_satisfied_by<T>, Pack, mpl::quote_fn<ProjOp>>;
 
     /*
      *  Higher-order metafunction returning the first index constant of the desired type in a tuple (possibly projected).
@@ -2126,6 +2160,38 @@ namespace sqlite_orm::internal {
     using is_group_by = polyfill::bool_constant<is_group_by_v<T>>;
 
     template<class T>
+    extern const bool is_from_v;
+
+    template<class T>
+    using is_from = polyfill::bool_constant<is_from_v<T>>;
+
+    template<class T>
+    extern const bool is_from2_v;
+
+    template<class T>
+    using is_from2 = polyfill::bool_constant<is_from2_v<T>>;
+
+    //  `from_t` and `from2_t` are two DSL spellings of the one FROM clause production,
+    //  hence grouping them is what corresponds to the SQL grammar
+    template<class T>
+    extern const bool is_any_from_v;
+
+    template<class T>
+    using is_any_from = polyfill::bool_constant<is_any_from_v<T>>;
+
+    template<class T>
+    extern const bool is_any_join_v;
+
+    template<class T>
+    using is_any_join = polyfill::bool_constant<is_any_join_v<T>>;
+
+    template<class T>
+    extern const bool is_window_defn_v;
+
+    template<class T>
+    using is_window_defn = polyfill::bool_constant<is_window_defn_v<T>>;
+
+    template<class T>
     constexpr bool is_limit_v = false;
 
     template<class T>
@@ -2253,13 +2319,13 @@ namespace sqlite_orm::internal {
     extern const bool is_column_pointer_v;
 
     template<class T>
-    struct is_column_pointer : polyfill::bool_constant<is_column_pointer_v<T>> {};
+    using is_column_pointer = polyfill::bool_constant<is_column_pointer_v<T>>;
 
     template<class T>
     extern const bool is_quoted_expression_v;
 
     template<class T>
-    struct is_quoted_expression : polyfill::bool_constant<is_quoted_expression_v<T>> {};
+    using is_quoted_expression = polyfill::bool_constant<is_quoted_expression_v<T>>;
 }
 
 // #include "traits/semantic_traits_fwd.h"
@@ -2402,6 +2468,12 @@ namespace sqlite_orm::internal {
 
     template<typename T>
     using expression_type_t = typename T::expression_type;
+
+    template<typename T>
+    using args_type_t = typename T::args_type;
+
+    template<typename T>
+    using offset_expression_type_t = typename T::offset_expression_type;
 
     template<typename T>
     using expressions_tuple_t = typename T::expressions_tuple;
@@ -2629,9 +2701,13 @@ namespace sqlite_orm::internal {
         filter_tuple_sequence_t<Elements, mpl::disjunction_fn<is_column, is_hidden_column>::template fn>>;
 }
 
-// #include "algorithms/predicates.h"
+// #include "algorithms/ddl_predicates.h"
 
-/** @file Closed composed alias templates for checking the validity of nodes.
+/** @file Closed predicates for checking the validity of the elements of a DDL statement.
+ *
+ *  These answer whether a node is an admissible member of a column or table definition -
+ *  the classification questions specific to a single DDL node, as opposed to the
+ *  type-and-order questions about statement clauses in `clause_predicates.h`.
  */
 
 // #include "../../functional/mpl.h"
@@ -2691,6 +2767,153 @@ namespace sqlite_orm::internal {
                                                                                check_if<is_table_content>>,
                                                               T>;
 #endif
+}
+
+// #include "algorithms/clause_predicates.h"
+
+/** @file Closed predicates classifying the statement-level clauses of a statement by type and order.
+ *
+ *  A statement-level clause may only appear in the conditions pack of a statement, in the canonical
+ *  clause order, and may only hold expressions - the serializer streams clauses positionally,
+ *  so any other arrangement would generate invalid SQL.
+ *
+ *  The generic algorithms take the clauses of a statement as an ordered list of clause traits,
+ *  or as the rank metafunction derived from it, so that a statement kind is expressed by declaring
+ *  its own list. The select statement (FROM, JOIN, WHERE, GROUP BY, WINDOW, ORDER BY, LIMIT)
+ *  is the first such list.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>  //  std::tuple_size
+#include <type_traits>  //  std::enable_if
+#include <initializer_list>
+#endif
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
+// #include "../../functional/mpl.h"
+
+// #include "../../tuple_helper/tuple_traits.h"
+
+// #include "../node_traits.h"
+
+// generic statement clause algorithms
+namespace sqlite_orm::internal {
+    /**
+     *  Position of the first clause trait satisfied by `T` within the given list of clause traits,
+     *  or `sizeof...(Clause)` if `T` satisfies none of them.
+     */
+    template<class T, template<class...> class... Clause>
+    constexpr size_t clause_position_v = find_tuple_satisfied_by<mpl::pack<mpl::quote_fn<Clause>...>, T>::value;
+
+    /**
+     *  Rank of `T` as a statement-level clause, in the canonical order given by the list of clause traits,
+     *  or 0 if `T` is not one of those clauses.
+     *
+     *  Implementation note: this is deliberately not a predicate but an ordinal projection - it is the
+     *  mechanism both `is_..._clause` and the clause order check are built on. The traits are listed in
+     *  the order the clauses must be streamed in, so the rank of a clause is its 1-based position in
+     *  that list; the miss position maps to 0 so that "not a clause" and "first clause" stay distinct.
+     */
+    template<class T, template<class...> class... Clause>
+    constexpr size_t clause_rank_v =
+        clause_position_v<T, Clause...> == sizeof...(Clause) ? 0 : clause_position_v<T, Clause...> + 1;
+
+    /*
+     *  Checks that clause ranks are in non-descending order, i.e. that no clause is preceded by a clause
+     *  of higher rank. Equal ranks are allowed, since a statement may repeat a clause - e.g. several JOINs.
+     */
+    constexpr bool clause_ranks_are_ordered(std::initializer_list<size_t> ranks) {
+        size_t lastRank = 0;
+        for (size_t rank: ranks) {
+            if (rank < lastRank) {
+                return false;
+            }
+            lastRank = rank;
+        }
+        return true;
+    }
+
+    /**
+     *  Checks that the clauses in a pack appear in the canonical order of the statement they belong to.
+     *
+     *  `RankOp` is a metafunction yielding the rank of a clause, e.g. `select_clause_rank`.
+     */
+    template<class Pack, template<class...> class RankOp>
+    constexpr bool clauses_are_correctly_ordered_v = false;
+
+    template<template<class...> class Pack, class... T, template<class...> class RankOp>
+    constexpr bool clauses_are_correctly_ordered_v<Pack<T...>, RankOp> =
+        clause_ranks_are_ordered({RankOp<T>::value...});
+}
+
+// select statement clause algorithms
+namespace sqlite_orm::internal {
+    /**
+     *  Rank of a statement-level clause as part of the select-core and tail of the factored-select-stmt,
+     *  or 0 if the type is not a statement-level clause.
+     */
+    template<class T>
+    constexpr size_t select_clause_rank_v =
+        clause_rank_v<T, is_any_from, is_any_join, is_where, is_group_by, is_window_defn, is_order_by, is_limit>;
+
+    /*
+     *  Implementation note: a derived struct in favor of an alias template, because it is passed on as a
+     *  template-template argument - type replacement of an alias template having a non-type template parameter
+     *  from a dependent expression in it may fail [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
+     */
+    template<class T>
+    struct select_clause_rank : polyfill::index_constant<select_clause_rank_v<T>> {};
+
+    template<class T>
+    using is_select_clause = polyfill::bool_constant<select_clause_rank_v<T> != 0>;
+
+    /**
+     *  Checks that the clauses in the conditions pack of a select statement are listed
+     *  in the canonical clause order.
+     */
+    template<class Tpl>
+    constexpr bool check_select_clause_order_v = clauses_are_correctly_ordered_v<Tpl, select_clause_rank>;
+
+    /**
+     *  Checks that the expressions nested in a clause are not statement-level clauses themselves:
+     *  expressions like `where(group_by(...))` or `order_by(limit(...))` would generate invalid SQL.
+     */
+    template<class T, class SFINAE = void>
+    constexpr bool select_clause_nests_no_clause_v = true;
+
+    template<class T>
+    using select_clause_nests_no_clause = polyfill::bool_constant<select_clause_nests_no_clause_v<T>>;
+
+    //  clauses carrying a single expression: WHERE, a single ORDER BY term
+    template<class T>
+    constexpr bool select_clause_nests_no_clause_v<
+        T,
+        std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<is_where<T>, is_order_by<T>>,
+                                                 polyfill::is_detected<expression_type_t, T>>>> =
+        polyfill::negation_v<is_select_clause<expression_type_t<T>>>;
+
+    //  ORDER BY with multiple terms: every term must be a single ORDER BY term
+    template<class T>
+    constexpr bool select_clause_nests_no_clause_v<
+        T,
+        std::enable_if_t<polyfill::conjunction_v<is_order_by<T>, polyfill::is_detected<args_type_t, T>>>> =
+        mpl::invoke_t<mpl::counts<mpl::conjunction<mpl::quote_fn<is_order_by>,
+                                                   check_if_names<expression_type_t>,
+                                                   check_if<select_clause_nests_no_clause>>>,
+                      args_type_t<T>>::value == std::tuple_size<args_type_t<T>>::value;
+
+    //  GROUP BY carries a tuple of expressions and possibly a HAVING expression
+    template<class T>
+    constexpr bool select_clause_nests_no_clause_v<T, std::enable_if_t<is_group_by_v<T>>> =
+        polyfill::negation_v<polyfill::disjunction<tuple_has<args_type_t<T>, is_select_clause>,
+                                                   // HAVING expression
+                                                   is_select_clause<polyfill::detected_t<expression_type_t, T>>>>;
+
+    //  LIMIT carries the limit and possibly an offset expression
+    template<class T>
+    constexpr bool select_clause_nests_no_clause_v<T, std::enable_if_t<is_limit_v<T>>> = polyfill::negation_v<
+        polyfill::disjunction<is_select_clause<expression_type_t<T>>, is_select_clause<offset_expression_type_t<T>>>>;
 }
 
 // #include "algorithms/accessors.h"
@@ -4865,6 +5088,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
 namespace sqlite_orm::internal {
 
     struct unbounded_preceding_t {};
@@ -4920,8 +5146,8 @@ namespace sqlite_orm::internal {
 
     template<class... Args>
     struct partition_by_t {
-        using arguments_type = std::tuple<Args...>;
-        arguments_type arguments;
+        using args_type = std::tuple<Args...>;
+        args_type arguments;
     };
 
     template<class T>
@@ -4937,10 +5163,10 @@ namespace sqlite_orm::internal {
     template<class F, class... Args>
     struct over_t {
         using function_type = F;
-        using arguments_type = std::tuple<Args...>;
+        using args_type = std::tuple<Args...>;
 
         function_type function;
-        arguments_type arguments;
+        args_type arguments;
     };
 
     template<class T>
@@ -4952,15 +5178,12 @@ namespace sqlite_orm::internal {
     template<class... Args>
     struct window_defn_t {
         std::string name;
-        using arguments_type = std::tuple<Args...>;
-        arguments_type arguments;
+        using args_type = std::tuple<Args...>;
+        args_type arguments;
     };
 
     template<class T>
-    inline constexpr bool is_window_defn_v = polyfill::is_specialization_of_v<T, window_defn_t>;
-
-    template<class T>
-    using is_window_defn = polyfill::bool_constant<is_window_defn_v<T>>;
+    constexpr bool is_window_defn_v = polyfill::is_specialization_of_v<T, window_defn_t>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -5664,10 +5887,10 @@ namespace sqlite_orm::internal {
     using is_constrained_join = polyfill::is_detected<on_type_t, T>;
 
     template<class T>
-    using is_any_join = mpl::invoke_t<mpl::disjunction<check_if<is_constrained_join>,
-                                                       check_if_is_template<cross_join_t>,
-                                                       check_if_is_template<natural_join_t>>,
-                                      T>;
+    constexpr bool is_any_join_v = mpl::invoke_t<mpl::disjunction<check_if<is_constrained_join>,
+                                                                  check_if_is_template<cross_join_t>,
+                                                                  check_if_is_template<natural_join_t>>,
+                                                 T>::value;
 
     template<class... Tables>
     struct from_t {
@@ -5675,7 +5898,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    using is_from = polyfill::is_specialization_of<T, from_t>;
+    constexpr bool is_from_v = polyfill::is_specialization_of_v<T, from_t>;
 
     template<class... TableExpr>
     struct from2_t {
@@ -5685,7 +5908,10 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    using is_from2 = polyfill::is_specialization_of<T, from2_t>;
+    constexpr bool is_from2_v = polyfill::is_specialization_of_v<T, from2_t>;
+
+    template<class T>
+    constexpr bool is_any_from_v = polyfill::disjunction_v<is_from<T>, is_from2<T>>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -8864,6 +9090,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "vocabulary/node_traits.h"
 
+// #include "vocabulary/node_algorithms.h"
+
 // #include "vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 // #include "vocabulary/traits/structural_traits_fwd.h"
@@ -9241,8 +9469,14 @@ namespace sqlite_orm::internal {
         static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
         static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
         static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
-        static_assert(mpl::invoke_t<mpl::counts<mpl::disjunction_fn<is_from, is_from2>>, T>::value <= 1,
-                      "a single query cannot contain > 1 FROM blocks");
+        static_assert(count_tuple<T, is_any_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
+        static_assert(std::tuple_size<T>::value == count_tuple<T, is_select_clause>::value,
+                      "a query argument must be a FROM, JOIN, WHERE, GROUP BY, WINDOW, ORDER BY or LIMIT clause");
+        static_assert(check_select_clause_order_v<T>,
+                      "SQL clauses must be listed in the canonical order: FROM, JOINs, WHERE, GROUP BY, WINDOW, "
+                      "ORDER BY, LIMIT");
+        static_assert(std::tuple_size<T>::value == count_tuple<T, select_clause_nests_no_clause>::value,
+                      "a clause argument cannot be another clause");
     }
 }
 
@@ -9284,6 +9518,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Args>
     constexpr internal::columns_t<Args...> columns(Args... args) {
+        static_assert(internal::count_tuple<std::tuple<Args...>, internal::is_select_clause>::value == 0,
+                      "a statement clause cannot be used as a column expression");
         return {{std::forward<Args>(args)...}};
     }
 
@@ -9293,6 +9529,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Args>
     constexpr internal::struct_t<T, Args...> struct_(Args... args) {
+        static_assert(internal::count_tuple<std::tuple<Args...>, internal::is_select_clause>::value == 0,
+                      "a statement clause cannot be used as a column expression");
         return {{std::forward<Args>(args)...}};
     }
 
@@ -9314,6 +9552,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::union_t<E...> union_(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
+                      "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}, false};
     }
 
@@ -9325,6 +9565,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::union_t<E...> union_all(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
+                      "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}, true};
     }
 
@@ -9336,12 +9578,16 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::except_t<E...> except(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
+                      "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
     template<class... E>
     constexpr internal::intersect_t<E...> intersect(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
+                      "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
@@ -17163,9 +17409,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct ast_iterator<window_defn_t<Args...>, void> {
-        using node_type = window_defn_t<Args...>;
+    template<class T>
+    struct ast_iterator<T, std::enable_if_t<is_window_defn<T>::value>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -22230,9 +22476,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct statement_serializer<window_defn_t<Args...>, void> {
-        using statement_type = window_defn_t<Args...>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_window_defn<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -23909,8 +24155,7 @@ namespace sqlite_orm::internal {
 
             ss << streaming_serialized(get_column_names(sel.col, subCtx));
             using conditions_tuple = typename statement_type::conditions_type;
-            constexpr bool hasExplicitFrom =
-                tuple_has<conditions_tuple, mpl::disjunction_fn<is_from, is_from2>::template fn>::value;
+            constexpr bool hasExplicitFrom = tuple_has<conditions_tuple, is_any_from>::value;
             if constexpr (!hasExplicitFrom) {
                 using joins_index_sequence = filter_tuple_sequence_t<conditions_tuple, is_any_join>;
 
@@ -28744,7 +28989,10 @@ namespace sqlite_orm::internal {
         static constexpr bool has_offset_v = has_offset;
         static constexpr bool offset_is_implicit_v = offset_is_implicit;
 
-        T limit;
+        using expression_type = T;
+        using offset_expression_type = O;
+
+        expression_type limit;
         optional_container<O> offset;
     };
 
@@ -29629,8 +29877,8 @@ namespace sqlite_orm::internal {
     template<class F, class... Args>
     struct node_tuple<over_t<F, Args...>, void> : node_tuple_for<F, Args...> {};
 
-    template<class... Args>
-    struct node_tuple<window_defn_t<Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_window_defn<T>::value>> : node_tuple<args_type_t<T>> {};
 
     template<>
     struct node_tuple<row_number_t, void> {
