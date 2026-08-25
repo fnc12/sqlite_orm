@@ -2800,9 +2800,10 @@ namespace sqlite_orm::internal {
 
 /** @file Closed predicates classifying the statement-level clauses of a statement by type and order.
  *
- *  A statement-level clause may only appear in the conditions pack of a statement, in the canonical
- *  clause order, and may only hold expressions - the serializer streams clauses positionally,
- *  so any other arrangement would generate invalid SQL.
+ *  A statement-level clause may only appear in the conditions pack of a statement, and only in the
+ *  canonical clause order - the serializer streams clauses positionally, so any other arrangement
+ *  would generate invalid SQL. That a clause holds an expression rather than another clause is
+ *  enforced by the clause factories, on the argument each is handed.
  *
  *  The generic algorithms take the clauses of a statement as an ordered list of clause traits,
  *  or as the rank metafunction derived from it, so that a statement kind is expressed by declaring
@@ -2811,8 +2812,6 @@ namespace sqlite_orm::internal {
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple_size
-#include <type_traits>  //  std::enable_if
 #include <initializer_list>
 #endif
 
@@ -2901,46 +2900,6 @@ namespace sqlite_orm::internal {
      */
     template<class Tpl>
     constexpr bool check_select_clause_order_v = clauses_are_correctly_ordered_v<Tpl, select_clause_rank>;
-
-    /**
-     *  Checks that the expressions nested in a clause are not statement-level clauses themselves:
-     *  expressions like `where(group_by(...))` or `order_by(limit(...))` would generate invalid SQL.
-     */
-    template<class T, class SFINAE = void>
-    constexpr bool select_clause_nests_no_clause_v = true;
-
-    template<class T>
-    using select_clause_nests_no_clause = polyfill::bool_constant<select_clause_nests_no_clause_v<T>>;
-
-    //  clauses carrying a single expression: WHERE, a single ORDER BY term
-    template<class T>
-    constexpr bool select_clause_nests_no_clause_v<
-        T,
-        std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<is_where<T>, is_order_by<T>>,
-                                                 polyfill::is_detected<expression_type_t, T>>>> =
-        polyfill::negation_v<is_select_clause<expression_type_t<T>>>;
-
-    //  ORDER BY with multiple terms: every term must be a single ORDER BY term
-    template<class T>
-    constexpr bool select_clause_nests_no_clause_v<
-        T,
-        std::enable_if_t<polyfill::conjunction_v<is_order_by<T>, polyfill::is_detected<args_type_t, T>>>> =
-        mpl::invoke_t<mpl::counts<mpl::conjunction<mpl::quote_fn<is_order_by>,
-                                                   check_if_names<expression_type_t>,
-                                                   check_if<select_clause_nests_no_clause>>>,
-                      args_type_t<T>>::value == std::tuple_size<args_type_t<T>>::value;
-
-    //  GROUP BY carries a tuple of expressions and possibly a HAVING expression
-    template<class T>
-    constexpr bool select_clause_nests_no_clause_v<T, std::enable_if_t<is_group_by_v<T>>> =
-        polyfill::negation_v<polyfill::disjunction<tuple_has<args_type_t<T>, is_select_clause>,
-                                                   // HAVING expression
-                                                   is_select_clause<polyfill::detected_t<expression_type_t, T>>>>;
-
-    //  LIMIT carries the limit and possibly an offset expression
-    template<class T>
-    constexpr bool select_clause_nests_no_clause_v<T, std::enable_if_t<is_limit_v<T>>> = polyfill::negation_v<
-        polyfill::disjunction<is_select_clause<expression_type_t<T>>, is_select_clause<offset_expression_type_t<T>>>>;
 }
 
 // clauses of any statement kind
@@ -9684,8 +9643,6 @@ namespace sqlite_orm::internal {
         static_assert(check_select_clause_order_v<T>,
                       "SQL clauses must be listed in the canonical order: FROM, JOINs, WHERE, GROUP BY, WINDOW, "
                       "ORDER BY, LIMIT");
-        static_assert(std::tuple_size<T>::value == count_tuple<T, select_clause_nests_no_clause>::value,
-                      "a clause argument cannot be another clause");
     }
 }
 

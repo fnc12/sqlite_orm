@@ -406,8 +406,6 @@ namespace sqlite_orm::internal {
         static_assert(check_select_clause_order_v<T>,
                       "SQL clauses must be listed in the canonical order: FROM, JOINs, WHERE, GROUP BY, WINDOW, "
                       "ORDER BY, LIMIT");
-        static_assert(std::tuple_size<T>::value == count_tuple<T, select_clause_nests_no_clause>::value,
-                      "a clause argument cannot be another clause");
     }
 }
 

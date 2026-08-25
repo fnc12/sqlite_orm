@@ -3,7 +3,7 @@
 
 using namespace sqlite_orm;
 using internal::is_select_clause, internal::is_statement_clause;
-using internal::select_clause_rank_v, internal::select_clause_nests_no_clause_v, internal::check_select_clause_order_v;
+using internal::select_clause_rank_v, internal::check_select_clause_order_v;
 
 namespace {
     struct User {
@@ -58,15 +58,18 @@ TEST_CASE("statement clause classification and order are computed at compile tim
         STATIC_REQUIRE_FALSE(check_select_clause_order_v<std::tuple<Where, Join>>);
         STATIC_REQUIRE_FALSE(check_select_clause_order_v<std::tuple<OrderBy, From>>);
     }
-    SECTION("clauses holding expressions are valid") {
-        STATIC_REQUIRE(select_clause_nests_no_clause_v<Where>);
-        STATIC_REQUIRE(select_clause_nests_no_clause_v<GroupBy>);
-        STATIC_REQUIRE(select_clause_nests_no_clause_v<OrderBy>);
-        STATIC_REQUIRE(select_clause_nests_no_clause_v<Limit>);
-        STATIC_REQUIRE(select_clause_nests_no_clause_v<decltype(limit(select(count<User>())))>);
-        STATIC_REQUIRE(
-            select_clause_nests_no_clause_v<decltype(multi_order_by(order_by(&User::id), order_by(&User::name)))>);
-        STATIC_REQUIRE(select_clause_nests_no_clause_v<decltype(group_by(&User::id).having(c(&User::id) > 0))>);
+    //  These constructions have to keep compiling: each one passes an expression the clause factories must
+    //  not mistake for a clause, so they are the regression guard against the new asserts being over-strict.
+    SECTION("clauses holding expressions are accepted by their factories") {
+        STATIC_REQUIRE(is_select_clause<decltype(where(c(&User::id) > 0))>::value);
+        STATIC_REQUIRE(is_select_clause<decltype(group_by(&User::id))>::value);
+        STATIC_REQUIRE(is_select_clause<decltype(order_by(&User::id))>::value);
+        STATIC_REQUIRE(is_select_clause<decltype(limit(5))>::value);
+        STATIC_REQUIRE(is_select_clause<decltype(limit(5, offset(10)))>::value);
+        //  a scalar subquery is an expression, not a clause
+        STATIC_REQUIRE(is_select_clause<decltype(limit(select(count<User>())))>::value);
+        STATIC_REQUIRE(is_select_clause<decltype(multi_order_by(order_by(&User::id), order_by(&User::name)))>::value);
+        STATIC_REQUIRE(is_select_clause<decltype(group_by(&User::id).having(c(&User::id) > 0))>::value);
     }
     //  The clause factories now reject a nested clause themselves, so a node such as `where(group_by(...))`
     //  can no longer be formed to be tested. What is asserted instead is the predicate the factories gate on,
