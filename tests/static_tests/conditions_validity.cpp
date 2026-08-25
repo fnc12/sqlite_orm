@@ -2,7 +2,7 @@
 #include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
-using internal::is_select_clause;
+using internal::is_select_clause, internal::is_statement_clause;
 using internal::select_clause_rank_v, internal::select_clause_nests_no_clause_v, internal::check_select_clause_order_v;
 
 namespace {
@@ -68,15 +68,31 @@ TEST_CASE("statement clause classification and order are computed at compile tim
             select_clause_nests_no_clause_v<decltype(multi_order_by(order_by(&User::id), order_by(&User::name)))>);
         STATIC_REQUIRE(select_clause_nests_no_clause_v<decltype(group_by(&User::id).having(c(&User::id) > 0))>);
     }
-    SECTION("clauses holding clauses are rejected") {
-        STATIC_REQUIRE_FALSE(select_clause_nests_no_clause_v<decltype(where(where(c(&User::id) > 0)))>);
-        STATIC_REQUIRE_FALSE(select_clause_nests_no_clause_v<decltype(where(group_by(&User::id)))>);
-        STATIC_REQUIRE_FALSE(select_clause_nests_no_clause_v<decltype(order_by(limit(5)))>);
-        STATIC_REQUIRE_FALSE(select_clause_nests_no_clause_v<decltype(group_by(where(c(&User::id) > 0)))>);
-        STATIC_REQUIRE_FALSE(select_clause_nests_no_clause_v<decltype(limit(where(c(&User::id) > 0)))>);
-        STATIC_REQUIRE_FALSE(
-            select_clause_nests_no_clause_v<decltype(multi_order_by(order_by(&User::id), where(c(&User::id) > 0)))>);
-        STATIC_REQUIRE_FALSE(
-            select_clause_nests_no_clause_v<decltype(multi_order_by(order_by(&User::id), order_by(limit(5))))>);
+    //  The clause factories now reject a nested clause themselves, so a node such as `where(group_by(...))`
+    //  can no longer be formed to be tested. What is asserted instead is the predicate the factories gate on,
+    //  applied to legally constructed clauses - the same approach as `operand_validity.cpp`.
+    SECTION("every clause kind is recognized as a statement clause") {
+        STATIC_REQUIRE(is_statement_clause<From>::value);
+        STATIC_REQUIRE(is_statement_clause<From2>::value);
+        STATIC_REQUIRE(is_statement_clause<Join>::value);
+        STATIC_REQUIRE(is_statement_clause<Where>::value);
+        STATIC_REQUIRE(is_statement_clause<GroupBy>::value);
+        STATIC_REQUIRE(is_statement_clause<Window>::value);
+        STATIC_REQUIRE(is_statement_clause<OrderBy>::value);
+        STATIC_REQUIRE(is_statement_clause<Limit>::value);
+    }
+    SECTION("expressions admissible as a clause payload are not statement clauses") {
+        STATIC_REQUIRE_FALSE(is_statement_clause<decltype(c(&User::id) > 0)>::value);
+        STATIC_REQUIRE_FALSE(is_statement_clause<int User::*>::value);
+        STATIC_REQUIRE_FALSE(is_statement_clause<decltype(select(count<User>()))>::value);
+        STATIC_REQUIRE_FALSE(is_statement_clause<int>::value);
+    }
+    //  `ordering-term` is narrower than `expr`, so multi ORDER BY gates on a positive predicate instead
+    SECTION("a multi ORDER BY argument must be an ORDER BY term") {
+        STATIC_REQUIRE(internal::is_order_by<OrderBy>::value);
+        STATIC_REQUIRE(internal::is_order_by<decltype(order_by(&User::id).asc())>::value);
+        STATIC_REQUIRE_FALSE(internal::is_order_by<Where>::value);
+        STATIC_REQUIRE_FALSE(internal::is_order_by<Limit>::value);
+        STATIC_REQUIRE_FALSE(internal::is_order_by<decltype(c(&User::id) > 0)>::value);
     }
 }

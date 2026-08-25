@@ -1039,6 +1039,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class O, internal::satisfies_not<std::is_base_of, integer_printer, type_printer<O>> = true>
     internal::order_by_t<O> order_by(O o) {
+        static_assert(!internal::is_statement_clause<O>::value,
+                      "an ORDER BY term must be an expression, not a statement clause");
         return {std::move(o)};
     }
 
@@ -1067,6 +1069,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Args>
     internal::multi_order_by_t<Args...> multi_order_by(Args... args) {
+        //  the grammar production is `ordering-term`, which is narrower than `expr`, hence a positive check
+        static_assert((internal::is_order_by<Args>::value && ...),
+                      "every argument of a multi ORDER BY must be an ORDER BY term");
         return {{std::forward<Args>(args)...}};
     }
 

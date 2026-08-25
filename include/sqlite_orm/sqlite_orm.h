@@ -2943,6 +2943,20 @@ namespace sqlite_orm::internal {
         polyfill::disjunction<is_select_clause<expression_type_t<T>>, is_select_clause<offset_expression_type_t<T>>>>;
 }
 
+// clauses of any statement kind
+namespace sqlite_orm::internal {
+    /**
+     *  Whether a node is a statement-level clause of any statement kind.
+     *
+     *  Every statement kind currently shares the select clauses - `remove_all()`, `update_all()` and the
+     *  `get_all()` family all validate their conditions pack against them - so this is presently the union
+     *  of a single list. It carries its own name because a clause factory has to reject a nested clause
+     *  regardless of which statement its result will end up in.
+     */
+    template<class T>
+    using is_statement_clause = is_select_clause<T>;
+}
+
 // #include "algorithms/operand_predicates.h"
 
 /** @file Combined operand predicates gating the named expression factories.
@@ -6440,6 +6454,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class O, internal::satisfies_not<std::is_base_of, integer_printer, type_printer<O>> = true>
     internal::order_by_t<O> order_by(O o) {
+        static_assert(!internal::is_statement_clause<O>::value,
+                      "an ORDER BY term must be an expression, not a statement clause");
         return {std::move(o)};
     }
 
@@ -6468,6 +6484,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Args>
     internal::multi_order_by_t<Args...> multi_order_by(Args... args) {
+        //  the grammar production is `ordering-term`, which is narrower than `expr`, hence a positive check
+        static_assert((internal::is_order_by<Args>::value && ...),
+                      "every argument of a multi ORDER BY must be an ORDER BY term");
         return {{std::forward<Args>(args)...}};
     }
 
@@ -21003,6 +21022,8 @@ namespace sqlite_orm::internal {
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause
 
 namespace sqlite_orm::internal {
     template<class T, class... Args>
@@ -21025,6 +21046,8 @@ namespace sqlite_orm::internal {
 
         template<class T>
         group_by_with_having<T, Args...> having(T expression) {
+            static_assert(!is_statement_clause<T>::value,
+                          "a HAVING condition must be an expression, not a statement clause");
             return {std::move(this->args), std::move(expression)};
         }
     };
@@ -21042,6 +21065,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Args>
     internal::group_by_t<Args...> group_by(Args... args) {
+        static_assert((!internal::is_statement_clause<Args>::value && ...),
+                      "a GROUP BY term must be an expression, not a statement clause");
         return {{std::forward<Args>(args)...}};
     }
 }
@@ -29192,6 +29217,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause
 // #include "offset.h"
 
 // #include "../functional/cxx_type_traits_polyfill.h"
@@ -29254,6 +29281,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T>
     internal::limit_t<T, false, false, void> limit(T limit) {
+        static_assert(!internal::is_statement_clause<T>::value,
+                      "a LIMIT must be an expression, not a statement clause");
         return {std::move(limit)};
     }
 
@@ -29266,6 +29295,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class O, internal::satisfies_not<internal::is_offset, T> = true>
     internal::limit_t<T, true, true, O> limit(O offset, T limit) {
+        static_assert(!internal::is_statement_clause<T>::value && !internal::is_statement_clause<O>::value,
+                      "a LIMIT and its OFFSET must be expressions, not statement clauses");
         return {std::move(limit), {std::move(offset)}};
     }
 
@@ -29278,6 +29309,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class O>
     internal::limit_t<T, true, false, O> limit(T limit, internal::offset_t<O> offset) {
+        static_assert(!internal::is_statement_clause<T>::value && !internal::is_statement_clause<O>::value,
+                      "a LIMIT and its OFFSET must be expressions, not statement clauses");
         return {std::move(limit), {std::move(offset.offset)}};
     }
 }
@@ -29306,6 +29339,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause
 
 namespace sqlite_orm::internal {
     struct where_string {
@@ -29344,6 +29379,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class C>
     constexpr internal::where_t<C> where(C expression) {
+        static_assert(!internal::is_statement_clause<C>::value,
+                      "a WHERE condition must be an expression, not a statement clause");
         return {std::move(expression)};
     }
 }

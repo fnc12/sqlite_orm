@@ -141,3 +141,17 @@ namespace sqlite_orm::internal {
     constexpr bool select_clause_nests_no_clause_v<T, std::enable_if_t<is_limit_v<T>>> = polyfill::negation_v<
         polyfill::disjunction<is_select_clause<expression_type_t<T>>, is_select_clause<offset_expression_type_t<T>>>>;
 }
+
+// clauses of any statement kind
+namespace sqlite_orm::internal {
+    /**
+     *  Whether a node is a statement-level clause of any statement kind.
+     *
+     *  Every statement kind currently shares the select clauses - `remove_all()`, `update_all()` and the
+     *  `get_all()` family all validate their conditions pack against them - so this is presently the union
+     *  of a single list. It carries its own name because a clause factory has to reject a nested clause
+     *  regardless of which statement its result will end up in.
+     */
+    template<class T>
+    using is_statement_clause = is_select_clause<T>;
+}
