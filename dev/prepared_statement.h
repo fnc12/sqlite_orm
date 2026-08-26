@@ -339,6 +339,37 @@ namespace sqlite_orm::internal {
                                                                        is_remove_all<expression_type_t<With>>>>>> =
         true;
 
+    /**
+     *  The delete statement counterpart of `validate_select_clauses()`; see there for the split of
+     *  responsibilities between this and the clause factories.
+     */
+    template<class T>
+    constexpr void validate_delete_clauses() {
+        static_assert(count_tuple<T, is_where>::value <= 1, "a single statement cannot contain > 1 WHERE blocks");
+        static_assert(count_tuple<T, is_order_by>::value <= 1, "a single statement cannot contain > 1 ORDER BY blocks");
+        static_assert(count_tuple<T, is_limit>::value <= 1, "a single statement cannot contain > 1 LIMIT blocks");
+        static_assert(std::tuple_size<T>::value == count_tuple<T, is_delete_clause>::value,
+                      "a DELETE argument must be a WHERE, ORDER BY or LIMIT clause");
+        static_assert(check_delete_clause_order_v<T>,
+                      "SQL clauses must be listed in the canonical order: WHERE, ORDER BY, LIMIT");
+    }
+
+    /**
+     *  The update statement counterpart of `validate_select_clauses()`; see there for the split of
+     *  responsibilities between this and the clause factories.
+     */
+    template<class T>
+    constexpr void validate_update_clauses() {
+        static_assert(count_tuple<T, is_any_from>::value <= 1, "a single statement cannot contain > 1 FROM blocks");
+        static_assert(count_tuple<T, is_where>::value <= 1, "a single statement cannot contain > 1 WHERE blocks");
+        static_assert(count_tuple<T, is_order_by>::value <= 1, "a single statement cannot contain > 1 ORDER BY blocks");
+        static_assert(count_tuple<T, is_limit>::value <= 1, "a single statement cannot contain > 1 LIMIT blocks");
+        static_assert(std::tuple_size<T>::value == count_tuple<T, is_update_clause>::value,
+                      "an UPDATE argument must be a FROM, JOIN, WHERE, ORDER BY or LIMIT clause");
+        static_assert(check_update_clause_order_v<T>,
+                      "SQL clauses must be listed in the canonical order: FROM, JOINs, WHERE, ORDER BY, LIMIT");
+    }
+
     template<class T, class Tpl>
     constexpr void validate_get_all_conditions() {
         using from2_index_sequence = filter_tuple_sequence_t<Tpl, is_from2>;
@@ -752,7 +783,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class... Args>
     internal::remove_all_t<T, Args...> remove_all(Args... args) {
         using args_tuple = std::tuple<Args...>;
-        internal::validate_conditions<args_tuple>();
+        internal::validate_delete_clauses<args_tuple>();
         return {{std::forward<Args>(args)...}};
     }
 
@@ -777,7 +808,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class R = std::vector<internal::mapped_type_proxy_t<T>>, class... Args>
     internal::get_all_t<T, R, Args...> get_all(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
-        internal::validate_conditions<conditions_tuple>();
+        internal::validate_select_clauses<conditions_tuple>();
         internal::validate_get_all_conditions<T, conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
@@ -805,7 +836,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::update_all_t<S, Wargs...> update_all(S set, Wargs... wh) {
         static_assert(internal::is_set<S>::value, "first argument in update_all can be either set or dynamic_set");
         using args_tuple = std::tuple<Wargs...>;
-        internal::validate_conditions<args_tuple>();
+        internal::validate_update_clauses<args_tuple>();
         return {std::move(set), {std::forward<Wargs>(wh)...}};
     }
 
@@ -818,7 +849,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class R = std::vector<std::unique_ptr<T>>, class... Args>
     internal::get_all_pointer_t<T, R, Args...> get_all_pointer(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
-        internal::validate_conditions<conditions_tuple>();
+        internal::validate_select_clauses<conditions_tuple>();
         internal::validate_get_all_conditions<T, conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
@@ -848,7 +879,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class R = std::vector<std::optional<T>>, class... Args>
     internal::get_all_optional_t<T, R, Args...> get_all_optional(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
-        internal::validate_conditions<conditions_tuple>();
+        internal::validate_select_clauses<conditions_tuple>();
         internal::validate_get_all_conditions<T, conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }

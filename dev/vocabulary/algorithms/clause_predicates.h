@@ -2,9 +2,10 @@
 
 /** @file Closed predicates classifying the statement-level clauses of a statement by type and order.
  *
- *  A statement-level clause may only appear in the conditions pack of a statement, in the canonical
- *  clause order, and may only hold expressions - the serializer streams clauses positionally,
- *  so any other arrangement would generate invalid SQL.
+ *  A statement-level clause may only appear in the conditions pack of a statement, and only in the
+ *  canonical clause order - the serializer streams clauses positionally, so any other arrangement
+ *  would generate invalid SQL. That a clause holds an expression rather than another clause is
+ *  enforced by the clause factories, on the argument each is handed.
  *
  *  The generic algorithms take the clauses of a statement as an ordered list of clause traits,
  *  or as the rank metafunction derived from it, so that a statement kind is expressed by declaring
@@ -13,8 +14,6 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple_size
-#include <type_traits>  //  std::enable_if
 #include <initializer_list>
 #endif
 
@@ -100,44 +99,80 @@ namespace sqlite_orm::internal {
      */
     template<class Tpl>
     constexpr bool check_select_clause_order_v = clauses_are_correctly_ordered_v<Tpl, select_clause_rank>;
+}
+
+// delete statement clause algorithms
+namespace sqlite_orm::internal {
+    /**
+     *  Rank of a statement-level clause of a DELETE statement, or 0 if the type is not one of them.
+     *
+     *  ORDER BY and LIMIT are only accepted by an SQLite built with SQLITE_ENABLE_UPDATE_DELETE_LIMIT.
+     *  That is a build option of the library we link against and cannot be detected from here, so they
+     *  are admitted and left to SQLite to reject.
+     */
+    template<class T>
+    constexpr size_t delete_clause_rank_v = clause_rank_v<T, is_where, is_order_by, is_limit>;
+
+    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    template<class T>
+    struct delete_clause_rank : polyfill::index_constant<delete_clause_rank_v<T>> {};
+
+    template<class T>
+    using is_delete_clause = polyfill::bool_constant<delete_clause_rank_v<T> != 0>;
 
     /**
-     *  Checks that the expressions nested in a clause are not statement-level clauses themselves:
-     *  expressions like `where(group_by(...))` or `order_by(limit(...))` would generate invalid SQL.
+     *  Checks that the clauses in the conditions pack of a delete statement are listed
+     *  in the canonical clause order.
      */
-    template<class T, class SFINAE = void>
-    constexpr bool select_clause_nests_no_clause_v = true;
+    template<class Tpl>
+    constexpr bool check_delete_clause_order_v = clauses_are_correctly_ordered_v<Tpl, delete_clause_rank>;
+}
+
+// update statement clause algorithms
+namespace sqlite_orm::internal {
+    /**
+     *  Rank of a statement-level clause of an UPDATE statement, or 0 if the type is not one of them.
+     *
+     *  The FROM clause of `UPDATE ... SET ... FROM ...`, and the joins it may carry, exist as of SQLite 3.33.0.
+     *  For ORDER BY and LIMIT the same applies as for a delete statement.
+     */
+    template<class T>
+    constexpr size_t update_clause_rank_v = clause_rank_v<T,
+#if (SQLITE_VERSION_NUMBER >= 3033000)
+                                                          is_any_from,
+                                                          is_any_join,
+#endif
+                                                          is_where,
+                                                          is_order_by,
+                                                          is_limit>;
+
+    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    template<class T>
+    struct update_clause_rank : polyfill::index_constant<update_clause_rank_v<T>> {};
 
     template<class T>
-    using select_clause_nests_no_clause = polyfill::bool_constant<select_clause_nests_no_clause_v<T>>;
+    using is_update_clause = polyfill::bool_constant<update_clause_rank_v<T> != 0>;
 
-    //  clauses carrying a single expression: WHERE, a single ORDER BY term
-    template<class T>
-    constexpr bool select_clause_nests_no_clause_v<
-        T,
-        std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<is_where<T>, is_order_by<T>>,
-                                                 polyfill::is_detected<expression_type_t, T>>>> =
-        polyfill::negation_v<is_select_clause<expression_type_t<T>>>;
+    /**
+     *  Checks that the clauses in the conditions pack of an update statement are listed
+     *  in the canonical clause order.
+     */
+    template<class Tpl>
+    constexpr bool check_update_clause_order_v = clauses_are_correctly_ordered_v<Tpl, update_clause_rank>;
+}
 
-    //  ORDER BY with multiple terms: every term must be a single ORDER BY term
+// clauses of any statement kind
+namespace sqlite_orm::internal {
+    /**
+     *  Whether a node is a statement-level clause of any statement kind.
+     *
+     *  The delete and update clause lists are subsets of the select one, so the select list is presently
+     *  the union. Extend this should a statement kind ever admit a clause the select statement does not.
+     *  It carries its own name because a clause factory has to reject a nested clause regardless of which
+     *  statement its result will end up in.
+     */
     template<class T>
-    constexpr bool select_clause_nests_no_clause_v<
-        T,
-        std::enable_if_t<polyfill::conjunction_v<is_order_by<T>, polyfill::is_detected<args_type_t, T>>>> =
-        mpl::invoke_t<mpl::counts<mpl::conjunction<mpl::quote_fn<is_order_by>,
-                                                   check_if_names<expression_type_t>,
-                                                   check_if<select_clause_nests_no_clause>>>,
-                      args_type_t<T>>::value == std::tuple_size<args_type_t<T>>::value;
-
-    //  GROUP BY carries a tuple of expressions and possibly a HAVING expression
-    template<class T>
-    constexpr bool select_clause_nests_no_clause_v<T, std::enable_if_t<is_group_by_v<T>>> =
-        polyfill::negation_v<polyfill::disjunction<tuple_has<args_type_t<T>, is_select_clause>,
-                                                   // HAVING expression
-                                                   is_select_clause<polyfill::detected_t<expression_type_t, T>>>>;
-
-    //  LIMIT carries the limit and possibly an offset expression
-    template<class T>
-    constexpr bool select_clause_nests_no_clause_v<T, std::enable_if_t<is_limit_v<T>>> = polyfill::negation_v<
-        polyfill::disjunction<is_select_clause<expression_type_t<T>>, is_select_clause<offset_expression_type_t<T>>>>;
+    using is_statement_clause = is_select_clause<T>;
 }

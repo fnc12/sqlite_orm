@@ -7,6 +7,7 @@
 #include "../type_traits.h"
 #include "../optional_container.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "../vocabulary/node_algorithms.h"  // is_statement_clause
 #include "offset.h"
 
 namespace sqlite_orm::internal {
@@ -38,6 +39,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T>
     internal::limit_t<T, false, false, void> limit(T limit) {
+        static_assert(!internal::is_statement_clause<T>::value,
+                      "a LIMIT must be an expression, not a statement clause");
         return {std::move(limit)};
     }
 
@@ -50,6 +53,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class O, internal::satisfies_not<internal::is_offset, T> = true>
     internal::limit_t<T, true, true, O> limit(O offset, T limit) {
+        static_assert(!internal::is_statement_clause<T>::value && !internal::is_statement_clause<O>::value,
+                      "a LIMIT and its OFFSET must be expressions, not statement clauses");
         return {std::move(limit), {std::move(offset)}};
     }
 
@@ -62,6 +67,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class O>
     internal::limit_t<T, true, false, O> limit(T limit, internal::offset_t<O> offset) {
+        static_assert(!internal::is_statement_clause<T>::value && !internal::is_statement_clause<O>::value,
+                      "a LIMIT and its OFFSET must be expressions, not statement clauses");
         return {std::move(limit), {std::move(offset.offset)}};
     }
 }

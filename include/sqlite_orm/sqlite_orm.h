@@ -2800,9 +2800,10 @@ namespace sqlite_orm::internal {
 
 /** @file Closed predicates classifying the statement-level clauses of a statement by type and order.
  *
- *  A statement-level clause may only appear in the conditions pack of a statement, in the canonical
- *  clause order, and may only hold expressions - the serializer streams clauses positionally,
- *  so any other arrangement would generate invalid SQL.
+ *  A statement-level clause may only appear in the conditions pack of a statement, and only in the
+ *  canonical clause order - the serializer streams clauses positionally, so any other arrangement
+ *  would generate invalid SQL. That a clause holds an expression rather than another clause is
+ *  enforced by the clause factories, on the argument each is handed.
  *
  *  The generic algorithms take the clauses of a statement as an ordered list of clause traits,
  *  or as the rank metafunction derived from it, so that a statement kind is expressed by declaring
@@ -2811,8 +2812,6 @@ namespace sqlite_orm::internal {
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple_size
-#include <type_traits>  //  std::enable_if
 #include <initializer_list>
 #endif
 
@@ -2901,46 +2900,82 @@ namespace sqlite_orm::internal {
      */
     template<class Tpl>
     constexpr bool check_select_clause_order_v = clauses_are_correctly_ordered_v<Tpl, select_clause_rank>;
+}
+
+// delete statement clause algorithms
+namespace sqlite_orm::internal {
+    /**
+     *  Rank of a statement-level clause of a DELETE statement, or 0 if the type is not one of them.
+     *
+     *  ORDER BY and LIMIT are only accepted by an SQLite built with SQLITE_ENABLE_UPDATE_DELETE_LIMIT.
+     *  That is a build option of the library we link against and cannot be detected from here, so they
+     *  are admitted and left to SQLite to reject.
+     */
+    template<class T>
+    constexpr size_t delete_clause_rank_v = clause_rank_v<T, is_where, is_order_by, is_limit>;
+
+    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    template<class T>
+    struct delete_clause_rank : polyfill::index_constant<delete_clause_rank_v<T>> {};
+
+    template<class T>
+    using is_delete_clause = polyfill::bool_constant<delete_clause_rank_v<T> != 0>;
 
     /**
-     *  Checks that the expressions nested in a clause are not statement-level clauses themselves:
-     *  expressions like `where(group_by(...))` or `order_by(limit(...))` would generate invalid SQL.
+     *  Checks that the clauses in the conditions pack of a delete statement are listed
+     *  in the canonical clause order.
      */
-    template<class T, class SFINAE = void>
-    constexpr bool select_clause_nests_no_clause_v = true;
+    template<class Tpl>
+    constexpr bool check_delete_clause_order_v = clauses_are_correctly_ordered_v<Tpl, delete_clause_rank>;
+}
+
+// update statement clause algorithms
+namespace sqlite_orm::internal {
+    /**
+     *  Rank of a statement-level clause of an UPDATE statement, or 0 if the type is not one of them.
+     *
+     *  The FROM clause of `UPDATE ... SET ... FROM ...`, and the joins it may carry, exist as of SQLite 3.33.0.
+     *  For ORDER BY and LIMIT the same applies as for a delete statement.
+     */
+    template<class T>
+    constexpr size_t update_clause_rank_v = clause_rank_v<T,
+#if (SQLITE_VERSION_NUMBER >= 3033000)
+                                                          is_any_from,
+                                                          is_any_join,
+#endif
+                                                          is_where,
+                                                          is_order_by,
+                                                          is_limit>;
+
+    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    template<class T>
+    struct update_clause_rank : polyfill::index_constant<update_clause_rank_v<T>> {};
 
     template<class T>
-    using select_clause_nests_no_clause = polyfill::bool_constant<select_clause_nests_no_clause_v<T>>;
+    using is_update_clause = polyfill::bool_constant<update_clause_rank_v<T> != 0>;
 
-    //  clauses carrying a single expression: WHERE, a single ORDER BY term
-    template<class T>
-    constexpr bool select_clause_nests_no_clause_v<
-        T,
-        std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<is_where<T>, is_order_by<T>>,
-                                                 polyfill::is_detected<expression_type_t, T>>>> =
-        polyfill::negation_v<is_select_clause<expression_type_t<T>>>;
+    /**
+     *  Checks that the clauses in the conditions pack of an update statement are listed
+     *  in the canonical clause order.
+     */
+    template<class Tpl>
+    constexpr bool check_update_clause_order_v = clauses_are_correctly_ordered_v<Tpl, update_clause_rank>;
+}
 
-    //  ORDER BY with multiple terms: every term must be a single ORDER BY term
+// clauses of any statement kind
+namespace sqlite_orm::internal {
+    /**
+     *  Whether a node is a statement-level clause of any statement kind.
+     *
+     *  The delete and update clause lists are subsets of the select one, so the select list is presently
+     *  the union. Extend this should a statement kind ever admit a clause the select statement does not.
+     *  It carries its own name because a clause factory has to reject a nested clause regardless of which
+     *  statement its result will end up in.
+     */
     template<class T>
-    constexpr bool select_clause_nests_no_clause_v<
-        T,
-        std::enable_if_t<polyfill::conjunction_v<is_order_by<T>, polyfill::is_detected<args_type_t, T>>>> =
-        mpl::invoke_t<mpl::counts<mpl::conjunction<mpl::quote_fn<is_order_by>,
-                                                   check_if_names<expression_type_t>,
-                                                   check_if<select_clause_nests_no_clause>>>,
-                      args_type_t<T>>::value == std::tuple_size<args_type_t<T>>::value;
-
-    //  GROUP BY carries a tuple of expressions and possibly a HAVING expression
-    template<class T>
-    constexpr bool select_clause_nests_no_clause_v<T, std::enable_if_t<is_group_by_v<T>>> =
-        polyfill::negation_v<polyfill::disjunction<tuple_has<args_type_t<T>, is_select_clause>,
-                                                   // HAVING expression
-                                                   is_select_clause<polyfill::detected_t<expression_type_t, T>>>>;
-
-    //  LIMIT carries the limit and possibly an offset expression
-    template<class T>
-    constexpr bool select_clause_nests_no_clause_v<T, std::enable_if_t<is_limit_v<T>>> = polyfill::negation_v<
-        polyfill::disjunction<is_select_clause<expression_type_t<T>>, is_select_clause<offset_expression_type_t<T>>>>;
+    using is_statement_clause = is_select_clause<T>;
 }
 
 // #include "algorithms/operand_predicates.h"
@@ -6440,6 +6475,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class O, internal::satisfies_not<std::is_base_of, integer_printer, type_printer<O>> = true>
     internal::order_by_t<O> order_by(O o) {
+        static_assert(!internal::is_statement_clause<O>::value,
+                      "an ORDER BY term must be an expression, not a statement clause");
         return {std::move(o)};
     }
 
@@ -6468,6 +6505,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Args>
     internal::multi_order_by_t<Args...> multi_order_by(Args... args) {
+        //  the grammar production is `ordering-term`, which is narrower than `expr`, hence a positive check
+        static_assert((internal::is_order_by<Args>::value && ...),
+                      "every argument of a multi ORDER BY must be an ORDER BY term");
         return {{std::forward<Args>(args)...}};
     }
 
@@ -9653,8 +9693,13 @@ namespace sqlite_orm::internal {
         }
     };
 
+    /**
+     *  Checks the relations that only the conditions pack as a whole can answer: how often a clause may
+     *  appear in it, that every argument is a clause at all, and that they are listed in the canonical order.
+     *  Whether a single clause holds an admissible expression is checked by the clause factory that built it.
+     */
     template<class T>
-    constexpr void validate_conditions() {
+    constexpr void validate_select_clauses() {
         static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
         static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
         static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
@@ -9665,8 +9710,6 @@ namespace sqlite_orm::internal {
         static_assert(check_select_clause_order_v<T>,
                       "SQL clauses must be listed in the canonical order: FROM, JOINs, WHERE, GROUP BY, WINDOW, "
                       "ORDER BY, LIMIT");
-        static_assert(std::tuple_size<T>::value == count_tuple<T, select_clause_nests_no_clause>::value,
-                      "a clause argument cannot be another clause");
     }
 }
 
@@ -9730,7 +9773,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class... Args>
     constexpr internal::select_t<T, Args...> select(T t, Args... args) {
         using args_tuple = std::tuple<Args...>;
-        internal::validate_conditions<args_tuple>();
+        internal::validate_select_clauses<args_tuple>();
         return {std::move(t), {std::forward<Args>(args)...}};
     }
 
@@ -16208,6 +16251,37 @@ namespace sqlite_orm::internal {
                                                                        is_remove_all<expression_type_t<With>>>>>> =
         true;
 
+    /**
+     *  The delete statement counterpart of `validate_select_clauses()`; see there for the split of
+     *  responsibilities between this and the clause factories.
+     */
+    template<class T>
+    constexpr void validate_delete_clauses() {
+        static_assert(count_tuple<T, is_where>::value <= 1, "a single statement cannot contain > 1 WHERE blocks");
+        static_assert(count_tuple<T, is_order_by>::value <= 1, "a single statement cannot contain > 1 ORDER BY blocks");
+        static_assert(count_tuple<T, is_limit>::value <= 1, "a single statement cannot contain > 1 LIMIT blocks");
+        static_assert(std::tuple_size<T>::value == count_tuple<T, is_delete_clause>::value,
+                      "a DELETE argument must be a WHERE, ORDER BY or LIMIT clause");
+        static_assert(check_delete_clause_order_v<T>,
+                      "SQL clauses must be listed in the canonical order: WHERE, ORDER BY, LIMIT");
+    }
+
+    /**
+     *  The update statement counterpart of `validate_select_clauses()`; see there for the split of
+     *  responsibilities between this and the clause factories.
+     */
+    template<class T>
+    constexpr void validate_update_clauses() {
+        static_assert(count_tuple<T, is_any_from>::value <= 1, "a single statement cannot contain > 1 FROM blocks");
+        static_assert(count_tuple<T, is_where>::value <= 1, "a single statement cannot contain > 1 WHERE blocks");
+        static_assert(count_tuple<T, is_order_by>::value <= 1, "a single statement cannot contain > 1 ORDER BY blocks");
+        static_assert(count_tuple<T, is_limit>::value <= 1, "a single statement cannot contain > 1 LIMIT blocks");
+        static_assert(std::tuple_size<T>::value == count_tuple<T, is_update_clause>::value,
+                      "an UPDATE argument must be a FROM, JOIN, WHERE, ORDER BY or LIMIT clause");
+        static_assert(check_update_clause_order_v<T>,
+                      "SQL clauses must be listed in the canonical order: FROM, JOINs, WHERE, ORDER BY, LIMIT");
+    }
+
     template<class T, class Tpl>
     constexpr void validate_get_all_conditions() {
         using from2_index_sequence = filter_tuple_sequence_t<Tpl, is_from2>;
@@ -16621,7 +16695,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class... Args>
     internal::remove_all_t<T, Args...> remove_all(Args... args) {
         using args_tuple = std::tuple<Args...>;
-        internal::validate_conditions<args_tuple>();
+        internal::validate_delete_clauses<args_tuple>();
         return {{std::forward<Args>(args)...}};
     }
 
@@ -16646,7 +16720,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class R = std::vector<internal::mapped_type_proxy_t<T>>, class... Args>
     internal::get_all_t<T, R, Args...> get_all(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
-        internal::validate_conditions<conditions_tuple>();
+        internal::validate_select_clauses<conditions_tuple>();
         internal::validate_get_all_conditions<T, conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
@@ -16674,7 +16748,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::update_all_t<S, Wargs...> update_all(S set, Wargs... wh) {
         static_assert(internal::is_set<S>::value, "first argument in update_all can be either set or dynamic_set");
         using args_tuple = std::tuple<Wargs...>;
-        internal::validate_conditions<args_tuple>();
+        internal::validate_update_clauses<args_tuple>();
         return {std::move(set), {std::forward<Wargs>(wh)...}};
     }
 
@@ -16687,7 +16761,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class R = std::vector<std::unique_ptr<T>>, class... Args>
     internal::get_all_pointer_t<T, R, Args...> get_all_pointer(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
-        internal::validate_conditions<conditions_tuple>();
+        internal::validate_select_clauses<conditions_tuple>();
         internal::validate_get_all_conditions<T, conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
@@ -16717,7 +16791,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class R = std::vector<std::optional<T>>, class... Args>
     internal::get_all_optional_t<T, R, Args...> get_all_optional(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
-        internal::validate_conditions<conditions_tuple>();
+        internal::validate_select_clauses<conditions_tuple>();
         internal::validate_get_all_conditions<T, conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
@@ -21003,6 +21077,8 @@ namespace sqlite_orm::internal {
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause
 
 namespace sqlite_orm::internal {
     template<class T, class... Args>
@@ -21025,6 +21101,8 @@ namespace sqlite_orm::internal {
 
         template<class T>
         group_by_with_having<T, Args...> having(T expression) {
+            static_assert(!is_statement_clause<T>::value,
+                          "a HAVING condition must be an expression, not a statement clause");
             return {std::move(this->args), std::move(expression)};
         }
     };
@@ -21042,6 +21120,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Args>
     internal::group_by_t<Args...> group_by(Args... args) {
+        static_assert((!internal::is_statement_clause<Args>::value && ...),
+                      "a GROUP BY term must be an expression, not a statement clause");
         return {{std::forward<Args>(args)...}};
     }
 }
@@ -29192,6 +29272,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause
 // #include "offset.h"
 
 // #include "../functional/cxx_type_traits_polyfill.h"
@@ -29254,6 +29336,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T>
     internal::limit_t<T, false, false, void> limit(T limit) {
+        static_assert(!internal::is_statement_clause<T>::value,
+                      "a LIMIT must be an expression, not a statement clause");
         return {std::move(limit)};
     }
 
@@ -29266,6 +29350,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class O, internal::satisfies_not<internal::is_offset, T> = true>
     internal::limit_t<T, true, true, O> limit(O offset, T limit) {
+        static_assert(!internal::is_statement_clause<T>::value && !internal::is_statement_clause<O>::value,
+                      "a LIMIT and its OFFSET must be expressions, not statement clauses");
         return {std::move(limit), {std::move(offset)}};
     }
 
@@ -29278,6 +29364,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class O>
     internal::limit_t<T, true, false, O> limit(T limit, internal::offset_t<O> offset) {
+        static_assert(!internal::is_statement_clause<T>::value && !internal::is_statement_clause<O>::value,
+                      "a LIMIT and its OFFSET must be expressions, not statement clauses");
         return {std::move(limit), {std::move(offset.offset)}};
     }
 }
@@ -29306,6 +29394,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause
 
 namespace sqlite_orm::internal {
     struct where_string {
@@ -29344,6 +29434,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class C>
     constexpr internal::where_t<C> where(C expression) {
+        static_assert(!internal::is_statement_clause<C>::value,
+                      "a WHERE condition must be an expression, not a statement clause");
         return {std::move(expression)};
     }
 }
