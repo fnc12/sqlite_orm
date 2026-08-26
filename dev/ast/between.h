@@ -3,7 +3,9 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif
-#include "tags.h"
+
+#include "../tags.h"
+#include "../vocabulary/node_algorithms.h"  // is_operand_or_bindable
 
 namespace sqlite_orm::internal {
     /**
@@ -31,6 +33,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class A, class T>
     internal::between_t<A, T> between(A expression, T lower, T upper) {
+        static_assert(internal::is_operand_or_bindable<A>::value,
+                      "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(expression), std::move(lower), std::move(upper)};
     }
 }

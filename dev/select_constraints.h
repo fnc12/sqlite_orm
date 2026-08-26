@@ -355,6 +355,10 @@ namespace sqlite_orm::internal {
         optional_container<else_expression_type> else_expression;
     };
 
+    template<class T>
+    constexpr bool
+        is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, simple_case_t>::value>> = true;
+
     /**
      *  T is a case expression type
      *  E is else type (void is ELSE is omitted)

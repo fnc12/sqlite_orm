@@ -8,6 +8,7 @@
 #endif
 
 #include "../optional_container.h"
+#include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 // NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
 // (Could be implemented with a normal trigger that insert or update an internal table and then retreive
@@ -215,6 +216,12 @@ namespace sqlite_orm::internal {
 
         expression_type expression;
     };
+
+    template<class T>
+    constexpr bool is_operator_argument_v<
+        T,
+        std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<T, new_t>,
+                                               polyfill::is_specialization_of<T, old_t>>::value>> = true;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

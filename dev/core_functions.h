@@ -22,6 +22,7 @@
 #include "ast/into.h"
 #include "ast/window.h"
 #include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     template<class T>
@@ -331,6 +332,12 @@ namespace sqlite_orm::internal {
      *          having(greater_than(count(), 2))))));
      */
     struct count_asterisk_without_type : count_string {};
+
+    template<class T>
+    constexpr bool is_operator_argument_v<
+        T,
+        std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<T, count_asterisk_t>,
+                                               std::is_same<T, count_asterisk_without_type>>::value>> = true;
 
     struct avg_string {
         serialize_result_type serialize() const {

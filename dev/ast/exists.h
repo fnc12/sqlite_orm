@@ -4,13 +4,14 @@
 #include <utility>  //  std::move
 #endif
 
+#include "../functional/cxx_type_traits_polyfill.h"
 #include "../tags.h"
+#include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
     template<class T>
     struct exists_t : condition_t, negatable_t {
         using expression_type = T;
-        using self = exists_t<expression_type>;
 
         expression_type expression;
 
@@ -29,6 +30,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T>
     internal::exists_t<T> exists(T expression) {
+        static_assert(polyfill::disjunction<internal::is_select<T>, internal::is_compound_operator<T>>::value,
+                      "exists() requires a select statement");
         return {std::move(expression)};
     }
 }
