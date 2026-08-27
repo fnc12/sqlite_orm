@@ -12,7 +12,9 @@
 #include "tuple_helper/tuple_filter.h"
 #include "conditions.h"
 #include "operators.h"
-#include "select_constraints.h"
+#include "ast/result_columns.h"
+#include "ast/case_expression.h"
+#include "ast/select.h"
 #include "prepared_statement.h"
 #include "optional_container.h"
 #include "core_functions.h"
@@ -135,8 +137,7 @@ namespace sqlite_orm::internal {
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     template<class CTE>
-    struct node_tuple<CTE, match_specialization_of<CTE, common_table_expression>> : node_tuple<expression_type_t<CTE>> {
-    };
+    struct node_tuple<CTE, match_if<is_cte_binding, CTE>> : node_tuple<expression_type_t<CTE>> {};
 
     template<class With>
     struct node_tuple<With, match_if<is_with_clause, With>>

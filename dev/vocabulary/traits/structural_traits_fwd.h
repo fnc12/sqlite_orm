@@ -36,6 +36,15 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_object_node = polyfill::bool_constant<is_object_node_v<T>>;
+
+    /**
+     *  Nodes turning the C++ result of a result column into an optional; no SQL counterpart.
+     */
+    template<class T>
+    extern const bool is_as_optional_v;
+
+    template<class T>
+    using is_as_optional = polyfill::bool_constant<is_as_optional_v<T>>;
 }
 
 // Quoting traits

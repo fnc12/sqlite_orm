@@ -1,15 +1,15 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::decay, std::add_lvalue_reference
-#include <tuple>  //  std::tuple
+#include <type_traits>  //  std::enable_if, std::add_lvalue_reference
 #include <functional>  //  std::reference_wrapper
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/mpl.h"
 #include "type_traits.h"
 #include "tuple_helper/tuple_transformer.h"
-#include "select_constraints.h"
+#include "ast/result_columns.h"
 #include "alias.h"
 #include "storage_traits.h"
 
@@ -22,6 +22,12 @@ namespace sqlite_orm::internal {
      */
     template<class DBOs, class E>
     using column_expression_of_t = typename column_expression_type<DBOs, E>::type;
+
+    template<class A>
+    struct add_column_alias {
+        template<typename ColExpr>
+        using apply_t = alias_column_t<A, ColExpr>;
+    };
 
     /**
      *  Identity.
@@ -36,7 +42,7 @@ namespace sqlite_orm::internal {
      *  as_t<Alias, E> -> as_t<Alias, ColExpr>
      */
     template<class DBOs, class As>
-    struct column_expression_type<DBOs, As, match_specialization_of<As, as_t>> {
+    struct column_expression_type<DBOs, As, match_if<is_as_node, As>> {
         using type = as_t<alias_type_t<As>, column_expression_of_t<DBOs, expression_type_t<As>>>;
     };
 
@@ -49,9 +55,9 @@ namespace sqlite_orm::internal {
         : std::add_lvalue_reference<column_expression_of_t<DBOs, E>> {};
 
     // No CTE for object expression.
-    template<class DBOs, class E>
-    struct column_expression_type<DBOs, object_t<E>, void> {
-        static_assert(polyfill::always_false_v<E>, "Selecting an object in a subselect is not allowed");
+    template<class DBOs, class T>
+    struct column_expression_type<DBOs, T, match_if<is_object_node, T>> {
+        static_assert(polyfill::always_false_v<T>, "Selecting an object in a subselect is not allowed");
     };
 
     /**
@@ -65,11 +71,6 @@ namespace sqlite_orm::internal {
         std::enable_if_t<polyfill::disjunction<polyfill::negation<is_recordset_alias<E>>, is_cte_moniker<E>>::value>>
         : storage_traits::storage_mapped_column_expressions<DBOs, E> {};
 
-    template<class A>
-    struct add_column_alias {
-        template<typename ColExpr>
-        using apply_t = alias_column_t<A, ColExpr>;
-    };
     /**
      *  Resolve all columns of an aliased object.
      *  asterisk_t<Alias> -> tuple<alias_column_t<Alias, ColExpr>...>
@@ -83,24 +84,22 @@ namespace sqlite_orm::internal {
      *  Resolve multiple columns.
      *  columns_t<C...> -> tuple<ColExpr...>
      */
-    template<class DBOs, class... Args>
-    struct column_expression_type<DBOs, columns_t<Args...>, void> {
-        using type = std::tuple<column_expression_of_t<DBOs, std::decay_t<Args>>...>;
-    };
+    template<class DBOs, class T>
+    struct column_expression_type<DBOs, T, match_if<is_columns, T>>
+        : tuple_transformer<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn> {};
 
     /**
      *  Resolve multiple columns.
      *  struct_t<T, C...> -> tuple<ColExpr...>
      */
-    template<class DBOs, class T, class... Args>
-    struct column_expression_type<DBOs, struct_t<T, Args...>, void> {
-        using type = std::tuple<column_expression_of_t<DBOs, std::decay_t<Args>>...>;
-    };
+    template<class DBOs, class T>
+    struct column_expression_type<DBOs, T, match_if<is_struct, T>>
+        : tuple_transformer<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn> {};
 
     /**
      *  Resolve column(s) of subselect.
      *  select_t<E, Args...> -> ColExpr, tuple<ColExpr....>
      */
-    template<class DBOs, class E, class... Args>
-    struct column_expression_type<DBOs, select_t<E, Args...>> : column_expression_type<DBOs, E> {};
+    template<class DBOs, class T>
+    struct column_expression_type<DBOs, T, match_if<is_select, T>> : column_expression_type<DBOs, return_type_t<T>> {};
 }

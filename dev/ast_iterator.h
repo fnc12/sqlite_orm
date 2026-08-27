@@ -12,7 +12,6 @@
 #include "vocabulary/node_traits.h"
 #include "conditions.h"
 #include "alias.h"
-#include "select_constraints.h"
 #include "operators.h"
 #include "core_functions.h"
 #include "prepared_statement.h"
@@ -80,17 +79,15 @@ namespace sqlite_orm::internal {
         iterator(t, lambda);
     }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct ast_iterator<as_optional_t<T>, void> {
-        using node_type = as_optional_t<T>;
+    struct ast_iterator<T, match_if<is_as_optional, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
             iterate_ast(node.expression, lambda);
         }
     };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class T>
     struct ast_iterator<std::reference_wrapper<T>, void> {
@@ -275,7 +272,7 @@ namespace sqlite_orm::internal {
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     template<class CTE>
-    struct ast_iterator<CTE, match_specialization_of<CTE, common_table_expression>> {
+    struct ast_iterator<CTE, match_if<is_cte_binding, CTE>> {
         using node_type = CTE;
 
         template<class L>
@@ -602,9 +599,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class R, class T, class E, class... Args>
-    struct ast_iterator<simple_case_t<R, T, E, Args...>, void> {
-        using node_type = simple_case_t<R, T, E, Args...>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_case_expression, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& c, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {

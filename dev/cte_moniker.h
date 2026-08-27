@@ -40,7 +40,7 @@ namespace sqlite_orm::internal {
          *  1_ctealias(&Object::name)(select("object"));
          *  
          *  @return A `cte_builder` instance.
-         *  @note (internal): Defined in select_constraints.h in order to keep this member function in the same place as the named factory function `cte()`,
+         *  @note (internal): Defined in ast/cte.h in order to keep this member function in the same place as the named factory function `cte()`,
          *  and to keep the actual creation of the builder in one place.
          */
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
