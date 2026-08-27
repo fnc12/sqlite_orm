@@ -5188,7 +5188,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <concepts>
 #include <utility>  //  std::make_index_sequence
 #endif
-#include <array>  //  std::array
 #include <type_traits>  //  std::enable_if, std::is_member_pointer, std::is_same, std::is_convertible
 #include <tuple>  //  std::ignore
 #include <string>
@@ -5255,9 +5254,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
          */
         template<char... Chars>
         [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator""_ctealias() {
+#ifdef SQLITE_ORM_PACK_INDEXING_SUPPORTED
             // numeric monikers are used for automatically assigning implicit aliases to unaliased column expressions,
             // which start at "1".
-            static_assert(std::array{Chars...}[0] > '0');
+            static_assert(Chars...[0] > '0');
+#endif
             return internal::cte_moniker<Chars...>{};
         }
 
@@ -21834,8 +21835,6 @@ namespace sqlite_orm::internal {
 // #include "schema/triggers.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <memory>
-#include <sstream>
 #include <string>
 #include <tuple>
 #include <type_traits>  //  std::is_member_pointer
@@ -21843,8 +21842,6 @@ namespace sqlite_orm::internal {
 
 // #include "../optional_container.h"
 
-// #include "../column_pointer.h"
-// is_column_pointer
 // #include "../vocabulary/node_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
@@ -22157,8 +22154,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../table_type_of.h"
 
-// #include "../column_pointer.h"
-
 // #include "../vocabulary/node_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
@@ -22249,18 +22244,14 @@ namespace sqlite_orm::internal {
      *  Whether an index element belongs to the table the index is made for:
      *  an element that names a column must name a column of that table, while
      *  expressions and partial-index WHERE clauses carry no table type and are admitted.
-     *
-     *  Implementation note: enumerated as partial specializations rather than composed from
-     *  `table_type_of`, whose undefined primary template hard-errors outside clang when probed.
      */
-    template<class T, class Col>
+    template<class ColRef, class T, class SFINAE = void>
     constexpr bool is_index_element_of_v = true;
-    template<class T, class F, class O>
-    constexpr bool is_index_element_of_v<T, F O::*> = std::is_same<O, T>::value;
-    template<class T, class C, class F>
-    constexpr bool is_index_element_of_v<T, column_pointer<C, F>> = std::is_same<C, T>::value;
-    template<class T, class C>
-    constexpr bool is_index_element_of_v<T, indexed_column_t<C>> = is_index_element_of_v<T, C>;
+
+    template<class ColRef, class T>
+    constexpr bool
+        is_index_element_of_v<ColRef, T, std::enable_if_t<polyfill::is_detected<table_type_of_t, ColRef>::value>> =
+            std::is_same<table_type_of_t<ColRef>, T>::value;
 
     template<class T, class... Cols>
     constexpr void validate_index_arguments() {
@@ -22268,7 +22259,7 @@ namespace sqlite_orm::internal {
                       "amount of where arguments can be 0 or 1");
         static_assert(((is_where_v<Cols> || !is_statement_clause<Cols>::value) && ...),
                       "a make_index() argument must be an indexed column, an expression or a partial-index WHERE");
-        static_assert((is_index_element_of_v<T, Cols> && ...),
+        static_assert((is_index_element_of_v<Cols, T> && ...),
                       "all indexed columns must belong to the table the index is made for");
     }
 }

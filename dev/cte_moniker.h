@@ -6,7 +6,6 @@
 #include <concepts>
 #include <utility>  //  std::make_index_sequence
 #endif
-#include <array>  //  std::array
 #include <type_traits>  //  std::enable_if, std::is_member_pointer, std::is_same, std::is_convertible
 #include <tuple>  //  std::ignore
 #include <string>
@@ -72,9 +71,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
          */
         template<char... Chars>
         [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator""_ctealias() {
+#ifdef SQLITE_ORM_PACK_INDEXING_SUPPORTED
             // numeric monikers are used for automatically assigning implicit aliases to unaliased column expressions,
             // which start at "1".
-            static_assert(std::array{Chars...}[0] > '0');
+            static_assert(Chars...[0] > '0');
+#endif
             return internal::cte_moniker<Chars...>{};
         }
 

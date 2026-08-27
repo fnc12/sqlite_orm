@@ -1,15 +1,12 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <memory>
-#include <sstream>
 #include <string>
 #include <tuple>
 #include <type_traits>  //  std::is_member_pointer
 #endif
 
 #include "../optional_container.h"
-#include "../column_pointer.h"  // is_column_pointer
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits

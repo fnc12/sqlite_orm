@@ -36,13 +36,13 @@ TEST_CASE("schema factory arguments are validated at compile time") {
     }
     //  the index factories gate on these predicates; the constructions guard against over-strictness
     SECTION("an index element with a derivable table type must belong to the table of the index") {
-        STATIC_REQUIRE(internal::is_index_element_of_v<User, decltype(&User::name)>);
-        STATIC_REQUIRE(internal::is_index_element_of_v<User, decltype(indexed_column(&User::name).desc())>);
+        STATIC_REQUIRE(internal::is_index_element_of_v<decltype(&User::name), User>);
+        STATIC_REQUIRE(internal::is_index_element_of_v<decltype(indexed_column(&User::name).desc()), User>);
         //  expressions and a partial-index WHERE carry no table type and are admitted
-        STATIC_REQUIRE(internal::is_index_element_of_v<User, decltype(lower(&User::name))>);
-        STATIC_REQUIRE(internal::is_index_element_of_v<User, decltype(where(c(&User::id) > 0))>);
-        STATIC_REQUIRE_FALSE(internal::is_index_element_of_v<User, decltype(&Visit::userId)>);
-        STATIC_REQUIRE_FALSE(internal::is_index_element_of_v<User, decltype(indexed_column(&Visit::userId))>);
+        STATIC_REQUIRE(internal::is_index_element_of_v<decltype(lower(&User::name)), User>);
+        STATIC_REQUIRE(internal::is_index_element_of_v<decltype(where(c(&User::id) > 0)), User>);
+        STATIC_REQUIRE_FALSE(internal::is_index_element_of_v<decltype(&Visit::userId), User>);
+        STATIC_REQUIRE_FALSE(internal::is_index_element_of_v<decltype(indexed_column(&Visit::userId)), User>);
     }
     SECTION("a trigger body statement must be a complete statement") {
         STATIC_REQUIRE(internal::is_object_dml_expression_v<decltype(insert(User{}))>);
