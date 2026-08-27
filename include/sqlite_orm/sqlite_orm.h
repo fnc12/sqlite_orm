@@ -22044,6 +22044,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../table_type_of.h"
 
+// #include "../column_pointer.h"
+
 // #include "../vocabulary/node_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
@@ -22132,14 +22134,20 @@ namespace sqlite_orm::internal {
 
     /**
      *  Whether an index element belongs to the table the index is made for:
-     *  an element with a derivable table type must name a column of that table,
-     *  while expressions and partial-index WHERE clauses carry no table type and are admitted.
+     *  an element that names a column must name a column of that table, while
+     *  expressions and partial-index WHERE clauses carry no table type and are admitted.
+     *
+     *  Implementation note: enumerated as partial specializations rather than composed from
+     *  `table_type_of`, whose undefined primary template hard-errors outside clang when probed.
      */
-    template<class T, class Col, class SFINAE = void>
-    constexpr bool is_index_element_of_v = true;
     template<class T, class Col>
-    constexpr bool is_index_element_of_v<T, Col, polyfill::void_t<table_type_of_t<Col>>> =
-        std::is_same<table_type_of_t<Col>, T>::value;
+    constexpr bool is_index_element_of_v = true;
+    template<class T, class F, class O>
+    constexpr bool is_index_element_of_v<T, F O::*> = std::is_same<O, T>::value;
+    template<class T, class C, class F>
+    constexpr bool is_index_element_of_v<T, column_pointer<C, F>> = std::is_same<C, T>::value;
+    template<class T, class C>
+    constexpr bool is_index_element_of_v<T, indexed_column_t<C>> = is_index_element_of_v<T, C>;
 
     template<class T, class... Cols>
     constexpr void validate_index_arguments() {
