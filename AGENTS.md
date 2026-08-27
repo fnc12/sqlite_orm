@@ -100,8 +100,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 **Query building:**
 - `dev/conditions.h` - WHERE clause conditions
 - `dev/core_functions.h` - SQL functions
-- `dev/select_constraints.h` - SELECT modifiers (ORDER BY, LIMIT, etc.)
-- `dev/ast/` - AST nodes for DML and operational constructs (`select_t`, `insert_t`, `where`, `window`, ...)
+- `dev/ast/` - AST nodes for query, DML and operational constructs (`select_t`, `insert_t`, `where`, `window`, ...)
 
 **Type binding:**
 - `dev/statement_binder.h` - Binds C++ values to prepared statements
@@ -116,8 +115,8 @@ The library uses a **storage-centric architecture** with compile-time type safet
 
 ### Header Organization
 
-`dev/` is the source of truth: ~30,000 lines across ~184 headers, organized by
-functionality. `include/sqlite_orm/sqlite_orm.h` is the **generated** single-header
+`dev/` is the source of truth, organized by functionality.
+`include/sqlite_orm/sqlite_orm.h` is the **generated** single-header
 amalgamation of `dev/`. Never edit it by hand — change `dev/` and regenerate.
 `not_single_header_include/` holds the non-amalgamated variant.
 

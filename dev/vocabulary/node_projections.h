@@ -65,6 +65,9 @@ namespace sqlite_orm::internal {
     template<typename T>
     using conditions_type_t = typename T::conditions_type;
 
+    template<typename T>
+    using return_type_t = typename T::return_type;
+
     template<class As>
     using alias_type_t = typename As::alias_type;
 

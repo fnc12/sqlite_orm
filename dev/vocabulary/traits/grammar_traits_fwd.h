@@ -157,6 +157,33 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_select = polyfill::bool_constant<is_select_v<T>>;
 
+    /**
+     *  Nodes binding a monikered subselect to a name, for the duration of a single statement: a CTE.
+     */
+    template<class T>
+    extern const bool is_cte_binding_v;
+
+    template<class T>
+    using is_cte_binding = polyfill::bool_constant<is_cte_binding_v<T>>;
+
+    /**
+     *  Nodes hinting at how a CTE's select statement is to be materialized: MATERIALIZED, NOT MATERIALIZED.
+     */
+    template<class T>
+    extern const bool is_materialization_hint_v;
+
+    template<class T>
+    using is_materialization_hint = polyfill::bool_constant<is_materialization_hint_v<T>>;
+
+    /**
+     *  Nodes representing a CASE expression, in both its simple and its searched form.
+     */
+    template<class T>
+    extern const bool is_case_expression_v;
+
+    template<class T>
+    using is_case_expression = polyfill::bool_constant<is_case_expression_v<T>>;
+
     template<class T>
     extern const bool is_with_clause_v;
 
@@ -254,6 +281,19 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_as_node = polyfill::bool_constant<is_as_node_v<T>>;
+
+    /**
+     *  Nodes representing the DISTINCT keyword.
+     *
+     *  Note: DISTINCT serves two roles - it is a rowset deduplicator in a simple select expression,
+     *  and it deduplicates the argument rows of an aggregate function; hence it is classified on its own,
+     *  next to the `is_rowset_deduplicator_v` grouping trait.
+     */
+    template<class T>
+    extern const bool is_distinct_v;
+
+    template<class T>
+    using is_distinct = polyfill::bool_constant<is_distinct_v<T>>;
 }
 
 // Role-based grammar traits

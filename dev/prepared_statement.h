@@ -15,7 +15,8 @@
 #include "type_traits.h"
 #include "tuple_helper/tuple_traits.h"
 #include "connection_holder.h"
-#include "select_constraints.h"
+#include "ast/result_columns.h"
+#include "ast/select.h"  // validate_select_clauses
 #include "values.h"
 #include "table_reference.h"
 #include "mapped_type_proxy.h"

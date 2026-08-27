@@ -2147,6 +2147,33 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_select = polyfill::bool_constant<is_select_v<T>>;
 
+    /**
+     *  Nodes binding a monikered subselect to a name, for the duration of a single statement: a CTE.
+     */
+    template<class T>
+    extern const bool is_cte_binding_v;
+
+    template<class T>
+    using is_cte_binding = polyfill::bool_constant<is_cte_binding_v<T>>;
+
+    /**
+     *  Nodes hinting at how a CTE's select statement is to be materialized: MATERIALIZED, NOT MATERIALIZED.
+     */
+    template<class T>
+    extern const bool is_materialization_hint_v;
+
+    template<class T>
+    using is_materialization_hint = polyfill::bool_constant<is_materialization_hint_v<T>>;
+
+    /**
+     *  Nodes representing a CASE expression, in both its simple and its searched form.
+     */
+    template<class T>
+    extern const bool is_case_expression_v;
+
+    template<class T>
+    using is_case_expression = polyfill::bool_constant<is_case_expression_v<T>>;
+
     template<class T>
     extern const bool is_with_clause_v;
 
@@ -2244,6 +2271,19 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_as_node = polyfill::bool_constant<is_as_node_v<T>>;
+
+    /**
+     *  Nodes representing the DISTINCT keyword.
+     *
+     *  Note: DISTINCT serves two roles - it is a rowset deduplicator in a simple select expression,
+     *  and it deduplicates the argument rows of an aggregate function; hence it is classified on its own,
+     *  next to the `is_rowset_deduplicator_v` grouping trait.
+     */
+    template<class T>
+    extern const bool is_distinct_v;
+
+    template<class T>
+    using is_distinct = polyfill::bool_constant<is_distinct_v<T>>;
 }
 
 // Role-based grammar traits
@@ -2323,6 +2363,15 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_object_node = polyfill::bool_constant<is_object_node_v<T>>;
+
+    /**
+     *  Nodes turning the C++ result of a result column into an optional; no SQL counterpart.
+     */
+    template<class T>
+    extern const bool is_as_optional_v;
+
+    template<class T>
+    using is_as_optional = polyfill::bool_constant<is_as_optional_v<T>>;
 }
 
 // Quoting traits
@@ -2502,6 +2551,9 @@ namespace sqlite_orm::internal {
 
     template<typename T>
     using conditions_type_t = typename T::conditions_type;
+
+    template<typename T>
+    using return_type_t = typename T::return_type;
 
     template<class As>
     using alias_type_t = typename As::alias_type;
@@ -4928,22 +4980,383 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-// #include "select_constraints.h"
+// #include "ast/result_columns.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>  //  std::tuple, std::tuple_size
+#include <utility>  //  std::forward, std::move
+#endif
+// #include "../functional/cxx_optional.h"
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../tuple_helper/tuple_traits.h"
+
+// #include "../alias_traits.h"
+
+// #include "../vocabulary/node_algorithms.h"
+// is_select_clause
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../vocabulary/traits/structural_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T>
+    struct as_optional_t {
+        using expression_type = T;
+
+        expression_type expression;
+    };
+
+    template<class T>
+    constexpr bool is_as_optional_v = polyfill::is_specialization_of<T, as_optional_t>::value;
+#else
+    template<class T>
+    constexpr bool is_as_optional_v = false;
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
+    template<class... Args>
+    struct columns_t {
+        using columns_type = std::tuple<Args...>;
+
+        columns_type columns;
+
+        static constexpr int count = std::tuple_size<columns_type>::value;
+    };
+
+    template<class T>
+    constexpr bool is_columns_v = polyfill::is_specialization_of<T, columns_t>::value;
+
+    /*
+     *  Captures the type of an aggregate/structure/object and column expressions, such that
+     *  `T` can be constructed in-place as part of a result row.
+     *  `T` must be constructible using direct-list-initialization.
+     */
+    template<class T, class... Args>
+    struct struct_t {
+        using columns_type = std::tuple<Args...>;
+
+        columns_type columns;
+
+        static constexpr int count = std::tuple_size<columns_type>::value;
+    };
+
+    template<class T>
+    constexpr bool is_struct_v = polyfill::is_specialization_of<T, struct_t>::value;
+
+    template<class T>
+    struct asterisk_t {
+        using type = T;
+
+        bool defined_order = false;
+    };
+
+    template<class T>
+    constexpr bool is_asterisk_v = polyfill::is_specialization_of<T, asterisk_t>::value;
+
+    template<class T>
+    struct object_t {
+        using type = T;
+
+        bool defined_order = false;
+    };
+
+    template<class T>
+    constexpr bool is_object_node_v = polyfill::is_specialization_of<T, object_t>::value;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T>
+    internal::as_optional_t<T> as_optional(T value) {
+        return {std::move(value)};
+    }
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
+    /*
+     *  Combine multiple columns in a tuple.
+     */
+    template<class... Args>
+    constexpr internal::columns_t<Args...> columns(Args... args) {
+        static_assert(internal::count_tuple<std::tuple<Args...>, internal::is_select_clause>::value == 0,
+                      "a statement clause cannot be used as a column expression");
+        return {{std::forward<Args>(args)...}};
+    }
+
+    /*
+     *  Construct an unmapped structure ad-hoc from multiple columns.
+     *  `T` must be constructible from the column results using direct-list-initialization.
+     */
+    template<class T, class... Args>
+    constexpr internal::struct_t<T, Args...> struct_(Args... args) {
+        static_assert(internal::count_tuple<std::tuple<Args...>, internal::is_select_clause>::value == 0,
+                      "a statement clause cannot be used as a column expression");
+        return {{std::forward<Args>(args)...}};
+    }
+
+    /**
+     *  `SELECT * FROM T` expression that fetches results as tuples.
+     *  T is a type mapped to a storage, or an alias of it.
+     *  The `definedOrder` parameter denotes the expected order of result columns.
+     *  The default is the implicit order as returned by SQLite, which may differ from the defined order
+     *  if the schema of a table has been changed.
+     *  By specifying the defined order, the columns are written out in the resulting select SQL string.
+     *  
+     *  In pseudo code:
+     *  select(asterisk<User>(false)) -> SELECT * from User
+     *  select(asterisk<User>(true))  -> SELECT id, name from User
+     *  
+     *  Example: auto rows = storage.select(asterisk<User>());
+     *  // decltype(rows) is std::vector<std::tuple<...all columns in implicitly stored order...>>
+     *  Example: auto rows = storage.select(asterisk<User>(true));
+     *  // decltype(rows) is std::vector<std::tuple<...all columns in declared make_table order...>>
+     *  
+     *  If you need to fetch results as objects instead of tuples please use `object<T>()`.
+     */
+    template<class T>
+    constexpr internal::asterisk_t<T> asterisk(bool definedOrder = false) {
+        return {definedOrder};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Example:
+     *  constexpr orm_table_alias auto m = "m"_alias.for_<Employee>();
+     *  auto reportingTo = 
+     *  storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == &Employee::employeeId)));
+     */
+    template<orm_refers_to_recordset auto recordset>
+    constexpr auto asterisk(bool definedOrder = false) {
+        return asterisk<internal::auto_decay_table_ref_t<recordset>>(definedOrder);
+    }
+#endif
+
+    /**
+     *  `SELECT * FROM T` expression that fetches results as objects of type T.
+     *  T is a type mapped to a storage, or an alias of it.
+     *  
+     *  Example: auto rows = storage.select(object<User>());
+     *  // decltype(rows) is std::vector<User>, where the User objects are constructed from columns in implicitly stored order
+     *  Example: auto rows = storage.select(object<User>(true));
+     *  // decltype(rows) is std::vector<User>, where the User objects are constructed from columns in declared make_table order
+     *  
+     *  If you need to fetch results as tuples instead of objects please use `asterisk<T>()`.
+     */
+    template<class T>
+    constexpr internal::object_t<T> object(bool definedOrder = false) {
+        return {definedOrder};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_table auto als>
+    constexpr auto object(bool definedOrder = false) {
+        return object<internal::auto_decay_table_ref_t<als>>(definedOrder);
+    }
+#endif
+}
+
+// #include "ast/cte.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
 #endif
-#include <type_traits>  //  std::enable_if, std::remove_cvref, std::is_convertible, std::is_same, std::is_member_pointer
+#include <type_traits>  //  std::enable_if, std::remove_cvref, std::remove_const, std::is_convertible, std::is_same, std::is_member_pointer
 #include <string>  //  std::string
-#include <utility>  //  std::move
-#include <tuple>  //  std::tuple, std::get, std::tuple_size
+#include <string_view>  //  std::string_view
+#include <utility>  //  std::forward, std::move
+#include <tuple>  //  std::tuple, std::ignore, std::tuple_size
 #endif
-// #include "functional/cxx_optional.h"
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/is_base_template_of.h"
+// #include "../tuple_helper/tuple_transformer.h"
+
+// #include "../type_traits.h"
+
+// #include "../alias.h"
+
+// #include "../alias_traits.h"
+
+// #include "../cte_moniker.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <concepts>
+#include <utility>  //  std::make_index_sequence
+#endif
+#include <array>  //  std::array
+#include <type_traits>  //  std::enable_if, std::is_member_pointer, std::is_same, std::is_convertible
+#include <tuple>  //  std::ignore
+#include <string>
+#endif
+#endif
+
+// #include "functional/cstring_literal.h"
+
+// #include "alias.h"
+
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+namespace sqlite_orm::internal {
+    /** 
+     *  A special record set alias that is both, a storage lookup type (mapping type) and an alias.
+     */
+    template<char A, char... X>
+    struct cte_moniker
+        : recordset_alias<cte_moniker<A, X...> /* refer to self, since a moniker is both, an alias and a mapped type */,
+                          A,
+                          X...> {
+        /** 
+         *  Introduce the construction of a common table expression using this moniker.
+         *  
+         *  The list of explicit columns is optional;
+         *  if provided the number of columns must match the number of columns of the subselect.
+         *  The column names will be merged with the subselect:
+         *  1. column names of subselect
+         *  2. explicit columns
+         *  3. fill in empty column names with column index
+         *  
+         *  Example:
+         *  1_ctealias()(select(&Object::id));
+         *  1_ctealias(&Object::name)(select("object"));
+         *  
+         *  @return A `cte_builder` instance.
+         *  @note (internal): Defined in ast/cte.h in order to keep this member function in the same place as the named factory function `cte()`,
+         *  and to keep the actual creation of the builder in one place.
+         */
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<class... ExplicitCols>
+            requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
+                       std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
+                       std::convertible_to<ExplicitCols, std::string>) &&
+                      ...)
+        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
+#else
+        template<class... ExplicitCols,
+                 std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
+                                      is_column_alias<ExplicitCols>,
+                                      std::is_member_pointer<ExplicitCols>,
+                                      std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
+                                      std::is_convertible<ExplicitCols, std::string>>...>,
+                                  bool> = true>
+        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
+#endif
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    inline namespace literals {
+        /**
+         *  cte_moniker<'n'> from a numeric literal.
+         *  E.g. 1_ctealias, 2_ctealias
+         */
+        template<char... Chars>
+        [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator""_ctealias() {
+            // numeric monikers are used for automatically assigning implicit aliases to unaliased column expressions,
+            // which start at "1".
+            static_assert(std::array{Chars...}[0] > '0');
+            return internal::cte_moniker<Chars...>{};
+        }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        /**
+         *  cte_moniker<'1'[, ...]> from a string literal.
+         *  E.g. "1"_cte, "2"_cte
+         */
+        template<internal::cstring_literal moniker>
+        [[nodiscard]] consteval auto operator""_cte() {
+            return internal::explode_into<internal::cte_moniker, moniker>(std::make_index_sequence<moniker.size()>{});
+        }
+#endif
+    }
+}
+#endif
+
+// #include "select.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if
+#include <tuple>  //  std::tuple, std::tuple_size
+#include <utility>  //  std::forward, std::move
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../tuple_helper/tuple_traits.h"
+
+// #include "../vocabulary/node_algorithms.h"
+// clause predicates
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../vocabulary/traits/semantic_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    /**
+     *  Subselect object type.
+     */
+    template<class T, class... Args>
+    struct select_t {
+        using return_type = T;
+        using conditions_type = std::tuple<Args...>;
+
+        return_type col;
+        conditions_type conditions;
+        bool highest_level = false;
+    };
+
+    template<class T>
+    constexpr bool is_select_v = polyfill::is_specialization_of<T, select_t>::value;
+
+    template<class Select>
+    constexpr bool is_select_expression_v<Select, std::enable_if_t<is_select_v<Select>>> = true;
+
+    /**
+     *  Checks the relations that only the conditions pack as a whole can answer: how often a clause may
+     *  appear in it, that every argument is a clause at all, and that they are listed in the canonical order.
+     *  Whether a single clause holds an admissible expression is checked by the clause factory that built it.
+     */
+    template<class T>
+    constexpr void validate_select_clauses() {
+        static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
+        static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
+        static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
+        static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
+        static_assert(count_tuple<T, is_any_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
+        static_assert(std::tuple_size<T>::value == count_tuple<T, is_select_clause>::value,
+                      "a query argument must be a FROM, JOIN, WHERE, GROUP BY, WINDOW, ORDER BY or LIMIT clause");
+        static_assert(check_select_clause_order_v<T>,
+                      "SQL clauses must be listed in the canonical order: FROM, JOINs, WHERE, GROUP BY, WINDOW, "
+                      "ORDER BY, LIMIT");
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Public function for subselect query. Is useful in UNION queries.
+     */
+    template<class T, class... Args>
+    constexpr internal::select_t<T, Args...> select(T t, Args... args) {
+        using args_tuple = std::tuple<Args...>;
+        internal::validate_select_clauses<args_tuple>();
+        return {std::move(t), {std::forward<Args>(args)...}};
+    }
+}
+
+// #include "compound_operator.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#include <tuple>  //  std::tuple
+#include <utility>  //  std::forward, std::move
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../functional/is_base_template_of.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::true_type, std::false_type, std::declval
@@ -4980,40 +5393,502 @@ namespace sqlite_orm::internal {
     inline constexpr bool is_base_template_of_v = is_base_template_of<Base, T>::value;
 }
 
-// #include "tuple_helper/tuple_traits.h"
+// #include "../tuple_helper/tuple_iteration.h"
 
-// #include "tuple_helper/tuple_transformer.h"
-
-// #include "tuple_helper/tuple_iteration.h"
-
-// #include "optional_container.h"
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
 
 namespace sqlite_orm::internal {
     /**
-     *  This is a cute class which allows storing something or nothing
-     *  depending on template argument. Useful for optional class members
+     *  Base for UNION, UNION ALL, EXCEPT and INTERSECT
      */
+    template<class... E>
+    struct compound_operator {
+        using expressions_tuple = std::tuple<E...>;
+
+        expressions_tuple compound;
+
+        constexpr compound_operator(expressions_tuple compound) : compound{std::move(compound)} {
+            iterate_tuple(this->compound, [](auto& expression) SQLITE_ORM_STATIC_CALLOP {
+                expression.highest_level = true;
+            });
+        }
+    };
+
     template<class T>
-    struct optional_container {
+    constexpr bool is_compound_operator_v = is_base_template_of<compound_operator, T>::value;
+
+    struct union_base {
+        bool all = false;
+
+        operator std::string() const {
+            if (!this->all) {
+                return "UNION";
+            } else {
+                return "UNION ALL";
+            }
+        }
+    };
+
+    /**
+     *  UNION object type.
+     */
+    template<class... E>
+    struct union_t : public compound_operator<E...>, union_base {
+        using typename compound_operator<E...>::expressions_tuple;
+
+        constexpr union_t(expressions_tuple compound, bool all) :
+            compound_operator<E...>{std::move(compound)}, union_base{all} {}
+    };
+
+    struct except_string {
+        operator std::string() const {
+            return "EXCEPT";
+        }
+    };
+
+    /**
+     *  EXCEPT object type.
+     */
+    template<class... E>
+    struct except_t : compound_operator<E...>, except_string {
+        using super = compound_operator<E...>;
+
+        using super::super;
+    };
+
+    struct intersect_string {
+        operator std::string() const {
+            return "INTERSECT";
+        }
+    };
+    /**
+     *  INTERSECT object type.
+     */
+    template<class... E>
+    struct intersect_t : compound_operator<E...>, intersect_string {
+        using super = compound_operator<E...>;
+
+        using super::super;
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Public function for UNION operator.
+     *  Expressions are subselect objects.
+     *  Look through example in examples/union.cpp
+     */
+    template<class... E>
+    constexpr internal::union_t<E...> union_(E... expressions) {
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
+                      "Compound operators can only be applied to select statements");
+        return {{std::forward<E>(expressions)...}, false};
+    }
+
+    /**
+     *  Public function for UNION ALL operator.
+     *  Expressions are subselect objects.
+     *  Look through example in examples/union.cpp
+     */
+    template<class... E>
+    constexpr internal::union_t<E...> union_all(E... expressions) {
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
+                      "Compound operators can only be applied to select statements");
+        return {{std::forward<E>(expressions)...}, true};
+    }
+
+    /**
+     *  Public function for EXCEPT operator.
+     *  Expressions are subselect objects.
+     *  Look through example in examples/except.cpp
+     */
+    template<class... E>
+    constexpr internal::except_t<E...> except(E... expressions) {
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
+                      "Compound operators can only be applied to select statements");
+        return {{std::forward<E>(expressions)...}};
+    }
+
+    template<class... E>
+    constexpr internal::intersect_t<E...> intersect(E... expressions) {
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
+                      "Compound operators can only be applied to select statements");
+        return {{std::forward<E>(expressions)...}};
+    }
+}
+
+// #include "../vocabulary/node_traits.h"
+
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../vocabulary/traits/semantic_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+    /*
+     *  Turn explicit columns for a CTE into types that the CTE backend understands
+     */
+    template<class T, class SFINAE = void>
+    struct decay_explicit_column {
         using type = T;
+    };
+    template<class T>
+    struct decay_explicit_column<T, match_if<is_column_alias, T>> {
+        using type = alias_holder<T>;
+    };
+    template<class T>
+    struct decay_explicit_column<T, match_if<std::is_convertible, T, std::string>> {
+        using type = std::string;
+    };
+    template<class T>
+    using decay_explicit_column_t = typename decay_explicit_column<T>::type;
 
-        type field;
-
-        template<class L>
-        void apply(const L& l) const {
-            l(this->field);
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /*
+     *  Materialization hint to instruct SQLite to materialize the select statement of a CTE into an ephemeral table as an "optimization fence".
+     */
+    struct materialized_t {
+        constexpr operator std::string_view() const {
+            return "MATERIALIZED";
         }
     };
 
-    template<>
-    struct optional_container<void> {
-        using type = void;
-
-        template<class L>
-        void apply(const L&) const {
-            //..
+    /*
+     *  Materialization hint to instruct SQLite to substitute a CTE's select statement as a subquery subject to optimization.
+     */
+    struct not_materialized_t {
+        constexpr operator std::string_view() const {
+            return "NOT MATERIALIZED";
         }
     };
+
+    template<class T>
+    constexpr bool is_materialization_hint_v =
+        polyfill::disjunction<std::is_same<T, materialized_t>, std::is_same<T, not_materialized_t>>::value;
+#else
+    template<class T>
+    constexpr bool is_materialization_hint_v = false;
+#endif
+
+    /**
+     *  Monikered (aliased) CTE expression.
+     */
+    template<class Moniker, class ExplicitCols, class Hints, class Select>
+    struct common_table_expression {
+        using cte_moniker_type = Moniker;
+        using expression_type = Select;
+        using explicit_colrefs_tuple = ExplicitCols;
+        using hints_tuple = Hints;
+        static constexpr size_t explicit_colref_count = std::tuple_size<ExplicitCols>::value;
+
+        SQLITE_ORM_NOUNIQUEADDRESS hints_tuple hints;
+        explicit_colrefs_tuple explicitColumns;
+        expression_type subselect;
+
+        constexpr common_table_expression(explicit_colrefs_tuple explicitColumns, expression_type subselect) :
+            explicitColumns{std::move(explicitColumns)}, subselect{std::move(subselect)} {
+            this->subselect.highest_level = true;
+        }
+    };
+
+    template<class T>
+    constexpr bool is_cte_binding_v = polyfill::is_specialization_of<T, common_table_expression>::value;
+
+    template<class... CTEs>
+    using common_table_expressions = std::tuple<CTEs...>;
+
+    template<typename Moniker, class ExplicitCols>
+    struct cte_builder {
+        ExplicitCols _explicitColumns;
+
+#if SQLITE_VERSION_NUMBER >= 3035000 && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
+        template<auto... hints, class Select, satisfies<is_select, Select> = true>
+        constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, Select>
+        as(Select sel) && {
+            return {std::move(_explicitColumns), std::move(sel)};
+        }
+
+        template<auto... hints, class Compound, satisfies<is_compound_operator, Compound> = true>
+        constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, select_t<Compound>>
+        as(Compound sel) && {
+            return {std::move(_explicitColumns), {std::move(sel)}};
+        }
+#else
+        template<class Select, satisfies<is_select, Select> = true>
+        constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, Select> as(Select sel) && {
+            return {std::move(_explicitColumns), std::move(sel)};
+        }
+
+        template<class Compound, satisfies<is_compound_operator, Compound> = true>
+        constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, select_t<Compound>> as(Compound sel) && {
+            return {std::move(_explicitColumns), {std::move(sel)}};
+        }
+#endif
+    };
+
+    /**
+     *  WITH object type - expression with prepended CTEs.
+     */
+    template<class E, class... CTEs>
+    struct with_t {
+        using cte_type = common_table_expressions<CTEs...>;
+        using expression_type = E;
+
+        bool recursiveIndicated;
+        cte_type cte;
+        expression_type expression;
+
+        with_t(bool recursiveIndicated, cte_type cte, expression_type expression) :
+            recursiveIndicated{recursiveIndicated}, cte{std::move(cte)}, expression{std::move(expression)} {
+            if constexpr (is_select_v<expression_type>) {
+                this->expression.highest_level = true;
+            }
+        }
+    };
+
+    template<class T>
+    constexpr bool is_with_clause_v = polyfill::is_specialization_of<T, with_t>::value;
+#else
+    template<class T>
+    constexpr bool is_cte_binding_v = false;
+
+    template<class T>
+    constexpr bool is_materialization_hint_v = false;
+
+    template<class T>
+    constexpr bool is_with_clause_v = false;
+#endif
+
+    template<class With>
+    constexpr bool is_select_expression_v<
+        With,
+        std::enable_if_t<polyfill::conjunction_v<is_with_clause<With>, is_select<expression_type_t<With>>>>> = true;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if SQLITE_VERSION_NUMBER >= 3035003
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /*
+     *  Materialization hint to instruct SQLite to materialize the select statement of a CTE into an ephemeral table as an "optimization fence".
+     *
+     *  Example:
+     *  1_ctealias().as<materialized()>(select(1));
+     */
+    consteval internal::materialized_t materialized() {
+        return {};
+    }
+
+    /*
+     *  Materialization hint to instruct SQLite to substitute a CTE's select statement as a subquery subject to optimization.
+     *
+     *  Example:
+     *  1_ctealias().as<not_materialized()>(select(1));
+     */
+    consteval internal::not_materialized_t not_materialized() {
+        return {};
+    }
+#endif
+#endif
+
+    /**
+     *  Introduce the construction of a common table expression using the specified moniker.
+     *
+     *  The list of explicit columns is optional;
+     *  if provided the number of columns must match the number of columns of the subselect.
+     *  The column names will be merged with the subselect:
+     *  1. column names of subselect
+     *  2. explicit columns
+     *  3. fill in empty column names with column index
+     *
+     *  Example:
+     *  using cte_1 = decltype(1_ctealias);
+     *  cte<cte_1>()(select(&Object::id));
+     *  cte<cte_1>(&Object::name)(select("object"));
+     */
+    template<class Moniker,
+             class... ExplicitCols,
+             std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
+                                  internal::is_column_alias<ExplicitCols>,
+                                  std::is_member_pointer<ExplicitCols>,
+                                  internal::is_column<ExplicitCols>,
+                                  std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
+                                  std::is_convertible<ExplicitCols, std::string>>...>,
+                              bool> = true>
+    constexpr auto cte(ExplicitCols... explicitColumns) {
+        using namespace ::sqlite_orm::internal;
+        static_assert(is_cte_moniker_v<Moniker>, "Moniker must be a CTE moniker");
+        static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
+                      "Numeric column aliases are reserved for referencing columns locally within a single CTE");
+
+        using builder_type =
+            cte_builder<Moniker, transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
+        return builder_type{{std::move(explicitColumns)...}};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_cte_moniker auto moniker, class... ExplicitCols>
+        requires ((internal::is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
+                   internal::is_column_v<ExplicitCols> ||
+                   std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
+                   std::convertible_to<ExplicitCols, std::string>) &&
+                  ...)
+    constexpr auto cte(ExplicitCols... explicitColumns) {
+        using namespace ::sqlite_orm::internal;
+        static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
+                      "Numeric column aliases are reserved for referencing columns locally within a single CTE");
+
+        using builder_type = cte_builder<std::remove_const_t<decltype(moniker)>,
+                                         transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
+        return builder_type{{std::move(explicitColumns)...}};
+    }
+#endif
+
+    /**
+     *  With-clause for a tuple of ordinary CTEs.
+     *
+     *  Despite the missing RECURSIVE keyword, the CTEs can be recursive.
+     */
+    template<class E, class... CTEs, internal::satisfies_not<internal::is_compound_operator, E> = true>
+    internal::with_t<E, CTEs...> with(internal::common_table_expressions<CTEs...> ctes, E expression) {
+        return {false, std::move(ctes), std::move(expression)};
+    }
+
+    /**
+     *  With-clause for a tuple of ordinary CTEs.
+     *
+     *  Despite the missing RECURSIVE keyword, the CTEs can be recursive.
+     */
+    template<class Compound, class... CTEs, internal::satisfies<internal::is_compound_operator, Compound> = true>
+    internal::with_t<internal::select_t<Compound>, CTEs...> with(internal::common_table_expressions<CTEs...> ctes,
+                                                                 Compound sel) {
+        return {false, std::move(ctes), sqlite_orm::select(std::move(sel))};
+    }
+
+    /**
+     *  With-clause for a single ordinary CTE.
+     *
+     *  Despite the missing `RECURSIVE` keyword, the CTE can be recursive.
+     *
+     *  Example:
+     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
+     *  with(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
+     */
+    template<class E,
+             class CTE,
+             internal::satisfies<internal::is_cte_binding, CTE> = true,
+             internal::satisfies_not<internal::is_compound_operator, E> = true>
+    internal::with_t<E, CTE> with(CTE cte, E expression) {
+        return {false, {std::move(cte)}, std::move(expression)};
+    }
+
+    /**
+     *  With-clause for a single ordinary CTE.
+     *
+     *  Despite the missing `RECURSIVE` keyword, the CTE can be recursive.
+     *
+     *  Example:
+     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
+     *  with(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
+     */
+    template<class Compound,
+             class CTE,
+             internal::satisfies<internal::is_cte_binding, CTE> = true,
+             internal::satisfies<internal::is_compound_operator, Compound> = true>
+    internal::with_t<internal::select_t<Compound>, CTE> with(CTE cte, Compound sel) {
+        return {false, {std::move(cte)}, sqlite_orm::select(std::move(sel))};
+    }
+
+    /**
+     *  With-clause for a tuple of potentially recursive CTEs.
+     *
+     *  @note The use of RECURSIVE does not force common table expressions to be recursive.
+     */
+    template<class E, class... CTEs, internal::satisfies_not<internal::is_compound_operator, E> = true>
+    internal::with_t<E, CTEs...> with_recursive(internal::common_table_expressions<CTEs...> ctes, E expression) {
+        return {true, std::move(ctes), std::move(expression)};
+    }
+
+    /**
+     *  With-clause for a tuple of potentially recursive CTEs.
+     *
+     *  @note The use of RECURSIVE does not force common table expressions to be recursive.
+     */
+    template<class Compound, class... CTEs, internal::satisfies<internal::is_compound_operator, Compound> = true>
+    internal::with_t<internal::select_t<Compound>, CTEs...>
+    with_recursive(internal::common_table_expressions<CTEs...> ctes, Compound sel) {
+        return {true, std::move(ctes), sqlite_orm::select(std::move(sel))};
+    }
+
+    /**
+     *  With-clause for a single potentially recursive CTE.
+     *
+     *  @note The use of RECURSIVE does not force common table expressions to be recursive.
+     *
+     *  Example:
+     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
+     *  with_recursive(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
+     */
+    template<class E,
+             class CTE,
+             internal::satisfies<internal::is_cte_binding, CTE> = true,
+             internal::satisfies_not<internal::is_compound_operator, E> = true>
+    internal::with_t<E, CTE> with_recursive(CTE cte, E expression) {
+        return {true, {std::move(cte)}, std::move(expression)};
+    }
+
+    /**
+     *  With-clause for a single potentially recursive CTE.
+     *
+     *  @note The use of RECURSIVE does not force common table expressions to be recursive.
+     *
+     *  Example:
+     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
+     *  with_recursive(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
+     */
+    template<class Compound,
+             class CTE,
+             internal::satisfies<internal::is_cte_binding, CTE> = true,
+             internal::satisfies<internal::is_compound_operator, Compound> = true>
+    internal::with_t<internal::select_t<Compound>, CTE> with_recursive(CTE cte, Compound sel) {
+        return {true, {std::move(cte)}, sqlite_orm::select(std::move(sel))};
+    }
+#endif
+}
+
+// Implementation of cte_moniker's call operator which depends on `cte<>()`
+namespace sqlite_orm::internal {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<char A, char... X>
+    template<class... ExplicitCols>
+        requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
+                   std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
+                   std::convertible_to<ExplicitCols, std::string>) &&
+                  ...)
+    constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
+        return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
+    }
+#else
+    template<char A, char... X>
+    template<class... ExplicitCols,
+             std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
+                                  is_column_alias<ExplicitCols>,
+                                  std::is_member_pointer<ExplicitCols>,
+                                  std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
+                                  std::is_convertible<ExplicitCols, std::string>>...>,
+                              bool>>
+    constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
+        return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
+    }
+#endif
+#endif
 }
 
 // #include "core_functions.h"
@@ -5113,6 +5988,34 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 // string_from_collate_argument
 // #include "optional_container.h"
+
+namespace sqlite_orm::internal {
+    /**
+     *  This is a cute class which allows storing something or nothing
+     *  depending on template argument. Useful for optional class members
+     */
+    template<class T>
+    struct optional_container {
+        using type = T;
+
+        type field;
+
+        template<class L>
+        void apply(const L& l) const {
+            l(this->field);
+        }
+    };
+
+    template<>
+    struct optional_container<void> {
+        using type = void;
+
+        template<class L>
+        void apply(const L&) const {
+            //..
+        }
+    };
+}
 
 // #include "serializer_context.h"
 
@@ -9293,892 +10196,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-// #include "alias_traits.h"
-
-// #include "cte_moniker.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-#include <concepts>
-#include <utility>  //  std::make_index_sequence
-#endif
-#include <array>  //  std::array
-#include <type_traits>  //  std::enable_if, std::is_member_pointer, std::is_same, std::is_convertible
-#include <tuple>  //  std::ignore
-#include <string>
-#endif
-#endif
-
-// #include "functional/cstring_literal.h"
-
-// #include "alias.h"
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-namespace sqlite_orm::internal {
-    /** 
-     *  A special record set alias that is both, a storage lookup type (mapping type) and an alias.
-     */
-    template<char A, char... X>
-    struct cte_moniker
-        : recordset_alias<cte_moniker<A, X...> /* refer to self, since a moniker is both, an alias and a mapped type */,
-                          A,
-                          X...> {
-        /** 
-         *  Introduce the construction of a common table expression using this moniker.
-         *  
-         *  The list of explicit columns is optional;
-         *  if provided the number of columns must match the number of columns of the subselect.
-         *  The column names will be merged with the subselect:
-         *  1. column names of subselect
-         *  2. explicit columns
-         *  3. fill in empty column names with column index
-         *  
-         *  Example:
-         *  1_ctealias()(select(&Object::id));
-         *  1_ctealias(&Object::name)(select("object"));
-         *  
-         *  @return A `cte_builder` instance.
-         *  @note (internal): Defined in select_constraints.h in order to keep this member function in the same place as the named factory function `cte()`,
-         *  and to keep the actual creation of the builder in one place.
-         */
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        template<class... ExplicitCols>
-            requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
-                       std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
-                       std::convertible_to<ExplicitCols, std::string>) &&
-                      ...)
-        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
-#else
-        template<class... ExplicitCols,
-                 std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
-                                      is_column_alias<ExplicitCols>,
-                                      std::is_member_pointer<ExplicitCols>,
-                                      std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
-                                      std::is_convertible<ExplicitCols, std::string>>...>,
-                                  bool> = true>
-        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
-#endif
-    };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    inline namespace literals {
-        /**
-         *  cte_moniker<'n'> from a numeric literal.
-         *  E.g. 1_ctealias, 2_ctealias
-         */
-        template<char... Chars>
-        [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator""_ctealias() {
-            // numeric monikers are used for automatically assigning implicit aliases to unaliased column expressions,
-            // which start at "1".
-            static_assert(std::array{Chars...}[0] > '0');
-            return internal::cte_moniker<Chars...>{};
-        }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        /**
-         *  cte_moniker<'1'[, ...]> from a string literal.
-         *  E.g. "1"_cte, "2"_cte
-         */
-        template<internal::cstring_literal moniker>
-        [[nodiscard]] consteval auto operator""_cte() {
-            return internal::explode_into<internal::cte_moniker, moniker>(std::make_index_sequence<moniker.size()>{});
-        }
-#endif
-    }
-}
-#endif
-
-// #include "vocabulary/node_traits.h"
-
-// #include "vocabulary/node_algorithms.h"
-
-// #include "vocabulary/traits/grammar_traits_fwd.h"
-// Included to specialize traits
-// #include "vocabulary/traits/structural_traits_fwd.h"
-// Included to specialize traits
-// #include "vocabulary/traits/semantic_traits_fwd.h"
-// Included to specialize traits
-
-namespace sqlite_orm::internal {
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    template<class T>
-    struct as_optional_t {
-        using expression_type = T;
-
-        expression_type expression;
-    };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
-
-    struct distinct_string {
-        operator std::string() const {
-            return "DISTINCT";
-        }
-    };
-
-    /**
-     *  DISTINCT generic container.
-     */
-    template<class T>
-    struct distinct_t : distinct_string {
-        using expression_type = T;
-
-        expression_type expression;
-
-        distinct_t(expression_type expression) : expression(std::move(expression)) {}
-    };
-
-    struct all_string {
-        operator std::string() const {
-            return "ALL";
-        }
-    };
-
-    /**
-     *  ALL generic container.
-     */
-    template<class T>
-    struct all_t : all_string {
-        using expression_type = T;
-
-        expression_type expression;
-
-        all_t(expression_type expression) : expression(std::move(expression)) {}
-    };
-
-    /**
-     *  Whether a type represents a keyword for a result set modifier (as part of a simple select expression).
-     */
-    template<class T>
-    constexpr bool is_rowset_deduplicator_v = polyfill::disjunction<polyfill::is_specialization_of<T, distinct_t>,
-                                                                    polyfill::is_specialization_of<T, all_t>>::value;
-
-    template<class... Args>
-    struct columns_t {
-        using columns_type = std::tuple<Args...>;
-
-        columns_type columns;
-
-        static constexpr int count = std::tuple_size<columns_type>::value;
-    };
-
-    template<class T>
-    constexpr bool is_columns_v = polyfill::is_specialization_of<T, columns_t>::value;
-
-    /*
-     *  Captures the type of an aggregate/structure/object and column expressions, such that
-     *  `T` can be constructed in-place as part of a result row.
-     *  `T` must be constructible using direct-list-initialization.
-     */
-    template<class T, class... Args>
-    struct struct_t {
-        using columns_type = std::tuple<Args...>;
-
-        columns_type columns;
-
-        static constexpr int count = std::tuple_size<columns_type>::value;
-    };
-
-    template<class T>
-    constexpr bool is_struct_v = polyfill::is_specialization_of<T, struct_t>::value;
-
-    /**
-     *  Subselect object type.
-     */
-    template<class T, class... Args>
-    struct select_t {
-        using return_type = T;
-        using conditions_type = std::tuple<Args...>;
-
-        return_type col;
-        conditions_type conditions;
-        bool highest_level = false;
-    };
-
-    template<class T>
-    constexpr bool is_select_v = polyfill::is_specialization_of<T, select_t>::value;
-
-    template<class Select>
-    constexpr bool is_select_expression_v<Select, std::enable_if_t<is_select_v<Select>>> = true;
-
-    /**
-     *  Base for UNION, UNION ALL, EXCEPT and INTERSECT
-     */
-    template<class... E>
-    struct compound_operator {
-        using expressions_tuple = std::tuple<E...>;
-
-        expressions_tuple compound;
-
-        constexpr compound_operator(expressions_tuple compound) : compound{std::move(compound)} {
-            iterate_tuple(this->compound, [](auto& expression) SQLITE_ORM_STATIC_CALLOP {
-                expression.highest_level = true;
-            });
-        }
-    };
-
-    template<class T>
-    constexpr bool is_compound_operator_v = is_base_template_of<compound_operator, T>::value;
-
-    struct union_base {
-        bool all = false;
-
-        operator std::string() const {
-            if (!this->all) {
-                return "UNION";
-            } else {
-                return "UNION ALL";
-            }
-        }
-    };
-
-    /**
-     *  UNION object type.
-     */
-    template<class... E>
-    struct union_t : public compound_operator<E...>, union_base {
-        using typename compound_operator<E...>::expressions_tuple;
-
-        constexpr union_t(expressions_tuple compound, bool all) :
-            compound_operator<E...>{std::move(compound)}, union_base{all} {}
-    };
-
-    struct except_string {
-        operator std::string() const {
-            return "EXCEPT";
-        }
-    };
-
-    /**
-     *  EXCEPT object type.
-     */
-    template<class... E>
-    struct except_t : compound_operator<E...>, except_string {
-        using super = compound_operator<E...>;
-
-        using super::super;
-    };
-
-    struct intersect_string {
-        operator std::string() const {
-            return "INTERSECT";
-        }
-    };
-    /**
-     *  INTERSECT object type.
-     */
-    template<class... E>
-    struct intersect_t : compound_operator<E...>, intersect_string {
-        using super = compound_operator<E...>;
-
-        using super::super;
-    };
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-    /*
-     *  Turn explicit columns for a CTE into types that the CTE backend understands
-     */
-    template<class T, class SFINAE = void>
-    struct decay_explicit_column {
-        using type = T;
-    };
-    template<class T>
-    struct decay_explicit_column<T, match_if<is_column_alias, T>> {
-        using type = alias_holder<T>;
-    };
-    template<class T>
-    struct decay_explicit_column<T, match_if<std::is_convertible, T, std::string>> {
-        using type = std::string;
-    };
-    template<class T>
-    using decay_explicit_column_t = typename decay_explicit_column<T>::type;
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /*
-     *  Materialization hint to instruct SQLite to materialize the select statement of a CTE into an ephemeral table as an "optimization fence".
-     */
-    struct materialized_t {};
-
-    /*
-     *  Materialization hint to instruct SQLite to substitute a CTE's select statement as a subquery subject to optimization.
-     */
-    struct not_materialized_t {};
-#endif
-
-    /**
-     *  Monikered (aliased) CTE expression.
-     */
-    template<class Moniker, class ExplicitCols, class Hints, class Select>
-    struct common_table_expression {
-        using cte_moniker_type = Moniker;
-        using expression_type = Select;
-        using explicit_colrefs_tuple = ExplicitCols;
-        using hints_tuple = Hints;
-        static constexpr size_t explicit_colref_count = std::tuple_size<ExplicitCols>::value;
-
-        SQLITE_ORM_NOUNIQUEADDRESS hints_tuple hints;
-        explicit_colrefs_tuple explicitColumns;
-        expression_type subselect;
-
-        constexpr common_table_expression(explicit_colrefs_tuple explicitColumns, expression_type subselect) :
-            explicitColumns{std::move(explicitColumns)}, subselect{std::move(subselect)} {
-            this->subselect.highest_level = true;
-        }
-    };
-
-    template<class... CTEs>
-    using common_table_expressions = std::tuple<CTEs...>;
-
-    template<typename Moniker, class ExplicitCols>
-    struct cte_builder {
-        ExplicitCols _explicitColumns;
-
-#if SQLITE_VERSION_NUMBER >= 3035000 && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
-        template<auto... hints, class Select, satisfies<is_select, Select> = true>
-        constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, Select>
-        as(Select sel) && {
-            return {std::move(_explicitColumns), std::move(sel)};
-        }
-
-        template<auto... hints, class Compound, satisfies<is_compound_operator, Compound> = true>
-        constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, select_t<Compound>>
-        as(Compound sel) && {
-            return {std::move(_explicitColumns), {std::move(sel)}};
-        }
-#else
-        template<class Select, satisfies<is_select, Select> = true>
-        constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, Select> as(Select sel) && {
-            return {std::move(_explicitColumns), std::move(sel)};
-        }
-
-        template<class Compound, satisfies<is_compound_operator, Compound> = true>
-        constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, select_t<Compound>> as(Compound sel) && {
-            return {std::move(_explicitColumns), {std::move(sel)}};
-        }
-#endif
-    };
-
-    /**
-     *  WITH object type - expression with prepended CTEs.
-     */
-    template<class E, class... CTEs>
-    struct with_t {
-        using cte_type = common_table_expressions<CTEs...>;
-        using expression_type = E;
-
-        bool recursiveIndicated;
-        cte_type cte;
-        expression_type expression;
-
-        with_t(bool recursiveIndicated, cte_type cte, expression_type expression) :
-            recursiveIndicated{recursiveIndicated}, cte{std::move(cte)}, expression{std::move(expression)} {
-            if constexpr (is_select_v<expression_type>) {
-                this->expression.highest_level = true;
-            }
-        }
-    };
-
-    template<class T>
-    constexpr bool is_with_clause_v = polyfill::is_specialization_of<T, with_t>::value;
-#else
-    template<class T>
-    constexpr bool is_with_clause_v = false;
-#endif
-
-    template<class With>
-    constexpr bool is_select_expression_v<
-        With,
-        std::enable_if_t<polyfill::conjunction_v<is_with_clause<With>, is_select<expression_type_t<With>>>>> = true;
-
-    template<class T>
-    struct asterisk_t {
-        using type = T;
-
-        bool defined_order = false;
-    };
-
-    template<class T>
-    constexpr bool is_asterisk_v = polyfill::is_specialization_of<T, asterisk_t>::value;
-
-    template<class T>
-    struct object_t {
-        using type = T;
-
-        bool defined_order = false;
-    };
-
-    template<class T>
-    constexpr bool is_object_node_v = polyfill::is_specialization_of<T, object_t>::value;
-
-    template<class T>
-    struct then_t {
-        using expression_type = T;
-
-        expression_type expression;
-    };
-
-    template<class R, class T, class E, class... Args>
-    struct simple_case_t {
-        using return_type = R;
-        using case_expression_type = T;
-        using args_type = std::tuple<Args...>;
-        using else_expression_type = E;
-
-        optional_container<case_expression_type> case_expression;
-        args_type args;
-        optional_container<else_expression_type> else_expression;
-    };
-
-    template<class T>
-    constexpr bool
-        is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, simple_case_t>::value>> = true;
-
-    /**
-     *  T is a case expression type
-     *  E is else type (void is ELSE is omitted)
-     *  Args... is a pack of WHEN expressions
-     */
-    template<class R, class T, class E, class... Args>
-    struct simple_case_builder {
-        using return_type = R;
-        using case_expression_type = T;
-        using args_type = std::tuple<Args...>;
-        using else_expression_type = E;
-
-        optional_container<case_expression_type> case_expression;
-        args_type args;
-        optional_container<else_expression_type> else_expression;
-
-        template<class W, class Th>
-        simple_case_builder<R, T, E, Args..., std::pair<W, Th>> when(W w, then_t<Th> t) {
-            using result_args_type = std::tuple<Args..., std::pair<W, Th>>;
-            std::pair<W, Th> newPair{std::move(w), std::move(t.expression)};
-            result_args_type result_args = std::tuple_cat(std::move(this->args), std::make_tuple(newPair));
-            std::get<std::tuple_size<result_args_type>::value - 1>(result_args) = std::move(newPair);
-            return {std::move(this->case_expression), std::move(result_args), std::move(this->else_expression)};
-        }
-
-        simple_case_t<R, T, E, Args...> end() {
-            return {std::move(this->case_expression), std::move(args), std::move(this->else_expression)};
-        }
-
-        template<class El>
-        simple_case_builder<R, T, El, Args...> else_(El el) {
-            return {{std::move(this->case_expression)}, std::move(args), {std::move(el)}};
-        }
-    };
-
-    /**
-     *  Checks the relations that only the conditions pack as a whole can answer: how often a clause may
-     *  appear in it, that every argument is a clause at all, and that they are listed in the canonical order.
-     *  Whether a single clause holds an admissible expression is checked by the clause factory that built it.
-     */
-    template<class T>
-    constexpr void validate_select_clauses() {
-        static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
-        static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
-        static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
-        static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
-        static_assert(count_tuple<T, is_any_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
-        static_assert(std::tuple_size<T>::value == count_tuple<T, is_select_clause>::value,
-                      "a query argument must be a FROM, JOIN, WHERE, GROUP BY, WINDOW, ORDER BY or LIMIT clause");
-        static_assert(check_select_clause_order_v<T>,
-                      "SQL clauses must be listed in the canonical order: FROM, JOINs, WHERE, GROUP BY, WINDOW, "
-                      "ORDER BY, LIMIT");
-    }
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    template<class T>
-    internal::as_optional_t<T> as_optional(T value) {
-        return {std::move(value)};
-    }
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
-
-    template<class T>
-    internal::then_t<T> then(T t) {
-        return {std::move(t)};
-    }
-
-    template<class R, class T>
-    internal::simple_case_builder<R, T, void> case_(T t) {
-        return {{std::move(t)}};
-    }
-
-    template<class R>
-    internal::simple_case_builder<R, void, void> case_() {
-        return {};
-    }
-
-    template<class T>
-    internal::distinct_t<T> distinct(T t) {
-        return {std::move(t)};
-    }
-
-    template<class T>
-    internal::all_t<T> all(T t) {
-        return {std::move(t)};
-    }
-
-    /*
-     *  Combine multiple columns in a tuple.
-     */
-    template<class... Args>
-    constexpr internal::columns_t<Args...> columns(Args... args) {
-        static_assert(internal::count_tuple<std::tuple<Args...>, internal::is_select_clause>::value == 0,
-                      "a statement clause cannot be used as a column expression");
-        return {{std::forward<Args>(args)...}};
-    }
-
-    /*
-     *  Construct an unmapped structure ad-hoc from multiple columns.
-     *  `T` must be constructible from the column results using direct-list-initialization.
-     */
-    template<class T, class... Args>
-    constexpr internal::struct_t<T, Args...> struct_(Args... args) {
-        static_assert(internal::count_tuple<std::tuple<Args...>, internal::is_select_clause>::value == 0,
-                      "a statement clause cannot be used as a column expression");
-        return {{std::forward<Args>(args)...}};
-    }
-
-    /**
-     *  Public function for subselect query. Is useful in UNION queries.
-     */
-    template<class T, class... Args>
-    constexpr internal::select_t<T, Args...> select(T t, Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        internal::validate_select_clauses<args_tuple>();
-        return {std::move(t), {std::forward<Args>(args)...}};
-    }
-
-    /**
-     *  Public function for UNION operator.
-     *  Expressions are subselect objects.
-     *  Look through example in examples/union.cpp
-     */
-    template<class... E>
-    constexpr internal::union_t<E...> union_(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
-        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
-                      "Compound operators can only be applied to select statements");
-        return {{std::forward<E>(expressions)...}, false};
-    }
-
-    /**
-     *  Public function for UNION ALL operator.
-     *  Expressions are subselect objects.
-     *  Look through example in examples/union.cpp
-     */
-    template<class... E>
-    constexpr internal::union_t<E...> union_all(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
-        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
-                      "Compound operators can only be applied to select statements");
-        return {{std::forward<E>(expressions)...}, true};
-    }
-
-    /**
-     *  Public function for EXCEPT operator.
-     *  Expressions are subselect objects.
-     *  Look through example in examples/except.cpp
-     */
-    template<class... E>
-    constexpr internal::except_t<E...> except(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
-        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
-                      "Compound operators can only be applied to select statements");
-        return {{std::forward<E>(expressions)...}};
-    }
-
-    template<class... E>
-    constexpr internal::intersect_t<E...> intersect(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
-        static_assert((polyfill::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
-                      "Compound operators can only be applied to select statements");
-        return {{std::forward<E>(expressions)...}};
-    }
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#if SQLITE_VERSION_NUMBER >= 3035003
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /*
-     *  Materialization hint to instruct SQLite to materialize the select statement of a CTE into an ephemeral table as an "optimization fence".
-     *  
-     *  Example:
-     *  1_ctealias().as<materialized()>(select(1));
-     */
-    consteval internal::materialized_t materialized() {
-        return {};
-    }
-
-    /*
-     *  Materialization hint to instruct SQLite to substitute a CTE's select statement as a subquery subject to optimization.
-     *  
-     *  Example:
-     *  1_ctealias().as<not_materialized()>(select(1));
-     */
-    consteval internal::not_materialized_t not_materialized() {
-        return {};
-    }
-#endif
-#endif
-
-    /**
-     *  Introduce the construction of a common table expression using the specified moniker.
-     *  
-     *  The list of explicit columns is optional;
-     *  if provided the number of columns must match the number of columns of the subselect.
-     *  The column names will be merged with the subselect:
-     *  1. column names of subselect
-     *  2. explicit columns
-     *  3. fill in empty column names with column index
-     *  
-     *  Example:
-     *  using cte_1 = decltype(1_ctealias);
-     *  cte<cte_1>()(select(&Object::id));
-     *  cte<cte_1>(&Object::name)(select("object"));
-     */
-    template<class Moniker,
-             class... ExplicitCols,
-             std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
-                                  internal::is_column_alias<ExplicitCols>,
-                                  std::is_member_pointer<ExplicitCols>,
-                                  internal::is_column<ExplicitCols>,
-                                  std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
-                                  std::is_convertible<ExplicitCols, std::string>>...>,
-                              bool> = true>
-    constexpr auto cte(ExplicitCols... explicitColumns) {
-        using namespace ::sqlite_orm::internal;
-        static_assert(is_cte_moniker_v<Moniker>, "Moniker must be a CTE moniker");
-        static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
-                      "Numeric column aliases are reserved for referencing columns locally within a single CTE");
-
-        using builder_type =
-            cte_builder<Moniker, transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
-        return builder_type{{std::move(explicitColumns)...}};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_cte_moniker auto moniker, class... ExplicitCols>
-        requires ((internal::is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
-                   internal::is_column_v<ExplicitCols> ||
-                   std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
-                   std::convertible_to<ExplicitCols, std::string>) &&
-                  ...)
-    constexpr auto cte(ExplicitCols... explicitColumns) {
-        using namespace ::sqlite_orm::internal;
-        static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
-                      "Numeric column aliases are reserved for referencing columns locally within a single CTE");
-
-        using builder_type = cte_builder<std::remove_const_t<decltype(moniker)>,
-                                         transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
-        return builder_type{{std::move(explicitColumns)...}};
-    }
-#endif
-
-    /** 
-     *  With-clause for a tuple of ordinary CTEs.
-     *  
-     *  Despite the missing RECURSIVE keyword, the CTEs can be recursive.
-     */
-    template<class E, class... CTEs, internal::satisfies_not<internal::is_compound_operator, E> = true>
-    internal::with_t<E, CTEs...> with(internal::common_table_expressions<CTEs...> ctes, E expression) {
-        return {false, std::move(ctes), std::move(expression)};
-    }
-
-    /** 
-     *  With-clause for a tuple of ordinary CTEs.
-     *  
-     *  Despite the missing RECURSIVE keyword, the CTEs can be recursive.
-     */
-    template<class Compound, class... CTEs, internal::satisfies<internal::is_compound_operator, Compound> = true>
-    internal::with_t<internal::select_t<Compound>, CTEs...> with(internal::common_table_expressions<CTEs...> ctes,
-                                                                 Compound sel) {
-        return {false, std::move(ctes), sqlite_orm::select(std::move(sel))};
-    }
-
-    /** 
-     *  With-clause for a single ordinary CTE.
-     *  
-     *  Despite the missing `RECURSIVE` keyword, the CTE can be recursive.
-     *  
-     *  Example:
-     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
-     *  with(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
-     */
-    template<class E,
-             class CTE,
-             internal::satisfies_is_specialization_of<CTE, internal::common_table_expression> = true,
-             internal::satisfies_not<internal::is_compound_operator, E> = true>
-    internal::with_t<E, CTE> with(CTE cte, E expression) {
-        return {false, {std::move(cte)}, std::move(expression)};
-    }
-
-    /** 
-     *  With-clause for a single ordinary CTE.
-     *  
-     *  Despite the missing `RECURSIVE` keyword, the CTE can be recursive.
-     *  
-     *  Example:
-     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
-     *  with(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
-     */
-    template<class Compound,
-             class CTE,
-             internal::satisfies_is_specialization_of<CTE, internal::common_table_expression> = true,
-             internal::satisfies<internal::is_compound_operator, Compound> = true>
-    internal::with_t<internal::select_t<Compound>, CTE> with(CTE cte, Compound sel) {
-        return {false, {std::move(cte)}, sqlite_orm::select(std::move(sel))};
-    }
-
-    /** 
-     *  With-clause for a tuple of potentially recursive CTEs.
-     *  
-     *  @note The use of RECURSIVE does not force common table expressions to be recursive.
-     */
-    template<class E, class... CTEs, internal::satisfies_not<internal::is_compound_operator, E> = true>
-    internal::with_t<E, CTEs...> with_recursive(internal::common_table_expressions<CTEs...> ctes, E expression) {
-        return {true, std::move(ctes), std::move(expression)};
-    }
-
-    /** 
-     *  With-clause for a tuple of potentially recursive CTEs.
-     *  
-     *  @note The use of RECURSIVE does not force common table expressions to be recursive.
-     */
-    template<class Compound, class... CTEs, internal::satisfies<internal::is_compound_operator, Compound> = true>
-    internal::with_t<internal::select_t<Compound>, CTEs...>
-    with_recursive(internal::common_table_expressions<CTEs...> ctes, Compound sel) {
-        return {true, std::move(ctes), sqlite_orm::select(std::move(sel))};
-    }
-
-    /** 
-     *  With-clause for a single potentially recursive CTE.
-     *  
-     *  @note The use of RECURSIVE does not force common table expressions to be recursive.
-     *  
-     *  Example:
-     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
-     *  with_recursive(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
-     */
-    template<class E,
-             class CTE,
-             internal::satisfies_is_specialization_of<CTE, internal::common_table_expression> = true,
-             internal::satisfies_not<internal::is_compound_operator, E> = true>
-    internal::with_t<E, CTE> with_recursive(CTE cte, E expression) {
-        return {true, {std::move(cte)}, std::move(expression)};
-    }
-
-    /** 
-     *  With-clause for a single potentially recursive CTE.
-     *  
-     *  @note The use of RECURSIVE does not force common table expressions to be recursive.
-     *  
-     *  Example:
-     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
-     *  with_recursive(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
-     */
-    template<class Compound,
-             class CTE,
-             internal::satisfies_is_specialization_of<CTE, internal::common_table_expression> = true,
-             internal::satisfies<internal::is_compound_operator, Compound> = true>
-    internal::with_t<internal::select_t<Compound>, CTE> with_recursive(CTE cte, Compound sel) {
-        return {true, {std::move(cte)}, sqlite_orm::select(std::move(sel))};
-    }
-#endif
-
-    /**
-     *  `SELECT * FROM T` expression that fetches results as tuples.
-     *  T is a type mapped to a storage, or an alias of it.
-     *  The `definedOrder` parameter denotes the expected order of result columns.
-     *  The default is the implicit order as returned by SQLite, which may differ from the defined order
-     *  if the schema of a table has been changed.
-     *  By specifying the defined order, the columns are written out in the resulting select SQL string.
-     *  
-     *  In pseudo code:
-     *  select(asterisk<User>(false)) -> SELECT * from User
-     *  select(asterisk<User>(true))  -> SELECT id, name from User
-     *  
-     *  Example: auto rows = storage.select(asterisk<User>());
-     *  // decltype(rows) is std::vector<std::tuple<...all columns in implicitly stored order...>>
-     *  Example: auto rows = storage.select(asterisk<User>(true));
-     *  // decltype(rows) is std::vector<std::tuple<...all columns in declared make_table order...>>
-     *  
-     *  If you need to fetch results as objects instead of tuples please use `object<T>()`.
-     */
-    template<class T>
-    constexpr internal::asterisk_t<T> asterisk(bool definedOrder = false) {
-        return {definedOrder};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Example:
-     *  constexpr orm_table_alias auto m = "m"_alias.for_<Employee>();
-     *  auto reportingTo = 
-     *  storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == &Employee::employeeId)));
-     */
-    template<orm_refers_to_recordset auto recordset>
-    constexpr auto asterisk(bool definedOrder = false) {
-        return asterisk<internal::auto_decay_table_ref_t<recordset>>(definedOrder);
-    }
-#endif
-
-    /**
-     *  `SELECT * FROM T` expression that fetches results as objects of type T.
-     *  T is a type mapped to a storage, or an alias of it.
-     *  
-     *  Example: auto rows = storage.select(object<User>());
-     *  // decltype(rows) is std::vector<User>, where the User objects are constructed from columns in implicitly stored order
-     *  Example: auto rows = storage.select(object<User>(true));
-     *  // decltype(rows) is std::vector<User>, where the User objects are constructed from columns in declared make_table order
-     *  
-     *  If you need to fetch results as tuples instead of objects please use `asterisk<T>()`.
-     */
-    template<class T>
-    constexpr internal::object_t<T> object(bool definedOrder = false) {
-        return {definedOrder};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_refers_to_table auto als>
-    constexpr auto object(bool definedOrder = false) {
-        return object<internal::auto_decay_table_ref_t<als>>(definedOrder);
-    }
-#endif
-}
-
-// Implementation of cte_moniker's call operator which depends on `cte<>()`
-namespace sqlite_orm::internal {
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<char A, char... X>
-    template<class... ExplicitCols>
-        requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
-                   std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
-                   std::convertible_to<ExplicitCols, std::string>) &&
-                  ...)
-    constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
-        return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
-    }
-#else
-    template<char A, char... X>
-    template<class... ExplicitCols,
-             std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
-                                  is_column_alias<ExplicitCols>,
-                                  std::is_member_pointer<ExplicitCols>,
-                                  std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
-                                  std::is_convertible<ExplicitCols, std::string>>...>,
-                              bool>>
-    constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
-        return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
-    }
-#endif
-}
-
-// #include "core_functions.h"
-
 // #include "conditions.h"
 
 // #include "statement_binder.h"
@@ -11282,7 +11299,107 @@ namespace sqlite_orm::internal {
 
 // #include "core_functions.h"
 
-// #include "select_constraints.h"
+// #include "ast/result_columns.h"
+
+// #include "ast/case_expression.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if
+#include <tuple>  //  std::tuple, std::get, std::tuple_cat, std::tuple_size, std::make_tuple
+#include <utility>  //  std::move, std::pair
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../optional_container.h"
+
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../vocabulary/traits/operand_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    template<class T>
+    struct then_t {
+        using expression_type = T;
+
+        expression_type expression;
+    };
+
+    template<class R, class T, class E, class... Args>
+    struct simple_case_t {
+        using return_type = R;
+        using case_expression_type = T;
+        using args_type = std::tuple<Args...>;
+        using else_expression_type = E;
+
+        optional_container<case_expression_type> case_expression;
+        args_type args;
+        optional_container<else_expression_type> else_expression;
+    };
+
+    template<class T>
+    constexpr bool is_case_expression_v = polyfill::is_specialization_of<T, simple_case_t>::value;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_case_expression_v<T>>> = true;
+
+    /**
+     *  T is a case expression type
+     *  E is else type (void is ELSE is omitted)
+     *  Args... is a pack of WHEN expressions
+     */
+    template<class R, class T, class E, class... Args>
+    struct simple_case_builder {
+        using return_type = R;
+        using case_expression_type = T;
+        using args_type = std::tuple<Args...>;
+        using else_expression_type = E;
+
+        optional_container<case_expression_type> case_expression;
+        args_type args;
+        optional_container<else_expression_type> else_expression;
+
+        template<class W, class Th>
+        simple_case_builder<R, T, E, Args..., std::pair<W, Th>> when(W w, then_t<Th> t) {
+            using result_args_type = std::tuple<Args..., std::pair<W, Th>>;
+            std::pair<W, Th> newPair{std::move(w), std::move(t.expression)};
+            result_args_type result_args = std::tuple_cat(std::move(this->args), std::make_tuple(newPair));
+            std::get<std::tuple_size<result_args_type>::value - 1>(result_args) = std::move(newPair);
+            return {std::move(this->case_expression), std::move(result_args), std::move(this->else_expression)};
+        }
+
+        simple_case_t<R, T, E, Args...> end() {
+            return {std::move(this->case_expression), std::move(args), std::move(this->else_expression)};
+        }
+
+        template<class El>
+        simple_case_builder<R, T, El, Args...> else_(El el) {
+            return {{std::move(this->case_expression)}, std::move(args), {std::move(el)}};
+        }
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    template<class T>
+    internal::then_t<T> then(T t) {
+        return {std::move(t)};
+    }
+
+    template<class R, class T>
+    internal::simple_case_builder<R, T, void> case_(T t) {
+        return {{std::move(t)}};
+    }
+
+    template<class R>
+    internal::simple_case_builder<R, void, void> case_() {
+        return {};
+    }
+}
+
+// #include "ast/select.h"
+
+// #include "ast/compound_operator.h"
 
 // #include "operators.h"
 
@@ -13385,10 +13502,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, distinct_t<T>, void> : column_result_t<DBOs, T> {};
-
-    template<class DBOs, class T>
-    struct column_result_t<DBOs, all_t<T>, void> : column_result_t<DBOs, T> {};
+    struct column_result_t<DBOs, T, match_if<is_rowset_deduplicator, T>>
+        : column_result_t<DBOs, typename T::expression_type> {};
 
     template<class DBOs, class L, class R>
     struct column_result_t<DBOs, conc_t<L, R>, void> {
@@ -15184,8 +15299,6 @@ namespace sqlite_orm::internal {
 
 // #include "alias.h"
 
-// #include "select_constraints.h"
-
 // #include "operators.h"
 
 // #include "core_functions.h"
@@ -15673,8 +15786,10 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "select_constraints.h"
+// #include "ast/result_columns.h"
 
+// #include "ast/select.h"
+// validate_select_clauses
 // #include "values.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -17099,17 +17214,15 @@ namespace sqlite_orm::internal {
         iterator(t, lambda);
     }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct ast_iterator<as_optional_t<T>, void> {
-        using node_type = as_optional_t<T>;
+    struct ast_iterator<T, match_if<is_as_optional, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
             iterate_ast(node.expression, lambda);
         }
     };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class T>
     struct ast_iterator<std::reference_wrapper<T>, void> {
@@ -17294,7 +17407,7 @@ namespace sqlite_orm::internal {
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     template<class CTE>
-    struct ast_iterator<CTE, match_specialization_of<CTE, common_table_expression>> {
+    struct ast_iterator<CTE, match_if<is_cte_binding, CTE>> {
         using node_type = CTE;
 
         template<class L>
@@ -17621,9 +17734,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class R, class T, class E, class... Args>
-    struct ast_iterator<simple_case_t<R, T, E, Args...>, void> {
-        using node_type = simple_case_t<R, T, E, Args...>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_case_expression, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& c, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -22978,10 +23091,9 @@ namespace sqlite_orm::internal {
             return ss.str();
         }
     };
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct statement_serializer<as_optional_t<T>, void> {
-        using statement_type = as_optional_t<T>;
+    struct statement_serializer<T, match_if<is_as_optional, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -22989,7 +23101,6 @@ namespace sqlite_orm::internal {
             return serialize(statement.expression, context);
         }
     };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     struct statement_serializer<std::reference_wrapper<T>, void> {
         using statement_type = std::reference_wrapper<T>;
@@ -23306,8 +23417,8 @@ namespace sqlite_orm::internal {
     // note (internal): this is a serializer for the deduplicator in an aggregate function;
     // the result set deduplicators in a simple-select are treated by the select serializer.
     template<class T>
-    struct statement_serializer<distinct_t<T>, void> {
-        using statement_type = distinct_t<T>;
+    struct statement_serializer<T, match_if<is_distinct, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
@@ -23340,32 +23451,22 @@ namespace sqlite_orm::internal {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #if SQLITE_VERSION_NUMBER >= 3035003
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<>
-    struct statement_serializer<materialized_t, void> {
-        using statement_type = materialized_t;
+    template<class T>
+    struct statement_serializer<T, match_if<is_materialization_hint, T>> {
+        using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
                                                              const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
-            return "MATERIALIZED";
-        }
-    };
-
-    template<>
-    struct statement_serializer<not_materialized_t, void> {
-        using statement_type = not_materialized_t;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
-                                                             const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
-            return "NOT MATERIALIZED";
+            // note: make use of implicit to-string_view conversion
+            return statement;
         }
     };
 #endif
 #endif
 
     template<class CTE>
-    struct statement_serializer<CTE, match_specialization_of<CTE, common_table_expression>> {
+    struct statement_serializer<CTE, match_if<is_cte_binding, CTE>> {
         using statement_type = CTE;
 
         template<class Ctx>
@@ -23423,9 +23524,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class R, class T, class E, class... Args>
-    struct statement_serializer<simple_case_t<R, T, E, Args...>, void> {
-        using statement_type = simple_case_t<R, T, E, Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_case_expression, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
@@ -24598,10 +24699,10 @@ namespace sqlite_orm::internal {
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
-    template<class T, class... Args>
-    struct statement_serializer<select_t<T, Args...>, void> {
-        using statement_type = select_t<T, Args...>;
-        using return_type = typename statement_type::return_type;
+    template<class Select>
+    struct statement_serializer<Select, match_if<is_select, Select>> {
+        using statement_type = Select;
+        using return_type = return_type_t<statement_type>;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& sel,
@@ -24612,7 +24713,7 @@ namespace sqlite_orm::internal {
             subCtx.use_parentheses = true;
 
             std::stringstream ss;
-            if constexpr (!is_compound_operator_v<T>) {
+            if constexpr (!is_compound_operator_v<return_type>) {
                 if (!sel.highest_level && context.use_parentheses) {
                     ss << "(";
                 }
@@ -24646,12 +24747,12 @@ namespace sqlite_orm::internal {
                     tableNames.erase(it);
                 });
 
-                if (!tableNames.empty() && !is_compound_operator<T>::value) {
+                if (!tableNames.empty() && !is_compound_operator<return_type>::value) {
                     ss << " FROM " << streaming_identifiers(tableNames);
                 }
             }
             ss << streaming_conditions_tuple(sel.conditions, context);
-            if constexpr (!is_compound_operator_v<T>) {
+            if constexpr (!is_compound_operator_v<return_type>) {
                 if (!sel.highest_level && context.use_parentheses) {
                     ss << ")";
                 }
@@ -25625,7 +25726,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-// #include "select_constraints.h"
+// #include "ast/result_columns.h"
+
+// #include "ast/select.h"
+
+// #include "ast/cte.h"
 
 // #include "alias.h"
 
@@ -25636,18 +25741,19 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "column_expression.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::decay, std::add_lvalue_reference
-#include <tuple>  //  std::tuple
+#include <type_traits>  //  std::enable_if, std::add_lvalue_reference
 #include <functional>  //  std::reference_wrapper
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "functional/mpl.h"
+
 // #include "type_traits.h"
 
 // #include "tuple_helper/tuple_transformer.h"
 
-// #include "select_constraints.h"
+// #include "ast/result_columns.h"
 
 // #include "alias.h"
 
@@ -25663,6 +25769,12 @@ namespace sqlite_orm::internal {
     template<class DBOs, class E>
     using column_expression_of_t = typename column_expression_type<DBOs, E>::type;
 
+    template<class A>
+    struct add_column_alias {
+        template<typename ColExpr>
+        using apply_t = alias_column_t<A, ColExpr>;
+    };
+
     /**
      *  Identity.
      */
@@ -25676,7 +25788,7 @@ namespace sqlite_orm::internal {
      *  as_t<Alias, E> -> as_t<Alias, ColExpr>
      */
     template<class DBOs, class As>
-    struct column_expression_type<DBOs, As, match_specialization_of<As, as_t>> {
+    struct column_expression_type<DBOs, As, match_if<is_as_node, As>> {
         using type = as_t<alias_type_t<As>, column_expression_of_t<DBOs, expression_type_t<As>>>;
     };
 
@@ -25689,9 +25801,9 @@ namespace sqlite_orm::internal {
         : std::add_lvalue_reference<column_expression_of_t<DBOs, E>> {};
 
     // No CTE for object expression.
-    template<class DBOs, class E>
-    struct column_expression_type<DBOs, object_t<E>, void> {
-        static_assert(polyfill::always_false_v<E>, "Selecting an object in a subselect is not allowed");
+    template<class DBOs, class T>
+    struct column_expression_type<DBOs, T, match_if<is_object_node, T>> {
+        static_assert(polyfill::always_false_v<T>, "Selecting an object in a subselect is not allowed");
     };
 
     /**
@@ -25705,11 +25817,6 @@ namespace sqlite_orm::internal {
         std::enable_if_t<polyfill::disjunction<polyfill::negation<is_recordset_alias<E>>, is_cte_moniker<E>>::value>>
         : storage_traits::storage_mapped_column_expressions<DBOs, E> {};
 
-    template<class A>
-    struct add_column_alias {
-        template<typename ColExpr>
-        using apply_t = alias_column_t<A, ColExpr>;
-    };
     /**
      *  Resolve all columns of an aliased object.
      *  asterisk_t<Alias> -> tuple<alias_column_t<Alias, ColExpr>...>
@@ -25723,26 +25830,24 @@ namespace sqlite_orm::internal {
      *  Resolve multiple columns.
      *  columns_t<C...> -> tuple<ColExpr...>
      */
-    template<class DBOs, class... Args>
-    struct column_expression_type<DBOs, columns_t<Args...>, void> {
-        using type = std::tuple<column_expression_of_t<DBOs, std::decay_t<Args>>...>;
-    };
+    template<class DBOs, class T>
+    struct column_expression_type<DBOs, T, match_if<is_columns, T>>
+        : tuple_transformer<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn> {};
 
     /**
      *  Resolve multiple columns.
      *  struct_t<T, C...> -> tuple<ColExpr...>
      */
-    template<class DBOs, class T, class... Args>
-    struct column_expression_type<DBOs, struct_t<T, Args...>, void> {
-        using type = std::tuple<column_expression_of_t<DBOs, std::decay_t<Args>>...>;
-    };
+    template<class DBOs, class T>
+    struct column_expression_type<DBOs, T, match_if<is_struct, T>>
+        : tuple_transformer<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn> {};
 
     /**
      *  Resolve column(s) of subselect.
      *  select_t<E, Args...> -> ColExpr, tuple<ColExpr....>
      */
-    template<class DBOs, class E, class... Args>
-    struct column_expression_type<DBOs, select_t<E, Args...>> : column_expression_type<DBOs, E> {};
+    template<class DBOs, class T>
+    struct column_expression_type<DBOs, T, match_if<is_select, T>> : column_expression_type<DBOs, return_type_t<T>> {};
 }
 
 // #include "schema/db_objects.h"
@@ -29393,9 +29498,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/between.h"
 
+// #include "ast/case_expression.h"
+
 // #include "ast/cast.h"
 
+// #include "ast/compound_operator.h"
+
 // #include "ast/cross_join.h"
+
+// #include "ast/cte.h"
 
 // #include "ast/excluded.h"
 
@@ -29527,6 +29638,85 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/rank.h"
 
+// #include "ast/result_columns.h"
+
+// #include "ast/rowset_deduplicators.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#include <utility>  //  std::move
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    struct distinct_string {
+        operator std::string() const {
+            return "DISTINCT";
+        }
+    };
+
+    /**
+     *  DISTINCT generic container.
+     */
+    template<class T>
+    struct distinct_t : distinct_string {
+        using expression_type = T;
+
+        expression_type expression;
+
+        distinct_t(expression_type expression) : expression(std::move(expression)) {}
+    };
+
+    struct all_string {
+        operator std::string() const {
+            return "ALL";
+        }
+    };
+
+    /**
+     *  ALL generic container.
+     */
+    template<class T>
+    struct all_t : all_string {
+        using expression_type = T;
+
+        expression_type expression;
+
+        all_t(expression_type expression) : expression(std::move(expression)) {}
+    };
+
+    /**
+     *  Whether a type represents the DISTINCT keyword.
+     */
+    template<class T>
+    constexpr bool is_distinct_v = polyfill::is_specialization_of<T, distinct_t>::value;
+
+    /**
+     *  Whether a type represents a keyword for a result set modifier (as part of a simple select expression).
+     */
+    template<class T>
+    constexpr bool is_rowset_deduplicator_v =
+        polyfill::disjunction<is_distinct<T>, polyfill::is_specialization_of<T, all_t>>::value;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    template<class T>
+    internal::distinct_t<T> distinct(T t) {
+        return {std::move(t)};
+    }
+
+    template<class T>
+    internal::all_t<T> all(T t) {
+        return {std::move(t)};
+    }
+}
+
+// #include "ast/select.h"
+
 // #include "ast/set.h"
 
 // #include "ast/special_keywords.h"
@@ -29592,8 +29782,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "ast/window.h"
-
-// #include "select_constraints.h"
 
 #pragma once
 
@@ -30052,7 +30240,11 @@ namespace sqlite_orm::internal {
 
 // #include "operators.h"
 
-// #include "select_constraints.h"
+// #include "ast/result_columns.h"
+
+// #include "ast/case_expression.h"
+
+// #include "ast/select.h"
 
 // #include "prepared_statement.h"
 
@@ -30192,8 +30384,7 @@ namespace sqlite_orm::internal {
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     template<class CTE>
-    struct node_tuple<CTE, match_specialization_of<CTE, common_table_expression>> : node_tuple<expression_type_t<CTE>> {
-    };
+    struct node_tuple<CTE, match_if<is_cte_binding, CTE>> : node_tuple<expression_type_t<CTE>> {};
 
     template<class With>
     struct node_tuple<With, match_if<is_with_clause, With>>

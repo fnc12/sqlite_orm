@@ -17,7 +17,10 @@
 #include "member_traits/member_traits.h"
 #include "mapped_type_proxy.h"
 #include "core_functions.h"
-#include "select_constraints.h"
+#include "ast/result_columns.h"
+#include "ast/case_expression.h"
+#include "ast/select.h"
+#include "ast/compound_operator.h"
 #include "operators.h"
 #include "rowid.h"
 #include "column_result_proxy.h"
@@ -223,10 +226,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, distinct_t<T>, void> : column_result_t<DBOs, T> {};
-
-    template<class DBOs, class T>
-    struct column_result_t<DBOs, all_t<T>, void> : column_result_t<DBOs, T> {};
+    struct column_result_t<DBOs, T, match_if<is_rowset_deduplicator, T>>
+        : column_result_t<DBOs, typename T::expression_type> {};
 
     template<class DBOs, class L, class R>
     struct column_result_t<DBOs, conc_t<L, R>, void> {
