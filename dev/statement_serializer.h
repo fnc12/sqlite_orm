@@ -624,10 +624,9 @@ namespace sqlite_orm::internal {
             return ss.str();
         }
     };
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct statement_serializer<as_optional_t<T>, void> {
-        using statement_type = as_optional_t<T>;
+    struct statement_serializer<T, match_if<is_as_optional, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -635,7 +634,6 @@ namespace sqlite_orm::internal {
             return serialize(statement.expression, context);
         }
     };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     struct statement_serializer<std::reference_wrapper<T>, void> {
         using statement_type = std::reference_wrapper<T>;
@@ -952,8 +950,8 @@ namespace sqlite_orm::internal {
     // note (internal): this is a serializer for the deduplicator in an aggregate function;
     // the result set deduplicators in a simple-select are treated by the select serializer.
     template<class T>
-    struct statement_serializer<distinct_t<T>, void> {
-        using statement_type = distinct_t<T>;
+    struct statement_serializer<T, match_if<is_distinct, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
@@ -986,32 +984,22 @@ namespace sqlite_orm::internal {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #if SQLITE_VERSION_NUMBER >= 3035003
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<>
-    struct statement_serializer<materialized_t, void> {
-        using statement_type = materialized_t;
+    template<class T>
+    struct statement_serializer<T, match_if<is_materialization_hint, T>> {
+        using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
                                                              const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
-            return "MATERIALIZED";
-        }
-    };
-
-    template<>
-    struct statement_serializer<not_materialized_t, void> {
-        using statement_type = not_materialized_t;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
-                                                             const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
-            return "NOT MATERIALIZED";
+            // note: make use of implicit to-string_view conversion
+            return statement;
         }
     };
 #endif
 #endif
 
     template<class CTE>
-    struct statement_serializer<CTE, match_specialization_of<CTE, common_table_expression>> {
+    struct statement_serializer<CTE, match_if<is_cte_binding, CTE>> {
         using statement_type = CTE;
 
         template<class Ctx>
@@ -1069,9 +1057,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class R, class T, class E, class... Args>
-    struct statement_serializer<simple_case_t<R, T, E, Args...>, void> {
-        using statement_type = simple_case_t<R, T, E, Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_case_expression, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
@@ -2244,10 +2232,10 @@ namespace sqlite_orm::internal {
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
-    template<class T, class... Args>
-    struct statement_serializer<select_t<T, Args...>, void> {
-        using statement_type = select_t<T, Args...>;
-        using return_type = typename statement_type::return_type;
+    template<class Select>
+    struct statement_serializer<Select, match_if<is_select, Select>> {
+        using statement_type = Select;
+        using return_type = return_type_t<statement_type>;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& sel,
@@ -2258,7 +2246,7 @@ namespace sqlite_orm::internal {
             subCtx.use_parentheses = true;
 
             std::stringstream ss;
-            if constexpr (!is_compound_operator_v<T>) {
+            if constexpr (!is_compound_operator_v<return_type>) {
                 if (!sel.highest_level && context.use_parentheses) {
                     ss << "(";
                 }
@@ -2292,12 +2280,12 @@ namespace sqlite_orm::internal {
                     tableNames.erase(it);
                 });
 
-                if (!tableNames.empty() && !is_compound_operator<T>::value) {
+                if (!tableNames.empty() && !is_compound_operator<return_type>::value) {
                     ss << " FROM " << streaming_identifiers(tableNames);
                 }
             }
             ss << streaming_conditions_tuple(sel.conditions, context);
-            if constexpr (!is_compound_operator_v<T>) {
+            if constexpr (!is_compound_operator_v<return_type>) {
                 if (!sel.highest_level && context.use_parentheses) {
                     ss << ")";
                 }
