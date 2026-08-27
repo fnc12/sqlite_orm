@@ -41,6 +41,18 @@ namespace sqlite_orm::internal {
     using is_virtual_table = polyfill::bool_constant<is_virtual_table_v<T>>;
 
     template<class T>
+    extern const bool is_index_v;
+
+    template<class T>
+    using is_index = polyfill::bool_constant<is_index_v<T>>;
+
+    template<class T>
+    extern const bool is_trigger_v;
+
+    template<class T>
+    using is_trigger = polyfill::bool_constant<is_trigger_v<T>>;
+
+    template<class T>
     extern const bool is_primary_key_v;
 
     template<class T>

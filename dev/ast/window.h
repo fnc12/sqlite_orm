@@ -9,6 +9,7 @@
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "../vocabulary/node_algorithms.h"  // is_statement_clause
 
 namespace sqlite_orm::internal {
 
@@ -27,6 +28,25 @@ namespace sqlite_orm::internal {
     };
 
     struct unbounded_following_t {};
+
+    /**
+     *  Whether a node may open a window frame: the frame cannot start with UNBOUNDED FOLLOWING.
+     */
+    template<class T>
+    constexpr bool is_frame_start_bound_v =
+        polyfill::disjunction<std::is_same<T, unbounded_preceding_t>,
+                              polyfill::is_specialization_of<T, preceding_t>,
+                              std::is_same<T, current_row_t>,
+                              polyfill::is_specialization_of<T, following_t>>::value;
+
+    /**
+     *  Whether a node may close a window frame: the frame cannot end with UNBOUNDED PRECEDING.
+     */
+    template<class T>
+    constexpr bool is_frame_end_bound_v = polyfill::disjunction<polyfill::is_specialization_of<T, preceding_t>,
+                                                                std::is_same<T, current_row_t>,
+                                                                polyfill::is_specialization_of<T, following_t>,
+                                                                std::is_same<T, unbounded_following_t>>::value;
 
     enum class frame_type_t { rows, range, groups };
     enum class frame_exclude_t { no_others, current_row, group, ties };
@@ -121,6 +141,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class E>
     internal::preceding_t<E> preceding(E expression) {
+        static_assert(!internal::is_statement_clause<E>::value,
+                      "a frame boundary must be an expression, not a statement clause");
         return {std::move(expression)};
     }
 
@@ -138,6 +160,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class E>
     internal::following_t<E> following(E expression) {
+        static_assert(!internal::is_statement_clause<E>::value,
+                      "a frame boundary must be an expression, not a statement clause");
         return {std::move(expression)};
     }
 
@@ -155,6 +179,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Start, class End>
     internal::frame_spec_t<Start, End> rows(Start start, End end) {
+        static_assert(internal::is_frame_start_bound_v<Start>,
+                      "a frame must start with unbounded_preceding(), preceding(), current_row() or following()");
+        static_assert(internal::is_frame_end_bound_v<End>,
+                      "a frame must end with preceding(), current_row(), following() or unbounded_following()");
         return {internal::frame_type_t::rows, std::move(start), std::move(end)};
     }
 
@@ -164,6 +192,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Start, class End>
     internal::frame_spec_t<Start, End> range(Start start, End end) {
+        static_assert(internal::is_frame_start_bound_v<Start>,
+                      "a frame must start with unbounded_preceding(), preceding(), current_row() or following()");
+        static_assert(internal::is_frame_end_bound_v<End>,
+                      "a frame must end with preceding(), current_row(), following() or unbounded_following()");
         return {internal::frame_type_t::range, std::move(start), std::move(end)};
     }
 
@@ -173,6 +205,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Start, class End>
     internal::frame_spec_t<Start, End> groups(Start start, End end) {
+        static_assert(internal::is_frame_start_bound_v<Start>,
+                      "a frame must start with unbounded_preceding(), preceding(), current_row() or following()");
+        static_assert(internal::is_frame_end_bound_v<End>,
+                      "a frame must end with preceding(), current_row(), following() or unbounded_following()");
         return {internal::frame_type_t::groups, std::move(start), std::move(end)};
     }
 
@@ -182,6 +218,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Args>
     internal::partition_by_t<Args...> partition_by(Args... args) {
+        static_assert((!internal::is_statement_clause<Args>::value && ...),
+                      "a PARTITION BY term must be an expression, not a statement clause");
         return {{std::forward<Args>(args)...}};
     }
 

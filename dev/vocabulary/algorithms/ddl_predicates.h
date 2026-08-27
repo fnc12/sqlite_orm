@@ -61,4 +61,15 @@ namespace sqlite_orm::internal {
                                                                                check_if<is_table_content>>,
                                                               T>;
 #endif
+
+    /**
+     *  Whether a node is a database object definition - an admissible schema element of a storage definition.
+     */
+    template<class T>
+    using is_database_object = mpl::invoke_t<mpl::disjunction<check_if<is_base_table>,
+                                                              check_if<is_view>,
+                                                              check_if<is_virtual_table>,
+                                                              check_if<is_index>,
+                                                              check_if<is_trigger>>,
+                                             T>;
 }

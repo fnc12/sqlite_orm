@@ -2031,6 +2031,18 @@ namespace sqlite_orm::internal {
     using is_virtual_table = polyfill::bool_constant<is_virtual_table_v<T>>;
 
     template<class T>
+    extern const bool is_index_v;
+
+    template<class T>
+    using is_index = polyfill::bool_constant<is_index_v<T>>;
+
+    template<class T>
+    extern const bool is_trigger_v;
+
+    template<class T>
+    using is_trigger = polyfill::bool_constant<is_trigger_v<T>>;
+
+    template<class T>
     extern const bool is_primary_key_v;
 
     template<class T>
@@ -2354,6 +2366,16 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_raw_dml_expression = polyfill::bool_constant<is_raw_dml_expression_v<T>>;
+
+    /**
+     *  Nodes that are a DML statement expression bound to a mapped object:
+     *  `insert(object)`, `replace(object)`, `update(object)`, `remove<O>(ids)`.
+     */
+    template<class T, class SFINAE = void>
+    constexpr bool is_object_dml_expression_v = false;
+
+    template<class T>
+    using is_object_dml_expression = polyfill::bool_constant<is_object_dml_expression_v<T>>;
 }
 
 // #include "traits/operand_traits_fwd.h"
@@ -2794,6 +2816,17 @@ namespace sqlite_orm::internal {
                                                                                check_if<is_table_content>>,
                                                               T>;
 #endif
+
+    /**
+     *  Whether a node is a database object definition - an admissible schema element of a storage definition.
+     */
+    template<class T>
+    using is_database_object = mpl::invoke_t<mpl::disjunction<check_if<is_base_table>,
+                                                              check_if<is_view>,
+                                                              check_if<is_virtual_table>,
+                                                              check_if<is_index>,
+                                                              check_if<is_trigger>>,
+                                             T>;
 }
 
 // #include "algorithms/clause_predicates.h"
@@ -5246,6 +5279,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause
 
 namespace sqlite_orm::internal {
 
@@ -5264,6 +5299,25 @@ namespace sqlite_orm::internal {
     };
 
     struct unbounded_following_t {};
+
+    /**
+     *  Whether a node may open a window frame: the frame cannot start with UNBOUNDED FOLLOWING.
+     */
+    template<class T>
+    constexpr bool is_frame_start_bound_v =
+        polyfill::disjunction<std::is_same<T, unbounded_preceding_t>,
+                              polyfill::is_specialization_of<T, preceding_t>,
+                              std::is_same<T, current_row_t>,
+                              polyfill::is_specialization_of<T, following_t>>::value;
+
+    /**
+     *  Whether a node may close a window frame: the frame cannot end with UNBOUNDED PRECEDING.
+     */
+    template<class T>
+    constexpr bool is_frame_end_bound_v = polyfill::disjunction<polyfill::is_specialization_of<T, preceding_t>,
+                                                                std::is_same<T, current_row_t>,
+                                                                polyfill::is_specialization_of<T, following_t>,
+                                                                std::is_same<T, unbounded_following_t>>::value;
 
     enum class frame_type_t { rows, range, groups };
     enum class frame_exclude_t { no_others, current_row, group, ties };
@@ -5358,6 +5412,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class E>
     internal::preceding_t<E> preceding(E expression) {
+        static_assert(!internal::is_statement_clause<E>::value,
+                      "a frame boundary must be an expression, not a statement clause");
         return {std::move(expression)};
     }
 
@@ -5375,6 +5431,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class E>
     internal::following_t<E> following(E expression) {
+        static_assert(!internal::is_statement_clause<E>::value,
+                      "a frame boundary must be an expression, not a statement clause");
         return {std::move(expression)};
     }
 
@@ -5392,6 +5450,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Start, class End>
     internal::frame_spec_t<Start, End> rows(Start start, End end) {
+        static_assert(internal::is_frame_start_bound_v<Start>,
+                      "a frame must start with unbounded_preceding(), preceding(), current_row() or following()");
+        static_assert(internal::is_frame_end_bound_v<End>,
+                      "a frame must end with preceding(), current_row(), following() or unbounded_following()");
         return {internal::frame_type_t::rows, std::move(start), std::move(end)};
     }
 
@@ -5401,6 +5463,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Start, class End>
     internal::frame_spec_t<Start, End> range(Start start, End end) {
+        static_assert(internal::is_frame_start_bound_v<Start>,
+                      "a frame must start with unbounded_preceding(), preceding(), current_row() or following()");
+        static_assert(internal::is_frame_end_bound_v<End>,
+                      "a frame must end with preceding(), current_row(), following() or unbounded_following()");
         return {internal::frame_type_t::range, std::move(start), std::move(end)};
     }
 
@@ -5410,6 +5476,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Start, class End>
     internal::frame_spec_t<Start, End> groups(Start start, End end) {
+        static_assert(internal::is_frame_start_bound_v<Start>,
+                      "a frame must start with unbounded_preceding(), preceding(), current_row() or following()");
+        static_assert(internal::is_frame_end_bound_v<End>,
+                      "a frame must end with preceding(), current_row(), following() or unbounded_following()");
         return {internal::frame_type_t::groups, std::move(start), std::move(end)};
     }
 
@@ -5419,6 +5489,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Args>
     internal::partition_by_t<Args...> partition_by(Args... args) {
+        static_assert((!internal::is_statement_clause<Args>::value && ...),
+                      "a PARTITION BY term must be an expression, not a statement clause");
         return {{std::forward<Args>(args)...}};
     }
 
@@ -9231,6 +9303,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <concepts>
 #include <utility>  //  std::make_index_sequence
 #endif
+#include <array>  //  std::array
 #include <type_traits>  //  std::enable_if, std::is_member_pointer, std::is_same, std::is_convertible
 #include <tuple>  //  std::ignore
 #include <string>
@@ -9297,6 +9370,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
          */
         template<char... Chars>
         [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator""_ctealias() {
+            // numeric monikers are used for automatically assigning implicit aliases to unaliased column expressions,
+            // which start at "1".
+            static_assert(std::array{Chars...}[0] > '0');
             return internal::cte_moniker<Chars...>{};
         }
 
@@ -16251,6 +16327,15 @@ namespace sqlite_orm::internal {
                                                                        is_remove_all<expression_type_t<With>>>>>> =
         true;
 
+    template<class DML>
+    constexpr bool is_object_dml_expression_v<
+        DML,
+        std::enable_if_t<polyfill::disjunction_v<is_insert<DML>,
+                                                 polyfill::is_specialization_of<DML, insert_explicit>,
+                                                 is_replace<DML>,
+                                                 polyfill::is_specialization_of<DML, update_t>,
+                                                 polyfill::is_specialization_of<DML, remove_t>>>> = true;
+
     /**
      *  The delete statement counterpart of `validate_select_clauses()`; see there for the split of
      *  responsibilities between this and the clause factories.
@@ -16592,6 +16677,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Ids>
     internal::remove_t<T, Ids...> remove(Ids... ids) {
+        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
+                      "Only primary key values are accepted as Ids");
         return {{std::forward<Ids>(ids)...}};
     }
 
@@ -16626,6 +16713,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Ids>
     internal::get_t<T, Ids...> get(Ids... ids) {
+        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
+                      "Only primary key values are accepted as Ids");
         return {{std::forward<Ids>(ids)...}};
     }
 
@@ -16648,6 +16737,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Ids>
     internal::get_pointer_t<T, Ids...> get_pointer(Ids... ids) {
+        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
+                      "Only primary key values are accepted as Ids");
         return {{std::forward<Ids>(ids)...}};
     }
 
@@ -16671,6 +16762,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Ids>
     internal::get_optional_t<T, Ids...> get_optional(Ids... ids) {
+        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
+                      "Only primary key values are accepted as Ids");
         return {{std::forward<Ids>(ids)...}};
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -21632,10 +21725,17 @@ namespace sqlite_orm::internal {
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <type_traits>  //  std::is_member_pointer
 #endif
 
 // #include "../optional_container.h"
 
+// #include "../column_pointer.h"
+// is_column_pointer
+// #include "../vocabulary/node_traits.h"
+
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause
 // #include "../vocabulary/traits/operand_traits_fwd.h"
 // Included to specialize traits
 
@@ -21704,6 +21804,9 @@ namespace sqlite_orm::internal {
         elements_type elements;
     };
 
+    template<class T>
+    constexpr bool is_trigger_v = polyfill::is_specialization_of_v<T, trigger_t>;
+
     /**
      *  Base of a trigger. Contains the trigger type/timming and the table type
      *  T is the table type
@@ -21742,6 +21845,8 @@ namespace sqlite_orm::internal {
 
         template<class WW>
         trigger_base_t<T, WW, Type> when(WW expression) {
+            static_assert(!is_statement_clause<WW>::value,
+                          "a WHEN condition of a trigger must be an expression, not a statement clause");
             trigger_base_t<T, WW, Type> res(this->type_base);
             res.container_when.field = std::move(expression);
             return res;
@@ -21749,6 +21854,10 @@ namespace sqlite_orm::internal {
 
         template<class... S>
         partial_trigger_t<trigger_base_t<T, W, Type>, S...> begin(S... statements) {
+            static_assert(polyfill::conjunction_v<polyfill::disjunction<is_select_expression<S>,
+                                                                        is_raw_dml_expression<S>,
+                                                                        is_object_dml_expression<S>>...>,
+                          "a trigger body statement must be a complete SELECT, INSERT, UPDATE or DELETE statement");
             return {*this, std::forward<S>(statements)...};
         }
     };
@@ -21816,6 +21925,10 @@ namespace sqlite_orm::internal {
 
         template<class... Cs>
         trigger_update_type_t<Cs...> update_of(Cs... columns) {
+            //  the grammar production is a list of column names, not expressions
+            static_assert(
+                polyfill::conjunction_v<polyfill::disjunction<std::is_member_pointer<Cs>, is_column_pointer<Cs>>...>,
+                "UPDATE OF arguments must be members of the table the trigger watches");
             return {timing, trigger_type::trigger_update, std::forward<Cs>(columns)...};
         }
     };
@@ -21921,17 +22034,20 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::declval, std::tuple_element_t
 #include <string>  //  std::string
+#include <type_traits>  //  std::is_same
 #include <utility>  //  std::forward
 #endif
 
-// #include "../tuple_helper/tuple_traits.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../functional/mpl.h"
+// #include "../tuple_helper/tuple_traits.h"
 
 // #include "../table_type_of.h"
 
 // #include "../vocabulary/node_traits.h"
 
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause
 // #include "indexed_column.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -22010,6 +22126,30 @@ namespace sqlite_orm::internal {
 
         elements_type elements;
     };
+
+    template<class T>
+    constexpr bool is_index_v = polyfill::is_specialization_of_v<T, index_t>;
+
+    /**
+     *  Whether an index element belongs to the table the index is made for:
+     *  an element with a derivable table type must name a column of that table,
+     *  while expressions and partial-index WHERE clauses carry no table type and are admitted.
+     */
+    template<class T, class Col, class SFINAE = void>
+    constexpr bool is_index_element_of_v = true;
+    template<class T, class Col>
+    constexpr bool is_index_element_of_v<T, Col, polyfill::void_t<table_type_of_t<Col>>> =
+        std::is_same<table_type_of_t<Col>, T>::value;
+
+    template<class T, class... Cols>
+    constexpr void validate_index_arguments() {
+        static_assert(count_tuple<std::tuple<Cols...>, is_where>::value <= 1,
+                      "amount of where arguments can be 0 or 1");
+        static_assert(((is_where_v<Cols> || !is_statement_clause<Cols>::value) && ...),
+                      "a make_index() argument must be an indexed column, an expression or a partial-index WHERE");
+        static_assert((is_index_element_of_v<T, Cols> && ...),
+                      "all indexed columns must belong to the table the index is made for");
+    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -22017,8 +22157,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {
         using namespace ::sqlite_orm::internal;
-        using cols_tuple = mpl::pack<Cols...>;
-        static_assert(count_tuple<cols_tuple, is_where>::value <= 1, "amount of where arguments can be 0 or 1");
+        validate_index_arguments<T, Cols...>();
         return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
@@ -22026,8 +22165,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {
         using namespace ::sqlite_orm::internal;
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(count_tuple<cols_tuple, is_where>::value <= 1, "amount of where arguments can be 0 or 1");
+        validate_index_arguments<T, Cols...>();
         return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
@@ -22035,8 +22173,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_unique_index(std::string name, Cols... cols) {
         using namespace ::sqlite_orm::internal;
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(count_tuple<cols_tuple, is_where>::value <= 1, "amount of where arguments can be 0 or 1");
+        validate_index_arguments<T, Cols...>();
         return {std::move(name), true, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 }
@@ -27861,6 +27998,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     auto make_storage(std::string filename, Spec... specifications) {
         using namespace ::sqlite_orm::internal;
 
+        static_assert(
+            polyfill::conjunction_v<
+                polyfill::disjunction<is_database_object<Spec>, polyfill::is_detected<storage_opt_tag_t, Spec>>...>,
+            "a make_storage() argument must be a table, index, trigger, view, virtual table or a storage "
+            "option");
+
         std::tuple specTuple{std::forward<Spec>(specifications)...};
         return internal::make_storage(
             std::move(filename),
@@ -30755,6 +30898,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... Cs>
     auto using_fts5(Cs... definition) {
         using namespace ::sqlite_orm::internal;
+        static_assert((is_fts5_table_element_or_constraint<Cs>::value && ...),
+                      "Incorrect table elements or constraints");
         return make_fts5_definition(std::forward<Cs>(definition)...
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                                     ,

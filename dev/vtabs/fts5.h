@@ -88,6 +88,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... Cs>
     auto using_fts5(Cs... definition) {
         using namespace ::sqlite_orm::internal;
+        static_assert((is_fts5_table_element_or_constraint<Cs>::value && ...),
+                      "Incorrect table elements or constraints");
         return make_fts5_definition(std::forward<Cs>(definition)...
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                                     ,

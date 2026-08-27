@@ -339,6 +339,15 @@ namespace sqlite_orm::internal {
                                                                        is_remove_all<expression_type_t<With>>>>>> =
         true;
 
+    template<class DML>
+    constexpr bool is_object_dml_expression_v<
+        DML,
+        std::enable_if_t<polyfill::disjunction_v<is_insert<DML>,
+                                                 polyfill::is_specialization_of<DML, insert_explicit>,
+                                                 is_replace<DML>,
+                                                 polyfill::is_specialization_of<DML, update_t>,
+                                                 polyfill::is_specialization_of<DML, remove_t>>>> = true;
+
     /**
      *  The delete statement counterpart of `validate_select_clauses()`; see there for the split of
      *  responsibilities between this and the clause factories.
@@ -680,6 +689,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Ids>
     internal::remove_t<T, Ids...> remove(Ids... ids) {
+        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
+                      "Only primary key values are accepted as Ids");
         return {{std::forward<Ids>(ids)...}};
     }
 
@@ -714,6 +725,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Ids>
     internal::get_t<T, Ids...> get(Ids... ids) {
+        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
+                      "Only primary key values are accepted as Ids");
         return {{std::forward<Ids>(ids)...}};
     }
 
@@ -736,6 +749,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Ids>
     internal::get_pointer_t<T, Ids...> get_pointer(Ids... ids) {
+        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
+                      "Only primary key values are accepted as Ids");
         return {{std::forward<Ids>(ids)...}};
     }
 
@@ -759,6 +774,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Ids>
     internal::get_optional_t<T, Ids...> get_optional(Ids... ids) {
+        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
+                      "Only primary key values are accepted as Ids");
         return {{std::forward<Ids>(ids)...}};
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
