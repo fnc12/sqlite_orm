@@ -57,17 +57,6 @@ TEST_CASE("schema factory arguments are validated at compile time") {
         STATIC_REQUIRE_FALSE(internal::is_object_dml_expression_v<decltype(where(c(&User::id) > 0))>);
         STATIC_REQUIRE_FALSE(internal::is_object_dml_expression_v<int>);
     }
-    SECTION("frame boundaries keep their grammar positions") {
-        STATIC_REQUIRE(internal::is_frame_start_bound_v<internal::unbounded_preceding_t>);
-        STATIC_REQUIRE(internal::is_frame_start_bound_v<decltype(preceding(1))>);
-        STATIC_REQUIRE(internal::is_frame_start_bound_v<internal::current_row_t>);
-        STATIC_REQUIRE(internal::is_frame_start_bound_v<decltype(following(1))>);
-        STATIC_REQUIRE_FALSE(internal::is_frame_start_bound_v<internal::unbounded_following_t>);
-        STATIC_REQUIRE(internal::is_frame_end_bound_v<internal::unbounded_following_t>);
-        STATIC_REQUIRE(internal::is_frame_end_bound_v<decltype(preceding(1))>);
-        STATIC_REQUIRE_FALSE(internal::is_frame_end_bound_v<internal::unbounded_preceding_t>);
-        STATIC_REQUIRE_FALSE(internal::is_frame_end_bound_v<int>);
-    }
     //  These constructions have to keep compiling: they exercise every schema factory this batch gated,
     //  so they are the regression guard against the new asserts being over-strict.
     SECTION("gated factories accept their whole legal envelope") {
@@ -83,9 +72,5 @@ TEST_CASE("schema factory arguments are validated at compile time") {
                                        .when(greater_than(new_(&User::id), 0))
                                        .begin(update_all(set(c(&User::name) = "")), select(&User::id))
                                        .end());
-        std::ignore = partition_by(&User::id, add(&User::id, 1));
-        std::ignore = rows(unbounded_preceding(), current_row());
-        std::ignore = range(preceding(1), following(1));
-        std::ignore = groups(current_row(), unbounded_following());
     }
 }

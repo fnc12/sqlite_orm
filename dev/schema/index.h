@@ -3,7 +3,6 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::declval, std::tuple_element_t
 #include <string>  //  std::string
-#include <type_traits>  //  std::is_same
 #include <utility>  //  std::forward
 #endif
 
@@ -11,7 +10,7 @@
 #include "../tuple_helper/tuple_traits.h"
 #include "../table_type_of.h"
 #include "../vocabulary/node_traits.h"
-#include "../vocabulary/node_algorithms.h"  // is_statement_clause
+#include "../vocabulary/node_algorithms.h"  // is_statement_clause, is_index_element_of_v
 #include "indexed_column.h"  // make_indexed_column
 
 namespace sqlite_orm::internal {
@@ -31,19 +30,6 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_index_v = polyfill::is_specialization_of_v<T, index_t>;
-
-    /**
-     *  Whether an index element belongs to the table the index is made for:
-     *  an element that names a column must name a column of that table, while
-     *  expressions and partial-index WHERE clauses carry no table type and are admitted.
-     */
-    template<class ColRef, class T, class SFINAE = void>
-    constexpr bool is_index_element_of_v = true;
-
-    template<class ColRef, class T>
-    constexpr bool
-        is_index_element_of_v<ColRef, T, std::enable_if_t<polyfill::is_detected<table_type_of_t, ColRef>::value>> =
-            std::is_same<table_type_of_t<ColRef>, T>::value;
 
     template<class T, class... Cols>
     constexpr void validate_index_arguments() {

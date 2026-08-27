@@ -3,50 +3,46 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple
-#include <type_traits>  //  std::forward, std::move
+#include <type_traits>  //  std::is_same
 #include <utility>  //  std::forward, std::move
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
-#include "../vocabulary/node_algorithms.h"  // is_statement_clause
+#include "../vocabulary/node_algorithms.h"  // is_statement_clause, is_frame_start_bound_v, is_frame_end_bound_v
 
 namespace sqlite_orm::internal {
 
     struct unbounded_preceding_t {};
+
+    template<class T>
+    constexpr bool is_unbounded_preceding_v = std::is_same<T, unbounded_preceding_t>::value;
 
     template<class E>
     struct preceding_t {
         E expression;
     };
 
+    template<class T>
+    constexpr bool is_preceding_v = polyfill::is_specialization_of_v<T, preceding_t>;
+
     struct current_row_t {};
+
+    template<class T>
+    constexpr bool is_current_row_v = std::is_same<T, current_row_t>::value;
 
     template<class E>
     struct following_t {
         E expression;
     };
 
+    template<class T>
+    constexpr bool is_following_v = polyfill::is_specialization_of_v<T, following_t>;
+
     struct unbounded_following_t {};
 
-    /**
-     *  Whether a node may open a window frame: the frame cannot start with UNBOUNDED FOLLOWING.
-     */
     template<class T>
-    constexpr bool is_frame_start_bound_v =
-        polyfill::disjunction<std::is_same<T, unbounded_preceding_t>,
-                              polyfill::is_specialization_of<T, preceding_t>,
-                              std::is_same<T, current_row_t>,
-                              polyfill::is_specialization_of<T, following_t>>::value;
-
-    /**
-     *  Whether a node may close a window frame: the frame cannot end with UNBOUNDED PRECEDING.
-     */
-    template<class T>
-    constexpr bool is_frame_end_bound_v = polyfill::disjunction<polyfill::is_specialization_of<T, preceding_t>,
-                                                                std::is_same<T, current_row_t>,
-                                                                polyfill::is_specialization_of<T, following_t>,
-                                                                std::is_same<T, unbounded_following_t>>::value;
+    constexpr bool is_unbounded_following_v = std::is_same<T, unbounded_following_t>::value;
 
     enum class frame_type_t { rows, range, groups };
     enum class frame_exclude_t { no_others, current_row, group, ties };
@@ -90,10 +86,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_partition_by_v = polyfill::is_specialization_of_v<T, partition_by_t>;
-
-    template<class T>
-    using is_partition_by = polyfill::bool_constant<is_partition_by_v<T>>;
+    constexpr bool is_partition_by_v = polyfill::is_specialization_of_v<T, partition_by_t>;
 
     struct window_ref_t {
         std::string name;
@@ -109,10 +102,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_over_v = polyfill::is_specialization_of_v<T, over_t>;
-
-    template<class T>
-    using is_over = polyfill::bool_constant<is_over_v<T>>;
+    constexpr bool is_over_v = polyfill::is_specialization_of_v<T, over_t>;
 
     template<class... Args>
     struct window_defn_t {

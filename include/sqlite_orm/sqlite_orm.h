@@ -2242,6 +2242,61 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_offset = polyfill::bool_constant<is_offset_v<T>>;
 
+    /**
+     *  Nodes of a window function application and of the window definition it may carry:
+     *  the OVER application itself, PARTITION BY, and the frame boundaries below.
+     *
+     *  The WINDOW clause of a select statement is `is_window_defn`, classified among the clauses above.
+     */
+    template<class T>
+    extern const bool is_over_v;
+
+    template<class T>
+    using is_over = polyfill::bool_constant<is_over_v<T>>;
+
+    template<class T>
+    extern const bool is_partition_by_v;
+
+    template<class T>
+    using is_partition_by = polyfill::bool_constant<is_partition_by_v<T>>;
+
+    /**
+     *  Nodes representing a window frame boundary: UNBOUNDED PRECEDING, expr PRECEDING, CURRENT ROW,
+     *  expr FOLLOWING, UNBOUNDED FOLLOWING.
+     *
+     *  Which end of a frame each of them may occupy is the subject of `is_frame_start_bound_v` and
+     *  `is_frame_end_bound_v` in `algorithms/expression_element_predicates.h`.
+     */
+    template<class T>
+    extern const bool is_unbounded_preceding_v;
+
+    template<class T>
+    using is_unbounded_preceding = polyfill::bool_constant<is_unbounded_preceding_v<T>>;
+
+    template<class T>
+    extern const bool is_preceding_v;
+
+    template<class T>
+    using is_preceding = polyfill::bool_constant<is_preceding_v<T>>;
+
+    template<class T>
+    extern const bool is_current_row_v;
+
+    template<class T>
+    using is_current_row = polyfill::bool_constant<is_current_row_v<T>>;
+
+    template<class T>
+    extern const bool is_following_v;
+
+    template<class T>
+    using is_following = polyfill::bool_constant<is_following_v<T>>;
+
+    template<class T>
+    extern const bool is_unbounded_following_v;
+
+    template<class T>
+    using is_unbounded_following = polyfill::bool_constant<is_unbounded_following_v<T>>;
+
     template<class T>
     constexpr bool is_assign_v = false;
 
@@ -2806,12 +2861,54 @@ namespace sqlite_orm::internal {
 
 /** @file Closed predicates for checking the validity of the elements of a DDL statement.
  *
- *  These answer whether a node is an admissible member of a column or table definition -
+ *  These answer whether a node is an admissible member of a column, table or index definition -
  *  the classification questions specific to a single DDL node, as opposed to the
  *  type-and-order questions about statement clauses in `clause_predicates.h`.
  */
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_same, std::enable_if
+#endif
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
 // #include "../../functional/mpl.h"
+
+// #include "../../table_type_of.h"
+
+// #include "vocabulary/node_fwd.h"
+
+namespace sqlite_orm::internal {
+    /**
+     *  Trait class used to define table mapped type by setter/getter/member
+     *  T - member pointer
+     *  `type` is a type which is mapped.
+     *  E.g.
+     *  -   `table_type_of<decltype(&User::id)>::type` is `User`
+     *  -   `table_type_of<decltype(&User::getName)>::type` is `User`
+     *  -   `table_type_of<decltype(&User::setName)>::type` is `User`
+     *  -   `table_type_of<decltype(column<User>(&User::id))>::type` is `User`
+     *  -   `table_type_of<decltype(derived->*&User::id)>::type` is `User`
+     */
+    template<class T>
+    struct table_type_of;
+
+    template<class O, class F>
+    struct table_type_of<F O::*> {
+        using type = O;
+    };
+
+    template<class T, class F>
+    struct table_type_of<column_pointer<T, F>> {
+        using type = T;
+    };
+
+    template<class C>
+    struct table_type_of<indexed_column_t<C>> : table_type_of<C> {};
+
+    template<class T>
+    using table_type_of_t = typename table_type_of<T>::type;
+}
 
 // #include "../node_traits.h"
 
@@ -2868,6 +2965,19 @@ namespace sqlite_orm::internal {
                                                                                check_if<is_table_content>>,
                                                               T>;
 #endif
+
+    /**
+     *  Whether an index element belongs to the table the index is made for:
+     *  an element that names a column must name a column of that table, while
+     *  expressions and partial-index WHERE clauses carry no table type and are admitted.
+     */
+    template<class ColRef, class T, class SFINAE = void>
+    constexpr bool is_index_element_of_v = true;
+
+    template<class ColRef, class T>
+    constexpr bool
+        is_index_element_of_v<ColRef, T, std::enable_if_t<polyfill::is_detected<table_type_of_t, ColRef>::value>> =
+            std::is_same<table_type_of_t<ColRef>, T>::value;
 
     /**
      *  Whether a node is a database object definition - an admissible schema element of a storage definition.
@@ -3061,6 +3171,45 @@ namespace sqlite_orm::internal {
      */
     template<class T>
     using is_statement_clause = is_select_clause<T>;
+}
+
+// #include "algorithms/expression_element_predicates.h"
+
+/** @file Closed predicates for checking the membership of the elements of a compound expression construct.
+ *
+ *  These answer whether a node may occupy a given slot of an expression-level construct - a window
+ *  definition and its frame, and the like - as opposed to the elements of a schema definition
+ *  (`ddl_predicates.h`) or the clauses of a statement (`clause_predicates.h`).
+ *
+ *  That an element holds an expression rather than a statement clause is not checked here -
+ *  the element factories enforce that on the argument each is handed.
+ */
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
+// #include "../node_traits.h"
+
+// window frame boundaries
+namespace sqlite_orm::internal {
+    /*
+     *  Every frame boundary node is a boundary, but not at both ends of the frame: SQLite rejects a frame
+     *  starting with UNBOUNDED FOLLOWING, and one ending with UNBOUNDED PRECEDING, as syntax errors.
+     *  The frame factories `rows()`, `range()` and `groups()` check the boundaries they are handed.
+     */
+
+    /**
+     *  Whether a node may open a window frame: the frame cannot start with UNBOUNDED FOLLOWING.
+     */
+    template<class T>
+    constexpr bool is_frame_start_bound_v =
+        polyfill::disjunction_v<is_unbounded_preceding<T>, is_preceding<T>, is_current_row<T>, is_following<T>>;
+
+    /**
+     *  Whether a node may close a window frame: the frame cannot end with UNBOUNDED PRECEDING.
+     */
+    template<class T>
+    constexpr bool is_frame_end_bound_v =
+        polyfill::disjunction_v<is_preceding<T>, is_current_row<T>, is_following<T>, is_unbounded_following<T>>;
 }
 
 // #include "algorithms/operand_predicates.h"
@@ -3602,40 +3751,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "table_type_of.h"
-
-// #include "vocabulary/node_fwd.h"
-
-namespace sqlite_orm::internal {
-    /**
-     *  Trait class used to define table mapped type by setter/getter/member
-     *  T - member pointer
-     *  `type` is a type which is mapped.
-     *  E.g.
-     *  -   `table_type_of<decltype(&User::id)>::type` is `User`
-     *  -   `table_type_of<decltype(&User::getName)>::type` is `User`
-     *  -   `table_type_of<decltype(&User::setName)>::type` is `User`
-     *  -   `table_type_of<decltype(column<User>(&User::id))>::type` is `User`
-     *  -   `table_type_of<decltype(derived->*&User::id)>::type` is `User`
-     */
-    template<class T>
-    struct table_type_of;
-
-    template<class O, class F>
-    struct table_type_of<F O::*> {
-        using type = O;
-    };
-
-    template<class T, class F>
-    struct table_type_of<column_pointer<T, F>> {
-        using type = T;
-    };
-
-    template<class C>
-    struct table_type_of<indexed_column_t<C>> : table_type_of<C> {};
-
-    template<class T>
-    using table_type_of_t = typename table_type_of<T>::type;
-}
 
 // #include "column_pointer.h"
 
@@ -6175,7 +6290,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple
-#include <type_traits>  //  std::forward, std::move
+#include <type_traits>  //  std::is_same
 #include <utility>  //  std::forward, std::move
 #endif
 
@@ -6184,44 +6299,40 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 // #include "../vocabulary/node_algorithms.h"
-// is_statement_clause
+// is_statement_clause, is_frame_start_bound_v, is_frame_end_bound_v
 
 namespace sqlite_orm::internal {
 
     struct unbounded_preceding_t {};
+
+    template<class T>
+    constexpr bool is_unbounded_preceding_v = std::is_same<T, unbounded_preceding_t>::value;
 
     template<class E>
     struct preceding_t {
         E expression;
     };
 
+    template<class T>
+    constexpr bool is_preceding_v = polyfill::is_specialization_of_v<T, preceding_t>;
+
     struct current_row_t {};
+
+    template<class T>
+    constexpr bool is_current_row_v = std::is_same<T, current_row_t>::value;
 
     template<class E>
     struct following_t {
         E expression;
     };
 
+    template<class T>
+    constexpr bool is_following_v = polyfill::is_specialization_of_v<T, following_t>;
+
     struct unbounded_following_t {};
 
-    /**
-     *  Whether a node may open a window frame: the frame cannot start with UNBOUNDED FOLLOWING.
-     */
     template<class T>
-    constexpr bool is_frame_start_bound_v =
-        polyfill::disjunction<std::is_same<T, unbounded_preceding_t>,
-                              polyfill::is_specialization_of<T, preceding_t>,
-                              std::is_same<T, current_row_t>,
-                              polyfill::is_specialization_of<T, following_t>>::value;
-
-    /**
-     *  Whether a node may close a window frame: the frame cannot end with UNBOUNDED PRECEDING.
-     */
-    template<class T>
-    constexpr bool is_frame_end_bound_v = polyfill::disjunction<polyfill::is_specialization_of<T, preceding_t>,
-                                                                std::is_same<T, current_row_t>,
-                                                                polyfill::is_specialization_of<T, following_t>,
-                                                                std::is_same<T, unbounded_following_t>>::value;
+    constexpr bool is_unbounded_following_v = std::is_same<T, unbounded_following_t>::value;
 
     enum class frame_type_t { rows, range, groups };
     enum class frame_exclude_t { no_others, current_row, group, ties };
@@ -6265,10 +6376,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_partition_by_v = polyfill::is_specialization_of_v<T, partition_by_t>;
-
-    template<class T>
-    using is_partition_by = polyfill::bool_constant<is_partition_by_v<T>>;
+    constexpr bool is_partition_by_v = polyfill::is_specialization_of_v<T, partition_by_t>;
 
     struct window_ref_t {
         std::string name;
@@ -6284,10 +6392,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_over_v = polyfill::is_specialization_of_v<T, over_t>;
-
-    template<class T>
-    using is_over = polyfill::bool_constant<is_over_v<T>>;
+    constexpr bool is_over_v = polyfill::is_specialization_of_v<T, over_t>;
 
     template<class... Args>
     struct window_defn_t {
@@ -22144,7 +22249,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::declval, std::tuple_element_t
 #include <string>  //  std::string
-#include <type_traits>  //  std::is_same
 #include <utility>  //  std::forward
 #endif
 
@@ -22157,7 +22261,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../vocabulary/node_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
-// is_statement_clause
+// is_statement_clause, is_index_element_of_v
 // #include "indexed_column.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -22239,19 +22343,6 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_index_v = polyfill::is_specialization_of_v<T, index_t>;
-
-    /**
-     *  Whether an index element belongs to the table the index is made for:
-     *  an element that names a column must name a column of that table, while
-     *  expressions and partial-index WHERE clauses carry no table type and are admitted.
-     */
-    template<class ColRef, class T, class SFINAE = void>
-    constexpr bool is_index_element_of_v = true;
-
-    template<class ColRef, class T>
-    constexpr bool
-        is_index_element_of_v<ColRef, T, std::enable_if_t<polyfill::is_detected<table_type_of_t, ColRef>::value>> =
-            std::is_same<table_type_of_t<ColRef>, T>::value;
 
     template<class T, class... Cols>
     constexpr void validate_index_arguments() {

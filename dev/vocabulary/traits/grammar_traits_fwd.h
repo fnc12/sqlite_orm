@@ -252,6 +252,61 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_offset = polyfill::bool_constant<is_offset_v<T>>;
 
+    /**
+     *  Nodes of a window function application and of the window definition it may carry:
+     *  the OVER application itself, PARTITION BY, and the frame boundaries below.
+     *
+     *  The WINDOW clause of a select statement is `is_window_defn`, classified among the clauses above.
+     */
+    template<class T>
+    extern const bool is_over_v;
+
+    template<class T>
+    using is_over = polyfill::bool_constant<is_over_v<T>>;
+
+    template<class T>
+    extern const bool is_partition_by_v;
+
+    template<class T>
+    using is_partition_by = polyfill::bool_constant<is_partition_by_v<T>>;
+
+    /**
+     *  Nodes representing a window frame boundary: UNBOUNDED PRECEDING, expr PRECEDING, CURRENT ROW,
+     *  expr FOLLOWING, UNBOUNDED FOLLOWING.
+     *
+     *  Which end of a frame each of them may occupy is the subject of `is_frame_start_bound_v` and
+     *  `is_frame_end_bound_v` in `algorithms/expression_element_predicates.h`.
+     */
+    template<class T>
+    extern const bool is_unbounded_preceding_v;
+
+    template<class T>
+    using is_unbounded_preceding = polyfill::bool_constant<is_unbounded_preceding_v<T>>;
+
+    template<class T>
+    extern const bool is_preceding_v;
+
+    template<class T>
+    using is_preceding = polyfill::bool_constant<is_preceding_v<T>>;
+
+    template<class T>
+    extern const bool is_current_row_v;
+
+    template<class T>
+    using is_current_row = polyfill::bool_constant<is_current_row_v<T>>;
+
+    template<class T>
+    extern const bool is_following_v;
+
+    template<class T>
+    using is_following = polyfill::bool_constant<is_following_v<T>>;
+
+    template<class T>
+    extern const bool is_unbounded_following_v;
+
+    template<class T>
+    using is_unbounded_following = polyfill::bool_constant<is_unbounded_following_v<T>>;
+
     template<class T>
     constexpr bool is_assign_v = false;
 
