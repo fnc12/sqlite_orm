@@ -14,9 +14,10 @@ base line we cannot assume that variable templates are available"* — and in ~7
 This asks one question: draw the library line **now**, or keep waiting for the C++20 line where
 `<version>` is guaranteed and the probe collapses to a plain `#include <version>`.
 
-## Enforcement (proposed, not landed)
+## Enforcement
 
-In `dev/functional/cxx_check_prerequisites.h`, alongside the existing compiler check:
+Landed on this branch in `dev/functional/cxx_check_prerequisites.h` as a separate, droppable commit,
+so that CI exercises the base line across the matrix:
 
 ```cpp
 #if __has_include(<version>)
