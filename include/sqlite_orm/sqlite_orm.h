@@ -1985,7 +1985,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "vocabulary/node_traits.h"
 
-/**	@file Umbrella header for all node traits and node projections.
+/**	@file Umbrella header for the single-node vocabulary: the open classification traits,
+ *        and the projections they are read with.
+ *
+ *  It deliberately spans two folders, because both answer a question about a node already in
+ *  hand - what it is, and what it carries - whereas `node_algorithms.h` covers the composed
+ *  judgments that follow from them.
  */
 
 // #include "traits/grammar_traits_fwd.h"
@@ -2538,20 +2543,20 @@ namespace sqlite_orm::internal {
     using is_operator_argument = polyfill::bool_constant<is_operator_argument_v<T>>;
 }
 
-// #include "node_projections.h"
+// #include "projections/nested_types.h"
 
-/** @file DSL-specific type name alias template projectors for syntactic sugar.
+/** @file Projections reading the type names a node declares, as alias templates for syntactic sugar.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_reference
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "../type_traits.h"
+// #include "../../type_traits.h"
 
-// #include "../member_traits/member_traits.h"
+// #include "../../member_traits/member_traits.h"
 
 // Plain accessors
 namespace sqlite_orm::internal {
@@ -2647,6 +2652,73 @@ namespace sqlite_orm::internal {
 #endif
 }
 
+// #include "projections/mapped_types.h"
+
+/** @file Projections yielding the mapped type a node stands for.
+ *
+ *  Unlike the projections reading a declared type name in `nested_types.h`, these destructure
+ *  the node to the type it captured, so they name the concrete nodes they match. Whether the
+ *  type they yield is actually mapped by a schema is not their question - that is answered one
+ *  tier up, by the lookup algorithms in `schema/algorithms/table_lookup.h`.
+ */
+
+// #include "../node_fwd.h"
+
+/** @file Forward-declarations of concrete nodes that have to be used directly in template programming,
+ *        e.g. for base-class overloads or metafunctions.
+ */
+
+namespace sqlite_orm::internal {
+    template<class... Cs>
+    struct primary_key_t;
+
+    template<class G, class S>
+    struct column_field;
+
+    template<class... Op>
+    struct column_constraints;
+
+    struct table_identifier;
+
+    template<class T, class F>
+    struct column_pointer;
+
+    template<class C>
+    struct indexed_column_t;
+}
+
+namespace sqlite_orm::internal {
+    /**
+     *  Trait class used to define table mapped type by setter/getter/member
+     *  T - member pointer
+     *  `type` is a type which is mapped.
+     *  E.g.
+     *  -   `table_type_of<decltype(&User::id)>::type` is `User`
+     *  -   `table_type_of<decltype(&User::getName)>::type` is `User`
+     *  -   `table_type_of<decltype(&User::setName)>::type` is `User`
+     *  -   `table_type_of<decltype(column<User>(&User::id))>::type` is `User`
+     *  -   `table_type_of<decltype(derived->*&User::id)>::type` is `User`
+     */
+    template<class T>
+    struct table_type_of;
+
+    template<class O, class F>
+    struct table_type_of<F O::*> {
+        using type = O;
+    };
+
+    template<class T, class F>
+    struct table_type_of<column_pointer<T, F>> {
+        using type = T;
+    };
+
+    template<class C>
+    struct table_type_of<indexed_column_t<C>> : table_type_of<C> {};
+
+    template<class T>
+    using table_type_of_t = typename table_type_of<T>::type;
+}
+
 // #include "vocabulary/node_algorithms.h"
 
 /**	@file Umbrella header for all node algorithms.
@@ -2717,29 +2789,6 @@ namespace sqlite_orm::internal {
 // #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../vocabulary/node_fwd.h"
-
-/** @file Forward-declarations of concrete nodes that have to be used directly in template programming,
- *        e.g. for base-class overloads or metafunctions.
- */
-
-namespace sqlite_orm::internal {
-    template<class... Cs>
-    struct primary_key_t;
-
-    template<class G, class S>
-    struct column_field;
-
-    template<class... Op>
-    struct column_constraints;
-
-    struct table_identifier;
-
-    template<class T, class F>
-    struct column_pointer;
-
-    template<class C>
-    struct indexed_column_t;
-}
 // column_pointer
 
 namespace sqlite_orm::internal {
@@ -2786,7 +2835,7 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "../node_projections.h"
+// #include "../node_traits.h"
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
@@ -2873,42 +2922,6 @@ namespace sqlite_orm::internal {
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
 // #include "../../functional/mpl.h"
-
-// #include "../../table_type_of.h"
-
-// #include "vocabulary/node_fwd.h"
-
-namespace sqlite_orm::internal {
-    /**
-     *  Trait class used to define table mapped type by setter/getter/member
-     *  T - member pointer
-     *  `type` is a type which is mapped.
-     *  E.g.
-     *  -   `table_type_of<decltype(&User::id)>::type` is `User`
-     *  -   `table_type_of<decltype(&User::getName)>::type` is `User`
-     *  -   `table_type_of<decltype(&User::setName)>::type` is `User`
-     *  -   `table_type_of<decltype(column<User>(&User::id))>::type` is `User`
-     *  -   `table_type_of<decltype(derived->*&User::id)>::type` is `User`
-     */
-    template<class T>
-    struct table_type_of;
-
-    template<class O, class F>
-    struct table_type_of<F O::*> {
-        using type = O;
-    };
-
-    template<class T, class F>
-    struct table_type_of<column_pointer<T, F>> {
-        using type = T;
-    };
-
-    template<class C>
-    struct table_type_of<indexed_column_t<C>> : table_type_of<C> {};
-
-    template<class T>
-    using table_type_of_t = typename table_type_of<T>::type;
-}
 
 // #include "../node_traits.h"
 
@@ -3750,7 +3763,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-// #include "table_type_of.h"
+// #include "vocabulary/node_traits.h"
 
 // #include "column_pointer.h"
 
@@ -11764,7 +11777,7 @@ namespace sqlite_orm::internal {
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "../../vocabulary/node_projections.h"
+// #include "../../vocabulary/node_traits.h"
 
 // #include "../../type_traits.h"
 
@@ -21931,8 +21944,6 @@ namespace sqlite_orm::internal {
 
 // #include "values.h"
 
-// #include "table_type_of.h"
-
 // #include "util.h"
 
 // #include "error_code.h"
@@ -22255,8 +22266,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../tuple_helper/tuple_traits.h"
-
-// #include "../table_type_of.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -28971,7 +28980,7 @@ namespace sqlite_orm::internal {
 
 // #include "../../alias_traits.h"
 
-// #include "../../table_type_of.h"
+// #include "../../vocabulary/node_traits.h"
 
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits

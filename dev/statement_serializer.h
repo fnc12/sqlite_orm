@@ -53,7 +53,6 @@
 #include "serialize_result_type.h"
 #include "statement_binder.h"
 #include "values.h"
-#include "table_type_of.h"
 #include "util.h"
 #include "error_code.h"
 #include "schema/triggers.h"

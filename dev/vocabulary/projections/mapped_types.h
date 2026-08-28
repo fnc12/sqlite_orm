@@ -1,6 +1,14 @@
 #pragma once
 
-#include "vocabulary/node_fwd.h"
+/** @file Projections yielding the mapped type a node stands for.
+ *
+ *  Unlike the projections reading a declared type name in `nested_types.h`, these destructure
+ *  the node to the type it captured, so they name the concrete nodes they match. Whether the
+ *  type they yield is actually mapped by a schema is not their question - that is answered one
+ *  tier up, by the lookup algorithms in `schema/algorithms/table_lookup.h`.
+ */
+
+#include "../node_fwd.h"
 
 namespace sqlite_orm::internal {
     /**

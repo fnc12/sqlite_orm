@@ -16,7 +16,7 @@
 #include "type_traits.h"
 #include "member_traits/field_of.h"
 #include "alias_traits.h"
-#include "table_type_of.h"
+#include "vocabulary/node_traits.h"
 #include "column_pointer.h"
 #include "vocabulary/node_fwd.h"  // table_identifier
 #include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits

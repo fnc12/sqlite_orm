@@ -1,15 +1,15 @@
 #pragma once
 
-/** @file DSL-specific type name alias template projectors for syntactic sugar.
+/** @file Projections reading the type names a node declares, as alias templates for syntactic sugar.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_reference
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
-#include "../type_traits.h"
-#include "../member_traits/member_traits.h"
+#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../type_traits.h"
+#include "../../member_traits/member_traits.h"
 
 // Plain accessors
 namespace sqlite_orm::internal {

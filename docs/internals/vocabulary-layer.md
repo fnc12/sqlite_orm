@@ -66,14 +66,14 @@ vocabulary/
                             schema/ and arrive via node_definitions.h.
 
     traits/                 "What is this?" — see below
+    projections/            "What does it carry?" — see below
     algorithms/             "What follows from that?" — see below
 
-    node_projections.h      Closed single-node accessors (not _fwd — nothing to
-                            specialize).
-
     node_traits.h           Umbrella, declaration-only: traits/*_fwd.h +
-                            node_projections.h. Never includes a definition file.
-                            Safe for broad inclusion.
+                            projections/*.h. Never includes a definition file.
+                            Safe for broad inclusion. There is no separate projections
+                            umbrella: traits and projections are one tier of question,
+                            and a consumer of one is overwhelmingly a consumer of both.
 
     node_algorithms.h       Umbrella, declaration-only: ddl_predicates.h,
                             clause_predicates.h, expression_element_predicates.h,
@@ -207,18 +207,29 @@ Orthogonality is the point. A node can need grammar **and** operand simultaneous
 A node can be operand-only with no grammar trait (quoting wrappers). A node can have a
 grammar trait and no operand capability at all (CTE bindings).
 
-### Projections — `node_projections.h`
+### Projections — `projections/`
 
-Closed, and deliberately **not** a `_fwd.h`, because there is nothing to specialize.
-Direct single-node accessors, in two shapes:
+Closed throughout, and deliberately **not** `_fwd.h` files, because there is nothing to
+specialize. Direct single-node accessors, in three shapes across two files.
+
+`projections/nested_types.h` reads a type name the node itself declares:
 
 - plain nested-typedef access — `constraints_type_t`, `field_type_t`, `elements_type_t`,
   `object_type_t`, `expression_type_t`, `left_type_t`/`right_type_t`, …
 - detected-idiom accessors with a fallback — `field_type_or_type_t`,
   `alias_holder_type_or_none_t`.
 
-The extra work in the second shape does not promote it to the algorithm tier. Nothing is
-being composed into a judgment; it is still extraction.
+`projections/mapped_types.h` instead destructures a node to a type it captured, and therefore
+names the concrete nodes it matches: `table_type_of` yields the enclosing class of a
+pointer-to-member, the `T` of a `column_pointer<T, F>`, and recurses through
+`indexed_column_t`. Needing `node_fwd.h` is what sets this shape apart from the other two.
+
+Whether the type such a projection yields is *actually* mapped by a schema is not its
+question — that is schema-wide lookup, one tier up in `schema/algorithms/table_lookup.h`.
+`table_type_of` is the input to that lookup, not a part of it.
+
+The extra work in the second and third shapes does not promote them to the algorithm tier.
+Nothing is being composed into a judgment; it is still extraction.
 
 ## The algorithms
 
@@ -403,4 +414,6 @@ concrete reason to, not before.
 - **Struct→table / expression→table mapping.** A further tier above both `member_traits/`
   and `vocabulary/`: schema-wide resolution and lookup, likely *consuming* vocabulary
   rather than being vocabulary. Not yet reviewed against real code; naming and folder
-  undecided.
+  undecided. Note that `table_type_of` is *not* this tier — it extracts a type a node
+  already captured, without consulting a schema, and is settled in
+  `projections/mapped_types.h`.
