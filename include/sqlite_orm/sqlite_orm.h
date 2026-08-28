@@ -23234,8 +23234,9 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            //  `rank_t` carries two meanings: on its own it is the FTS5 `rank` column, which is how its
-            //  own serializer spells it, while an OVER clause makes it the RANK() window function
+            //  `rank_t` carries two meanings. On its own it serializes as the bare `rank`, which serves
+            //  the deprecated `order_by(rank())` spelling of the hidden FTS5 rank column and goes with it
+            //  in v1.11; under an OVER clause it is the RANK() window function, the meaning that stays.
             if constexpr (std::is_same<function_type_t<statement_type>, rank_t>::value) {
                 ss << "rank()";
             } else {
