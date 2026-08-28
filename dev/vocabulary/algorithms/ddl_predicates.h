@@ -2,11 +2,16 @@
 
 /** @file Closed predicates for checking the validity of the elements of a DDL statement.
  *
- *  These answer whether a node is an admissible member of a column or table definition -
+ *  These answer whether a node is an admissible member of a column, table or index definition -
  *  the classification questions specific to a single DDL node, as opposed to the
  *  type-and-order questions about statement clauses in `clause_predicates.h`.
  */
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_same
+#endif
+
+#include "../../functional/cxx_type_traits_polyfill.h"
 #include "../../functional/mpl.h"
 #include "../node_traits.h"
 #include "field_predicates_fwd.h"  // is_rowid_alias_capable
@@ -61,4 +66,27 @@ namespace sqlite_orm::internal {
                                                                                check_if<is_table_content>>,
                                                               T>;
 #endif
+
+    /**
+     *  Whether an index element belongs to the table the index is made for:
+     *  an element that names a column must name a column of that table, while
+     *  expressions and partial-index WHERE clauses carry no table type and are admitted.
+     */
+    template<class ColRef, class T, class SFINAE = void>
+    constexpr bool is_index_element_of_v = true;
+
+    template<class ColRef, class T>
+    constexpr bool is_index_element_of_v<ColRef, T, polyfill::void_t<table_type_of_t<ColRef>>> =
+        std::is_same<table_type_of_t<ColRef>, T>::value;
+
+    /**
+     *  Whether a node is a database object definition - an admissible schema element of a storage definition.
+     */
+    template<class T>
+    using is_database_object = mpl::invoke_t<mpl::disjunction<check_if<is_base_table>,
+                                                              check_if<is_view>,
+                                                              check_if<is_virtual_table>,
+                                                              check_if<is_index>,
+                                                              check_if<is_trigger>>,
+                                             T>;
 }

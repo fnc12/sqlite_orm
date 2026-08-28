@@ -1,15 +1,15 @@
 #pragma once
 
-/** @file DSL-specific type name alias template projectors for syntactic sugar.
+/** @file Projections reading the type names a node declares, as alias templates for syntactic sugar.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_reference
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
-#include "../type_traits.h"
-#include "../member_traits/member_traits.h"
+#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../type_traits.h"
+#include "../../member_traits/member_traits.h"
 
 // Plain accessors
 namespace sqlite_orm::internal {
@@ -50,11 +50,26 @@ namespace sqlite_orm::internal {
     template<typename T>
     using on_type_t = typename T::on_type;
 
+    /**
+     *  The types of the boundaries a window frame spans.
+     */
+    template<typename T>
+    using start_type_t = typename T::start_type;
+
+    template<typename T>
+    using end_type_t = typename T::end_type;
+
     template<typename T>
     using expression_type_t = typename T::expression_type;
 
     template<typename T>
     using args_type_t = typename T::args_type;
+
+    /**
+     *  The function a window function application applies over a window.
+     */
+    template<typename T>
+    using function_type_t = typename T::function_type;
 
     template<typename T>
     using offset_expression_type_t = typename T::offset_expression_type;

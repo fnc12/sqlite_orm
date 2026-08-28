@@ -1,13 +1,14 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <memory>
-#include <sstream>
 #include <string>
 #include <tuple>
+#include <type_traits>  //  std::is_member_pointer
 #endif
 
 #include "../optional_container.h"
+#include "../vocabulary/node_traits.h"
+#include "../vocabulary/node_algorithms.h"  // is_statement_clause
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 // NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
@@ -75,6 +76,9 @@ namespace sqlite_orm::internal {
         elements_type elements;
     };
 
+    template<class T>
+    constexpr bool is_trigger_v = polyfill::is_specialization_of_v<T, trigger_t>;
+
     /**
      *  Base of a trigger. Contains the trigger type/timming and the table type
      *  T is the table type
@@ -113,6 +117,8 @@ namespace sqlite_orm::internal {
 
         template<class WW>
         trigger_base_t<T, WW, Type> when(WW expression) {
+            static_assert(!is_statement_clause<WW>::value,
+                          "a WHEN condition of a trigger must be an expression, not a statement clause");
             trigger_base_t<T, WW, Type> res(this->type_base);
             res.container_when.field = std::move(expression);
             return res;
@@ -120,6 +126,10 @@ namespace sqlite_orm::internal {
 
         template<class... S>
         partial_trigger_t<trigger_base_t<T, W, Type>, S...> begin(S... statements) {
+            static_assert(polyfill::conjunction_v<polyfill::disjunction<is_select_expression<S>,
+                                                                        is_raw_dml_expression<S>,
+                                                                        is_object_dml_expression<S>>...>,
+                          "a trigger body statement must be a complete SELECT, INSERT, UPDATE or DELETE statement");
             return {*this, std::forward<S>(statements)...};
         }
     };
@@ -187,6 +197,10 @@ namespace sqlite_orm::internal {
 
         template<class... Cs>
         trigger_update_type_t<Cs...> update_of(Cs... columns) {
+            //  the grammar production is a list of column names, not expressions
+            static_assert(
+                polyfill::conjunction_v<polyfill::disjunction<std::is_member_pointer<Cs>, is_column_pointer<Cs>>...>,
+                "UPDATE OF arguments must be members of the table the trigger watches");
             return {timing, trigger_type::trigger_update, std::forward<Cs>(columns)...};
         }
     };

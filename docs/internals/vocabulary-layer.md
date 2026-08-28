@@ -66,20 +66,20 @@ vocabulary/
                             schema/ and arrive via node_definitions.h.
 
     traits/                 "What is this?" — see below
+    projections/            "What does it carry?" — see below
     algorithms/             "What follows from that?" — see below
 
-    node_projections.h      Closed single-node accessors (not _fwd — nothing to
-                            specialize).
-
     node_traits.h           Umbrella, declaration-only: traits/*_fwd.h +
-                            node_projections.h. Never includes a definition file.
-                            Safe for broad inclusion.
+                            projections/*.h. Never includes a definition file.
+                            Safe for broad inclusion. There is no separate projections
+                            umbrella: traits and projections are one tier of question,
+                            and a consumer of one is overwhelmingly a consumer of both.
 
     node_algorithms.h       Umbrella, declaration-only: ddl_predicates.h,
-                            clause_predicates.h, operand_predicates.h,
-                            index_filters.h, accessors.h, field_predicates_fwd.h,
-                            field_predicates_concepts.h. Deliberately does NOT include
-                            field_predicates.h.
+                            clause_predicates.h, expression_element_predicates.h,
+                            operand_predicates.h, index_filters.h, accessors.h,
+                            field_predicates_fwd.h, field_predicates_concepts.h.
+                            Deliberately does NOT include field_predicates.h.
 ```
 
 ## The core distinction: classification vs. computation
@@ -116,6 +116,26 @@ schema. See [Schema-level algorithms](#schema-level-algorithms).
 > from "search a collection to find/relate nodes"?
 > → **not vocabulary.** `dev/schema/algorithms/`, likely feeding its result into a
 > vocabulary algorithm.
+
+### Which algorithms file — the level of the construct
+
+Once the placement test says `vocabulary/algorithms/`, the file follows from the grammar level
+of the construct whose membership is in question:
+
+| Level of the construct | File | Question |
+|---|---|---|
+| Schema | `ddl_predicates.h` | Is this an admissible element of a column, table or index definition? |
+| Statement | `clause_predicates.h` | Is this an admissible clause of a statement, and in what order? |
+| Expression | `expression_element_predicates.h` | Is this an admissible element of a compound expression construct? |
+
+That rule is what keeps a new membership check from needing a new file: it is placed by the level
+of the construct it is a member of, not by the grammar family the check happens to be about. A
+window-definition element check belongs next to the frame boundary checks for the same reason a
+new table constraint check belongs next to the column constraint checks.
+
+`operand_predicates.h` sits on an orthogonal axis — not which member a node may be, but whether a
+node may appear as a *leaf operand* of an expression at all. `index_filters.h` and `accessors.h`
+are mechanisms rather than membership questions, and are chosen by what they do.
 
 Two rules that repeatedly prevent mistakes:
 
@@ -187,25 +207,37 @@ Orthogonality is the point. A node can need grammar **and** operand simultaneous
 A node can be operand-only with no grammar trait (quoting wrappers). A node can have a
 grammar trait and no operand capability at all (CTE bindings).
 
-### Projections — `node_projections.h`
+### Projections — `projections/`
 
-Closed, and deliberately **not** a `_fwd.h`, because there is nothing to specialize.
-Direct single-node accessors, in two shapes:
+Closed throughout, and deliberately **not** `_fwd.h` files, because there is nothing to
+specialize. Direct single-node accessors, in three shapes across two files.
+
+`projections/nested_types.h` reads a type name the node itself declares:
 
 - plain nested-typedef access — `constraints_type_t`, `field_type_t`, `elements_type_t`,
   `object_type_t`, `expression_type_t`, `left_type_t`/`right_type_t`, …
 - detected-idiom accessors with a fallback — `field_type_or_type_t`,
   `alias_holder_type_or_none_t`.
 
-The extra work in the second shape does not promote it to the algorithm tier. Nothing is
-being composed into a judgment; it is still extraction.
+`projections/mapped_types.h` instead destructures a node to a type it captured, and therefore
+names the concrete nodes it matches: `table_type_of` yields the enclosing class of a
+pointer-to-member, the `T` of a `column_pointer<T, F>`, and recurses through
+`indexed_column_t`. Needing `node_fwd.h` is what sets this shape apart from the other two.
+
+Whether the type such a projection yields is *actually* mapped by a schema is not its
+question — that is schema-wide lookup, one tier up in `schema/algorithms/table_lookup.h`.
+`table_type_of` is the input to that lookup, not a part of it.
+
+The extra work in the second and third shapes does not promote them to the algorithm tier.
+Nothing is being composed into a judgment; it is still extraction.
 
 ## The algorithms
 
 | File | Contents |
 |---|---|
-| `algorithms/ddl_predicates.h` | Closed, composed alias-template checks of whether a node is an admissible element of a column or table definition, with no significant header-weight dependency, e.g. `is_pkcol_implicitly_insertable`, `is_base_table_element_or_constraint`. Single file; no split needed. |
+| `algorithms/ddl_predicates.h` | Closed, composed checks of whether a node is an admissible element of a column, table or index definition, with no significant header-weight dependency, e.g. `is_pkcol_implicitly_insertable`, `is_base_table_element_or_constraint`, `is_database_object`, `is_index_element_of_v`. Single file; no split needed. |
 | `algorithms/clause_predicates.h` | Closed checks of whether a node is an admissible statement-level clause, and of the canonical order clauses must appear in. One file across statement kinds, because each is just an ordered list of clause traits fed to the same `clause_rank_v` / `clauses_are_correctly_ordered_v` mechanism: SELECT takes all seven, DELETE takes WHERE/ORDER BY/LIMIT, UPDATE adds FROM and its joins as of SQLite 3.33.0. `is_statement_clause` is their union. Whether a clause holds an expression rather than another clause is not checked here — the clause factories enforce that on the argument they are handed. |
+| `algorithms/expression_element_predicates.h` | Closed checks of whether a node is an admissible element of a compound expression construct, sectioned by construct. Today, both sections are the window productions: `is_window_defn_element_v`, gating `window()`, and the `are_valid_over_arguments_v` pack check gating every `over()`, and `is_frame_start_bound_v` / `is_frame_end_bound_v` for which end of a frame a boundary node may occupy, since every boundary node is a boundary but not at both ends. Whether an element holds an expression rather than a clause is not checked here — the element factories enforce that on the argument they are handed. |
 | `algorithms/operand_predicates.h` | Closed checks of whether a type may appear as an operand of a named expression factory (`eq()`, `and_()`, `add()`, `assign()`, …): `is_referencable_operand`, `is_operand_or_bindable`, `are_valid_operands`. Composes the operand traits with grammar traits and the field-level `is_bindable` — which is why it takes `field_predicates_fwd.h` rather than the definition file. |
 | `algorithms/index_filters.h` | Closed alias templates that scan a node's `Elements` tuple and yield an `index_sequence` of matching positions — **not** a filtered tuple. E.g. `col_index_sequence_of`, `col_index_sequence_with_field_type`. Built on `filter_tuple_sequence_t` + grammar traits + projections. |
 | `algorithms/accessors.h` | Closed runtime and compile-time accessors that retrieve a node's relevant sub-part, or the node itself, uniformly across dissimilar grammar families: `access_main_select`/`main_select_t`, `access_main_dml`/`main_dml_t`, `access_column_expression`. This is the concrete payoff of the semantic traits. |
@@ -352,8 +384,7 @@ Decided, not yet done. The destination is settled in each case; only the work re
   `is_alias_v` / `is_column_alias_v` / `is_recordset_alias_v` / `is_table_alias_v`,
   `is_cte_moniker_v`, `is_insert_v` / `is_insert_range_v` / `is_insert_raw_v` and the
   `is_replace_*` family, `is_update_all_v`, `is_remove_all_v`, `is_upsert_clause_v`,
-  `is_over_v`, `is_partition_by_v`, `is_window_defn_v`, `is_values_v`,
-  `is_table_valued_expression_v`, `is_literal_v`.
+  `is_values_v`, `is_table_valued_expression_v`, `is_literal_v`.
 
   Each needs triage before being moved — not every `is_*_v` in a node header is DSL node
   classification. Several are language- or binding-level mechanics
@@ -383,4 +414,6 @@ concrete reason to, not before.
 - **Struct→table / expression→table mapping.** A further tier above both `member_traits/`
   and `vocabulary/`: schema-wide resolution and lookup, likely *consuming* vocabulary
   rather than being vocabulary. Not yet reviewed against real code; naming and folder
-  undecided.
+  undecided. Note that `table_type_of` is *not* this tier — it extracts a type a node
+  already captured, without consulting a schema, and is settled in
+  `projections/mapped_types.h`.

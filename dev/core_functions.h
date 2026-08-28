@@ -60,6 +60,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<filtered_aggregate_function, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -80,6 +81,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<built_in_aggregate_function_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -307,6 +309,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<count_asterisk_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -666,7 +669,7 @@ namespace sqlite_orm::internal {
     };
 
 #endif  //  SQLITE_ENABLE_MATH_FUNCTIONS
-#ifdef SQLITE_ENABLE_JSON1
+#ifdef SQLITE_ORM_JSON_SUPPORTED
     struct json_string {
         serialize_result_type serialize() const {
             return "JSON";
@@ -756,7 +759,7 @@ namespace sqlite_orm::internal {
             return "JSON_GROUP_OBJECT";
         }
     };
-#endif  //  SQLITE_ENABLE_JSON1
+#endif  //  SQLITE_ORM_JSON_SUPPORTED
 
     template<class T, class X, class Y, class Z>
     struct highlight_t {
@@ -2314,7 +2317,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
-#ifdef SQLITE_ENABLE_JSON1
+#ifdef SQLITE_ORM_JSON_SUPPORTED
     template<class X>
     constexpr internal::built_in_function_t<std::string, internal::json_string, X> json(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
@@ -2441,7 +2444,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     json_group_object(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
-#endif  //  SQLITE_ENABLE_JSON1
+#endif  //  SQLITE_ORM_JSON_SUPPORTED
 
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)

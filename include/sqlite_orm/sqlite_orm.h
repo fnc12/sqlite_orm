@@ -273,6 +273,19 @@ using std::nullptr_t;
 
 #include <sqlite3.h>
 
+/*
+ *  JSON functions are built into SQLite as of 3.38.0, unless it was built with `SQLITE_OMIT_JSON`.
+ *  Before that they had to be requested with `SQLITE_ENABLE_JSON1`, which is a no-op since - which is
+ *  why a distribution that has JSON need not define it. vcpkg, for one, reports the feature the modern
+ *  way: its `sqlite3-vcpkg-config.h` leaves `SQLITE_OMIT_JSON` undefined and never mentions JSON1.
+ *
+ *  A distribution that omits JSON therefore has to say so in a header the consumer sees, as vcpkg does
+ *  for the features it selects; otherwise sqlite_orm cannot tell and the functions fail to link.
+ */
+#if defined(SQLITE_ENABLE_JSON1) || (SQLITE_VERSION_NUMBER >= 3038000 && !defined(SQLITE_OMIT_JSON))
+#define SQLITE_ORM_JSON_SUPPORTED
+#endif
+
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
 #else
@@ -1985,7 +1998,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "vocabulary/node_traits.h"
 
-/**	@file Umbrella header for all node traits and node projections.
+/**	@file Umbrella header for the single-node vocabulary: the open classification traits,
+ *        and the projections they are read with.
+ *
+ *  It deliberately spans two folders, because both answer a question about a node already in
+ *  hand - what it is, and what it carries - whereas `node_algorithms.h` covers the composed
+ *  judgments that follow from them.
  */
 
 // #include "traits/grammar_traits_fwd.h"
@@ -2029,6 +2047,18 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_virtual_table = polyfill::bool_constant<is_virtual_table_v<T>>;
+
+    template<class T>
+    extern const bool is_index_v;
+
+    template<class T>
+    using is_index = polyfill::bool_constant<is_index_v<T>>;
+
+    template<class T>
+    extern const bool is_trigger_v;
+
+    template<class T>
+    using is_trigger = polyfill::bool_constant<is_trigger_v<T>>;
 
     template<class T>
     extern const bool is_primary_key_v;
@@ -2230,6 +2260,79 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_offset = polyfill::bool_constant<is_offset_v<T>>;
 
+    /**
+     *  Nodes of a window function application and of the window definition it may carry:
+     *  the OVER application itself, PARTITION BY, and the frame boundaries below.
+     *
+     *  The WINDOW clause of a select statement is `is_window_defn`, classified among the clauses above.
+     */
+    template<class T>
+    extern const bool is_over_v;
+
+    template<class T>
+    using is_over = polyfill::bool_constant<is_over_v<T>>;
+
+    template<class T>
+    extern const bool is_partition_by_v;
+
+    template<class T>
+    using is_partition_by = polyfill::bool_constant<is_partition_by_v<T>>;
+
+    /**
+     *  Nodes referencing a window definition by name: OVER window-name.
+     */
+    template<class T>
+    extern const bool is_window_ref_v;
+
+    template<class T>
+    using is_window_ref = polyfill::bool_constant<is_window_ref_v<T>>;
+
+    /**
+     *  Nodes specifying a window frame: ROWS, RANGE or GROUPS BETWEEN a start and an end boundary.
+     */
+    template<class T>
+    extern const bool is_frame_spec_v;
+
+    template<class T>
+    using is_frame_spec = polyfill::bool_constant<is_frame_spec_v<T>>;
+
+    /**
+     *  Nodes representing a window frame boundary: UNBOUNDED PRECEDING, expr PRECEDING, CURRENT ROW,
+     *  expr FOLLOWING, UNBOUNDED FOLLOWING.
+     *
+     *  Which end of a frame each of them may occupy is the subject of `is_frame_start_bound_v` and
+     *  `is_frame_end_bound_v` in `algorithms/expression_element_predicates.h`.
+     */
+    template<class T>
+    extern const bool is_unbounded_preceding_v;
+
+    template<class T>
+    using is_unbounded_preceding = polyfill::bool_constant<is_unbounded_preceding_v<T>>;
+
+    template<class T>
+    extern const bool is_preceding_v;
+
+    template<class T>
+    using is_preceding = polyfill::bool_constant<is_preceding_v<T>>;
+
+    template<class T>
+    extern const bool is_current_row_v;
+
+    template<class T>
+    using is_current_row = polyfill::bool_constant<is_current_row_v<T>>;
+
+    template<class T>
+    extern const bool is_following_v;
+
+    template<class T>
+    using is_following = polyfill::bool_constant<is_following_v<T>>;
+
+    template<class T>
+    extern const bool is_unbounded_following_v;
+
+    template<class T>
+    using is_unbounded_following = polyfill::bool_constant<is_unbounded_following_v<T>>;
+
     template<class T>
     constexpr bool is_assign_v = false;
 
@@ -2403,6 +2506,16 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_raw_dml_expression = polyfill::bool_constant<is_raw_dml_expression_v<T>>;
+
+    /**
+     *  Nodes that are a DML statement expression bound to a mapped object:
+     *  `insert(object)`, `replace(object)`, `update(object)`, `remove<O>(ids)`.
+     */
+    template<class T, class SFINAE = void>
+    constexpr bool is_object_dml_expression_v = false;
+
+    template<class T>
+    using is_object_dml_expression = polyfill::bool_constant<is_object_dml_expression_v<T>>;
 }
 
 // #include "traits/operand_traits_fwd.h"
@@ -2461,20 +2574,20 @@ namespace sqlite_orm::internal {
     using is_operator_argument = polyfill::bool_constant<is_operator_argument_v<T>>;
 }
 
-// #include "node_projections.h"
+// #include "projections/nested_types.h"
 
-/** @file DSL-specific type name alias template projectors for syntactic sugar.
+/** @file Projections reading the type names a node declares, as alias templates for syntactic sugar.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_reference
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "../type_traits.h"
+// #include "../../type_traits.h"
 
-// #include "../member_traits/member_traits.h"
+// #include "../../member_traits/member_traits.h"
 
 // Plain accessors
 namespace sqlite_orm::internal {
@@ -2515,11 +2628,26 @@ namespace sqlite_orm::internal {
     template<typename T>
     using on_type_t = typename T::on_type;
 
+    /**
+     *  The types of the boundaries a window frame spans.
+     */
+    template<typename T>
+    using start_type_t = typename T::start_type;
+
+    template<typename T>
+    using end_type_t = typename T::end_type;
+
     template<typename T>
     using expression_type_t = typename T::expression_type;
 
     template<typename T>
     using args_type_t = typename T::args_type;
+
+    /**
+     *  The function a window function application applies over a window.
+     */
+    template<typename T>
+    using function_type_t = typename T::function_type;
 
     template<typename T>
     using offset_expression_type_t = typename T::offset_expression_type;
@@ -2568,6 +2696,85 @@ namespace sqlite_orm::internal {
     template<class T>
     using alias_holder_type_or_none_t = polyfill::detected_t<type_t, T>;
 #endif
+}
+
+// #include "projections/mapped_types.h"
+
+/** @file Projections yielding the mapped type a node stands for.
+ *
+ *  Unlike the projections reading a declared type name in `nested_types.h`, these destructure
+ *  the node to the type it captured, so they name the concrete nodes they match. Whether the
+ *  type they yield is actually mapped by a schema is not their question - that is answered one
+ *  tier up, by the lookup algorithms in `schema/algorithms/table_lookup.h`.
+ */
+
+// #include "../node_fwd.h"
+
+/** @file Forward-declarations of concrete nodes that have to be used directly in template programming,
+ *        e.g. for base-class overloads or metafunctions.
+ */
+
+namespace sqlite_orm::internal {
+    template<class... Cs>
+    struct primary_key_t;
+
+    template<class G, class S>
+    struct column_field;
+
+    template<class... Op>
+    struct column_constraints;
+
+    struct table_identifier;
+
+    template<class T, class F>
+    struct column_pointer;
+
+    template<class C>
+    struct indexed_column_t;
+}
+
+namespace sqlite_orm::internal {
+    /**
+     *  Trait class used to define table mapped type by setter/getter/member
+     *  T - member pointer
+     *  `type` is a type which is mapped.
+     *  E.g.
+     *  -   `table_type_of<decltype(&User::id)>::type` is `User`
+     *  -   `table_type_of<decltype(&User::getName)>::type` is `User`
+     *  -   `table_type_of<decltype(&User::setName)>::type` is `User`
+     *  -   `table_type_of<decltype(column<User>(&User::id))>::type` is `User`
+     *  -   `table_type_of<decltype(derived->*&User::id)>::type` is `User`
+     */
+    /*
+     *  Implementation note: the primary template is defined, not merely declared, so that the trait
+     *  stays probeable. `table_type_of<indexed_column_t<C>>` below derives from `table_type_of<C>`;
+     *  for a `C` that has no mapping - an expression index element, say - an undeclared primary makes
+     *  that an incomplete base, which is a hard error while instantiating the class rather than a
+     *  substitution failure in the immediate context, and so defeats any detection of the trait.
+     */
+    template<class T>
+    struct table_type_of {};
+
+    /*
+     *  Implementation note: the member pointer case is spelled out rather than forwarded to
+     *  `member_object_type_t`, which computes the same thing one tier down. The obvious definition
+     *  is shorter than the indirection would be, and keeps the specializations readable side by side.
+     */
+    template<class O, class F>
+    struct table_type_of<F O::*> {
+        using type = O;
+    };
+
+    template<class T, class F>
+    struct table_type_of<column_pointer<T, F>> {
+        using type = T;
+    };
+
+    template<class C>
+    struct table_type_of<indexed_column_t<C>> : table_type_of<C> {};
+
+    template<class T>
+    using table_type_of_t = typename table_type_of<T>::type;
 }
 
 // #include "vocabulary/node_algorithms.h"
@@ -2640,29 +2847,6 @@ namespace sqlite_orm::internal {
 // #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../vocabulary/node_fwd.h"
-
-/** @file Forward-declarations of concrete nodes that have to be used directly in template programming,
- *        e.g. for base-class overloads or metafunctions.
- */
-
-namespace sqlite_orm::internal {
-    template<class... Cs>
-    struct primary_key_t;
-
-    template<class G, class S>
-    struct column_field;
-
-    template<class... Op>
-    struct column_constraints;
-
-    struct table_identifier;
-
-    template<class T, class F>
-    struct column_pointer;
-
-    template<class C>
-    struct indexed_column_t;
-}
 // column_pointer
 
 namespace sqlite_orm::internal {
@@ -2709,7 +2893,7 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "../node_projections.h"
+// #include "../node_traits.h"
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
@@ -2784,10 +2968,16 @@ namespace sqlite_orm::internal {
 
 /** @file Closed predicates for checking the validity of the elements of a DDL statement.
  *
- *  These answer whether a node is an admissible member of a column or table definition -
+ *  These answer whether a node is an admissible member of a column, table or index definition -
  *  the classification questions specific to a single DDL node, as opposed to the
  *  type-and-order questions about statement clauses in `clause_predicates.h`.
  */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_same
+#endif
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
 
 // #include "../../functional/mpl.h"
 
@@ -2846,6 +3036,29 @@ namespace sqlite_orm::internal {
                                                                                check_if<is_table_content>>,
                                                               T>;
 #endif
+
+    /**
+     *  Whether an index element belongs to the table the index is made for:
+     *  an element that names a column must name a column of that table, while
+     *  expressions and partial-index WHERE clauses carry no table type and are admitted.
+     */
+    template<class ColRef, class T, class SFINAE = void>
+    constexpr bool is_index_element_of_v = true;
+
+    template<class ColRef, class T>
+    constexpr bool is_index_element_of_v<ColRef, T, polyfill::void_t<table_type_of_t<ColRef>>> =
+        std::is_same<table_type_of_t<ColRef>, T>::value;
+
+    /**
+     *  Whether a node is a database object definition - an admissible schema element of a storage definition.
+     */
+    template<class T>
+    using is_database_object = mpl::invoke_t<mpl::disjunction<check_if<is_base_table>,
+                                                              check_if<is_view>,
+                                                              check_if<is_virtual_table>,
+                                                              check_if<is_index>,
+                                                              check_if<is_trigger>>,
+                                             T>;
 }
 
 // #include "algorithms/clause_predicates.h"
@@ -3028,6 +3241,69 @@ namespace sqlite_orm::internal {
      */
     template<class T>
     using is_statement_clause = is_select_clause<T>;
+}
+
+// #include "algorithms/expression_element_predicates.h"
+
+/** @file Closed predicates for checking the membership of the elements of a compound expression construct.
+ *
+ *  These answer whether a node may occupy a given slot of an expression-level construct - a window
+ *  definition and its frame, and the like - as opposed to the elements of a schema definition
+ *  (`ddl_predicates.h`) or the clauses of a statement (`clause_predicates.h`).
+ *
+ *  That an element holds an expression rather than a statement clause is not checked here -
+ *  the element factories enforce that on the argument each is handed.
+ */
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
+// #include "../node_traits.h"
+
+// window definitions
+namespace sqlite_orm::internal {
+    /**
+     *  Whether a node is an admissible element of a window definition: PARTITION BY, ORDER BY,
+     *  and a frame specification.
+     */
+    template<class T>
+    constexpr bool is_window_defn_element_v =
+        polyfill::disjunction_v<is_partition_by<T>, is_order_by<T>, is_frame_spec<T>>;
+
+    /**
+     *  Whether a pack forms the arguments of an OVER clause: either a lone reference to a named
+     *  window - `OVER name` - or the elements of an inline window definition, of which the empty
+     *  definition `OVER ()` is one.
+     *
+     *  A window reference is admissible only on its own. SQLite's base-window-name form,
+     *  `OVER (name PARTITION BY ...)`, has no spelling in the DSL, and the serializer streams a
+     *  window reference only as the sole argument.
+     */
+    template<class... Args>
+    constexpr bool are_valid_over_arguments_v =
+        (sizeof...(Args) == 1 && (is_window_ref_v<Args> && ...)) || (is_window_defn_element_v<Args> && ...);
+}
+
+// window frame boundaries
+namespace sqlite_orm::internal {
+    /*
+     *  Every frame boundary node is a boundary, but not at both ends of the frame: SQLite rejects a frame
+     *  starting with UNBOUNDED FOLLOWING, and one ending with UNBOUNDED PRECEDING, as syntax errors.
+     *  The frame factories `rows()`, `range()` and `groups()` check the boundaries they are handed.
+     */
+
+    /**
+     *  Whether a node may open a window frame: the frame cannot start with UNBOUNDED FOLLOWING.
+     */
+    template<class T>
+    constexpr bool is_frame_start_bound_v =
+        polyfill::disjunction_v<is_unbounded_preceding<T>, is_preceding<T>, is_current_row<T>, is_following<T>>;
+
+    /**
+     *  Whether a node may close a window frame: the frame cannot end with UNBOUNDED PRECEDING.
+     */
+    template<class T>
+    constexpr bool is_frame_end_bound_v =
+        polyfill::disjunction_v<is_preceding<T>, is_current_row<T>, is_following<T>, is_unbounded_following<T>>;
 }
 
 // #include "algorithms/operand_predicates.h"
@@ -3568,41 +3844,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-// #include "table_type_of.h"
-
-// #include "vocabulary/node_fwd.h"
-
-namespace sqlite_orm::internal {
-    /**
-     *  Trait class used to define table mapped type by setter/getter/member
-     *  T - member pointer
-     *  `type` is a type which is mapped.
-     *  E.g.
-     *  -   `table_type_of<decltype(&User::id)>::type` is `User`
-     *  -   `table_type_of<decltype(&User::getName)>::type` is `User`
-     *  -   `table_type_of<decltype(&User::setName)>::type` is `User`
-     *  -   `table_type_of<decltype(column<User>(&User::id))>::type` is `User`
-     *  -   `table_type_of<decltype(derived->*&User::id)>::type` is `User`
-     */
-    template<class T>
-    struct table_type_of;
-
-    template<class O, class F>
-    struct table_type_of<F O::*> {
-        using type = O;
-    };
-
-    template<class T, class F>
-    struct table_type_of<column_pointer<T, F>> {
-        using type = T;
-    };
-
-    template<class C>
-    struct table_type_of<indexed_column_t<C>> : table_type_of<C> {};
-
-    template<class T>
-    using table_type_of_t = typename table_type_of<T>::type;
-}
+// #include "vocabulary/node_traits.h"
 
 // #include "column_pointer.h"
 
@@ -5221,6 +5463,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
          */
         template<char... Chars>
         [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator""_ctealias() {
+#ifdef SQLITE_ORM_PACK_INDEXING_SUPPORTED
+            // numeric monikers are used for automatically assigning implicit aliases to unaliased column expressions,
+            // which start at "1".
+            static_assert(Chars...[0] > '0');
+#endif
             return internal::cte_moniker<Chars...>{};
         }
 
@@ -6137,7 +6384,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple
-#include <type_traits>  //  std::forward, std::move
+#include <type_traits>  //  std::is_same
 #include <utility>  //  std::forward, std::move
 #endif
 
@@ -6145,33 +6392,57 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause, is_frame_start_bound_v, is_frame_end_bound_v
 
 namespace sqlite_orm::internal {
 
     struct unbounded_preceding_t {};
 
+    template<class T>
+    constexpr bool is_unbounded_preceding_v = std::is_same<T, unbounded_preceding_t>::value;
+
     template<class E>
     struct preceding_t {
-        E expression;
+        using expression_type = E;
+
+        expression_type expression;
     };
+
+    template<class T>
+    constexpr bool is_preceding_v = polyfill::is_specialization_of_v<T, preceding_t>;
 
     struct current_row_t {};
 
+    template<class T>
+    constexpr bool is_current_row_v = std::is_same<T, current_row_t>::value;
+
     template<class E>
     struct following_t {
-        E expression;
+        using expression_type = E;
+
+        expression_type expression;
     };
 
+    template<class T>
+    constexpr bool is_following_v = polyfill::is_specialization_of_v<T, following_t>;
+
     struct unbounded_following_t {};
+
+    template<class T>
+    constexpr bool is_unbounded_following_v = std::is_same<T, unbounded_following_t>::value;
 
     enum class frame_type_t { rows, range, groups };
     enum class frame_exclude_t { no_others, current_row, group, ties };
 
     template<class Start, class End>
     struct frame_spec_t {
+        using start_type = Start;
+        using end_type = End;
+
         frame_type_t type;
-        Start start;
-        End end;
+        start_type start;
+        end_type end;
         frame_exclude_t exclude = frame_exclude_t::no_others;
 
         frame_spec_t exclude_current_row() const {
@@ -6199,6 +6470,9 @@ namespace sqlite_orm::internal {
         }
     };
 
+    template<class T>
+    constexpr bool is_frame_spec_v = polyfill::is_specialization_of_v<T, frame_spec_t>;
+
     template<class... Args>
     struct partition_by_t {
         using args_type = std::tuple<Args...>;
@@ -6206,14 +6480,14 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_partition_by_v = polyfill::is_specialization_of_v<T, partition_by_t>;
-
-    template<class T>
-    using is_partition_by = polyfill::bool_constant<is_partition_by_v<T>>;
+    constexpr bool is_partition_by_v = polyfill::is_specialization_of_v<T, partition_by_t>;
 
     struct window_ref_t {
         std::string name;
     };
+
+    template<class T>
+    constexpr bool is_window_ref_v = std::is_same<T, window_ref_t>::value;
 
     template<class F, class... Args>
     struct over_t {
@@ -6225,20 +6499,31 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_over_v = polyfill::is_specialization_of_v<T, over_t>;
-
-    template<class T>
-    using is_over = polyfill::bool_constant<is_over_v<T>>;
+    constexpr bool is_over_v = polyfill::is_specialization_of_v<T, over_t>;
 
     template<class... Args>
     struct window_defn_t {
-        std::string name;
         using args_type = std::tuple<Args...>;
+
+        std::string name;
         args_type arguments;
     };
 
     template<class T>
     constexpr bool is_window_defn_v = polyfill::is_specialization_of_v<T, window_defn_t>;
+
+    template<class... Args>
+    constexpr void validate_over_arguments() {
+        static_assert(are_valid_over_arguments_v<Args...>,
+                      "an OVER clause takes either a single window_ref(), or the elements of an inline window "
+                      "definition: partition_by(), order_by() and a rows()/range()/groups() frame");
+    }
+
+    template<class... Args>
+    constexpr void validate_window_arguments() {
+        static_assert((is_window_defn_element_v<Args> && ...),
+                      "a window definition takes partition_by(), order_by() and a rows()/range()/groups() frame");
+    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -6257,6 +6542,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class E>
     internal::preceding_t<E> preceding(E expression) {
+        static_assert(!internal::is_statement_clause<E>::value,
+                      "a frame boundary must be an expression, not a statement clause");
         return {std::move(expression)};
     }
 
@@ -6274,6 +6561,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class E>
     internal::following_t<E> following(E expression) {
+        static_assert(!internal::is_statement_clause<E>::value,
+                      "a frame boundary must be an expression, not a statement clause");
         return {std::move(expression)};
     }
 
@@ -6291,6 +6580,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Start, class End>
     internal::frame_spec_t<Start, End> rows(Start start, End end) {
+        static_assert(internal::is_frame_start_bound_v<Start>,
+                      "a frame must start with unbounded_preceding(), preceding(), current_row() or following()");
+        static_assert(internal::is_frame_end_bound_v<End>,
+                      "a frame must end with preceding(), current_row(), following() or unbounded_following()");
         return {internal::frame_type_t::rows, std::move(start), std::move(end)};
     }
 
@@ -6300,6 +6593,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Start, class End>
     internal::frame_spec_t<Start, End> range(Start start, End end) {
+        static_assert(internal::is_frame_start_bound_v<Start>,
+                      "a frame must start with unbounded_preceding(), preceding(), current_row() or following()");
+        static_assert(internal::is_frame_end_bound_v<End>,
+                      "a frame must end with preceding(), current_row(), following() or unbounded_following()");
         return {internal::frame_type_t::range, std::move(start), std::move(end)};
     }
 
@@ -6309,6 +6606,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Start, class End>
     internal::frame_spec_t<Start, End> groups(Start start, End end) {
+        static_assert(internal::is_frame_start_bound_v<Start>,
+                      "a frame must start with unbounded_preceding(), preceding(), current_row() or following()");
+        static_assert(internal::is_frame_end_bound_v<End>,
+                      "a frame must end with preceding(), current_row(), following() or unbounded_following()");
         return {internal::frame_type_t::groups, std::move(start), std::move(end)};
     }
 
@@ -6318,6 +6619,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Args>
     internal::partition_by_t<Args...> partition_by(Args... args) {
+        static_assert((!internal::is_statement_clause<Args>::value && ...),
+                      "a PARTITION BY term must be an expression, not a statement clause");
         return {{std::forward<Args>(args)...}};
     }
 
@@ -6336,6 +6639,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Args>
     internal::window_defn_t<Args...> window(std::string name, Args... args) {
+        internal::validate_window_arguments<Args...>();
         return {std::move(name), {std::forward<Args>(args)...}};
     }
 }
@@ -6344,6 +6648,7 @@ namespace sqlite_orm::internal {
     struct rank_t {
         template<class... OverArgs>
         over_t<rank_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -7550,6 +7855,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<filtered_aggregate_function, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -7570,6 +7876,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<built_in_aggregate_function_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -7797,6 +8104,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<count_asterisk_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -8156,7 +8464,7 @@ namespace sqlite_orm::internal {
     };
 
 #endif  //  SQLITE_ENABLE_MATH_FUNCTIONS
-#ifdef SQLITE_ENABLE_JSON1
+#ifdef SQLITE_ORM_JSON_SUPPORTED
     struct json_string {
         serialize_result_type serialize() const {
             return "JSON";
@@ -8246,7 +8554,7 @@ namespace sqlite_orm::internal {
             return "JSON_GROUP_OBJECT";
         }
     };
-#endif  //  SQLITE_ENABLE_JSON1
+#endif  //  SQLITE_ORM_JSON_SUPPORTED
 
     template<class T, class X, class Y, class Z>
     struct highlight_t {
@@ -9804,7 +10112,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
-#ifdef SQLITE_ENABLE_JSON1
+#ifdef SQLITE_ORM_JSON_SUPPORTED
     template<class X>
     constexpr internal::built_in_function_t<std::string, internal::json_string, X> json(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
@@ -9931,7 +10239,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     json_group_object(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
-#endif  //  SQLITE_ENABLE_JSON1
+#endif  //  SQLITE_ORM_JSON_SUPPORTED
 
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
@@ -11582,7 +11890,7 @@ namespace sqlite_orm::internal {
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "../../vocabulary/node_projections.h"
+// #include "../../vocabulary/node_traits.h"
 
 // #include "../../type_traits.h"
 
@@ -13022,6 +13330,7 @@ namespace sqlite_orm::internal {
     struct row_number_t {
         template<class... OverArgs>
         over_t<row_number_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13029,6 +13338,7 @@ namespace sqlite_orm::internal {
     struct dense_rank_t {
         template<class... OverArgs>
         over_t<dense_rank_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13036,6 +13346,7 @@ namespace sqlite_orm::internal {
     struct percent_rank_t {
         template<class... OverArgs>
         over_t<percent_rank_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13043,6 +13354,7 @@ namespace sqlite_orm::internal {
     struct cume_dist_t {
         template<class... OverArgs>
         over_t<cume_dist_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13054,6 +13366,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<ntile_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13065,6 +13378,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<lag_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13076,6 +13390,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<lead_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13087,6 +13402,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<first_value_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13098,6 +13414,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<last_value_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13109,6 +13426,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<nth_value_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -16366,6 +16684,15 @@ namespace sqlite_orm::internal {
                                                                        is_remove_all<expression_type_t<With>>>>>> =
         true;
 
+    template<class DML>
+    constexpr bool is_object_dml_expression_v<
+        DML,
+        std::enable_if_t<polyfill::disjunction_v<is_insert<DML>,
+                                                 polyfill::is_specialization_of<DML, insert_explicit>,
+                                                 is_replace<DML>,
+                                                 polyfill::is_specialization_of<DML, update_t>,
+                                                 polyfill::is_specialization_of<DML, remove_t>>>> = true;
+
     /**
      *  The delete statement counterpart of `validate_select_clauses()`; see there for the split of
      *  responsibilities between this and the clause factories.
@@ -16707,6 +17034,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Ids>
     internal::remove_t<T, Ids...> remove(Ids... ids) {
+        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
+                      "Only primary key values are accepted as Ids");
         return {{std::forward<Ids>(ids)...}};
     }
 
@@ -16741,6 +17070,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Ids>
     internal::get_t<T, Ids...> get(Ids... ids) {
+        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
+                      "Only primary key values are accepted as Ids");
         return {{std::forward<Ids>(ids)...}};
     }
 
@@ -16763,6 +17094,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Ids>
     internal::get_pointer_t<T, Ids...> get_pointer(Ids... ids) {
+        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
+                      "Only primary key values are accepted as Ids");
         return {{std::forward<Ids>(ids)...}};
     }
 
@@ -16786,6 +17119,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Ids>
     internal::get_optional_t<T, Ids...> get_optional(Ids... ids) {
+        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
+                      "Only primary key values are accepted as Ids");
         return {{std::forward<Ids>(ids)...}};
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -17781,9 +18116,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class E>
-    struct ast_iterator<preceding_t<E>, void> {
-        using node_type = preceding_t<E>;
+    template<class T>
+    struct ast_iterator<T, std::enable_if_t<is_preceding<T>::value>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -17791,9 +18126,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class E>
-    struct ast_iterator<following_t<E>, void> {
-        using node_type = following_t<E>;
+    template<class T>
+    struct ast_iterator<T, std::enable_if_t<is_following<T>::value>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -17801,9 +18136,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class Start, class End>
-    struct ast_iterator<frame_spec_t<Start, End>, void> {
-        using node_type = frame_spec_t<Start, End>;
+    template<class T>
+    struct ast_iterator<T, std::enable_if_t<is_frame_spec<T>::value>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -17812,9 +18147,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct ast_iterator<partition_by_t<Args...>, void> {
-        using node_type = partition_by_t<Args...>;
+    template<class T>
+    struct ast_iterator<T, std::enable_if_t<is_partition_by<T>::value>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -17822,9 +18157,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class F, class... Args>
-    struct ast_iterator<over_t<F, Args...>, void> {
-        using node_type = over_t<F, Args...>;
+    template<class T>
+    struct ast_iterator<T, std::enable_if_t<is_over<T>::value>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -21732,8 +22067,6 @@ namespace sqlite_orm::internal {
 
 // #include "values.h"
 
-// #include "table_type_of.h"
-
 // #include "util.h"
 
 // #include "error_code.h"
@@ -21741,14 +22074,17 @@ namespace sqlite_orm::internal {
 // #include "schema/triggers.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <memory>
-#include <sstream>
 #include <string>
 #include <tuple>
+#include <type_traits>  //  std::is_member_pointer
 #endif
 
 // #include "../optional_container.h"
 
+// #include "../vocabulary/node_traits.h"
+
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause
 // #include "../vocabulary/traits/operand_traits_fwd.h"
 // Included to specialize traits
 
@@ -21817,6 +22153,9 @@ namespace sqlite_orm::internal {
         elements_type elements;
     };
 
+    template<class T>
+    constexpr bool is_trigger_v = polyfill::is_specialization_of_v<T, trigger_t>;
+
     /**
      *  Base of a trigger. Contains the trigger type/timming and the table type
      *  T is the table type
@@ -21855,6 +22194,8 @@ namespace sqlite_orm::internal {
 
         template<class WW>
         trigger_base_t<T, WW, Type> when(WW expression) {
+            static_assert(!is_statement_clause<WW>::value,
+                          "a WHEN condition of a trigger must be an expression, not a statement clause");
             trigger_base_t<T, WW, Type> res(this->type_base);
             res.container_when.field = std::move(expression);
             return res;
@@ -21862,6 +22203,10 @@ namespace sqlite_orm::internal {
 
         template<class... S>
         partial_trigger_t<trigger_base_t<T, W, Type>, S...> begin(S... statements) {
+            static_assert(polyfill::conjunction_v<polyfill::disjunction<is_select_expression<S>,
+                                                                        is_raw_dml_expression<S>,
+                                                                        is_object_dml_expression<S>>...>,
+                          "a trigger body statement must be a complete SELECT, INSERT, UPDATE or DELETE statement");
             return {*this, std::forward<S>(statements)...};
         }
     };
@@ -21929,6 +22274,10 @@ namespace sqlite_orm::internal {
 
         template<class... Cs>
         trigger_update_type_t<Cs...> update_of(Cs... columns) {
+            //  the grammar production is a list of column names, not expressions
+            static_assert(
+                polyfill::conjunction_v<polyfill::disjunction<std::is_member_pointer<Cs>, is_column_pointer<Cs>>...>,
+                "UPDATE OF arguments must be members of the table the trigger watches");
             return {timing, trigger_type::trigger_update, std::forward<Cs>(columns)...};
         }
     };
@@ -22037,14 +22386,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::forward
 #endif
 
+// #include "../functional/cxx_type_traits_polyfill.h"
+
 // #include "../tuple_helper/tuple_traits.h"
-
-// #include "../functional/mpl.h"
-
-// #include "../table_type_of.h"
 
 // #include "../vocabulary/node_traits.h"
 
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause, is_index_element_of_v
 // #include "indexed_column.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -22123,6 +22472,19 @@ namespace sqlite_orm::internal {
 
         elements_type elements;
     };
+
+    template<class T>
+    constexpr bool is_index_v = polyfill::is_specialization_of_v<T, index_t>;
+
+    template<class T, class... Cols>
+    constexpr void validate_index_arguments() {
+        static_assert(count_tuple<std::tuple<Cols...>, is_where>::value <= 1,
+                      "amount of where arguments can be 0 or 1");
+        static_assert(((is_where_v<Cols> || !is_statement_clause<Cols>::value) && ...),
+                      "a make_index() argument must be an indexed column, an expression or a partial-index WHERE");
+        static_assert((is_index_element_of_v<Cols, T> && ...),
+                      "all indexed columns must belong to the table the index is made for");
+    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -22130,8 +22492,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {
         using namespace ::sqlite_orm::internal;
-        using cols_tuple = mpl::pack<Cols...>;
-        static_assert(count_tuple<cols_tuple, is_where>::value <= 1, "amount of where arguments can be 0 or 1");
+        validate_index_arguments<T, Cols...>();
         return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
@@ -22139,8 +22500,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {
         using namespace ::sqlite_orm::internal;
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(count_tuple<cols_tuple, is_where>::value <= 1, "amount of where arguments can be 0 or 1");
+        validate_index_arguments<T, Cols...>();
         return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
@@ -22148,8 +22508,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_unique_index(std::string name, Cols... cols) {
         using namespace ::sqlite_orm::internal;
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(count_tuple<cols_tuple, is_where>::value <= 1, "amount of where arguments can be 0 or 1");
+        validate_index_arguments<T, Cols...>();
         return {std::move(name), true, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 }
@@ -22766,9 +23125,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<unbounded_preceding_t, void> {
-        using statement_type = unbounded_preceding_t;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_unbounded_preceding<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
@@ -22777,9 +23136,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class E>
-    struct statement_serializer<preceding_t<E>, void> {
-        using statement_type = preceding_t<E>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_preceding<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -22790,9 +23149,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<current_row_t, void> {
-        using statement_type = current_row_t;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_current_row<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
@@ -22801,9 +23160,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class E>
-    struct statement_serializer<following_t<E>, void> {
-        using statement_type = following_t<E>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_following<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -22814,9 +23173,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<unbounded_following_t, void> {
-        using statement_type = unbounded_following_t;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_unbounded_following<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
@@ -22825,9 +23184,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class Start, class End>
-    struct statement_serializer<frame_spec_t<Start, End>, void> {
-        using statement_type = frame_spec_t<Start, End>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_frame_spec<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -22862,9 +23221,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct statement_serializer<partition_by_t<Args...>, void> {
-        using statement_type = partition_by_t<Args...>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_partition_by<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -22879,37 +23238,29 @@ namespace sqlite_orm::internal {
     void serialize_over_arguments(std::stringstream& ss, const Tuple& arguments, const Ctx& context) {
         if constexpr (std::tuple_size<Tuple>::value == 0) {
             ss << " OVER ()";
-        } else if constexpr (std::tuple_size<Tuple>::value == 1 &&
-                             std::is_same<typename std::tuple_element<0, Tuple>::type, window_ref_t>::value) {
+        } else if constexpr (std::tuple_size<Tuple>::value == 1 && is_window_ref_v<std::tuple_element_t<0, Tuple>>) {
             ss << " OVER " << std::get<0>(arguments).name;
         } else {
             ss << " OVER (" << streaming_actions_tuple(arguments, context) << ")";
         }
     }
 
-    template<class F, class... Args>
-    struct statement_serializer<over_t<F, Args...>, void> {
-        using statement_type = over_t<F, Args...>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_over<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            ss << serialize(statement.function, context);
-            serialize_over_arguments(ss, statement.arguments, context);
-            return ss.str();
-        }
-    };
-
-    template<class... Args>
-    struct statement_serializer<over_t<rank_t, Args...>, void> {
-        using statement_type = over_t<rank_t, Args...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-            ss << "rank()";
+            //  `rank_t` carries two meanings. On its own it serializes as the bare `rank`, which serves
+            //  the deprecated `order_by(rank())` spelling of the hidden FTS5 rank column and goes with it
+            //  in v1.11; under an OVER clause it is the RANK() window function, the meaning that stays.
+            if constexpr (std::is_same<function_type_t<statement_type>, rank_t>::value) {
+                ss << "rank()";
+            } else {
+                ss << serialize(statement.function, context);
+            }
             serialize_over_arguments(ss, statement.arguments, context);
             return ss.str();
         }
@@ -27966,6 +28317,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     auto make_storage(std::string filename, Spec... specifications) {
         using namespace ::sqlite_orm::internal;
 
+        static_assert(
+            polyfill::conjunction_v<
+                polyfill::disjunction<is_database_object<Spec>, polyfill::is_detected<storage_opt_tag_t, Spec>>...>,
+            "a make_storage() argument must be a table, index, trigger, view, virtual table or a storage "
+            "option");
+
         std::tuple specTuple{std::forward<Spec>(specifications)...};
         return internal::make_storage(
             std::move(filename),
@@ -28738,7 +29095,7 @@ namespace sqlite_orm::internal {
 
 // #include "../../alias_traits.h"
 
-// #include "../../table_type_of.h"
+// #include "../../vocabulary/node_traits.h"
 
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -30370,40 +30727,40 @@ namespace sqlite_orm::internal {
     template<class Table, class... Args>
     struct node_tuple<table_valued_expression<Table, Args...>, void> : node_tuple_for<Args...> {};
 
-    template<class E>
-    struct node_tuple<preceding_t<E>, void> : node_tuple<E> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_preceding<T>::value>> : node_tuple<expression_type_t<T>> {};
 
-    template<class E>
-    struct node_tuple<following_t<E>, void> : node_tuple<E> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_following<T>::value>> : node_tuple<expression_type_t<T>> {};
 
-    template<>
-    struct node_tuple<unbounded_preceding_t, void> {
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_unbounded_preceding<T>::value>> {
         using type = std::tuple<>;
     };
 
-    template<>
-    struct node_tuple<unbounded_following_t, void> {
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_unbounded_following<T>::value>> {
         using type = std::tuple<>;
     };
 
-    template<>
-    struct node_tuple<current_row_t, void> {
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_current_row<T>::value>> {
         using type = std::tuple<>;
     };
 
-    template<class Start, class End>
-    struct node_tuple<frame_spec_t<Start, End>, void> : node_tuple_for<Start, End> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_frame_spec<T>::value>> : node_tuple_for<start_type_t<T>, end_type_t<T>> {};
 
-    template<class... Args>
-    struct node_tuple<partition_by_t<Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_partition_by<T>::value>> : node_tuple<args_type_t<T>> {};
 
-    template<>
-    struct node_tuple<window_ref_t, void> {
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_window_ref<T>::value>> {
         using type = std::tuple<>;
     };
 
-    template<class F, class... Args>
-    struct node_tuple<over_t<F, Args...>, void> : node_tuple_for<F, Args...> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_over<T>::value>> : node_tuple_for<function_type_t<T>, args_type_t<T>> {};
 
     template<class T>
     struct node_tuple<T, std::enable_if_t<is_window_defn<T>::value>> : node_tuple<args_type_t<T>> {};
@@ -30946,6 +31303,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... Cs>
     auto using_fts5(Cs... definition) {
         using namespace ::sqlite_orm::internal;
+        static_assert((is_fts5_table_element_or_constraint<Cs>::value && ...),
+                      "Incorrect table elements or constraints");
         return make_fts5_definition(std::forward<Cs>(definition)...
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                                     ,

@@ -24,4 +24,14 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_raw_dml_expression = polyfill::bool_constant<is_raw_dml_expression_v<T>>;
+
+    /**
+     *  Nodes that are a DML statement expression bound to a mapped object:
+     *  `insert(object)`, `replace(object)`, `update(object)`, `remove<O>(ids)`.
+     */
+    template<class T, class SFINAE = void>
+    constexpr bool is_object_dml_expression_v = false;
+
+    template<class T>
+    using is_object_dml_expression = polyfill::bool_constant<is_object_dml_expression_v<T>>;
 }

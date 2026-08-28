@@ -12,7 +12,7 @@
 
 #include "../../member_traits/member_traits.h"
 #include "../../member_traits/field_of.h"
-#include "../node_projections.h"
+#include "../node_traits.h"
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
