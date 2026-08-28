@@ -10,6 +10,7 @@ namespace sqlite_orm::internal {
     struct rank_t {
         template<class... OverArgs>
         over_t<rank_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };

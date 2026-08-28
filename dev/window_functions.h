@@ -12,6 +12,7 @@ namespace sqlite_orm::internal {
     struct row_number_t {
         template<class... OverArgs>
         over_t<row_number_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -19,6 +20,7 @@ namespace sqlite_orm::internal {
     struct dense_rank_t {
         template<class... OverArgs>
         over_t<dense_rank_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -26,6 +28,7 @@ namespace sqlite_orm::internal {
     struct percent_rank_t {
         template<class... OverArgs>
         over_t<percent_rank_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -33,6 +36,7 @@ namespace sqlite_orm::internal {
     struct cume_dist_t {
         template<class... OverArgs>
         over_t<cume_dist_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -44,6 +48,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<ntile_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -55,6 +60,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<lag_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -66,6 +72,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<lead_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -77,6 +84,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<first_value_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -88,6 +96,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<last_value_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -99,6 +108,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<nth_value_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };

@@ -79,6 +79,9 @@ namespace sqlite_orm::internal {
         }
     };
 
+    template<class T>
+    constexpr bool is_frame_spec_v = polyfill::is_specialization_of_v<T, frame_spec_t>;
+
     template<class... Args>
     struct partition_by_t {
         using args_type = std::tuple<Args...>;
@@ -91,6 +94,9 @@ namespace sqlite_orm::internal {
     struct window_ref_t {
         std::string name;
     };
+
+    template<class T>
+    constexpr bool is_window_ref_v = std::is_same<T, window_ref_t>::value;
 
     template<class F, class... Args>
     struct over_t {
@@ -106,13 +112,27 @@ namespace sqlite_orm::internal {
 
     template<class... Args>
     struct window_defn_t {
-        std::string name;
         using args_type = std::tuple<Args...>;
+
+        std::string name;
         args_type arguments;
     };
 
     template<class T>
     constexpr bool is_window_defn_v = polyfill::is_specialization_of_v<T, window_defn_t>;
+
+    template<class... Args>
+    constexpr void validate_over_arguments() {
+        static_assert(are_valid_over_arguments_v<Args...>,
+                      "an OVER clause takes either a single window_ref(), or the elements of an inline window "
+                      "definition: partition_by(), order_by() and a rows()/range()/groups() frame");
+    }
+
+    template<class... Args>
+    constexpr void validate_window_arguments() {
+        static_assert((is_window_defn_element_v<Args> && ...),
+                      "a window definition takes partition_by(), order_by() and a rows()/range()/groups() frame");
+    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -228,6 +248,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Args>
     internal::window_defn_t<Args...> window(std::string name, Args... args) {
+        internal::validate_window_arguments<Args...>();
         return {std::move(name), {std::forward<Args>(args)...}};
     }
 }

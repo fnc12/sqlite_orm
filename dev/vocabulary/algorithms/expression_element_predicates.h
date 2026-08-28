@@ -13,6 +13,30 @@
 #include "../../functional/cxx_type_traits_polyfill.h"
 #include "../node_traits.h"
 
+// window definitions
+namespace sqlite_orm::internal {
+    /**
+     *  Whether a node is an admissible element of a window definition: PARTITION BY, ORDER BY,
+     *  and a frame specification.
+     */
+    template<class T>
+    constexpr bool is_window_defn_element_v =
+        polyfill::disjunction_v<is_partition_by<T>, is_order_by<T>, is_frame_spec<T>>;
+
+    /**
+     *  Whether a pack forms the arguments of an OVER clause: either a lone reference to a named
+     *  window - `OVER name` - or the elements of an inline window definition, of which the empty
+     *  definition `OVER ()` is one.
+     *
+     *  A window reference is admissible only on its own. SQLite's base-window-name form,
+     *  `OVER (name PARTITION BY ...)`, has no spelling in the DSL, and the serializer streams a
+     *  window reference only as the sole argument.
+     */
+    template<class... Args>
+    constexpr bool are_valid_over_arguments_v =
+        (sizeof...(Args) == 1 && (is_window_ref_v<Args> && ...)) || (is_window_defn_element_v<Args> && ...);
+}
+
 // window frame boundaries
 namespace sqlite_orm::internal {
     /*

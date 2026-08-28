@@ -2266,6 +2266,24 @@ namespace sqlite_orm::internal {
     using is_partition_by = polyfill::bool_constant<is_partition_by_v<T>>;
 
     /**
+     *  Nodes referencing a window definition by name: OVER window-name.
+     */
+    template<class T>
+    extern const bool is_window_ref_v;
+
+    template<class T>
+    using is_window_ref = polyfill::bool_constant<is_window_ref_v<T>>;
+
+    /**
+     *  Nodes specifying a window frame: ROWS, RANGE or GROUPS BETWEEN a start and an end boundary.
+     */
+    template<class T>
+    extern const bool is_frame_spec_v;
+
+    template<class T>
+    using is_frame_spec = polyfill::bool_constant<is_frame_spec_v<T>>;
+
+    /**
      *  Nodes representing a window frame boundary: UNBOUNDED PRECEDING, expr PRECEDING, CURRENT ROW,
      *  expr FOLLOWING, UNBOUNDED FOLLOWING.
      *
@@ -3206,6 +3224,30 @@ namespace sqlite_orm::internal {
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
 // #include "../node_traits.h"
+
+// window definitions
+namespace sqlite_orm::internal {
+    /**
+     *  Whether a node is an admissible element of a window definition: PARTITION BY, ORDER BY,
+     *  and a frame specification.
+     */
+    template<class T>
+    constexpr bool is_window_defn_element_v =
+        polyfill::disjunction_v<is_partition_by<T>, is_order_by<T>, is_frame_spec<T>>;
+
+    /**
+     *  Whether a pack forms the arguments of an OVER clause: either a lone reference to a named
+     *  window - `OVER name` - or the elements of an inline window definition, of which the empty
+     *  definition `OVER ()` is one.
+     *
+     *  A window reference is admissible only on its own. SQLite's base-window-name form,
+     *  `OVER (name PARTITION BY ...)`, has no spelling in the DSL, and the serializer streams a
+     *  window reference only as the sole argument.
+     */
+    template<class... Args>
+    constexpr bool are_valid_over_arguments_v =
+        (sizeof...(Args) == 1 && (is_window_ref_v<Args> && ...)) || (is_window_defn_element_v<Args> && ...);
+}
 
 // window frame boundaries
 namespace sqlite_orm::internal {
@@ -6387,6 +6429,9 @@ namespace sqlite_orm::internal {
         }
     };
 
+    template<class T>
+    constexpr bool is_frame_spec_v = polyfill::is_specialization_of_v<T, frame_spec_t>;
+
     template<class... Args>
     struct partition_by_t {
         using args_type = std::tuple<Args...>;
@@ -6399,6 +6444,9 @@ namespace sqlite_orm::internal {
     struct window_ref_t {
         std::string name;
     };
+
+    template<class T>
+    constexpr bool is_window_ref_v = std::is_same<T, window_ref_t>::value;
 
     template<class F, class... Args>
     struct over_t {
@@ -6414,13 +6462,27 @@ namespace sqlite_orm::internal {
 
     template<class... Args>
     struct window_defn_t {
-        std::string name;
         using args_type = std::tuple<Args...>;
+
+        std::string name;
         args_type arguments;
     };
 
     template<class T>
     constexpr bool is_window_defn_v = polyfill::is_specialization_of_v<T, window_defn_t>;
+
+    template<class... Args>
+    constexpr void validate_over_arguments() {
+        static_assert(are_valid_over_arguments_v<Args...>,
+                      "an OVER clause takes either a single window_ref(), or the elements of an inline window "
+                      "definition: partition_by(), order_by() and a rows()/range()/groups() frame");
+    }
+
+    template<class... Args>
+    constexpr void validate_window_arguments() {
+        static_assert((is_window_defn_element_v<Args> && ...),
+                      "a window definition takes partition_by(), order_by() and a rows()/range()/groups() frame");
+    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -6536,6 +6598,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Args>
     internal::window_defn_t<Args...> window(std::string name, Args... args) {
+        internal::validate_window_arguments<Args...>();
         return {std::move(name), {std::forward<Args>(args)...}};
     }
 }
@@ -6544,6 +6607,7 @@ namespace sqlite_orm::internal {
     struct rank_t {
         template<class... OverArgs>
         over_t<rank_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -7750,6 +7814,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<filtered_aggregate_function, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -7770,6 +7835,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<built_in_aggregate_function_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -7997,6 +8063,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<count_asterisk_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13222,6 +13289,7 @@ namespace sqlite_orm::internal {
     struct row_number_t {
         template<class... OverArgs>
         over_t<row_number_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13229,6 +13297,7 @@ namespace sqlite_orm::internal {
     struct dense_rank_t {
         template<class... OverArgs>
         over_t<dense_rank_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13236,6 +13305,7 @@ namespace sqlite_orm::internal {
     struct percent_rank_t {
         template<class... OverArgs>
         over_t<percent_rank_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13243,6 +13313,7 @@ namespace sqlite_orm::internal {
     struct cume_dist_t {
         template<class... OverArgs>
         over_t<cume_dist_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13254,6 +13325,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<ntile_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13265,6 +13337,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<lag_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13276,6 +13349,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<lead_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13287,6 +13361,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<first_value_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13298,6 +13373,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<last_value_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -13309,6 +13385,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<nth_value_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };

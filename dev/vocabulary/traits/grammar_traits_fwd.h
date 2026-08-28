@@ -271,6 +271,24 @@ namespace sqlite_orm::internal {
     using is_partition_by = polyfill::bool_constant<is_partition_by_v<T>>;
 
     /**
+     *  Nodes referencing a window definition by name: OVER window-name.
+     */
+    template<class T>
+    extern const bool is_window_ref_v;
+
+    template<class T>
+    using is_window_ref = polyfill::bool_constant<is_window_ref_v<T>>;
+
+    /**
+     *  Nodes specifying a window frame: ROWS, RANGE or GROUPS BETWEEN a start and an end boundary.
+     */
+    template<class T>
+    extern const bool is_frame_spec_v;
+
+    template<class T>
+    using is_frame_spec = polyfill::bool_constant<is_frame_spec_v<T>>;
+
+    /**
      *  Nodes representing a window frame boundary: UNBOUNDED PRECEDING, expr PRECEDING, CURRENT ROW,
      *  expr FOLLOWING, UNBOUNDED FOLLOWING.
      *

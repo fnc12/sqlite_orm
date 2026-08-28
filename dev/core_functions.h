@@ -60,6 +60,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<filtered_aggregate_function, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -80,6 +81,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<built_in_aggregate_function_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
@@ -307,6 +309,7 @@ namespace sqlite_orm::internal {
 
         template<class... OverArgs>
         over_t<count_asterisk_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
