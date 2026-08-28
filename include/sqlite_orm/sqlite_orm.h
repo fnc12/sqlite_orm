@@ -273,6 +273,19 @@ using std::nullptr_t;
 
 #include <sqlite3.h>
 
+/*
+ *  JSON functions are built into SQLite as of 3.38.0, unless it was built with `SQLITE_OMIT_JSON`.
+ *  Before that they had to be requested with `SQLITE_ENABLE_JSON1`, which is a no-op since - which is
+ *  why a distribution that has JSON need not define it. vcpkg, for one, reports the feature the modern
+ *  way: its `sqlite3-vcpkg-config.h` leaves `SQLITE_OMIT_JSON` undefined and never mentions JSON1.
+ *
+ *  A distribution that omits JSON therefore has to say so in a header the consumer sees, as vcpkg does
+ *  for the features it selects; otherwise sqlite_orm cannot tell and the functions fail to link.
+ */
+#if defined(SQLITE_ENABLE_JSON1) || (SQLITE_VERSION_NUMBER >= 3038000 && !defined(SQLITE_OMIT_JSON))
+#define SQLITE_ORM_JSON_SUPPORTED
+#endif
+
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
 #else
@@ -8451,7 +8464,7 @@ namespace sqlite_orm::internal {
     };
 
 #endif  //  SQLITE_ENABLE_MATH_FUNCTIONS
-#ifdef SQLITE_ENABLE_JSON1
+#ifdef SQLITE_ORM_JSON_SUPPORTED
     struct json_string {
         serialize_result_type serialize() const {
             return "JSON";
@@ -8541,7 +8554,7 @@ namespace sqlite_orm::internal {
             return "JSON_GROUP_OBJECT";
         }
     };
-#endif  //  SQLITE_ENABLE_JSON1
+#endif  //  SQLITE_ORM_JSON_SUPPORTED
 
     template<class T, class X, class Y, class Z>
     struct highlight_t {
@@ -10099,7 +10112,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
-#ifdef SQLITE_ENABLE_JSON1
+#ifdef SQLITE_ORM_JSON_SUPPORTED
     template<class X>
     constexpr internal::built_in_function_t<std::string, internal::json_string, X> json(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
@@ -10226,7 +10239,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     json_group_object(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
-#endif  //  SQLITE_ENABLE_JSON1
+#endif  //  SQLITE_ORM_JSON_SUPPORTED
 
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)

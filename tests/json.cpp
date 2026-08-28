@@ -3,7 +3,7 @@
 
 using namespace sqlite_orm;
 
-#ifdef SQLITE_ENABLE_JSON1
+#ifdef SQLITE_ORM_JSON_SUPPORTED
 TEST_CASE("json") {
     auto storage = make_storage("");
     std::vector<std::string> expected;
@@ -463,4 +463,4 @@ TEST_CASE("json_group_array && json_group_object") {
         REQUIRE(rows == expected);
     }
 }
-#endif  //  SQLITE_ENABLE_JSON1
+#endif  //  SQLITE_ORM_JSON_SUPPORTED
