@@ -8,7 +8,7 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_same, std::enable_if
+#include <type_traits>  //  std::is_same
 #endif
 
 #include "../../functional/cxx_type_traits_polyfill.h"
@@ -76,9 +76,8 @@ namespace sqlite_orm::internal {
     constexpr bool is_index_element_of_v = true;
 
     template<class ColRef, class T>
-    constexpr bool
-        is_index_element_of_v<ColRef, T, std::enable_if_t<polyfill::is_detected<table_type_of_t, ColRef>::value>> =
-            std::is_same<table_type_of_t<ColRef>, T>::value;
+    constexpr bool is_index_element_of_v<ColRef, T, polyfill::void_t<table_type_of_t<ColRef>>> =
+        std::is_same<table_type_of_t<ColRef>, T>::value;
 
     /**
      *  Whether a node is a database object definition - an admissible schema element of a storage definition.

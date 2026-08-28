@@ -22,8 +22,15 @@ namespace sqlite_orm::internal {
      *  -   `table_type_of<decltype(column<User>(&User::id))>::type` is `User`
      *  -   `table_type_of<decltype(derived->*&User::id)>::type` is `User`
      */
+    /*
+     *  Implementation note: the primary template is defined, not merely declared, so that the trait
+     *  stays probeable. `table_type_of<indexed_column_t<C>>` below derives from `table_type_of<C>`;
+     *  for a `C` that has no mapping - an expression index element, say - an undeclared primary makes
+     *  that an incomplete base, which is a hard error while instantiating the class rather than a
+     *  substitution failure in the immediate context, and so defeats any detection of the trait.
+     */
     template<class T>
-    struct table_type_of;
+    struct table_type_of {};
 
     /*
      *  Implementation note: the member pointer case is spelled out rather than forwarded to
