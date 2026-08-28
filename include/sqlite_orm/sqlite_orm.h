@@ -2615,11 +2615,26 @@ namespace sqlite_orm::internal {
     template<typename T>
     using on_type_t = typename T::on_type;
 
+    /**
+     *  The types of the boundaries a window frame spans.
+     */
+    template<typename T>
+    using start_type_t = typename T::start_type;
+
+    template<typename T>
+    using end_type_t = typename T::end_type;
+
     template<typename T>
     using expression_type_t = typename T::expression_type;
 
     template<typename T>
     using args_type_t = typename T::args_type;
+
+    /**
+     *  The function a window function application applies over a window.
+     */
+    template<typename T>
+    using function_type_t = typename T::function_type;
 
     template<typename T>
     using offset_expression_type_t = typename T::offset_expression_type;
@@ -6370,7 +6385,9 @@ namespace sqlite_orm::internal {
 
     template<class E>
     struct preceding_t {
-        E expression;
+        using expression_type = E;
+
+        expression_type expression;
     };
 
     template<class T>
@@ -6383,7 +6400,9 @@ namespace sqlite_orm::internal {
 
     template<class E>
     struct following_t {
-        E expression;
+        using expression_type = E;
+
+        expression_type expression;
     };
 
     template<class T>
@@ -6399,9 +6418,12 @@ namespace sqlite_orm::internal {
 
     template<class Start, class End>
     struct frame_spec_t {
+        using start_type = Start;
+        using end_type = End;
+
         frame_type_t type;
-        Start start;
-        End end;
+        start_type start;
+        end_type end;
         frame_exclude_t exclude = frame_exclude_t::no_others;
 
         frame_spec_t exclude_current_row() const {
@@ -18075,9 +18097,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class E>
-    struct ast_iterator<preceding_t<E>, void> {
-        using node_type = preceding_t<E>;
+    template<class T>
+    struct ast_iterator<T, std::enable_if_t<is_preceding<T>::value>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -18085,9 +18107,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class E>
-    struct ast_iterator<following_t<E>, void> {
-        using node_type = following_t<E>;
+    template<class T>
+    struct ast_iterator<T, std::enable_if_t<is_following<T>::value>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -18095,9 +18117,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class Start, class End>
-    struct ast_iterator<frame_spec_t<Start, End>, void> {
-        using node_type = frame_spec_t<Start, End>;
+    template<class T>
+    struct ast_iterator<T, std::enable_if_t<is_frame_spec<T>::value>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -18106,9 +18128,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct ast_iterator<partition_by_t<Args...>, void> {
-        using node_type = partition_by_t<Args...>;
+    template<class T>
+    struct ast_iterator<T, std::enable_if_t<is_partition_by<T>::value>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -18116,9 +18138,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class F, class... Args>
-    struct ast_iterator<over_t<F, Args...>, void> {
-        using node_type = over_t<F, Args...>;
+    template<class T>
+    struct ast_iterator<T, std::enable_if_t<is_over<T>::value>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -23084,9 +23106,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<unbounded_preceding_t, void> {
-        using statement_type = unbounded_preceding_t;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_unbounded_preceding<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
@@ -23095,9 +23117,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class E>
-    struct statement_serializer<preceding_t<E>, void> {
-        using statement_type = preceding_t<E>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_preceding<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -23108,9 +23130,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<current_row_t, void> {
-        using statement_type = current_row_t;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_current_row<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
@@ -23119,9 +23141,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class E>
-    struct statement_serializer<following_t<E>, void> {
-        using statement_type = following_t<E>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_following<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -23132,9 +23154,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<unbounded_following_t, void> {
-        using statement_type = unbounded_following_t;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_unbounded_following<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
@@ -23143,9 +23165,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class Start, class End>
-    struct statement_serializer<frame_spec_t<Start, End>, void> {
-        using statement_type = frame_spec_t<Start, End>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_frame_spec<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -23180,9 +23202,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct statement_serializer<partition_by_t<Args...>, void> {
-        using statement_type = partition_by_t<Args...>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_partition_by<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -23197,37 +23219,28 @@ namespace sqlite_orm::internal {
     void serialize_over_arguments(std::stringstream& ss, const Tuple& arguments, const Ctx& context) {
         if constexpr (std::tuple_size<Tuple>::value == 0) {
             ss << " OVER ()";
-        } else if constexpr (std::tuple_size<Tuple>::value == 1 &&
-                             std::is_same<typename std::tuple_element<0, Tuple>::type, window_ref_t>::value) {
+        } else if constexpr (std::tuple_size<Tuple>::value == 1 && is_window_ref_v<std::tuple_element_t<0, Tuple>>) {
             ss << " OVER " << std::get<0>(arguments).name;
         } else {
             ss << " OVER (" << streaming_actions_tuple(arguments, context) << ")";
         }
     }
 
-    template<class F, class... Args>
-    struct statement_serializer<over_t<F, Args...>, void> {
-        using statement_type = over_t<F, Args...>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_over<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            ss << serialize(statement.function, context);
-            serialize_over_arguments(ss, statement.arguments, context);
-            return ss.str();
-        }
-    };
-
-    template<class... Args>
-    struct statement_serializer<over_t<rank_t, Args...>, void> {
-        using statement_type = over_t<rank_t, Args...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-            ss << "rank()";
+            //  `rank_t` carries two meanings: on its own it is the FTS5 `rank` column, which is how its
+            //  own serializer spells it, while an OVER clause makes it the RANK() window function
+            if constexpr (std::is_same<function_type_t<statement_type>, rank_t>::value) {
+                ss << "rank()";
+            } else {
+                ss << serialize(statement.function, context);
+            }
             serialize_over_arguments(ss, statement.arguments, context);
             return ss.str();
         }
@@ -30694,40 +30707,40 @@ namespace sqlite_orm::internal {
     template<class Table, class... Args>
     struct node_tuple<table_valued_expression<Table, Args...>, void> : node_tuple_for<Args...> {};
 
-    template<class E>
-    struct node_tuple<preceding_t<E>, void> : node_tuple<E> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_preceding<T>::value>> : node_tuple<expression_type_t<T>> {};
 
-    template<class E>
-    struct node_tuple<following_t<E>, void> : node_tuple<E> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_following<T>::value>> : node_tuple<expression_type_t<T>> {};
 
-    template<>
-    struct node_tuple<unbounded_preceding_t, void> {
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_unbounded_preceding<T>::value>> {
         using type = std::tuple<>;
     };
 
-    template<>
-    struct node_tuple<unbounded_following_t, void> {
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_unbounded_following<T>::value>> {
         using type = std::tuple<>;
     };
 
-    template<>
-    struct node_tuple<current_row_t, void> {
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_current_row<T>::value>> {
         using type = std::tuple<>;
     };
 
-    template<class Start, class End>
-    struct node_tuple<frame_spec_t<Start, End>, void> : node_tuple_for<Start, End> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_frame_spec<T>::value>> : node_tuple_for<start_type_t<T>, end_type_t<T>> {};
 
-    template<class... Args>
-    struct node_tuple<partition_by_t<Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_partition_by<T>::value>> : node_tuple<args_type_t<T>> {};
 
-    template<>
-    struct node_tuple<window_ref_t, void> {
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_window_ref<T>::value>> {
         using type = std::tuple<>;
     };
 
-    template<class F, class... Args>
-    struct node_tuple<over_t<F, Args...>, void> : node_tuple_for<F, Args...> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_over<T>::value>> : node_tuple_for<function_type_t<T>, args_type_t<T>> {};
 
     template<class T>
     struct node_tuple<T, std::enable_if_t<is_window_defn<T>::value>> : node_tuple<args_type_t<T>> {};

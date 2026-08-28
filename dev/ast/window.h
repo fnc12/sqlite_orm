@@ -20,7 +20,9 @@ namespace sqlite_orm::internal {
 
     template<class E>
     struct preceding_t {
-        E expression;
+        using expression_type = E;
+
+        expression_type expression;
     };
 
     template<class T>
@@ -33,7 +35,9 @@ namespace sqlite_orm::internal {
 
     template<class E>
     struct following_t {
-        E expression;
+        using expression_type = E;
+
+        expression_type expression;
     };
 
     template<class T>
@@ -49,9 +53,12 @@ namespace sqlite_orm::internal {
 
     template<class Start, class End>
     struct frame_spec_t {
+        using start_type = Start;
+        using end_type = End;
+
         frame_type_t type;
-        Start start;
-        End end;
+        start_type start;
+        end_type end;
         frame_exclude_t exclude = frame_exclude_t::no_others;
 
         frame_spec_t exclude_current_row() const {

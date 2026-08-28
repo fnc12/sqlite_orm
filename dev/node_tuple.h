@@ -274,40 +274,40 @@ namespace sqlite_orm::internal {
     template<class Table, class... Args>
     struct node_tuple<table_valued_expression<Table, Args...>, void> : node_tuple_for<Args...> {};
 
-    template<class E>
-    struct node_tuple<preceding_t<E>, void> : node_tuple<E> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_preceding<T>::value>> : node_tuple<expression_type_t<T>> {};
 
-    template<class E>
-    struct node_tuple<following_t<E>, void> : node_tuple<E> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_following<T>::value>> : node_tuple<expression_type_t<T>> {};
 
-    template<>
-    struct node_tuple<unbounded_preceding_t, void> {
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_unbounded_preceding<T>::value>> {
         using type = std::tuple<>;
     };
 
-    template<>
-    struct node_tuple<unbounded_following_t, void> {
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_unbounded_following<T>::value>> {
         using type = std::tuple<>;
     };
 
-    template<>
-    struct node_tuple<current_row_t, void> {
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_current_row<T>::value>> {
         using type = std::tuple<>;
     };
 
-    template<class Start, class End>
-    struct node_tuple<frame_spec_t<Start, End>, void> : node_tuple_for<Start, End> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_frame_spec<T>::value>> : node_tuple_for<start_type_t<T>, end_type_t<T>> {};
 
-    template<class... Args>
-    struct node_tuple<partition_by_t<Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_partition_by<T>::value>> : node_tuple<args_type_t<T>> {};
 
-    template<>
-    struct node_tuple<window_ref_t, void> {
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_window_ref<T>::value>> {
         using type = std::tuple<>;
     };
 
-    template<class F, class... Args>
-    struct node_tuple<over_t<F, Args...>, void> : node_tuple_for<F, Args...> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_over<T>::value>> : node_tuple_for<function_type_t<T>, args_type_t<T>> {};
 
     template<class T>
     struct node_tuple<T, std::enable_if_t<is_window_defn<T>::value>> : node_tuple<args_type_t<T>> {};
