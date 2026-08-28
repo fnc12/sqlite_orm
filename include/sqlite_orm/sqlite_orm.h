@@ -2702,6 +2702,11 @@ namespace sqlite_orm::internal {
     template<class T>
     struct table_type_of;
 
+    /*
+     *  Implementation note: the member pointer case is spelled out rather than forwarded to
+     *  `member_object_type_t`, which computes the same thing one tier down. The obvious definition
+     *  is shorter than the indirection would be, and keeps the specializations readable side by side.
+     */
     template<class O, class F>
     struct table_type_of<F O::*> {
         using type = O;
