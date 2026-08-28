@@ -109,6 +109,7 @@ jobs:
             cc: gcc-10
             cxx: g++-10
             cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+            build_examples: "-DBUILD_EXAMPLES=ON"
             install_compiler: true
             compiler_package: g++-10
 
