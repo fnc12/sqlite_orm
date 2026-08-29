@@ -54,7 +54,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return internal::get_ref(std::get<N>(statement.expression.ids));
     }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<int N, class T, class... Ids>
     auto& get(internal::prepared_statement_t<internal::get_optional_t<T, Ids...>>& statement) {
         return internal::get_ref(std::get<N>(statement.expression.ids));
@@ -64,7 +63,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     const auto& get(const internal::prepared_statement_t<internal::get_optional_t<T, Ids...>>& statement) {
         return internal::get_ref(std::get<N>(statement.expression.ids));
     }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<int N, class T, class... Ids>
     auto& get(internal::prepared_statement_t<internal::remove_t<T, Ids...>>& statement) {

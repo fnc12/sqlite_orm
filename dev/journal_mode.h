@@ -37,11 +37,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 namespace sqlite_orm::internal {
     inline const serialize_result_type& journal_mode_to_string(journal_mode value) {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         static constexpr std::array<serialize_result_type, 6> idx2str = {
-#else
-        static const std::array<serialize_result_type, 6> idx2str = {
-#endif
             "DELETE",
             "TRUNCATE",
             "PERSIST",

@@ -100,11 +100,9 @@ TEST_CASE("fts5 layout tests") {
         STATIC_REQUIRE(std::is_same<definition_type::module_type, fts5_module_tag>::value);
         STATIC_REQUIRE(is_base_template_of_v<insertable_table_definition, definition_type>);
         STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, std::string>::size() == 2);
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         STATIC_REQUIRE(hidden_col_index_sequence_of<elements_type>::size() == 2);
         STATIC_REQUIRE(all_col_index_sequence_with_field_type<elements_type, std::vector<char>>::size() == 1);
         STATIC_REQUIRE(all_col_index_sequence_with_field_type<elements_type, std::optional<int>>::size() == 1);
-#endif
     }
 }
 #endif

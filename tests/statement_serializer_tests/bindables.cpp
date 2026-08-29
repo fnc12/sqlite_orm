@@ -45,7 +45,6 @@ constexpr auto get_default<internal::literal_holder<const wchar_t*>>() -> intern
     return {L""};
 }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 template<>
 constexpr auto get_default<std::nullopt_t>() -> std::nullopt_t {
     return std::nullopt;
@@ -55,7 +54,6 @@ template<>
 constexpr auto get_default<internal::literal_holder<std::nullopt_t>>() -> internal::literal_holder<std::nullopt_t> {
     return {std::nullopt};
 }
-#endif
 
 template<class Tpl, size_t... Idx>
 constexpr Tpl make_default_tuple(index_sequence<Idx...>) {
@@ -147,11 +145,8 @@ TEST_CASE("bindables") {
                             ,
                             const wchar_t*
 #endif
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                             ,
-                            std::nullopt_t
-#endif
-                            >;
+                            std::nullopt_t>;
 
         constexpr Tuple tpl = make_default_tuple<Tuple>();
 
@@ -176,11 +171,8 @@ TEST_CASE("bindables") {
                                                   ,
                                                   "''"
 #endif
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                                                   ,
-                                                  "NULL"
-#endif
-        };
+                                                  "NULL"};
 
         SECTION("dump") {
             context.replace_bindable_with_question = false;
@@ -206,15 +198,11 @@ TEST_CASE("bindables") {
                             unique_ptr<int>,
                             shared_ptr<int>,
                             vector<char>,
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                             std::optional<int>,
                             std::optional<Custom>,
-#endif
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                             std::string_view,
 #ifndef SQLITE_ORM_OMITS_CODECVT
                             std::wstring_view,
-#endif
 #endif
                             StringVeneer<char>,
                             Custom,
@@ -230,15 +218,11 @@ TEST_CASE("bindables") {
                                                   "NULL",
                                                   "NULL",
                                                   "x''",
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                                                   "NULL",
                                                   "NULL",
-#endif
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                                                   "''",
 #ifndef SQLITE_ORM_OMITS_CODECVT
                                                   "''",
-#endif
 #endif
                                                   "''",
                                                   "custom",

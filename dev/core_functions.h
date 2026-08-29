@@ -6,6 +6,7 @@
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
+#include <optional>  //  std::optional
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
@@ -1845,7 +1846,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  NULLIF(X,Y) function https://www.sqlite.org/lang_corefunc.html#nullif
      */
-#if defined(SQLITE_ORM_OPTIONAL_SUPPORTED)
     /**
      *  NULLIF(X,Y) using common return type of X and Y
      */
@@ -1872,12 +1872,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return F{std::make_tuple(std::move(x), std::move(y))};
         }
     }
-#else
-    template<class R, class X, class Y>
-    constexpr internal::built_in_function_t<R, internal::nullif_string, X, Y> nullif(X x, Y y) {
-        return {std::make_tuple(std::move(x), std::move(y))};
-    }
-#endif
 
     /**
      *  DATE(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html

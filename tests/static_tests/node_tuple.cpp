@@ -37,14 +37,12 @@ TEST_CASE("Node tuple") {
             using Tuple = node_tuple_t<std::reference_wrapper<int>>;
             STATIC_REQUIRE(is_same<Tuple, tuple<int>>::value);
         }
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         {
             SECTION("as_optional") {
                 using Tuple = node_tuple_t<internal::as_optional_t<int>>;
                 STATIC_REQUIRE(is_same<Tuple, tuple<int>>::value);
             }
         }
-#endif
     }
     SECTION("bindables") {
         SECTION("int") {

@@ -1,9 +1,8 @@
 #pragma once
 
-#include "functional/cxx_string_view.h"
-
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <algorithm>  // std::ranges::find
+#include <string_view>  //  std::string_view
 #endif
 
 #include "error_code.h"
@@ -12,7 +11,6 @@
 #include "storage_base.h"
 
 namespace sqlite_orm::internal {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
     /*
      *  AST iteration callable that matches function call node expressions.
      *  - Throws a `orm_error_code::function_not_found` exception
@@ -60,5 +58,4 @@ namespace sqlite_orm::internal {
             return it != functions.end();
         }
     };
-#endif
 }

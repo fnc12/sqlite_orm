@@ -6,6 +6,7 @@
 #include <memory>  //  std::allocator, std::unique_ptr, std::make_unique
 #include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
+#include <string_view>  //  std::string_view
 #include <sstream>  //  std::stringstream
 #include <ostream>  //  std::flush
 #include <utility>  //  std::move
@@ -18,7 +19,6 @@
 #include <tuple>  //  std::apply
 #endif
 
-#include "functional/cxx_string_view.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "pragma.h"
 #include "limit_accessor.h"
@@ -206,7 +206,6 @@ namespace sqlite_orm::internal {
             this->drop_dbo_internal(connection.get(), "TABLE", tableName, true);
         }
 
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         /**
          *  Drops the view with the specified name.
          *  Calls `DROP VIEW "viewName"`.
@@ -226,7 +225,6 @@ namespace sqlite_orm::internal {
             auto connection = this->get_connection();
             this->drop_dbo_internal(connection.get(), "VIEW", viewName, true);
         }
-#endif
 
         /**
          *  Rename table named `from` to `to`.
@@ -255,7 +253,6 @@ namespace sqlite_orm::internal {
             return this->object_exists(connection.get(), "table", tableName);
         }
 
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         /**
          *  Directly checks the actual database whether the specified view exists, bypassing the library's 'storage' mapping.
          *  @return true if view with the specified name exists in the database, false otherwise.
@@ -264,7 +261,6 @@ namespace sqlite_orm::internal {
             auto connection = this->get_connection();
             return this->object_exists(connection.get(), "view", viewName);
         }
-#endif
 
       protected:
         void rename_table_internal(sqlite3* db, serialize_arg_type oldName, serialize_arg_type newName) const {

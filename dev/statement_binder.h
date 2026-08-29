@@ -5,13 +5,11 @@
 #include <type_traits>  //  std::enable_if, std::is_arithmetic, std::is_same, std::make_index_sequence, std::index_sequence
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
+#include <string_view>  //  std::string_view
 #include <vector>  //  std::vector
-#include <cstring>  //  strncpy, strlen
+#include <cstring>  //  strncpy
 #include <functional>  //  std::invoke
-#include "functional/cxx_string_view.h"
-#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <cwchar>  //  wcsncpy, wcslen
-#endif
+#include <optional>  //  std::optional
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert
 #include <codecvt>  //  std::codecvt_utf8_utf16
@@ -126,12 +124,8 @@ namespace sqlite_orm {
     template<class V>
     struct statement_binder<V,
                             std::enable_if_t<std::disjunction<std::is_base_of<std::string, V>,
-                                                              std::is_same<V, orm_gsl::czstring>
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                                                              ,
-                                                              std::is_same<V, std::string_view>
-#endif
-                                                              >::value>> {
+                                                              std::is_same<V, orm_gsl::czstring>,
+                                                              std::is_same<V, std::string_view>>::value>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             auto stringData = this->string_data(value);
@@ -147,31 +141,17 @@ namespace sqlite_orm {
         }
 
       private:
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         std::pair<const char*, int> string_data(const std::string_view& s) const {
             return {s.data(), int(s.size())};
         }
-#else
-        std::pair<const char*, int> string_data(const std::string& s) const {
-            return {s.c_str(), int(s.size())};
-        }
-
-        std::pair<const char*, int> string_data(orm_gsl::czstring s) const {
-            return {s, int(strlen(s))};
-        }
-#endif
     };
 
 #ifndef SQLITE_ORM_OMITS_CODECVT
     template<class V>
     struct statement_binder<V,
                             std::enable_if_t<std::disjunction<std::is_base_of<std::wstring, V>,
-                                                              std::is_same<V, const wchar_t*>
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                                                              ,
-                                                              std::is_same<V, std::wstring_view>
-#endif
-                                                              >::value>> {
+                                                              std::is_same<V, const wchar_t*>,
+                                                              std::is_same<V, std::wstring_view>>::value>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             auto stringData = this->string_data(value);
@@ -186,19 +166,9 @@ namespace sqlite_orm {
         }
 
       private:
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         std::pair<const wchar_t*, int> string_data(const std::wstring_view& s) const {
             return {s.data(), int(s.size())};
         }
-#else
-        std::pair<const wchar_t*, int> string_data(const std::wstring& s) const {
-            return {s.c_str(), int(s.size())};
-        }
-
-        std::pair<const wchar_t*, int> string_data(const wchar_t* s) const {
-            return {s, int(wcslen(s))};
-        }
-#endif
     };
 #endif
 
@@ -216,7 +186,6 @@ namespace sqlite_orm {
         }
     };
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
      *  Specialization for std::nullopt_t.
      */
@@ -230,7 +199,6 @@ namespace sqlite_orm {
             sqlite3_result_null(context);
         }
     };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class V>
     struct statement_binder<
@@ -270,7 +238,6 @@ namespace sqlite_orm {
         }
     };
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class V>
     struct statement_binder<V,
                             std::enable_if_t<polyfill::is_specialization_of_v<V, std::optional> &&
@@ -285,7 +252,6 @@ namespace sqlite_orm {
             }
         }
     };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 }
 
 namespace sqlite_orm::internal {

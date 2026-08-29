@@ -3,8 +3,8 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <vector>  //  std::vector
+#include <optional>  //  std::optional
 #endif
-#include "functional/cxx_optional.h"
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/gsl.h"
@@ -72,11 +72,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T>
     struct type_printer<T, std::enable_if_t<is_std_ptr<T>::value>> : type_printer<typename T::element_type> {};
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     struct type_printer<T, std::enable_if_t<polyfill::is_specialization_of_v<T, std::optional>>>
         : type_printer<typename T::value_type> {};
-#endif
 
     template<>
     struct type_printer<std::vector<char>, void> : blob_printer {};

@@ -4,6 +4,7 @@
 #include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref, std::disjunction
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
+#include <string_view>  //  std::string_view
 #include <vector>  //  std::vector
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert
@@ -17,8 +18,6 @@
 #include <ranges>  //  std::views::transform
 #endif
 #endif
-#include "functional/cxx_string_view.h"
-#include "functional/cxx_optional.h"
 
 #include "functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, std::disjunction
 #include "functional/cxx_functional_polyfill.h"  // polyfill::identity
@@ -125,7 +124,6 @@ namespace sqlite_orm::internal {
             return quote_string_literal(converter.to_bytes(c));
         }
 #endif
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         static std::string do_serialize(const std::string_view& c) {
             return quote_string_literal(std::string(c));
         }
@@ -134,7 +132,6 @@ namespace sqlite_orm::internal {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             return quote_string_literal(converter.to_bytes(c.data(), c.data() + c.size()));
         }
-#endif
 #endif
         /**
          *  Specialization for binary data (std::vector<char>).
@@ -2090,7 +2087,6 @@ namespace sqlite_orm::internal {
         return ss.str();
     }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T, class R, class... Args>
     struct statement_serializer<get_all_optional_t<T, R, Args...>, void> {
         using statement_type = get_all_optional_t<T, R, Args...>;
@@ -2101,7 +2097,6 @@ namespace sqlite_orm::internal {
             return serialize_get_all_impl(get, context);
         }
     };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class T, class R, class... Args>
     struct statement_serializer<get_all_pointer_t<T, R, Args...>, void> {
@@ -2209,7 +2204,6 @@ namespace sqlite_orm::internal {
         }
     };
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T, class... Ids>
     struct statement_serializer<get_optional_t<T, Ids...>, void> {
         using statement_type = get_optional_t<T, Ids...>;
@@ -2220,7 +2214,6 @@ namespace sqlite_orm::internal {
             return serialize_get_impl(get, context);
         }
     };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class Select>
     struct statement_serializer<Select, match_if<is_select, Select>> {

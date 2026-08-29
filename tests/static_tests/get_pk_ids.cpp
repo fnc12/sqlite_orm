@@ -4,9 +4,7 @@
 #include <type_traits>  //  std::is_same
 #include <memory>  //  std::unique_ptr, std::shared_ptr
 #include <string>  //  std::string
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  //  std::optional
-#endif
 
 using namespace sqlite_orm;
 
@@ -28,10 +26,8 @@ TEST_CASE("get* and remove accept bindable pk types") {
     STATIC_REQUIRE(std::is_same_v<decltype(std::declval<Storage>().get_no_throw<User>(std::declval<int>())),
                                   std::shared_ptr<User>>);
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     STATIC_REQUIRE(
         std::is_same_v<decltype(std::declval<Storage>().get_optional<User>(std::declval<int>())), std::optional<User>>);
-#endif
 
     STATIC_REQUIRE(std::is_same_v<decltype(std::declval<Storage>().remove<User>(std::declval<int>())), void>);
 }

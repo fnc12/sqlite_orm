@@ -5,7 +5,6 @@
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
-#include "functional/cxx_optional.h"
 #endif
 
 #include "type_traits.h"
@@ -59,10 +58,8 @@ namespace sqlite_orm::internal {
     template<class... Args>
     struct node_tuple<std::tuple<Args...>, void> : node_tuple_for<Args...> {};
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     struct node_tuple<as_optional_t<T>, void> : node_tuple<T> {};
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class... Args>
     struct node_tuple<group_by_t<Args...>, void> : node_tuple_for<Args...> {};
@@ -165,10 +162,8 @@ namespace sqlite_orm::internal {
     template<class T, class... Args>
     struct node_tuple<get_all_pointer_t<T, Args...>, void> : node_tuple_for<Args...> {};
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T, class... Args>
     struct node_tuple<get_all_optional_t<T, Args...>, void> : node_tuple_for<Args...> {};
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class... Args, class... Wargs>
     struct node_tuple<update_all_t<set_t<Args...>, Wargs...>, void> : node_tuple_for<Args..., Wargs...> {};

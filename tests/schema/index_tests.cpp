@@ -65,7 +65,6 @@ TEST_CASE("index") {
     }
 }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 TEST_CASE("filtered index") {
 #if SQLITE_VERSION_NUMBER >= 3037002
     const ErrorCodeExceptionMatcher uniqueExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT_UNIQUE));
@@ -95,7 +94,6 @@ TEST_CASE("filtered index") {
         REQUIRE_NOTHROW(storage.sync_schema());
     }
 }
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
 TEST_CASE("Escaped index name") {
     struct User {

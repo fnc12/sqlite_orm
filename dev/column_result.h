@@ -3,6 +3,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_base_of
 #include <functional>  //  std::reference_wrapper
+#include <optional>  //  std::optional
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
@@ -69,7 +70,6 @@ namespace sqlite_orm::internal {
     template<class DBOs, class Tpl>
     using column_result_for_tuple_t = transform_tuple_t<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class DBOs, class T>
     struct column_result_t<DBOs, as_optional_t<T>, void> {
         using type = std::optional<column_result_of_t<DBOs, T>>;
@@ -79,7 +79,6 @@ namespace sqlite_orm::internal {
     struct column_result_t<DBOs, std::optional<T>, void> {
         using type = std::optional<T>;
     };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class DBOs, class L, class A>
     struct column_result_t<DBOs, dynamic_in_t<L, A>, void> {

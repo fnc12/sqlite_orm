@@ -81,12 +81,10 @@ TEST_CASE("fts5 virtual table schema") {
             {"Learn SQlite FTS5", "This tutorial teaches you how to perform full-text search in SQLite using FTS5"},
         };
         REQUIRE(specificPosts == expectedSpecificPosts);
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         specificPosts = storage.get_all<Post>(where(match(post_table->*&fts5::hidden::any, "fts5")));
         REQUIRE(specificPosts == expectedSpecificPosts);
         specificPosts = storage.get_all<Post>(where(match(Post::hidden::any_field, "fts5")));
         REQUIRE(specificPosts == expectedSpecificPosts);
-#endif
         specificPosts = storage.get_all<Post>(from(post_table("fts5")));
         REQUIRE(specificPosts == expectedSpecificPosts);
 
@@ -95,20 +93,16 @@ TEST_CASE("fts5 virtual table schema") {
         ///    WHERE posts = 'fts5';
         auto specificPosts2 = storage.get_all<Post>(where(is_equal<Post>("fts5")));
         REQUIRE(specificPosts2 == specificPosts);
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         specificPosts2 = storage.get_all<Post>(where(post_table->*Post::hidden::any_field == "fts5"));
         REQUIRE(specificPosts2 == specificPosts);
-#endif
 
         ///    SELECT *
         ///    FROM posts
         ///    WHERE posts MATCH 'text'
         ///    ORDER BY rank;
         auto orderedPosts = storage.get_all<Post>(where(match<Post>("fts5")), order_by(rank()));
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         orderedPosts =
             storage.get_all<Post>(where(match(Post::hidden::any_field, "fts5")), order_by(Post::hidden::rank_field));
-#endif
 
         ///    SELECT highlight(posts, 0, '<b>', '</b>'),
         ///           highlight(posts, 1, '<b>', '</b>')
@@ -120,12 +114,10 @@ TEST_CASE("fts5 virtual table schema") {
             storage.select(columns(highlight<Post>(0, "<b>", "</b>"), highlight<Post>(1, "<b>", "</b>")),
                            where(match<Post>("SQLite")),
                            order_by(rank()));
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         highlightedPosts = storage.select(columns(highlight(Post::hidden::any_field, 0, "<b>", "</b>"),
                                                   highlight(Post::hidden::any_field, 1, "<b>", "</b>")),
                                           where(match(Post::hidden::any_field, "SQLite")),
                                           order_by(Post::hidden::rank_field));
-#endif
     }
 }
 

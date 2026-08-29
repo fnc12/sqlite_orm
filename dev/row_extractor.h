@@ -13,6 +13,7 @@
 #endif
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple
+#include <optional>  //  std::optional
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>
 #endif
@@ -332,7 +333,6 @@ namespace sqlite_orm {
         }
     };
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class V>
     struct row_extractor<V, std::enable_if_t<polyfill::is_specialization_of_v<V, std::optional>>> {
         using unqualified_type = std::remove_cv_t<typename V::value_type>;
@@ -378,7 +378,6 @@ namespace sqlite_orm {
             }
         }
     };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<>
     struct row_extractor<std::nullptr_t, void> {

@@ -3,8 +3,6 @@
 
 using namespace sqlite_orm;
 
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-
 using namespace std::literals;
 
 TEST_CASE("column_name_method") {
@@ -32,5 +30,3 @@ TEST_CASE("column_name_method") {
     REQUIRE(id_header == "USER_ID"s);
     REQUIRE(name_header == "name"s);
 }
-
-#endif

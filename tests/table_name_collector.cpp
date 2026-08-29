@@ -139,7 +139,6 @@ TEST_CASE("table name collector") {
     }
 #endif
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     SECTION("highlight") {
         using user_hidden = fts5::hidden_fields_of<User>;
         const std::string& tableName = std::get<0>(dbObjects).name;
@@ -157,6 +156,5 @@ TEST_CASE("table name collector") {
         }
         REQUIRE(collector.table_names == expected);
     }
-#endif
 #endif
 }

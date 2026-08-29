@@ -14,11 +14,11 @@
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple, std::tie
 #include <utility>  //  std::forward, std::pair
 #include <algorithm>  //  std::for_each, std::ranges::for_each
+#include <optional>  //  std::optional
 #ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
 #include <generator>
 #endif
 #endif
-#include "functional/cxx_optional.h"
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"  //  polyfill::identity
@@ -521,7 +521,6 @@ namespace sqlite_orm::internal {
         }
 #endif
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         /**
          *  SELECT * routine.
          *  O is an object type to be extracted. Must be specified explicitly.
@@ -536,7 +535,6 @@ namespace sqlite_orm::internal {
             auto statement = this->prepare(sqlite_orm::get_all_optional<O, R>(std::forward<Args>(conditions)...));
             return this->execute(statement);
         }
-#endif
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<orm_table_reference auto table,
@@ -609,7 +607,6 @@ namespace sqlite_orm::internal {
             return std::shared_ptr<O>(this->get_pointer<O>(std::forward<Ids>(ids)...));
         }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         /**
          *  The same as `get` function but doesn't throw an exception if noting found but
          *  returns an empty std::optional. throws std::system_error in case of db error.
@@ -622,7 +619,6 @@ namespace sqlite_orm::internal {
             auto statement = this->prepare(sqlite_orm::get_optional<O>(std::forward<Ids>(ids)...));
             return this->execute(statement);
         }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<orm_table_reference auto table, class... Ids>
@@ -1401,12 +1397,10 @@ namespace sqlite_orm::internal {
 
         template<typename S>
         prepared_statement_t<S> prepare_impl(S statement) {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
             // check the existence of application-defined functions used in the statement
             iterate_ast(
                 statement,
                 udf_existence_checker{this->scalarFunctions, this->aggregateFunctions, this->collatingFunctions});
-#endif
 
             const auto& exprDBOs = db_objects_for_expression(this->db_objects, statement);
 
@@ -1507,12 +1501,10 @@ namespace sqlite_orm::internal {
             return this->prepare_impl(std::move(statement));
         }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T, class R, class... Args>
         prepared_statement_t<get_all_optional_t<T, R, Args...>> prepare(get_all_optional_t<T, R, Args...> statement) {
             return this->prepare_impl(std::move(statement));
         }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
         template<class T, class... Ids>
         prepared_statement_t<get_t<T, Ids...>> prepare(get_t<T, Ids...> statement) {
@@ -1524,12 +1516,10 @@ namespace sqlite_orm::internal {
             return this->prepare_impl(std::move(statement));
         }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T, class... Ids>
         prepared_statement_t<get_optional_t<T, Ids...>> prepare(get_optional_t<T, Ids...> statement) {
             return this->prepare_impl(std::move(statement));
         }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
         template<class T>
         prepared_statement_t<update_t<T>> prepare(update_t<T> statement) {
@@ -1758,7 +1748,6 @@ namespace sqlite_orm::internal {
             return res;
         }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T, class... Ids>
         std::optional<T> execute(const prepared_statement_t<get_optional_t<T, Ids...>>& statement) {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
@@ -1772,7 +1761,6 @@ namespace sqlite_orm::internal {
             });
             return res;
         }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
         template<class T, class... Ids>
         T execute(const prepared_statement_t<get_t<T, Ids...>>& statement) {
@@ -1780,7 +1768,6 @@ namespace sqlite_orm::internal {
 
             iterate_ast(statement.expression.ids, conditional_binder{stmt});
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             std::optional<T> res;
             this->executor.perform_step(stmt, [&table = this->get_table<T>(), &res](sqlite3_stmt* stmt) {
                 object_from_column_builder<T> builder{res.emplace(), stmt};
@@ -1790,38 +1777,6 @@ namespace sqlite_orm::internal {
                 throw std::system_error{orm_error_code::not_found};
             }
             return std::move(res).value();
-#else
-            auto& table = this->get_table<T>();
-
-            std::string sql;
-            if (this->executor.will_run_query || this->executor.did_run_query) {
-                sql = statement.sql();
-            }
-            if (this->executor.will_run_query) {
-                this->executor.will_run_query(sql);
-            }
-
-            switch (SQLITE_ORM_SWITCH_MAYBE_UNUSED int rc = sqlite3_step(stmt)) {
-                case SQLITE_ROW:
-                    break;
-                case SQLITE_DONE: {
-                    throw std::system_error{orm_error_code::not_found};
-                }
-                default: {
-                    throw_translated_sqlite_error(stmt);
-                }
-            }
-
-            T res;
-            object_from_column_builder<T> builder{res, stmt};
-            table.for_each_column(builder);
-
-            if (this->executor.did_run_query) {
-                this->executor.did_run_query(sql);
-            }
-
-            return res;
-#endif
         }
 
         template<class Select, satisfies<is_select_expression, Select> = true>
@@ -1876,7 +1831,6 @@ namespace sqlite_orm::internal {
             return res;
         }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T, class R, class... Args>
         R execute(const prepared_statement_t<get_all_optional_t<T, R, Args...>>& statement) {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
@@ -1897,7 +1851,6 @@ namespace sqlite_orm::internal {
 
             return res;
         }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
     };  // struct storage_t
 
     template<class Elements>

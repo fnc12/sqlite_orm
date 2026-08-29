@@ -363,7 +363,6 @@ namespace sqlite_orm::internal {
         }
     };
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T, class... Args>
     struct ast_iterator<get_all_optional_t<T, Args...>, void> {
         using node_type = get_all_optional_t<T, Args...>;
@@ -373,7 +372,6 @@ namespace sqlite_orm::internal {
             iterate_ast(get.conditions, lambda);
         }
     };
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class S, class... Wargs>
     struct ast_iterator<update_all_t<S, Wargs...>, void> {

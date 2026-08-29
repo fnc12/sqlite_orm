@@ -4,10 +4,12 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::unique_ptr
 #include <string>  //  std::string
+#include <string_view>  //  std::string_view
 #include <type_traits>  //  std::integral_constant, std::declval, std::is_convertible
 #include <utility>  //  std::move, std::forward, std::exchange, std::pair
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::invoke
+#include <optional>  //  std::optional
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
@@ -77,11 +79,9 @@ namespace sqlite_orm::internal {
         }
 #endif
 
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         std::string_view column_name(int index) const {
             return sqlite3_column_name(stmt, index);
         }
-#endif
     };
 
     template<class T>
@@ -127,7 +127,6 @@ namespace sqlite_orm::internal {
         conditions_type conditions;
     };
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T, class R, class... Args>
     struct get_all_optional_t {
         using type = T;
@@ -137,7 +136,6 @@ namespace sqlite_orm::internal {
 
         conditions_type conditions;
     };
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class S, class... Wargs>
     struct update_all_t {
@@ -186,7 +184,6 @@ namespace sqlite_orm::internal {
         ids_type ids;
     };
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T, class... Ids>
     struct get_optional_t {
         using type = T;
@@ -194,7 +191,6 @@ namespace sqlite_orm::internal {
 
         ids_type ids;
     };
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class T>
     struct update_t {
@@ -767,7 +763,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #endif
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
      *  Create a get optional statement.
      *  T is an object type mapped to a storage.
@@ -779,7 +774,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "Only primary key values are accepted as Ids");
         return {{std::forward<Ids>(ids)...}};
     }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
@@ -887,7 +881,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #endif
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
      *  Create a get all optional statement.
      *  T is an object type mapped to a storage.
@@ -901,7 +894,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         internal::validate_get_all_conditions<T, conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**

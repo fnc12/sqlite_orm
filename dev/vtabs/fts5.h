@@ -5,9 +5,9 @@
 #include <tuple>  //  std::tuple_size, std::make_tuple, std::get
 #include <utility>  //  std::forward, std::move
 #include <vector>
+#include <optional>  //  std::optional
 #endif
 #endif
-#include "../functional/cxx_optional.h"
 
 #include "../functional/gsl.h"
 #include "../member_traits/member_traits.h"
@@ -37,7 +37,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Class namespace for hidden `fts5` columns.
      */
     struct fts5 {
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         /** 
          *  Hidden columns of the `fts5` virtual table, which can be referred to using a 'column pointer' or using `hidden_fields_of<>` fields.
          */
@@ -68,17 +67,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
             hidden_fields_of() = delete;
         };
-#endif
 
         fts5() = delete;
     };
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class O>
     struct fts5::hidden::_of : fts5::hidden {
         using enclosing_type = O;
     };
-#endif
 
     /**
      *  Factory function for a FTS5 virtual table definition.
@@ -90,14 +86,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using namespace ::sqlite_orm::internal;
         static_assert((is_fts5_table_element_or_constraint<Cs>::value && ...),
                       "Incorrect table elements or constraints");
-        return make_fts5_definition(std::forward<Cs>(definition)...
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-                                    ,
+        return make_fts5_definition(std::forward<Cs>(definition)...,
                                     // note: eponymous column name is filled in later in `make_virtual_table()`
                                     make_hidden_column("", &fts5::hidden::any),
-                                    make_hidden_column("rank", &fts5::hidden::rank)
-#endif
-        );
+                                    make_hidden_column("rank", &fts5::hidden::rank));
     }
 
     /**
@@ -122,12 +114,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                        internal::virtual_table_definition<internal::fts5_module_tag, Cs...> definition) {
         using namespace ::sqlite_orm::internal;
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         constexpr size_t eponymous_column_index =
             std::tuple_size<elements_type_t<virtual_table_traits<fts5_module_tag, Cs...>>>::value - 2;
         // fill in the eponymous hidden column name
         std::get<eponymous_column_index>(definition.elements).name = tableName;
-#endif
 
         return {std::move(tableName), std::move(definition)};
     }
