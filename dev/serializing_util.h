@@ -17,14 +17,11 @@
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
 #include "vocabulary/node_traits.h"
-#include "vocabulary/node_fwd.h"  // column_constraints
+#include "vocabulary/node_fwd.h"  // column_constraints, order_by_t
 #include "schema/column_identifier.h"
 #include "error_code.h"
 
 namespace sqlite_orm::internal {
-    template<class O>
-    struct order_by_t;
-
     template<class T, class Ctx>
     auto serialize(const T& t, const Ctx& context);
 

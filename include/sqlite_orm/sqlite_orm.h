@@ -2588,7 +2588,7 @@ namespace sqlite_orm::internal {
 // #include "../node_fwd.h"
 
 /** @file Forward-declarations of concrete nodes that have to be used directly in template programming,
- *        e.g. for base-class overloads or metafunctions.
+ *        e.g. for base-class overloads, partial specializations or metafunctions.
  */
 
 namespace sqlite_orm::internal {
@@ -2608,6 +2608,9 @@ namespace sqlite_orm::internal {
 
     template<class C>
     struct indexed_column_t;
+
+    template<class O>
+    struct order_by_t;
 }
 
 namespace sqlite_orm::internal {
@@ -18303,15 +18306,12 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::r
 // #include "vocabulary/node_traits.h"
 
 // #include "vocabulary/node_fwd.h"
-// column_constraints
+// column_constraints, order_by_t
 // #include "schema/column_identifier.h"
 
 // #include "error_code.h"
 
 namespace sqlite_orm::internal {
-    template<class O>
-    struct order_by_t;
-
     template<class T, class Ctx>
     auto serialize(const T& t, const Ctx& context);
 
