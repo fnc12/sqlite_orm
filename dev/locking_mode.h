@@ -17,7 +17,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 namespace sqlite_orm::internal {
-    inline const std::string_view& locking_mode_to_string(locking_mode value) {
+    inline std::string_view locking_mode_to_string(locking_mode value) {
         static constexpr std::array<std::string_view, 2> idx2str = {
             "NORMAL",
             "EXCLUSIVE",

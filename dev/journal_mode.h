@@ -35,7 +35,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 namespace sqlite_orm::internal {
-    inline const std::string_view& journal_mode_to_string(journal_mode value) {
+    inline std::string_view journal_mode_to_string(journal_mode value) {
         static constexpr std::array<std::string_view, 6> idx2str = {
             "DELETE",
             "TRUNCATE",

@@ -141,7 +141,7 @@ namespace sqlite_orm {
         }
 
       private:
-        std::pair<const char*, int> string_data(const std::string_view& s) const {
+        std::pair<const char*, int> string_data(std::string_view s) const {
             return {s.data(), int(s.size())};
         }
     };
@@ -166,7 +166,7 @@ namespace sqlite_orm {
         }
 
       private:
-        std::pair<const wchar_t*, int> string_data(const std::wstring_view& s) const {
+        std::pair<const wchar_t*, int> string_data(std::wstring_view s) const {
             return {s.data(), int(s.size())};
         }
     };
