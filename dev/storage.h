@@ -1156,8 +1156,19 @@ namespace sqlite_orm::internal {
         }
 
         template<class... Cols>
-        sync_schema_result schema_status(const index_t<Cols...>&, sqlite3*, bool, bool*) {
-            return sync_schema_result::already_in_sync;
+        sync_schema_result schema_status(const index_t<Cols...>& index, sqlite3* db, bool, bool*) {
+            auto dbIndexSql = this->retrieve_object_sql(db, "index", index.name);
+            if (dbIndexSql.empty()) {
+                return sync_schema_result::new_table_created;
+            }
+
+            const serializer_context<db_objects_type> context{this->db_objects};
+            auto storageSql = serialize(index, context);
+
+            if (dbIndexSql == storageSql) {
+                return sync_schema_result::already_in_sync;
+            }
+            return sync_schema_result::dropped_and_recreated;
         }
 
 #ifdef SQLITE_ORM_WITH_VIEW
@@ -1306,11 +1317,16 @@ namespace sqlite_orm::internal {
         }
 
         template<class... Cols>
-        sync_schema_result sync_dbo(const index_t<Cols...>& index, sqlite3* db, bool) {
-            const auto res = sync_schema_result::already_in_sync;
-            const serializer_context<db_objects_type> context{this->db_objects};
-            const auto sql = serialize(index, context);
-            this->executor.perform_void_exec(db, sql.c_str());
+        sync_schema_result sync_dbo(const index_t<Cols...>& index, sqlite3* db, bool preserve) {
+            auto res = this->schema_status(index, db, preserve, nullptr);
+            if (res != sync_schema_result::already_in_sync) {
+                if (res == sync_schema_result::dropped_and_recreated) {
+                    this->drop_dbo_internal(db, "INDEX", index.name, true);
+                }
+                const serializer_context<db_objects_type> context{this->db_objects};
+                const auto sql = serialize(index, context);
+                this->executor.perform_void_exec(db, sql.c_str());
+            }
             return res;
         }
 
