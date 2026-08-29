@@ -2,13 +2,13 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
+#include <string_view>  //  std::string_view
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 #include "vocabulary/node_algorithms.h"  // is_operand_or_bindable, are_valid_operands
-#include "serialize_result_type.h"
 #include "tags.h"
 
 namespace sqlite_orm::internal {
@@ -27,7 +27,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_binary_operator_v = polyfill::is_specialization_of<T, binary_operator>::value;
 
     struct conc_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "||";
         }
     };
@@ -42,7 +42,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_chainable_operand_v<conc_t<L, R>> = true;
 
     struct unary_minus_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "-";
         }
     };
@@ -60,7 +60,7 @@ namespace sqlite_orm::internal {
     };
 
     struct add_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "+";
         }
     };
@@ -72,7 +72,7 @@ namespace sqlite_orm::internal {
     using add_t = binary_operator<L, R, add_string, arithmetic_t, negatable_t>;
 
     struct sub_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "-";
         }
     };
@@ -84,7 +84,7 @@ namespace sqlite_orm::internal {
     using sub_t = binary_operator<L, R, sub_string, arithmetic_t, negatable_t>;
 
     struct mul_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "*";
         }
     };
@@ -96,7 +96,7 @@ namespace sqlite_orm::internal {
     using mul_t = binary_operator<L, R, mul_string, arithmetic_t, negatable_t>;
 
     struct div_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "/";
         }
     };
@@ -108,7 +108,7 @@ namespace sqlite_orm::internal {
     using div_t = binary_operator<L, R, div_string, arithmetic_t, negatable_t>;
 
     struct mod_operator_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "%";
         }
     };
@@ -120,7 +120,7 @@ namespace sqlite_orm::internal {
     using mod_t = binary_operator<L, R, mod_operator_string, arithmetic_t, negatable_t>;
 
     struct bitwise_shift_left_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "<<";
         }
     };
@@ -132,7 +132,7 @@ namespace sqlite_orm::internal {
     using bitwise_shift_left_t = binary_operator<L, R, bitwise_shift_left_string, arithmetic_t, negatable_t>;
 
     struct bitwise_shift_right_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return ">>";
         }
     };
@@ -144,7 +144,7 @@ namespace sqlite_orm::internal {
     using bitwise_shift_right_t = binary_operator<L, R, bitwise_shift_right_string, arithmetic_t, negatable_t>;
 
     struct bitwise_and_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "&";
         }
     };
@@ -156,7 +156,7 @@ namespace sqlite_orm::internal {
     using bitwise_and_t = binary_operator<L, R, bitwise_and_string, arithmetic_t, negatable_t>;
 
     struct bitwise_or_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "|";
         }
     };
@@ -168,7 +168,7 @@ namespace sqlite_orm::internal {
     using bitwise_or_t = binary_operator<L, R, bitwise_or_string, arithmetic_t, negatable_t>;
 
     struct bitwise_not_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "~";
         }
     };
@@ -186,7 +186,7 @@ namespace sqlite_orm::internal {
     };
 
     struct assign_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "=";
         }
     };

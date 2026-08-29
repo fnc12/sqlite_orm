@@ -2,6 +2,7 @@
 #include <catch2/catch_all.hpp>
 #include <cstdio>  //  std::remove
 #include <filesystem>  //  std::filesystem::exists
+#include <string_view>  //  std::string_view
 #include "catch_matchers.h"
 
 using namespace sqlite_orm;
@@ -16,12 +17,11 @@ namespace {
 
 TEST_CASE("vfs modes open successfully") {
 #if defined(SQLITE_ORM_APPLE)
-    internal::string_constant_type vfs =
-        GENERATE(unix_vfs_name, unix_posix_vfs_name, unix_dotfile_vfs_name, unix_afp_vfs_name);
+    std::string_view vfs = GENERATE(unix_vfs_name, unix_posix_vfs_name, unix_dotfile_vfs_name, unix_afp_vfs_name);
 #elif defined(SQLITE_ORM_UNIX)
-    internal::string_constant_type vfs = GENERATE(unix_vfs_name, unix_posix_vfs_name, unix_dotfile_vfs_name);
+    std::string_view vfs = GENERATE(unix_vfs_name, unix_posix_vfs_name, unix_dotfile_vfs_name);
 #elif defined(SQLITE_ORM_WIN)
-    internal::string_constant_type vfs = GENERATE(win32_vfs_name, win32_longpath_vfs_name);
+    std::string_view vfs = GENERATE(win32_vfs_name, win32_longpath_vfs_name);
 #endif
 
     connection_control options{true, std::string(vfs)};

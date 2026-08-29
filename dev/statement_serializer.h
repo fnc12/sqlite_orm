@@ -50,7 +50,6 @@
 #include "cte_column_names_collector.h"
 #include "order_by_serializer.h"
 #include "serializing_util.h"
-#include "serialize_result_type.h"
 #include "statement_binder.h"
 #include "values.h"
 #include "util.h"
@@ -324,8 +323,8 @@ namespace sqlite_orm::internal {
         using statement_type = row_number_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "ROW_NUMBER()";
         }
     };
@@ -335,8 +334,8 @@ namespace sqlite_orm::internal {
         using statement_type = dense_rank_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "DENSE_RANK()";
         }
     };
@@ -346,8 +345,8 @@ namespace sqlite_orm::internal {
         using statement_type = percent_rank_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "PERCENT_RANK()";
         }
     };
@@ -357,8 +356,8 @@ namespace sqlite_orm::internal {
         using statement_type = cume_dist_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "CUME_DIST()";
         }
     };
@@ -446,8 +445,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "UNBOUNDED PRECEDING";
         }
     };
@@ -470,8 +469,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "CURRENT ROW";
         }
     };
@@ -494,8 +493,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "UNBOUNDED FOLLOWING";
         }
     };
@@ -808,8 +807,8 @@ namespace sqlite_orm::internal {
         using statement_type = rank_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& /*statement*/,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "rank";
         }
     };
@@ -1373,8 +1372,8 @@ namespace sqlite_orm::internal {
         using statement_type = conflict_clause_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& statement,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             switch (statement) {
                 case conflict_clause_t::rollback:
                     return "ROLLBACK";
@@ -1396,8 +1395,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& /*statement*/,
-                                                                  const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+                                                             const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
             return "NULL";
         }
     };
@@ -1407,8 +1406,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& /*statement*/,
-                                                                  const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+                                                             const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
             return "NOT NULL";
         }
     };
@@ -1469,8 +1468,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& /*statement*/,
-                                                                  const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+                                                             const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
             return "UNINDEXED";
         }
     };
@@ -2172,8 +2171,8 @@ namespace sqlite_orm::internal {
         using statement_type = conflict_action;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& statement,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             switch (statement) {
                 case conflict_action::replace:
                     return "REPLACE";
@@ -2447,8 +2446,8 @@ namespace sqlite_orm::internal {
         using statement_type = trigger_timing;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& statement,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             switch (statement) {
                 case trigger_timing::trigger_before:
                     return "BEFORE";
@@ -2466,8 +2465,8 @@ namespace sqlite_orm::internal {
         using statement_type = trigger_type;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& statement,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             switch (statement) {
                 case trigger_type::trigger_delete:
                     return "DELETE";
@@ -2743,8 +2742,8 @@ namespace sqlite_orm::internal {
         using statement_type = default_values_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "DEFAULT VALUES";
         }
     };

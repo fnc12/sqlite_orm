@@ -8,6 +8,7 @@
 #include <utility>  //  std::move, std::forward
 #include <sstream>  //  std::stringstream
 #include <ostream>  //  std::flush
+#include <string_view>  //  std::string_view
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
@@ -17,7 +18,6 @@
 #include "schema/constraints/collate.h"  // string_from_collate_argument
 #include "optional_container.h"
 #include "serializer_context.h"
-#include "serialize_result_type.h"
 #include "tags.h"
 #include "table_reference.h"
 #include "alias_traits.h"
@@ -100,7 +100,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_binary_condition_v = is_base_template_of_v<binary_condition, T>;
 
     struct and_condition_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "AND";
         }
     };
@@ -116,7 +116,7 @@ namespace sqlite_orm::internal {
     };
 
     struct or_condition_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "OR";
         }
     };
@@ -132,7 +132,7 @@ namespace sqlite_orm::internal {
     };
 
     struct is_equal_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "=";
         }
     };
@@ -179,7 +179,7 @@ namespace sqlite_orm::internal {
     };
 
     struct is_not_equal_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "!=";
         }
     };
@@ -205,7 +205,7 @@ namespace sqlite_orm::internal {
     };
 
     struct greater_than_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return ">";
         }
     };
@@ -231,7 +231,7 @@ namespace sqlite_orm::internal {
     };
 
     struct greater_or_equal_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return ">=";
         }
     };
@@ -257,7 +257,7 @@ namespace sqlite_orm::internal {
     };
 
     struct less_than_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "<";
         }
     };
@@ -283,7 +283,7 @@ namespace sqlite_orm::internal {
     };
 
     struct less_or_equal_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "<=";
         }
     };

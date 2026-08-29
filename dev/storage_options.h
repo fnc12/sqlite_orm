@@ -7,9 +7,8 @@
 #include <type_traits>  //  std::is_aggregate
 #include <utility>  //  std::move
 #include <functional>  //  std::function
+#include <string_view>  //  std::string_view
 #endif
-
-#include "serialize_result_type.h"
 
 namespace sqlite_orm::internal {
     template<typename T>
@@ -23,12 +22,12 @@ namespace sqlite_orm::internal {
     struct will_run_query_spec {
         using storage_opt_tag = int;
 
-        std::function<void(serialize_arg_type)> willRunQuery;
+        std::function<void(std::string_view)> willRunQuery;
     };
     struct did_run_query_spec {
         using storage_opt_tag = int;
 
-        std::function<void(serialize_arg_type)> didRunQuery;
+        std::function<void(std::string_view)> didRunQuery;
     };
 }
 
@@ -56,12 +55,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(onOpen)};
     }
 
-    inline internal::will_run_query_spec
-    will_run_query(std::function<void(internal::serialize_arg_type)> willRunQuery) {
+    inline internal::will_run_query_spec will_run_query(std::function<void(std::string_view)> willRunQuery) {
         return {std::move(willRunQuery)};
     }
 
-    inline internal::did_run_query_spec did_run_query(std::function<void(internal::serialize_arg_type)> didRunQuery) {
+    inline internal::did_run_query_spec did_run_query(std::function<void(std::string_view)> didRunQuery) {
         return {std::move(didRunQuery)};
     }
 }
