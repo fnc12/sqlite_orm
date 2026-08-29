@@ -4,10 +4,10 @@
 #include <type_traits>  //  std::is_member_pointer, std::remove_cvref
 #include <string>  //  std::string
 #include <tuple>  // std::tuple, std::tuple_size
+#include <functional>  //  std::invoke
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
-#include "../functional/cxx_functional_polyfill.h"
 #include "../functional/mpl.h"
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_iteration.h"
@@ -242,7 +242,7 @@ namespace sqlite_orm::internal {
          */
         template<class M, satisfies_not<is_setter, M> = true>
         decltype(auto) object_field_value(const object_type& object, M memberPointer) const {
-            return polyfill::invoke(memberPointer, object);
+            return std::invoke(memberPointer, object);
         }
 
         template<class M, class... Cs, satisfies<is_setter, M> = true>
@@ -262,7 +262,7 @@ namespace sqlite_orm::internal {
                           col_index_sequence_with_field_type<elements_type, field_type>{},
                           call_as_template_base<column_field>([&res, &memberPointer, &object](const auto& column) {
                               if (compare_fields(column.setter, memberPointer)) {
-                                  res = &polyfill::invoke(column.member_pointer, object);
+                                  res = &std::invoke(column.member_pointer, object);
                               }
                           }));
             return res;

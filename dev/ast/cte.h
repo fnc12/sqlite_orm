@@ -64,7 +64,7 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_materialization_hint_v =
-        polyfill::disjunction<std::is_same<T, materialized_t>, std::is_same<T, not_materialized_t>>::value;
+        std::disjunction<std::is_same<T, materialized_t>, std::is_same<T, not_materialized_t>>::value;
 #else
     template<class T>
     constexpr bool is_materialization_hint_v = false;
@@ -162,7 +162,7 @@ namespace sqlite_orm::internal {
     template<class With>
     constexpr bool is_select_expression_v<
         With,
-        std::enable_if_t<polyfill::conjunction_v<is_with_clause<With>, is_select<expression_type_t<With>>>>> = true;
+        std::enable_if_t<std::conjunction_v<is_with_clause<With>, is_select<expression_type_t<With>>>>> = true;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -208,7 +208,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Moniker,
              class... ExplicitCols,
-             std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
+             std::enable_if_t<std::conjunction_v<std::disjunction<
                                   internal::is_column_alias<ExplicitCols>,
                                   std::is_member_pointer<ExplicitCols>,
                                   internal::is_column<ExplicitCols>,
@@ -372,7 +372,7 @@ namespace sqlite_orm::internal {
 #else
     template<char A, char... X>
     template<class... ExplicitCols,
-             std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
+             std::enable_if_t<std::conjunction_v<std::disjunction<
                                   is_column_alias<ExplicitCols>,
                                   std::is_member_pointer<ExplicitCols>,
                                   std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,

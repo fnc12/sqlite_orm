@@ -160,7 +160,7 @@ namespace sqlite_orm::internal {
     template<class DBOs,
              class E,
              size_t Idx = 0,
-             std::enable_if_t<polyfill::negation_v<polyfill::is_specialization_of<E, std::tuple>>, bool> = true>
+             std::enable_if_t<std::negation_v<polyfill::is_specialization_of<E, std::tuple>>, bool> = true>
     auto extract_colref_expressions(const DBOs& /*dbObjects*/, const E& /*col*/, std::index_sequence<Idx> = {})
         -> std::tuple<alias_holder<decltype(n_to_colalias<Idx>())>> {
         return {};

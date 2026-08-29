@@ -29,7 +29,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_field_of_v<column_pointer<T, F>, T, void> = true;
 
     template<class F, class T>
-    using is_field_of = polyfill::bool_constant<is_field_of_v<F, T>>;
+    using is_field_of = std::bool_constant<is_field_of_v<F, T>>;
 
     /*
      *  Compare unrelated fields, like from completely different class types or an empty setter.

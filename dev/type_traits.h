@@ -14,7 +14,7 @@
 // C++ generic traits used throughout the library
 namespace sqlite_orm::internal {
     template<class T, class... Types>
-    using is_any_of = polyfill::disjunction<std::is_same<T, Types>...>;
+    using is_any_of = std::disjunction<std::is_same<T, Types>...>;
 
     template<class T>
     struct value_unref_type : polyfill::remove_cvref<T> {};
@@ -39,7 +39,7 @@ namespace sqlite_orm::internal {
 
     // enable_if for types
     template<template<typename...> class Op, class... Args>
-    using match_if_not = std::enable_if_t<polyfill::negation<Op<Args...>>::value>;
+    using match_if_not = std::enable_if_t<std::negation<Op<Args...>>::value>;
 
     // enable_if for types
     template<class T, template<typename...> class Primary>
@@ -51,7 +51,7 @@ namespace sqlite_orm::internal {
 
     // enable_if for functions
     template<template<typename...> class Op, class... Args>
-    using satisfies_not = std::enable_if_t<polyfill::negation<Op<Args...>>::value, bool>;
+    using satisfies_not = std::enable_if_t<std::negation<Op<Args...>>::value, bool>;
 
     // enable_if for functions
     template<class T, template<typename...> class Primary>

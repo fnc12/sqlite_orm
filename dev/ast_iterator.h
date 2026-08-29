@@ -6,7 +6,7 @@
 #include <functional>  //  std::reference_wrapper
 #endif
 
-#include "functional/cxx_functional_polyfill.h"  //  std::is_invocable
+#include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "vocabulary/node_traits.h"
@@ -72,7 +72,7 @@ namespace sqlite_orm::internal {
         ast_iterator<T> iterator;
 
         // possibly invoke lambda with node itself
-        if constexpr (polyfill::is_invocable<L, std::true_type, const T&>::value) {
+        if constexpr (std::is_invocable<L, std::true_type, const T&>::value) {
             lambda(std::true_type{}, t);
         }
 
@@ -195,8 +195,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct ast_iterator<T,
-                        std::enable_if_t<polyfill::disjunction<is_binary_condition<T>, is_binary_operator<T>>::value>> {
+    struct ast_iterator<T, std::enable_if_t<std::disjunction<is_binary_condition<T>, is_binary_operator<T>>::value>> {
         using node_type = T;
 
         template<class L>
@@ -217,7 +216,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct ast_iterator<T, std::enable_if_t<polyfill::disjunction<is_columns<T>, is_struct<T>>::value>> {
+    struct ast_iterator<T, std::enable_if_t<std::disjunction<is_columns<T>, is_struct<T>>::value>> {
         using node_type = T;
 
         template<class L>
@@ -700,9 +699,9 @@ namespace sqlite_orm::internal {
      */
     template<class T>
     struct ast_iterator<T,
-                        std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<T, alias_holder>,
-                                                               polyfill::is_specialization_of<T, literal_holder>,
-                                                               is_column_alias<T>>::value>> {
+                        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<T, alias_holder>,
+                                                          polyfill::is_specialization_of<T, literal_holder>,
+                                                          is_column_alias<T>>::value>> {
         using node_type = T;
 
         template<class L>

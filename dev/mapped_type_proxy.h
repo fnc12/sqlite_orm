@@ -21,7 +21,7 @@ namespace sqlite_orm::internal {
     struct mapped_type_proxy : std::remove_const<T> {};
 
     template<class T>
-    struct mapped_type_proxy<T, polyfill::void_t<typename T::enclosing_type>> {
+    struct mapped_type_proxy<T, std::void_t<typename T::enclosing_type>> {
         using type = enclosing_type_t<T>;
     };
 

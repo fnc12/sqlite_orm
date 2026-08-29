@@ -49,10 +49,10 @@ namespace sqlite_orm::internal::mpl {
     template<class T, class SFINAE = void>
     constexpr bool is_quoted_metafuntion_v = false;
     template<class Q>
-    constexpr bool is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
+    constexpr bool is_quoted_metafuntion_v<Q, std::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
 
     template<class T>
-    struct is_quoted_metafuntion : polyfill::bool_constant<is_quoted_metafuntion_v<T>> {};
+    struct is_quoted_metafuntion : std::bool_constant<is_quoted_metafuntion_v<T>> {};
 
     /*  
      *  Type pack.
@@ -109,7 +109,7 @@ namespace sqlite_orm::internal::mpl {
         };
 
         template<template<class...> class F, class... Args>
-        struct invoke_this_fn<polyfill::void_t<F<Args...>>, F, Args...> {
+        struct invoke_this_fn<std::void_t<F<Args...>>, F, Args...> {
             using type = F<Args...>;
         };
 
@@ -233,7 +233,7 @@ namespace sqlite_orm::internal::mpl {
      *  Quoted metafunction equivalent to `std::negation`.
      */
     template<class TraitQ>
-    using not_ = pass_result_of<quote_fn<polyfill::negation>, TraitQ>;
+    using not_ = pass_result_of<quote_fn<std::negation>, TraitQ>;
 
     /*
      *  Quoted metafunction equivalent to `std::conjunction`.
@@ -309,19 +309,19 @@ namespace sqlite_orm::internal::mpl {
      *  Metafunction equivalent to `std::conjunction`.
      */
     template<template<class...> class... TraitFn>
-    using conjunction_fn = pass_result_of_fn<quote_fn<polyfill::conjunction>, TraitFn...>;
+    using conjunction_fn = pass_result_of_fn<quote_fn<std::conjunction>, TraitFn...>;
 
     /*
      *  Metafunction equivalent to `std::disjunction`.
      */
     template<template<class...> class... TraitFn>
-    using disjunction_fn = pass_result_of_fn<quote_fn<polyfill::disjunction>, TraitFn...>;
+    using disjunction_fn = pass_result_of_fn<quote_fn<std::disjunction>, TraitFn...>;
 
     /*
      *  Metafunction equivalent to `std::negation`.
      */
     template<template<class...> class Fn>
-    using not_fn = pass_result_of_fn<quote_fn<polyfill::negation>, Fn>;
+    using not_fn = pass_result_of_fn<quote_fn<std::negation>, Fn>;
 
     /*
      *  Bind arguments at the front of a metafunction.
@@ -429,7 +429,7 @@ namespace sqlite_orm::internal::mpl {
             // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
             static constexpr size_t value = static_cast<bool>(
                 count_true_helper({TraitQ::template fn<typename ProjectQ::template fn<T>>::value...}));
-            using type = polyfill::bool_constant<value>;
+            using type = std::bool_constant<value>;
         };
 
         template<class Pack, class ProjectQ = identity>

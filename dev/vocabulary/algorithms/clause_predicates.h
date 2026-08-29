@@ -91,7 +91,7 @@ namespace sqlite_orm::internal {
     struct select_clause_rank : polyfill::index_constant<select_clause_rank_v<T>> {};
 
     template<class T>
-    using is_select_clause = polyfill::bool_constant<select_clause_rank_v<T> != 0>;
+    using is_select_clause = std::bool_constant<select_clause_rank_v<T> != 0>;
 
     /**
      *  Checks that the clauses in the conditions pack of a select statement are listed
@@ -119,7 +119,7 @@ namespace sqlite_orm::internal {
     struct delete_clause_rank : polyfill::index_constant<delete_clause_rank_v<T>> {};
 
     template<class T>
-    using is_delete_clause = polyfill::bool_constant<delete_clause_rank_v<T> != 0>;
+    using is_delete_clause = std::bool_constant<delete_clause_rank_v<T> != 0>;
 
     /**
      *  Checks that the clauses in the conditions pack of a delete statement are listed
@@ -153,7 +153,7 @@ namespace sqlite_orm::internal {
     struct update_clause_rank : polyfill::index_constant<update_clause_rank_v<T>> {};
 
     template<class T>
-    using is_update_clause = polyfill::bool_constant<update_clause_rank_v<T> != 0>;
+    using is_update_clause = std::bool_constant<update_clause_rank_v<T> != 0>;
 
     /**
      *  Checks that the clauses in the conditions pack of an update statement are listed

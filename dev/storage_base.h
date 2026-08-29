@@ -15,10 +15,10 @@
 #include <map>  //  std::map
 #include <type_traits>  //  std::is_same, std::is_aggregate
 #include <algorithm>  //  std::find_if, std::ranges::find
+#include <tuple>  //  std::apply
 #endif
 
 #include "functional/cxx_string_view.h"
-#include "functional/cxx_tuple_polyfill.h"  //  std::apply
 #include "tuple_helper/tuple_iteration.h"
 #include "pragma.h"
 #include "limit_accessor.h"
@@ -512,7 +512,7 @@ namespace sqlite_orm::internal {
                 [](sqlite3_context* context, int nValues, sqlite3_value** values) {
                     proxy_assert_args_count(context, nValues);
                     args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, nValues);
-                    auto result = polyfill::apply(quotedF._callable(), std::move(argsTuple));
+                    auto result = std::apply(quotedF._callable(), std::move(argsTuple));
                     statement_binder<return_type>().result(context, result);
                 },
                 /* finalCall = */
@@ -1038,7 +1038,7 @@ namespace sqlite_orm::internal {
                 [](sqlite3_context* context, int nValues, sqlite3_value** values) {
                     auto udfPointer = proxy_get_scalar_udf<F>(is_stateless{}, context, nValues);
                     args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, nValues);
-                    auto result = polyfill::apply(*udfPointer, std::move(argsTuple));
+                    auto result = std::apply(*udfPointer, std::move(argsTuple));
                     statement_binder<return_type>().result(context, result);
                 },
                 udfMemorySpace);
@@ -1073,7 +1073,7 @@ namespace sqlite_orm::internal {
 #if __cpp_lib_bind_front >= 201907L
                     std::apply(std::bind_front(&F::step, udfPointer), std::move(argsTuple));
 #else
-                    polyfill::apply(
+                    std::apply(
                         [udfPointer](auto&&... args) {
                             udfPointer->step(std::forward<decltype(args)>(args)...);
                         },

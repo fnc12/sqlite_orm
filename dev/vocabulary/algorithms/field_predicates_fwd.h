@@ -10,7 +10,7 @@ namespace sqlite_orm::internal {
     extern const bool is_rowid_alias_capable_v;
 
     template<class F>
-    using is_rowid_alias_capable = polyfill::bool_constant<is_rowid_alias_capable_v<F>>;
+    using is_rowid_alias_capable = std::bool_constant<is_rowid_alias_capable_v<F>>;
 
     /*
      *  Whether a field type can be bound as a parameter of a prepared statement.
@@ -25,7 +25,7 @@ namespace sqlite_orm::internal {
     //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
     //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
     template<class T>
-    struct is_bindable : polyfill::bool_constant<is_bindable_v<T>> {};
+    struct is_bindable : std::bool_constant<is_bindable_v<T>> {};
 
     /*
      *  Whether a field type can be printed as a human-readable string.
@@ -37,5 +37,5 @@ namespace sqlite_orm::internal {
     extern const bool is_printable_v;
 
     template<class T>
-    struct is_printable : polyfill::bool_constant<is_printable_v<T>> {};
+    struct is_printable : std::bool_constant<is_printable_v<T>> {};
 }

@@ -130,7 +130,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class O, class... Base, class... F>
     constexpr internal::primary_key_t<F O::*...> primary_key(F Base::*... columns) {
-        static_assert(polyfill::conjunction<internal::is_field_of<F Base::*, O>...>::value,
+        static_assert(std::conjunction<internal::is_field_of<F Base::*, O>...>::value,
                       "Fields must be from explicitly specified derived class");
         return {{columns...}};
     }

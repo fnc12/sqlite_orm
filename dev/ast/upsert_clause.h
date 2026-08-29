@@ -50,7 +50,7 @@ namespace sqlite_orm::internal {
 #endif
 
     template<class T>
-    using is_upsert_clause = polyfill::bool_constant<is_upsert_clause_v<T>>;
+    using is_upsert_clause = std::bool_constant<is_upsert_clause_v<T>>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

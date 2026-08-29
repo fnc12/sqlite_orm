@@ -7,10 +7,11 @@
 #include <string>
 #include <ostream>
 #include <utility>  //  std::exchange, std::tuple_size, std::make_index_sequence
+#include <functional>  //  std::invoke
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, polyfill::is_detected
-#include "functional/cxx_functional_polyfill.h"  // std::unwrap_reference
+#include "functional/cxx_functional_polyfill.h"  // polyfill::unwrap_reference
 #include "functional/gsl.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
@@ -381,16 +382,15 @@ namespace sqlite_orm::internal {
         using object_type = polyfill::remove_cvref_t<decltype(object)>;
         auto& table = pick_table<object_type>(context.db_objects);
 
-        table.template for_each_column_excluding<check_if_excluded>(
-            [&ss, &excluded, &context, &object, first = true](auto& column) mutable {
-                if (excluded(column)) {
-                    return;
-                }
+        table.template for_each_column_excluding<check_if_excluded>([&ss, &excluded, &context, &object, first = true](
+                                                                        auto& column) mutable {
+            if (excluded(column)) {
+                return;
+            }
 
-                static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
-                ss << sep[std::exchange(first, false)]
-                   << serialize(polyfill::invoke(column.member_pointer, object), context);
-            });
+            static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
+            ss << sep[std::exchange(first, false)] << serialize(std::invoke(column.member_pointer, object), context);
+        });
         return ss;
     }
 

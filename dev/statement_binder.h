@@ -7,6 +7,7 @@
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
 #include <cstring>  //  strncpy, strlen
+#include <functional>  //  std::invoke
 #include "functional/cxx_string_view.h"
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cwchar>  //  wcsncpy, wcslen
@@ -18,7 +19,6 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "functional/cxx_functional_polyfill.h"  // std::invoke
 #include "vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_bindable_v
 #include "type_traits.h"
 #include "is_std_ptr.h"
@@ -49,7 +49,7 @@ namespace sqlite_orm::internal {
     template<class T, class SFINAE>
     constexpr bool is_bindable_v = false;
     template<class T>
-    constexpr bool is_bindable_v<T, polyfill::void_t<indirectly_test_bindable<decltype(statement_binder<T>{})>>> = true;
+    constexpr bool is_bindable_v<T, std::void_t<indirectly_test_bindable<decltype(statement_binder<T>{})>>> = true;
 }
 
 // `statement_binder` specializations;
@@ -125,13 +125,13 @@ namespace sqlite_orm {
      */
     template<class V>
     struct statement_binder<V,
-                            std::enable_if_t<polyfill::disjunction<std::is_base_of<std::string, V>,
-                                                                   std::is_same<V, orm_gsl::czstring>
+                            std::enable_if_t<std::disjunction<std::is_base_of<std::string, V>,
+                                                              std::is_same<V, orm_gsl::czstring>
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                                                                   ,
-                                                                   std::is_same<V, std::string_view>
+                                                              ,
+                                                              std::is_same<V, std::string_view>
 #endif
-                                                                   >::value>> {
+                                                              >::value>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             auto stringData = this->string_data(value);
@@ -165,13 +165,13 @@ namespace sqlite_orm {
 #ifndef SQLITE_ORM_OMITS_CODECVT
     template<class V>
     struct statement_binder<V,
-                            std::enable_if_t<polyfill::disjunction<std::is_base_of<std::wstring, V>,
-                                                                   std::is_same<V, const wchar_t*>
+                            std::enable_if_t<std::disjunction<std::is_base_of<std::wstring, V>,
+                                                              std::is_same<V, const wchar_t*>
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                                                                   ,
-                                                                   std::is_same<V, std::wstring_view>
+                                                              ,
+                                                              std::is_same<V, std::wstring_view>
 #endif
-                                                                   >::value>> {
+                                                              >::value>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             auto stringData = this->string_data(value);
@@ -333,7 +333,7 @@ namespace sqlite_orm::internal {
         void operator()(const Tpl& tpl, Projection project) const {
             int nthSqlParameter = 0;
             auto& [... elements] = tpl;
-            (this->bind(polyfill::invoke(project, elements), ++nthSqlParameter), ...);
+            (this->bind(std::invoke(project, elements), ++nthSqlParameter), ...);
         }
 #else
         template<class Tpl, class Projection>
@@ -346,7 +346,7 @@ namespace sqlite_orm::internal {
 #ifndef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
         template<class Tpl, size_t... Idx, class Projection>
         void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
-            (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), int(Idx + 1)), ...);
+            (this->bind(std::invoke(project, std::get<Idx>(tpl)), int(Idx + 1)), ...);
         }
 #endif
 

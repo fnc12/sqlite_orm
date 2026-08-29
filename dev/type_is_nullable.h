@@ -29,7 +29,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T>
     struct type_is_nullable<T,
-                            std::enable_if_t<polyfill::disjunction<
+                            std::enable_if_t<std::disjunction<
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                                 polyfill::is_specialization_of<T, std::optional>,
 #endif

@@ -20,7 +20,7 @@ namespace sqlite_orm::internal {
     inline constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
 
     template<class T>
-    using is_values = polyfill::bool_constant<is_values_v<T>>;
+    using is_values = std::bool_constant<is_values_v<T>>;
 
     template<class T>
     struct dynamic_values_t {

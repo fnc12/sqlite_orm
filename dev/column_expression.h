@@ -68,7 +68,7 @@ namespace sqlite_orm::internal {
     struct column_expression_type<
         DBOs,
         asterisk_t<E>,
-        std::enable_if_t<polyfill::disjunction<polyfill::negation<is_recordset_alias<E>>, is_cte_moniker<E>>::value>>
+        std::enable_if_t<std::disjunction<std::negation<is_recordset_alias<E>>, is_cte_moniker<E>>::value>>
         : storage_traits::storage_mapped_column_expressions<DBOs, E> {};
 
     /**

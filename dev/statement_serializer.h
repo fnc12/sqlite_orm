@@ -12,6 +12,7 @@
 #include <memory>
 #include <array>
 #include <list>  //  std::list
+#include <functional>  //  std::invoke
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
 #include <ranges>  //  std::views::transform
 #endif
@@ -20,7 +21,7 @@
 #include "functional/cxx_optional.h"
 
 #include "functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, std::disjunction
-#include "functional/cxx_functional_polyfill.h"  // std::identity, std::invoke
+#include "functional/cxx_functional_polyfill.h"  // polyfill::identity
 #include "functional/gsl.h"
 #include "functional/always_default.h"
 #include "functional/mpl.h"
@@ -786,7 +787,7 @@ namespace sqlite_orm::internal {
     template<class E>
     struct statement_serializer<
         E,
-        std::enable_if_t<polyfill::disjunction<std::is_member_pointer<E>, is_column_pointer<E>>::value>> {
+        std::enable_if_t<std::disjunction<std::is_member_pointer<E>, is_column_pointer<E>>::value>> {
         using statement_type = E;
 
         template<class Ctx>
@@ -1101,8 +1102,8 @@ namespace sqlite_orm::internal {
     template<class T>
     struct statement_serializer<
         T,
-        std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<T, unary_minus_t>,
-                                               polyfill::is_specialization_of<T, bitwise_not_t>>::value>> {
+        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<T, unary_minus_t>,
+                                          polyfill::is_specialization_of<T, bitwise_not_t>>::value>> {
         using statement_type = T;
 
         template<class Ctx>
@@ -1158,7 +1159,7 @@ namespace sqlite_orm::internal {
     template<class T>
     struct statement_serializer<
         T,
-        std::enable_if_t<polyfill::disjunction<is_binary_condition<T>, is_binary_operator<T>>::value>> {
+        std::enable_if_t<std::disjunction<is_binary_condition<T>, is_binary_operator<T>>::value>> {
         using statement_type = T;
 
         template<class Ctx>
@@ -1223,8 +1224,8 @@ namespace sqlite_orm::internal {
     template<class L, class C>
     struct statement_serializer<
         dynamic_in_t<L, C>,
-        std::enable_if_t<!polyfill::disjunction<polyfill::is_specialization_of<C, std::vector>,
-                                                polyfill::is_specialization_of<C, std::list>>::value>> {
+        std::enable_if_t<!std::disjunction<polyfill::is_specialization_of<C, std::vector>,
+                                           polyfill::is_specialization_of<C, std::list>>::value>> {
         using statement_type = dynamic_in_t<L, C>;
 
         template<class Ctx>
@@ -1255,8 +1256,8 @@ namespace sqlite_orm::internal {
     template<class L, class C>
     struct statement_serializer<
         dynamic_in_t<L, C>,
-        std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<C, std::vector>,
-                                               polyfill::is_specialization_of<C, std::list>>::value>> {
+        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<C, std::vector>,
+                                          polyfill::is_specialization_of<C, std::list>>::value>> {
         using statement_type = dynamic_in_t<L, C>;
 
         template<class Ctx>
@@ -1704,16 +1705,15 @@ namespace sqlite_orm::internal {
             ss << "INSERT INTO " << streaming_identifier(table.name) << " ";
             ss << "(" << streaming_mapped_columns_expressions(ins.columns.columns, context) << ") "
                << "VALUES (";
-            iterate_tuple(ins.columns.columns,
-                          [&ss, &context, &object = get_ref(ins.obj), first = true](auto& memberPointer) mutable {
-                              using member_pointer_type = std::remove_reference_t<decltype(memberPointer)>;
-                              static_assert(!is_setter_v<member_pointer_type>,
-                                            "Unable to use setter within insert explicit");
+            iterate_tuple(
+                ins.columns.columns,
+                [&ss, &context, &object = get_ref(ins.obj), first = true](auto& memberPointer) mutable {
+                    using member_pointer_type = std::remove_reference_t<decltype(memberPointer)>;
+                    static_assert(!is_setter_v<member_pointer_type>, "Unable to use setter within insert explicit");
 
-                              static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
-                              ss << sep[std::exchange(first, false)]
-                                 << serialize(polyfill::invoke(memberPointer, object), context);
-                          });
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
+                    ss << sep[std::exchange(first, false)] << serialize(std::invoke(memberPointer, object), context);
+                });
             ss << ")";
             return ss.str();
         }
@@ -1739,7 +1739,7 @@ namespace sqlite_orm::internal {
 
                     static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
-                       << serialize(polyfill::invoke(column.member_pointer, object), context);
+                       << serialize(std::invoke(column.member_pointer, object), context);
                 });
             ss << " WHERE ";
             table.for_each_column(
@@ -1750,7 +1750,7 @@ namespace sqlite_orm::internal {
 
                     static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
                     ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
-                       << serialize(polyfill::invoke(column.member_pointer, object), context);
+                       << serialize(std::invoke(column.member_pointer, object), context);
                 });
             return ss.str();
         }
@@ -1920,7 +1920,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class C>
-    struct statement_serializer<C, std::enable_if_t<polyfill::disjunction<is_columns<C>, is_struct<C>>::value>> {
+    struct statement_serializer<C, std::enable_if_t<std::disjunction<is_columns<C>, is_struct<C>>::value>> {
         using statement_type = C;
 
         template<class Ctx>
@@ -1943,8 +1943,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<T,
-                                std::enable_if_t<polyfill::disjunction<is_insert_raw<T>, is_replace_raw<T>>::value>> {
+    struct statement_serializer<T, std::enable_if_t<std::disjunction<is_insert_raw<T>, is_replace_raw<T>>::value>> {
         using statement_type = T;
 
         template<class Ctx>
@@ -2623,8 +2622,8 @@ namespace sqlite_orm::internal {
     template<class Join>
     struct statement_serializer<
         Join,
-        std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<Join, cross_join_t>,
-                                               polyfill::is_specialization_of<Join, natural_join_t>>::value>> {
+        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<Join, cross_join_t>,
+                                          polyfill::is_specialization_of<Join, natural_join_t>>::value>> {
         using statement_type = Join;
 
         template<class Ctx>
