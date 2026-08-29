@@ -45,10 +45,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         using storage_opt_tag = int;
     };
-#if __cpp_lib_is_aggregate >= 201703L
     // design choice: must be an aggregate that can be constructed using designated initializers
     static_assert(std::is_aggregate_v<connection_control>);
-#endif
 
     /** 
      *  Callback function to be passed to `make_storage()`.

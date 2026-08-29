@@ -26,12 +26,7 @@ namespace sqlite_orm::internal {
     using value_unref_type_t = typename value_unref_type<T>::type;
 
     template<class T>
-    using is_eval_order_garanteed =
-#if __cpp_lib_is_aggregate >= 201703L
-        std::is_aggregate<T>;
-#else
-        std::is_pod<T>;
-#endif
+    using is_eval_order_garanteed = std::is_aggregate<T>;
 
     // enable_if for types
     template<template<typename...> class Op, class... Args>

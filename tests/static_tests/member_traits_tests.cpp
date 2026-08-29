@@ -14,9 +14,7 @@ TEST_CASE("member_traits_tests") {
     using internal::object_field_type_t;
     using internal::setter_field_type_t;
     using std::is_same;
-#if __cpp_lib_type_trait_variable_templates >= 201510L
     using std::is_same_v;
-#endif
 
     struct User {
         mutable int id = 0;

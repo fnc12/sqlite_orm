@@ -5,10 +5,8 @@
 
 using namespace sqlite_orm;
 using std::is_same;
-using std::nullptr_t;
-#if __cpp_lib_type_trait_variable_templates >= 201510L
 using std::is_same_v;
-#endif
+using std::nullptr_t;
 
 TEST_CASE("Builtin function return types") {
     struct User {

@@ -1718,12 +1718,7 @@ namespace sqlite_orm::internal {
     using value_unref_type_t = typename value_unref_type<T>::type;
 
     template<class T>
-    using is_eval_order_garanteed =
-#if __cpp_lib_is_aggregate >= 201703L
-        std::is_aggregate<T>;
-#else
-        std::is_pod<T>;
-#endif
+    using is_eval_order_garanteed = std::is_aggregate<T>;
 
     // enable_if for types
     template<template<typename...> class Op, class... Args>
@@ -5533,7 +5528,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::union_t<E...> union_(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
-        static_assert((std::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
+        static_assert(((internal::is_select_v<E> || internal::is_compound_operator_v<E>) && ...),
                       "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}, false};
     }
@@ -5546,7 +5541,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::union_t<E...> union_all(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
-        static_assert((std::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
+        static_assert(((internal::is_select_v<E> || internal::is_compound_operator_v<E>) && ...),
                       "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}, true};
     }
@@ -5559,7 +5554,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::except_t<E...> except(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
-        static_assert((std::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
+        static_assert(((internal::is_select_v<E> || internal::is_compound_operator_v<E>) && ...),
                       "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}};
     }
@@ -5567,7 +5562,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::intersect_t<E...> intersect(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
-        static_assert((std::disjunction_v<internal::is_select<E>, internal::is_compound_operator<E>> && ...),
+        static_assert(((internal::is_select_v<E> || internal::is_compound_operator_v<E>) && ...),
                       "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}};
     }
@@ -15506,10 +15501,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         using storage_opt_tag = int;
     };
-#if __cpp_lib_is_aggregate >= 201703L
     // design choice: must be an aggregate that can be constructed using designated initializers
     static_assert(std::is_aggregate_v<connection_control>);
-#endif
 
     /** 
      *  Callback function to be passed to `make_storage()`.
@@ -21804,7 +21797,7 @@ namespace sqlite_orm::internal {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>
 #include <tuple>
-#include <type_traits>  //  std::is_member_pointer
+#include <type_traits>  //  std::is_member_pointer_v
 #endif
 
 // #include "../optional_container.h"
@@ -21931,10 +21924,9 @@ namespace sqlite_orm::internal {
 
         template<class... S>
         partial_trigger_t<trigger_base_t<T, W, Type>, S...> begin(S... statements) {
-            static_assert(std::conjunction_v<std::disjunction<is_select_expression<S>,
-                                                              is_raw_dml_expression<S>,
-                                                              is_object_dml_expression<S>>...>,
-                          "a trigger body statement must be a complete SELECT, INSERT, UPDATE or DELETE statement");
+            static_assert(
+                ((is_select_expression_v<S> || is_raw_dml_expression_v<S> || is_object_dml_expression_v<S>) && ...),
+                "a trigger body statement must be a complete SELECT, INSERT, UPDATE or DELETE statement");
             return {*this, std::forward<S>(statements)...};
         }
     };
@@ -22003,7 +21995,7 @@ namespace sqlite_orm::internal {
         template<class... Cs>
         trigger_update_type_t<Cs...> update_of(Cs... columns) {
             //  the grammar production is a list of column names, not expressions
-            static_assert(std::conjunction_v<std::disjunction<std::is_member_pointer<Cs>, is_column_pointer<Cs>>...>,
+            static_assert(((std::is_member_pointer_v<Cs> || is_column_pointer_v<Cs>) && ...),
                           "UPDATE OF arguments must be members of the table the trigger watches");
             return {timing, trigger_type::trigger_update, std::forward<Cs>(columns)...};
         }
@@ -27983,11 +27975,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     auto make_storage(std::string filename, Spec... specifications) {
         using namespace ::sqlite_orm::internal;
 
-        static_assert(
-            std::conjunction_v<
-                std::disjunction<is_database_object<Spec>, polyfill::is_detected<storage_opt_tag_t, Spec>>...>,
-            "a make_storage() argument must be a table, index, trigger, view, virtual table or a storage "
-            "option");
+        static_assert(((is_database_object<Spec>::value || polyfill::is_detected_v<storage_opt_tag_t, Spec>) && ...),
+                      "a make_storage() argument must be a table, index, trigger, view, virtual table or a storage "
+                      "option");
 
         std::tuple specTuple{std::forward<Spec>(specifications)...};
         return internal::make_storage(
