@@ -74,7 +74,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_PACK_INDEXING_SUPPORTED
             // numeric monikers are used for automatically assigning implicit aliases to unaliased column expressions,
             // which start at "1".
-            static_assert(Chars...[0] > '0');
+            // note: hoisted into a variable because clang before 20.1 fails to treat an indexed non-type
+            // template parameter pack as dependent when its value is converted in place [e.g. Apple clang 17:
+            // "invalid operands to binary expression ('<dependent type>' and 'char')"]
+            constexpr auto first = Chars...[0];
+            static_assert(first > '0');
 #endif
             return internal::cte_moniker<Chars...>{};
         }
