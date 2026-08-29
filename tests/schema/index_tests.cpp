@@ -124,7 +124,7 @@ TEST_CASE("Compound index") {
     auto index =
         make_index("idx_users_id_and_name", indexed_column(&User::id).asc(), indexed_column(&User::name).asc());
     value = internal::serialize(index, context);
-    expected = R"(CREATE INDEX IF NOT EXISTS "idx_users_id_and_name" ON "users" ("id" ASC, "name" ASC))";
+    expected = R"(CREATE INDEX "idx_users_id_and_name" ON "users" ("id" ASC, "name" ASC))";
     REQUIRE(value == expected);
     auto storage = make_storage("compound_index.sqlite", index, table);
     REQUIRE_NOTHROW(storage.sync_schema());

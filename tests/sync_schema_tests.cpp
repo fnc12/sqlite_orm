@@ -1406,6 +1406,57 @@ TEST_CASE("sync_schema syncs objects in dependency order") {
     std::remove(storagePath);
 }
 
+/**
+ *  Redefining an index under an existing name used to be a silent no-op: the sync executed
+ *  `CREATE INDEX IF NOT EXISTS`, which leaves the stale index in place, and reported it in sync.
+ *  The index definition is now compared against the schema table the way triggers and views are.
+ */
+TEST_CASE("sync_schema applies an index redefinition") {
+    struct User {
+        int id = 0;
+        std::string name;
+        std::string email;
+    };
+    auto storagePath = "sync_schema_index_redefinition.sqlite";
+    std::remove(storagePath);
+
+    auto indexSql = [&storagePath]() -> std::string {
+        auto inspectionStorage = make_storage(storagePath, make_sqlite_schema_table());
+        auto rows = inspectionStorage.select(
+            &sqlite_master::sql,
+            where(c(&sqlite_master::type) == "index" and c(&sqlite_master::name) == "idx_users"));
+        return rows.size() == 1 ? rows.front() : std::string{};
+    };
+
+    auto makeStorage = [&storagePath](auto index) {
+        return make_storage(storagePath,
+                            make_table("users",
+                                       make_column("id", &User::id, primary_key()),
+                                       make_column("name", &User::name),
+                                       make_column("email", &User::email)),
+                            std::move(index));
+    };
+
+    //  the starting point: an index on "name", in sync
+    makeStorage(make_index("idx_users", &User::name)).sync_schema();
+
+    SECTION("an unchanged index is left alone") {
+        auto syncResult = makeStorage(make_index("idx_users", &User::name)).sync_schema();
+        REQUIRE(syncResult.at("idx_users") == sync_schema_result::already_in_sync);
+    }
+    SECTION("a change of the indexed columns is applied") {
+        auto syncResult = makeStorage(make_index("idx_users", &User::email)).sync_schema();
+        REQUIRE(syncResult.at("idx_users") == sync_schema_result::dropped_and_recreated);
+        REQUIRE(indexSql() == R"(CREATE INDEX "idx_users" ON "users" ("email"))");
+    }
+    SECTION("a change to a unique index is applied") {
+        auto syncResult = makeStorage(make_unique_index("idx_users", &User::name)).sync_schema();
+        REQUIRE(syncResult.at("idx_users") == sync_schema_result::dropped_and_recreated);
+        REQUIRE(indexSql() == R"(CREATE UNIQUE INDEX "idx_users" ON "users" ("name"))");
+    }
+    std::remove(storagePath);
+}
+
 TEST_CASE("sync_schema dependency order state matrix") {
     struct User {
         int id = 0;
