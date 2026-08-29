@@ -11,8 +11,8 @@ namespace sqlite_orm::internal::polyfill {
     using std::hardware_constructive_interference_size;
     using std::hardware_destructive_interference_size;
 #else
-    constexpr size_t hardware_constructive_interference_size = 64;
-    constexpr size_t hardware_destructive_interference_size = 64;
+    inline constexpr size_t hardware_constructive_interference_size = 64;
+    inline constexpr size_t hardware_destructive_interference_size = 64;
 #endif
 }
 
