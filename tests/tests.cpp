@@ -103,7 +103,11 @@ TEST_CASE("Limits") {
 }
 
 TEST_CASE("Custom collate") {
+#if SQLITE_VERSION_NUMBER >= 3008008
     const ErrorCodeExceptionMatcher collSequExceptionMatcher(sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ));
+#else
+    const ErrorCodeExceptionMatcher collSequExceptionMatcher(sqlite_errc(SQLITE_ERROR));
+#endif
 
     struct Item {
         int64 id;
