@@ -4662,6 +4662,7 @@ namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
+#include <string_view>  //  std::string_view
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
@@ -4672,18 +4673,6 @@ namespace sqlite_orm {
 // Included to specialize traits
 // #include "vocabulary/node_algorithms.h"
 // is_operand_or_bindable, are_valid_operands
-// #include "serialize_result_type.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string_view>  //  std::string_view
-#endif
-
-namespace sqlite_orm::internal {
-    using serialize_result_type = std::string_view;
-    using serialize_arg_type = std::string_view;
-    using string_constant_type = std::string_view;
-}
-
 // #include "tags.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -4732,7 +4721,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_binary_operator_v = polyfill::is_specialization_of<T, binary_operator>::value;
 
     struct conc_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "||";
         }
     };
@@ -4747,7 +4736,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_chainable_operand_v<conc_t<L, R>> = true;
 
     struct unary_minus_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "-";
         }
     };
@@ -4765,7 +4754,7 @@ namespace sqlite_orm::internal {
     };
 
     struct add_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "+";
         }
     };
@@ -4777,7 +4766,7 @@ namespace sqlite_orm::internal {
     using add_t = binary_operator<L, R, add_string, arithmetic_t, negatable_t>;
 
     struct sub_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "-";
         }
     };
@@ -4789,7 +4778,7 @@ namespace sqlite_orm::internal {
     using sub_t = binary_operator<L, R, sub_string, arithmetic_t, negatable_t>;
 
     struct mul_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "*";
         }
     };
@@ -4801,7 +4790,7 @@ namespace sqlite_orm::internal {
     using mul_t = binary_operator<L, R, mul_string, arithmetic_t, negatable_t>;
 
     struct div_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "/";
         }
     };
@@ -4813,7 +4802,7 @@ namespace sqlite_orm::internal {
     using div_t = binary_operator<L, R, div_string, arithmetic_t, negatable_t>;
 
     struct mod_operator_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "%";
         }
     };
@@ -4825,7 +4814,7 @@ namespace sqlite_orm::internal {
     using mod_t = binary_operator<L, R, mod_operator_string, arithmetic_t, negatable_t>;
 
     struct bitwise_shift_left_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "<<";
         }
     };
@@ -4837,7 +4826,7 @@ namespace sqlite_orm::internal {
     using bitwise_shift_left_t = binary_operator<L, R, bitwise_shift_left_string, arithmetic_t, negatable_t>;
 
     struct bitwise_shift_right_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return ">>";
         }
     };
@@ -4849,7 +4838,7 @@ namespace sqlite_orm::internal {
     using bitwise_shift_right_t = binary_operator<L, R, bitwise_shift_right_string, arithmetic_t, negatable_t>;
 
     struct bitwise_and_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "&";
         }
     };
@@ -4861,7 +4850,7 @@ namespace sqlite_orm::internal {
     using bitwise_and_t = binary_operator<L, R, bitwise_and_string, arithmetic_t, negatable_t>;
 
     struct bitwise_or_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "|";
         }
     };
@@ -4873,7 +4862,7 @@ namespace sqlite_orm::internal {
     using bitwise_or_t = binary_operator<L, R, bitwise_or_string, arithmetic_t, negatable_t>;
 
     struct bitwise_not_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "~";
         }
     };
@@ -4891,7 +4880,7 @@ namespace sqlite_orm::internal {
     };
 
     struct assign_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "=";
         }
     };
@@ -5950,6 +5939,7 @@ namespace sqlite_orm::internal {
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
 #include <optional>  //  std::optional
+#include <string_view>  //  std::string_view
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
@@ -5970,6 +5960,7 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::move, std::forward
 #include <sstream>  //  std::stringstream
 #include <ostream>  //  std::flush
+#include <string_view>  //  std::string_view
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
@@ -6087,8 +6078,6 @@ namespace sqlite_orm::internal {
         serializer_context(const db_objects_type& dbObjects) : db_objects{dbObjects} {}
     };
 }
-
-// #include "serialize_result_type.h"
 
 // #include "tags.h"
 
@@ -6578,7 +6567,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_binary_condition_v = is_base_template_of_v<binary_condition, T>;
 
     struct and_condition_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "AND";
         }
     };
@@ -6594,7 +6583,7 @@ namespace sqlite_orm::internal {
     };
 
     struct or_condition_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "OR";
         }
     };
@@ -6610,7 +6599,7 @@ namespace sqlite_orm::internal {
     };
 
     struct is_equal_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "=";
         }
     };
@@ -6657,7 +6646,7 @@ namespace sqlite_orm::internal {
     };
 
     struct is_not_equal_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "!=";
         }
     };
@@ -6683,7 +6672,7 @@ namespace sqlite_orm::internal {
     };
 
     struct greater_than_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return ">";
         }
     };
@@ -6709,7 +6698,7 @@ namespace sqlite_orm::internal {
     };
 
     struct greater_or_equal_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return ">=";
         }
     };
@@ -6735,7 +6724,7 @@ namespace sqlite_orm::internal {
     };
 
     struct less_than_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "<";
         }
     };
@@ -6761,7 +6750,7 @@ namespace sqlite_orm::internal {
     };
 
     struct less_or_equal_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "<=";
         }
     };
@@ -7607,8 +7596,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-// #include "serialize_result_type.h"
-
 // #include "operators.h"
 
 // #include "tags.h"
@@ -7719,122 +7706,122 @@ namespace sqlite_orm::internal {
     };
 
     struct typeof_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TYPEOF";
         }
     };
 
     struct unicode_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "UNICODE";
         }
     };
 
     struct length_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "LENGTH";
         }
     };
 
     struct abs_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ABS";
         }
     };
 
     struct lower_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "LOWER";
         }
     };
 
     struct upper_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "UPPER";
         }
     };
 
     struct last_insert_rowid_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "LAST_INSERT_ROWID";
         }
     };
 
     struct total_changes_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TOTAL_CHANGES";
         }
     };
 
     struct changes_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "CHANGES";
         }
     };
 
     struct trim_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TRIM";
         }
     };
 
     struct ltrim_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "LTRIM";
         }
     };
 
     struct rtrim_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "RTRIM";
         }
     };
 
     struct hex_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "HEX";
         }
     };
 
     struct quote_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "QUOTE";
         }
     };
 
     struct randomblob_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "RANDOMBLOB";
         }
     };
 
     struct instr_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "INSTR";
         }
     };
 
     struct replace_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "REPLACE";
         }
     };
 
     struct round_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ROUND";
         }
     };
 
 #if SQLITE_VERSION_NUMBER >= 3007016
     struct char_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "CHAR";
         }
     };
 
     struct random_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "RANDOM";
         }
     };
@@ -7842,85 +7829,85 @@ namespace sqlite_orm::internal {
 #endif
 
     struct coalesce_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "COALESCE";
         }
     };
 
     struct ifnull_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "IFNULL";
         }
     };
 
     struct nullif_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "NULLIF";
         }
     };
 
     struct date_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "DATE";
         }
     };
 
     struct time_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TIME";
         }
     };
 
     struct datetime_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "DATETIME";
         }
     };
 
     struct julianday_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JULIANDAY";
         }
     };
 
     struct strftime_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "STRFTIME";
         }
     };
 
     struct zeroblob_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ZEROBLOB";
         }
     };
 
     struct substr_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "SUBSTR";
         }
     };
 #ifdef SQLITE_SOUNDEX
     struct soundex_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "SOUNDEX";
         }
     };
 #endif
     struct total_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TOTAL";
         }
     };
 
     struct sum_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "SUM";
         }
     };
 
     struct count_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "COUNT";
         }
     };
@@ -7975,32 +7962,32 @@ namespace sqlite_orm::internal {
                                           std::is_same<T, count_asterisk_without_type>>::value>> = true;
 
     struct avg_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "AVG";
         }
     };
 
     struct max_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "MAX";
         }
     };
 
     struct min_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "MIN";
         }
     };
 
     struct group_concat_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "GROUP_CONCAT";
         }
     };
 
 #if SQLITE_VERSION_NUMBER >= 3008003
     struct printf_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "PRINTF";
         }
     };
@@ -8008,7 +7995,7 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3032000
     struct iif_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "IIF";
         }
     };
@@ -8016,7 +8003,7 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3035000
     struct sign_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "SIGN";
         }
     };
@@ -8024,13 +8011,13 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3038000
     struct format_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "FORMAT";
         }
     };
 
     struct unixepoch_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "UNIXEPOCH";
         }
     };
@@ -8038,7 +8025,7 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3041000
     struct unhex_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "UNHEX";
         }
     };
@@ -8046,13 +8033,13 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3043000
     struct octet_length_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "OCTET_LENGTH";
         }
     };
 
     struct timediff_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TIMEDIFF";
         }
     };
@@ -8060,19 +8047,19 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3044000
     struct concat_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "CONCAT";
         }
     };
 
     struct concat_ws_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "CONCAT_WS";
         }
     };
 
     struct string_agg_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "STRING_AGG";
         }
     };
@@ -8080,7 +8067,7 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3048000
     struct if_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "IF";
         }
     };
@@ -8088,13 +8075,13 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3050000
     struct unistr_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "UNISTR";
         }
     };
 
     struct unistr_quote_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "UNISTR_QUOTE";
         }
     };
@@ -8102,200 +8089,200 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ENABLE_PERCENTILE
     struct median_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "MEDIAN";
         }
     };
 
     struct percentile_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "PERCENTILE";
         }
     };
 
     struct percentile_cont_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "PERCENTILE_CONT";
         }
     };
 
     struct percentile_disc_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "PERCENTILE_DISC";
         }
     };
 #endif
 #ifdef SQLITE_ENABLE_MATH_FUNCTIONS
     struct acos_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ACOS";
         }
     };
 
     struct acosh_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ACOSH";
         }
     };
 
     struct asin_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ASIN";
         }
     };
 
     struct asinh_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ASINH";
         }
     };
 
     struct atan_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ATAN";
         }
     };
 
     struct atan2_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ATAN2";
         }
     };
 
     struct atanh_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ATANH";
         }
     };
 
     struct ceil_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "CEIL";
         }
     };
 
     struct ceiling_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "CEILING";
         }
     };
 
     struct cos_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "COS";
         }
     };
 
     struct cosh_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "COSH";
         }
     };
 
     struct degrees_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "DEGREES";
         }
     };
 
     struct exp_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "EXP";
         }
     };
 
     struct floor_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "FLOOR";
         }
     };
 
     struct ln_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "LN";
         }
     };
 
     struct log_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "LOG";
         }
     };
 
     struct log10_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "LOG10";
         }
     };
 
     struct log2_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "LOG2";
         }
     };
 
     struct mod_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "MOD";
         }
     };
 
     struct pi_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "PI";
         }
     };
 
     struct pow_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "POW";
         }
     };
 
     struct power_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "POWER";
         }
     };
 
     struct radians_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "RADIANS";
         }
     };
 
     struct sin_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "SIN";
         }
     };
 
     struct sinh_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "SINH";
         }
     };
 
     struct sqrt_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "SQRT";
         }
     };
 
     struct tan_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TAN";
         }
     };
 
     struct tanh_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TANH";
         }
     };
 
     struct trunc_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TRUNC";
         }
     };
@@ -8303,91 +8290,91 @@ namespace sqlite_orm::internal {
 #endif  //  SQLITE_ENABLE_MATH_FUNCTIONS
 #ifdef SQLITE_ORM_JSON_SUPPORTED
     struct json_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON";
         }
     };
 
     struct json_array_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_ARRAY";
         }
     };
 
     struct json_array_length_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_ARRAY_LENGTH";
         }
     };
 
     struct json_extract_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_EXTRACT";
         }
     };
 
     struct json_insert_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_INSERT";
         }
     };
 
     struct json_replace_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_REPLACE";
         }
     };
 
     struct json_set_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_SET";
         }
     };
 
     struct json_object_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_OBJECT";
         }
     };
 
     struct json_patch_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_PATCH";
         }
     };
 
     struct json_remove_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_REMOVE";
         }
     };
 
     struct json_type_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_TYPE";
         }
     };
 
     struct json_valid_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_VALID";
         }
     };
 
     struct json_quote_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_QUOTE";
         }
     };
 
     struct json_group_array_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_GROUP_ARRAY";
         }
     };
 
     struct json_group_object_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_GROUP_OBJECT";
         }
     };
@@ -10983,7 +10970,7 @@ namespace sqlite_orm {
         }
 
       private:
-        std::pair<const char*, int> string_data(const std::string_view& s) const {
+        std::pair<const char*, int> string_data(std::string_view s) const {
             return {s.data(), int(s.size())};
         }
     };
@@ -11008,7 +10995,7 @@ namespace sqlite_orm {
         }
 
       private:
-        std::pair<const wchar_t*, int> string_data(const std::wstring_view& s) const {
+        std::pair<const wchar_t*, int> string_data(std::wstring_view s) const {
             return {s.data(), int(s.size())};
         }
     };
@@ -14205,9 +14192,8 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::pair
 #include <algorithm>  //  std::ranges::transform
 #include <cctype>  // std::toupper
+#include <string_view>  //  std::string_view
 #endif
-
-// #include "serialize_result_type.h"
 
 #if defined(_WINNT_)
 // DELETE is a macro defined in the Windows SDK (winnt.h)
@@ -14235,8 +14221,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 namespace sqlite_orm::internal {
-    inline const serialize_result_type& journal_mode_to_string(journal_mode value) {
-        static constexpr std::array<serialize_result_type, 6> idx2str = {
+    inline std::string_view journal_mode_to_string(journal_mode value) {
+        static constexpr std::array<std::string_view, 6> idx2str = {
             "DELETE",
             "TRUNCATE",
             "PERSIST",
@@ -14290,9 +14276,8 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::pair
 #include <algorithm>  //  std::ranges::transform
 #include <cctype>  // std::toupper
+#include <string_view>  //  std::string_view
 #endif
-
-// #include "serialize_result_type.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     enum class locking_mode : signed char {
@@ -14302,8 +14287,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 namespace sqlite_orm::internal {
-    inline const serialize_result_type& locking_mode_to_string(locking_mode value) {
-        static constexpr std::array<serialize_result_type, 2> idx2str = {
+    inline std::string_view locking_mode_to_string(locking_mode value) {
+        static constexpr std::array<std::string_view, 2> idx2str = {
             "NORMAL",
             "EXCLUSIVE",
         };
@@ -15000,13 +14985,12 @@ namespace sqlite_orm::internal {
 #include <string>  //  std::string
 #include <utility>  //  std::move
 #include <functional>  //  std::function
+#include <string_view>  //  std::string_view
 #endif
 
 // #include "functional/gsl.h"
 
 // #include "error_code.h"
-
-// #include "serialize_result_type.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -15058,7 +15042,7 @@ namespace sqlite_orm::internal {
         return stmt;
     }
 
-    inline sqlite3_stmt* prepare_stmt(sqlite3* db, serialize_arg_type query) {
+    inline sqlite3_stmt* prepare_stmt(sqlite3* db, std::string_view query) {
         sqlite3_stmt* stmt;
         const int rc = sqlite3_prepare_v2(db, query.data(), int(query.size()), &stmt, nullptr);
         if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
@@ -15108,8 +15092,8 @@ namespace sqlite_orm::internal {
     }
 
     struct sqlite_executor {
-        std::function<void(serialize_arg_type sql)> will_run_query;
-        std::function<void(serialize_arg_type sql)> did_run_query;
+        std::function<void(std::string_view sql)> will_run_query;
+        std::function<void(std::string_view sql)> did_run_query;
 
         void perform_void_exec(sqlite3* db, orm_gsl::czstring sql) const {
             if (this->will_run_query) {
@@ -15412,25 +15396,27 @@ namespace sqlite_orm::internal {
 
 // #include "vfs_name.h"
 
-// #include "serialize_result_type.h"
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string_view>  //  std::string_view
+#endif
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_UNIX
-    inline constexpr internal::string_constant_type unix_vfs_name = "unix";
-    inline constexpr internal::string_constant_type unix_posix_vfs_name = unix_vfs_name;
-    inline constexpr internal::string_constant_type unix_dotfile_vfs_name = "unix-dotfile";
+    inline constexpr std::string_view unix_vfs_name = "unix";
+    inline constexpr std::string_view unix_posix_vfs_name = unix_vfs_name;
+    inline constexpr std::string_view unix_dotfile_vfs_name = "unix-dotfile";
 #ifdef SQLITE_ORM_APPLE
-    inline constexpr internal::string_constant_type unix_afp_vfs_name = "unix-afp";
+    inline constexpr std::string_view unix_afp_vfs_name = "unix-afp";
 #endif
-    inline constexpr internal::string_constant_type default_vfs_name = unix_vfs_name;
+    inline constexpr std::string_view default_vfs_name = unix_vfs_name;
 #endif
 
 #ifdef SQLITE_ORM_WIN
-    inline constexpr internal::string_constant_type win32_vfs_name = "win32";
-    inline constexpr internal::string_constant_type win32_longpath_vfs_name = "win32-longpath";
+    inline constexpr std::string_view win32_vfs_name = "win32";
+    inline constexpr std::string_view win32_longpath_vfs_name = "win32-longpath";
 
-    inline constexpr internal::string_constant_type default_vfs_name = win32_vfs_name;
+    inline constexpr std::string_view default_vfs_name = win32_vfs_name;
 #endif
 }
 
@@ -15467,9 +15453,8 @@ namespace sqlite_orm::internal {
 #include <type_traits>  //  std::is_aggregate
 #include <utility>  //  std::move
 #include <functional>  //  std::function
+#include <string_view>  //  std::string_view
 #endif
-
-// #include "serialize_result_type.h"
 
 namespace sqlite_orm::internal {
     template<typename T>
@@ -15483,12 +15468,12 @@ namespace sqlite_orm::internal {
     struct will_run_query_spec {
         using storage_opt_tag = int;
 
-        std::function<void(serialize_arg_type)> willRunQuery;
+        std::function<void(std::string_view)> willRunQuery;
     };
     struct did_run_query_spec {
         using storage_opt_tag = int;
 
-        std::function<void(serialize_arg_type)> didRunQuery;
+        std::function<void(std::string_view)> didRunQuery;
     };
 }
 
@@ -15516,12 +15501,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(onOpen)};
     }
 
-    inline internal::will_run_query_spec
-    will_run_query(std::function<void(internal::serialize_arg_type)> willRunQuery) {
+    inline internal::will_run_query_spec will_run_query(std::function<void(std::string_view)> willRunQuery) {
         return {std::move(willRunQuery)};
     }
 
-    inline internal::did_run_query_spec did_run_query(std::function<void(internal::serialize_arg_type)> didRunQuery) {
+    inline internal::did_run_query_spec did_run_query(std::function<void(std::string_view)> didRunQuery) {
         return {std::move(didRunQuery)};
     }
 }
@@ -18303,6 +18287,7 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::r
 #include <ostream>
 #include <utility>  //  std::exchange, std::tuple_size, std::make_index_sequence
 #include <functional>  //  std::invoke
+#include <string_view>  //  std::string_view
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
@@ -18323,8 +18308,6 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::r
 
 // #include "error_code.h"
 
-// #include "serialize_result_type.h"
-
 namespace sqlite_orm::internal {
     template<class O>
     struct order_by_t;
@@ -18335,7 +18318,7 @@ namespace sqlite_orm::internal {
     template<class T, class Ctx>
     std::string serialize_order_by(const T&, const Ctx&);
 
-    inline void stream_sql_escaped(std::ostream& os, serialize_arg_type str, char char2Escape) {
+    inline void stream_sql_escaped(std::ostream& os, std::string_view str, char char2Escape) {
         for (size_t offset = 0, next; true; offset = next + 1) {
             next = str.find(char2Escape, offset);
 
@@ -18350,9 +18333,9 @@ namespace sqlite_orm::internal {
     }
 
     inline void stream_identifier(std::ostream& ss,
-                                  serialize_arg_type qualifier,
-                                  serialize_arg_type identifier,
-                                  serialize_arg_type alias) {
+                                  std::string_view qualifier,
+                                  std::string_view identifier,
+                                  std::string_view alias) {
         constexpr char quoteChar = '"';
         constexpr char qualified[] = {quoteChar, '.', '\0'};
         constexpr char aliased[] = {' ', quoteChar, '\0'};
@@ -18377,11 +18360,11 @@ namespace sqlite_orm::internal {
         }
     }
 
-    inline void stream_identifier(std::ostream& ss, serialize_arg_type identifier, serialize_arg_type alias) {
+    inline void stream_identifier(std::ostream& ss, std::string_view identifier, std::string_view alias) {
         return stream_identifier(ss, "", identifier, alias);
     }
 
-    inline void stream_identifier(std::ostream& ss, serialize_arg_type identifier) {
+    inline void stream_identifier(std::ostream& ss, std::string_view identifier) {
         return stream_identifier(ss, "", identifier, "");
     }
 
@@ -19831,8 +19814,6 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "serialize_result_type.h"
-
 // #include "serializing_util.h"
 
 // #include "table_info.h"
@@ -20064,7 +20045,7 @@ namespace sqlite_orm::internal {
         }
 
       protected:
-        void rename_table_internal(sqlite3* db, serialize_arg_type oldName, serialize_arg_type newName) const {
+        void rename_table_internal(sqlite3* db, std::string_view oldName, std::string_view newName) const {
             std::string sql;
             {
                 std::stringstream ss;
@@ -20075,7 +20056,7 @@ namespace sqlite_orm::internal {
             this->executor.perform_void_exec(db, sql.c_str());
         }
 
-        static std::string savepoint_sql(serialize_arg_type statementPrefix, const std::string& savepointName) {
+        static std::string savepoint_sql(std::string_view statementPrefix, const std::string& savepointName) {
             std::stringstream ss;
             ss << statementPrefix << streaming_identifier(savepointName);
             return ss.str();
@@ -20732,7 +20713,7 @@ namespace sqlite_orm::internal {
             return {*this->connection};
         }
 
-        std::vector<std::string> object_names(string_constant_type type) {
+        std::vector<std::string> object_names(std::string_view type) {
             using data_t = std::vector<std::string>;
 
             auto connection = this->get_connection();
@@ -20966,7 +20947,7 @@ namespace sqlite_orm::internal {
             return result;
         }
 
-        void drop_dbo_internal(sqlite3* db, orm_gsl::czstring dboKeyword, serialize_arg_type dboName, bool ifExists) {
+        void drop_dbo_internal(sqlite3* db, orm_gsl::czstring dboKeyword, std::string_view dboName, bool ifExists) {
             std::stringstream ss;
             ss << "DROP " << dboKeyword;
             if (ifExists) {
@@ -20976,7 +20957,7 @@ namespace sqlite_orm::internal {
             this->executor.perform_void_exec(db, ss.str().c_str());
         }
 
-        bool object_exists(sqlite3* db, serialize_arg_type type, serialize_arg_type dboName) const {
+        bool object_exists(sqlite3* db, std::string_view type, std::string_view dboName) const {
             bool result = false;
             std::stringstream ss;
             ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal(std::string{type})
@@ -20993,7 +20974,7 @@ namespace sqlite_orm::internal {
             return result;
         }
 
-        std::string retrieve_object_sql(sqlite3* db, serialize_arg_type type, serialize_arg_type dboName) const {
+        std::string retrieve_object_sql(sqlite3* db, std::string_view type, std::string_view dboName) const {
             std::string result;
             std::stringstream ss;
             ss << "SELECT sql FROM sqlite_master WHERE type = " << quote_string_literal(std::string{type})
@@ -21785,8 +21766,6 @@ namespace sqlite_orm::internal {
 }
 
 // #include "serializing_util.h"
-
-// #include "serialize_result_type.h"
 
 // #include "statement_binder.h"
 
@@ -22730,8 +22709,8 @@ namespace sqlite_orm::internal {
         using statement_type = row_number_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "ROW_NUMBER()";
         }
     };
@@ -22741,8 +22720,8 @@ namespace sqlite_orm::internal {
         using statement_type = dense_rank_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "DENSE_RANK()";
         }
     };
@@ -22752,8 +22731,8 @@ namespace sqlite_orm::internal {
         using statement_type = percent_rank_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "PERCENT_RANK()";
         }
     };
@@ -22763,8 +22742,8 @@ namespace sqlite_orm::internal {
         using statement_type = cume_dist_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "CUME_DIST()";
         }
     };
@@ -22852,8 +22831,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "UNBOUNDED PRECEDING";
         }
     };
@@ -22876,8 +22855,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "CURRENT ROW";
         }
     };
@@ -22900,8 +22879,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "UNBOUNDED FOLLOWING";
         }
     };
@@ -23214,8 +23193,8 @@ namespace sqlite_orm::internal {
         using statement_type = rank_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& /*statement*/,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "rank";
         }
     };
@@ -23779,8 +23758,8 @@ namespace sqlite_orm::internal {
         using statement_type = conflict_clause_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& statement,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             switch (statement) {
                 case conflict_clause_t::rollback:
                     return "ROLLBACK";
@@ -23802,8 +23781,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& /*statement*/,
-                                                                  const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+                                                             const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
             return "NULL";
         }
     };
@@ -23813,8 +23792,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& /*statement*/,
-                                                                  const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+                                                             const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
             return "NOT NULL";
         }
     };
@@ -23875,8 +23854,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& /*statement*/,
-                                                                  const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+                                                             const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
             return "UNINDEXED";
         }
     };
@@ -24578,8 +24557,8 @@ namespace sqlite_orm::internal {
         using statement_type = conflict_action;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& statement,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             switch (statement) {
                 case conflict_action::replace:
                     return "REPLACE";
@@ -24853,8 +24832,8 @@ namespace sqlite_orm::internal {
         using statement_type = trigger_timing;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& statement,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             switch (statement) {
                 case trigger_timing::trigger_before:
                     return "BEFORE";
@@ -24872,8 +24851,8 @@ namespace sqlite_orm::internal {
         using statement_type = trigger_type;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& statement,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             switch (statement) {
                 case trigger_type::trigger_delete:
                     return "DELETE";
@@ -25149,8 +25128,8 @@ namespace sqlite_orm::internal {
         using statement_type = default_values_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "DEFAULT VALUES";
         }
     };
@@ -26154,7 +26133,7 @@ namespace sqlite_orm::internal {
         template<class T>
         SQLITE_ORM_STATIC_CALLOP void operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {}
 
-        static bool _contains(const std::list<udf_proxy>& functions, const std::string_view& name) {
+        static bool _contains(const std::list<udf_proxy>& functions, std::string_view name) {
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
             auto it = std::ranges::find(functions, name, &udf_proxy::name);
 #else
@@ -29593,11 +29572,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
+#include <string_view>  //  std::string_view
 #endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../serialize_result_type.h"
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -29606,7 +29584,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 namespace sqlite_orm::internal {
     struct where_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "WHERE";
         }
     };
