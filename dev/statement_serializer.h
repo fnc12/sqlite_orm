@@ -2315,7 +2315,9 @@ namespace sqlite_orm::internal {
                 ss << "UNIQUE ";
             }
             using indexed_type = typename statement_type::table_mapped_type;
-            ss << "INDEX IF NOT EXISTS " << streaming_identifier(statement.name) << " ON "
+            //  no `IF NOT EXISTS`: SQLite strips it from the statement text it stores in the schema table,
+            //  and `schema_status()` compares that text with this serialization verbatim
+            ss << "INDEX " << streaming_identifier(statement.name) << " ON "
                << streaming_identifier(lookup_table_name<indexed_type>(context.db_objects));
             std::vector<std::string> columnNames;
             std::string whereString;
