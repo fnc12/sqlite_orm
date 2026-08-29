@@ -1877,11 +1877,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     auto make_storage(std::string filename, Spec... specifications) {
         using namespace ::sqlite_orm::internal;
 
-        static_assert(
-            std::conjunction_v<
-                std::disjunction<is_database_object<Spec>, polyfill::is_detected<storage_opt_tag_t, Spec>>...>,
-            "a make_storage() argument must be a table, index, trigger, view, virtual table or a storage "
-            "option");
+        static_assert(((is_database_object<Spec>::value || polyfill::is_detected_v<storage_opt_tag_t, Spec>) && ...),
+                      "a make_storage() argument must be a table, index, trigger, view, virtual table or a storage "
+                      "option");
 
         std::tuple specTuple{std::forward<Spec>(specifications)...};
         return internal::make_storage(

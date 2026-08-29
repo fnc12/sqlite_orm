@@ -3,7 +3,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>
 #include <tuple>
-#include <type_traits>  //  std::is_member_pointer
+#include <type_traits>  //  std::is_member_pointer_v
 #endif
 
 #include "../optional_container.h"
@@ -126,10 +126,9 @@ namespace sqlite_orm::internal {
 
         template<class... S>
         partial_trigger_t<trigger_base_t<T, W, Type>, S...> begin(S... statements) {
-            static_assert(std::conjunction_v<std::disjunction<is_select_expression<S>,
-                                                              is_raw_dml_expression<S>,
-                                                              is_object_dml_expression<S>>...>,
-                          "a trigger body statement must be a complete SELECT, INSERT, UPDATE or DELETE statement");
+            static_assert(
+                ((is_select_expression_v<S> || is_raw_dml_expression_v<S> || is_object_dml_expression_v<S>) && ...),
+                "a trigger body statement must be a complete SELECT, INSERT, UPDATE or DELETE statement");
             return {*this, std::forward<S>(statements)...};
         }
     };
@@ -198,7 +197,7 @@ namespace sqlite_orm::internal {
         template<class... Cs>
         trigger_update_type_t<Cs...> update_of(Cs... columns) {
             //  the grammar production is a list of column names, not expressions
-            static_assert(std::conjunction_v<std::disjunction<std::is_member_pointer<Cs>, is_column_pointer<Cs>>...>,
+            static_assert(((std::is_member_pointer_v<Cs> || is_column_pointer_v<Cs>) && ...),
                           "UPDATE OF arguments must be members of the table the trigger watches");
             return {timing, trigger_type::trigger_update, std::forward<Cs>(columns)...};
         }
