@@ -118,7 +118,6 @@ TEST_CASE("select constraints") {
         }
         REQUIRE_THAT(names, UnorderedEquals(expected));
     }
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     SECTION("as_optional") {
         SECTION("prepared statements bindings") {
             auto statement = storage.prepare(select(as_optional(5)));
@@ -217,7 +216,6 @@ TEST_CASE("select constraints") {
         }
 #endif
     }
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 }
 
 namespace {

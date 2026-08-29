@@ -4,10 +4,11 @@
 #include <type_traits>  //  std::remove_reference, std::common_type, std::index_sequence, std::make_index_sequence, std::forward, std::move, std::integral_constant, std::declval
 #include <tuple>  //  std::tuple_size, std::get
 #include <utility>  // std::forward_like
+#include <functional>  //  std::invoke
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
-#include "../functional/cxx_functional_polyfill.h"
+#include "../functional/cxx_functional_polyfill.h"  //  polyfill::identity
 #include "../functional/mpl.h"
 
 namespace sqlite_orm::internal {
@@ -38,7 +39,7 @@ namespace sqlite_orm::internal {
     template<class CombineOp, class Tpl, size_t... Idx, class Projector, class Init>
     SQLITE_ORM_CONSTEXPR_CPP20 auto
     recombine_tuple(CombineOp combine, const Tpl& tpl, std::index_sequence<Idx...>, Projector project, Init initial) {
-        return combine(initial, polyfill::invoke(project, std::get<Idx>(tpl))...);
+        return combine(initial, std::invoke(project, std::get<Idx>(tpl))...);
     }
 
     /*
@@ -92,7 +93,7 @@ namespace sqlite_orm::internal {
 
     template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
     constexpr R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
-        return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
+        return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
     }
 
 #if defined(SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED) && __cpp_lib_forward_like >= 202207L
@@ -118,7 +119,7 @@ namespace sqlite_orm::internal {
 
     template<template<typename...> class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
     constexpr auto create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
-        return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
+        return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
     }
 
 #if defined(SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED) && __cpp_lib_forward_like >= 202207L

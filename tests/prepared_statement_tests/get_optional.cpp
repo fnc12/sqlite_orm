@@ -6,7 +6,6 @@
 using namespace sqlite_orm;
 
 #if SQLITE_VERSION_NUMBER >= 3006019
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 TEST_CASE("Prepared get optional") {
     using namespace PreparedStatementTests;
     using Catch::Matchers::UnorderedEquals;
@@ -147,5 +146,4 @@ TEST_CASE("Prepared get optional") {
         REQUIRE(*user == User{2, "Shy'm"});
     }
 }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 #endif

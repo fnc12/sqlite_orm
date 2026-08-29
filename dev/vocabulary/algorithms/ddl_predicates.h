@@ -76,7 +76,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_index_element_of_v = true;
 
     template<class ColRef, class T>
-    constexpr bool is_index_element_of_v<ColRef, T, polyfill::void_t<table_type_of_t<ColRef>>> =
+    constexpr bool is_index_element_of_v<ColRef, T, std::void_t<table_type_of_t<ColRef>>> =
         std::is_same<table_type_of_t<ColRef>, T>::value;
 
     /**

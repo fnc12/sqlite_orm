@@ -26,26 +26,26 @@ namespace sqlite_orm::internal {
      *  a member pointer or anything the overloaded operators accept.
      */
     template<class T>
-    using is_referencable_operand = polyfill::disjunction<is_operator_argument<T>, std::is_member_pointer<T>>;
+    using is_referencable_operand = std::disjunction<is_operator_argument<T>, std::is_member_pointer<T>>;
 
     /**
      *  Whether a type may appear as an operand of a named expression factory.
      */
     template<class T>
-    using is_operand_or_bindable = polyfill::disjunction<is_operator_argument<T>,
-                                                         std::is_member_pointer<T>,
-                                                         is_arithmetic_operand<T>,
-                                                         is_conditional_operand<T>,
-                                                         is_chainable_operand<T>,
-                                                         is_bindable<T>,
-                                                         //  a scalar subquery
-                                                         is_select<T>,
-                                                         is_compound_operator<T>,
-                                                         //  a row value
-                                                         polyfill::is_specialization_of<T, std::tuple>,
-                                                         //  a value bound by reference in a prepared statement
-                                                         polyfill::is_specialization_of<T, std::reference_wrapper>>;
+    using is_operand_or_bindable = std::disjunction<is_operator_argument<T>,
+                                                    std::is_member_pointer<T>,
+                                                    is_arithmetic_operand<T>,
+                                                    is_conditional_operand<T>,
+                                                    is_chainable_operand<T>,
+                                                    is_bindable<T>,
+                                                    //  a scalar subquery
+                                                    is_select<T>,
+                                                    is_compound_operator<T>,
+                                                    //  a row value
+                                                    polyfill::is_specialization_of<T, std::tuple>,
+                                                    //  a value bound by reference in a prepared statement
+                                                    polyfill::is_specialization_of<T, std::reference_wrapper>>;
 
     template<class L, class R>
-    using are_valid_operands = polyfill::conjunction<is_operand_or_bindable<L>, is_operand_or_bindable<R>>;
+    using are_valid_operands = std::conjunction<is_operand_or_bindable<L>, is_operand_or_bindable<R>>;
 }

@@ -8,12 +8,8 @@
 #include <catch2/catch_all.hpp>
 #include <memory>  //  std::unique_ptr, std::shared_ptr
 #include <string>  //  std::string
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  //  std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <string_view>
-#endif
 
 using namespace sqlite_orm;
 
@@ -81,18 +77,14 @@ TEST_CASE("is_extractable") {
     check_extractable<std::nullptr_t>();
     check_extractable<std::unique_ptr<int>>();
     check_extractable<std::shared_ptr<int>>();
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
     check_not_extractable<std::string_view>();
 #ifndef SQLITE_ORM_OMITS_CODECVT
     check_not_extractable<std::wstring_view>();
 #endif
-#endif
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     check_not_extractable<std::nullopt_t>();
     check_extractable<std::optional<int>>();
     check_extractable<std::optional<custom_enum>>();
     check_not_extractable<std::optional<User>>();
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 #if SQLITE_VERSION_NUMBER >= 3020000
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     check_not_extractable<static_pointer_binding_t<std::nullptr_t, carray_pointer_tag>>();

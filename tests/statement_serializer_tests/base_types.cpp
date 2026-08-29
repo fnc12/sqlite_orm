@@ -32,7 +32,6 @@ TEST_CASE("statement_serializer base types") {
             expected = "?";
         }
     }
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
     SECTION("std::string_view") {
         std::string_view str = "agora";
         SECTION("no question") {
@@ -45,7 +44,6 @@ TEST_CASE("statement_serializer base types") {
             expected = "?";
         }
     }
-#endif
     SECTION("blob") {
         std::vector<char> blob{};
         stringValue = serialize(blob, context);

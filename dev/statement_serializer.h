@@ -4,6 +4,7 @@
 #include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref, std::disjunction
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
+#include <string_view>  //  std::string_view
 #include <vector>  //  std::vector
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert
@@ -12,15 +13,14 @@
 #include <memory>
 #include <array>
 #include <list>  //  std::list
+#include <functional>  //  std::invoke
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
 #include <ranges>  //  std::views::transform
 #endif
 #endif
-#include "functional/cxx_string_view.h"
-#include "functional/cxx_optional.h"
 
 #include "functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, std::disjunction
-#include "functional/cxx_functional_polyfill.h"  // std::identity, std::invoke
+#include "functional/cxx_functional_polyfill.h"  // polyfill::identity
 #include "functional/gsl.h"
 #include "functional/always_default.h"
 #include "functional/mpl.h"
@@ -50,7 +50,6 @@
 #include "cte_column_names_collector.h"
 #include "order_by_serializer.h"
 #include "serializing_util.h"
-#include "serialize_result_type.h"
 #include "statement_binder.h"
 #include "values.h"
 #include "util.h"
@@ -124,7 +123,6 @@ namespace sqlite_orm::internal {
             return quote_string_literal(converter.to_bytes(c));
         }
 #endif
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         static std::string do_serialize(const std::string_view& c) {
             return quote_string_literal(std::string(c));
         }
@@ -133,7 +131,6 @@ namespace sqlite_orm::internal {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             return quote_string_literal(converter.to_bytes(c.data(), c.data() + c.size()));
         }
-#endif
 #endif
         /**
          *  Specialization for binary data (std::vector<char>).
@@ -326,8 +323,8 @@ namespace sqlite_orm::internal {
         using statement_type = row_number_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "ROW_NUMBER()";
         }
     };
@@ -337,8 +334,8 @@ namespace sqlite_orm::internal {
         using statement_type = dense_rank_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "DENSE_RANK()";
         }
     };
@@ -348,8 +345,8 @@ namespace sqlite_orm::internal {
         using statement_type = percent_rank_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "PERCENT_RANK()";
         }
     };
@@ -359,8 +356,8 @@ namespace sqlite_orm::internal {
         using statement_type = cume_dist_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "CUME_DIST()";
         }
     };
@@ -448,8 +445,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "UNBOUNDED PRECEDING";
         }
     };
@@ -472,8 +469,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "CURRENT ROW";
         }
     };
@@ -496,8 +493,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "UNBOUNDED FOLLOWING";
         }
     };
@@ -786,7 +783,7 @@ namespace sqlite_orm::internal {
     template<class E>
     struct statement_serializer<
         E,
-        std::enable_if_t<polyfill::disjunction<std::is_member_pointer<E>, is_column_pointer<E>>::value>> {
+        std::enable_if_t<std::disjunction<std::is_member_pointer<E>, is_column_pointer<E>>::value>> {
         using statement_type = E;
 
         template<class Ctx>
@@ -810,8 +807,8 @@ namespace sqlite_orm::internal {
         using statement_type = rank_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& /*statement*/,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "rank";
         }
     };
@@ -1101,8 +1098,8 @@ namespace sqlite_orm::internal {
     template<class T>
     struct statement_serializer<
         T,
-        std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<T, unary_minus_t>,
-                                               polyfill::is_specialization_of<T, bitwise_not_t>>::value>> {
+        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<T, unary_minus_t>,
+                                          polyfill::is_specialization_of<T, bitwise_not_t>>::value>> {
         using statement_type = T;
 
         template<class Ctx>
@@ -1158,7 +1155,7 @@ namespace sqlite_orm::internal {
     template<class T>
     struct statement_serializer<
         T,
-        std::enable_if_t<polyfill::disjunction<is_binary_condition<T>, is_binary_operator<T>>::value>> {
+        std::enable_if_t<std::disjunction<is_binary_condition<T>, is_binary_operator<T>>::value>> {
         using statement_type = T;
 
         template<class Ctx>
@@ -1223,8 +1220,8 @@ namespace sqlite_orm::internal {
     template<class L, class C>
     struct statement_serializer<
         dynamic_in_t<L, C>,
-        std::enable_if_t<!polyfill::disjunction<polyfill::is_specialization_of<C, std::vector>,
-                                                polyfill::is_specialization_of<C, std::list>>::value>> {
+        std::enable_if_t<!std::disjunction<polyfill::is_specialization_of<C, std::vector>,
+                                           polyfill::is_specialization_of<C, std::list>>::value>> {
         using statement_type = dynamic_in_t<L, C>;
 
         template<class Ctx>
@@ -1255,8 +1252,8 @@ namespace sqlite_orm::internal {
     template<class L, class C>
     struct statement_serializer<
         dynamic_in_t<L, C>,
-        std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<C, std::vector>,
-                                               polyfill::is_specialization_of<C, std::list>>::value>> {
+        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<C, std::vector>,
+                                          polyfill::is_specialization_of<C, std::list>>::value>> {
         using statement_type = dynamic_in_t<L, C>;
 
         template<class Ctx>
@@ -1375,8 +1372,8 @@ namespace sqlite_orm::internal {
         using statement_type = conflict_clause_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& statement,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             switch (statement) {
                 case conflict_clause_t::rollback:
                     return "ROLLBACK";
@@ -1398,8 +1395,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& /*statement*/,
-                                                                  const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+                                                             const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
             return "NULL";
         }
     };
@@ -1409,8 +1406,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& /*statement*/,
-                                                                  const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+                                                             const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
             return "NOT NULL";
         }
     };
@@ -1471,8 +1468,8 @@ namespace sqlite_orm::internal {
         using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& /*statement*/,
-                                                                  const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+                                                             const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
             return "UNINDEXED";
         }
     };
@@ -1704,16 +1701,15 @@ namespace sqlite_orm::internal {
             ss << "INSERT INTO " << streaming_identifier(table.name) << " ";
             ss << "(" << streaming_mapped_columns_expressions(ins.columns.columns, context) << ") "
                << "VALUES (";
-            iterate_tuple(ins.columns.columns,
-                          [&ss, &context, &object = get_ref(ins.obj), first = true](auto& memberPointer) mutable {
-                              using member_pointer_type = std::remove_reference_t<decltype(memberPointer)>;
-                              static_assert(!is_setter_v<member_pointer_type>,
-                                            "Unable to use setter within insert explicit");
+            iterate_tuple(
+                ins.columns.columns,
+                [&ss, &context, &object = get_ref(ins.obj), first = true](auto& memberPointer) mutable {
+                    using member_pointer_type = std::remove_reference_t<decltype(memberPointer)>;
+                    static_assert(!is_setter_v<member_pointer_type>, "Unable to use setter within insert explicit");
 
-                              static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
-                              ss << sep[std::exchange(first, false)]
-                                 << serialize(polyfill::invoke(memberPointer, object), context);
-                          });
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
+                    ss << sep[std::exchange(first, false)] << serialize(std::invoke(memberPointer, object), context);
+                });
             ss << ")";
             return ss.str();
         }
@@ -1739,7 +1735,7 @@ namespace sqlite_orm::internal {
 
                     static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
-                       << serialize(polyfill::invoke(column.member_pointer, object), context);
+                       << serialize(std::invoke(column.member_pointer, object), context);
                 });
             ss << " WHERE ";
             table.for_each_column(
@@ -1750,7 +1746,7 @@ namespace sqlite_orm::internal {
 
                     static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
                     ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
-                       << serialize(polyfill::invoke(column.member_pointer, object), context);
+                       << serialize(std::invoke(column.member_pointer, object), context);
                 });
             return ss.str();
         }
@@ -1920,7 +1916,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class C>
-    struct statement_serializer<C, std::enable_if_t<polyfill::disjunction<is_columns<C>, is_struct<C>>::value>> {
+    struct statement_serializer<C, std::enable_if_t<std::disjunction<is_columns<C>, is_struct<C>>::value>> {
         using statement_type = C;
 
         template<class Ctx>
@@ -1943,8 +1939,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<T,
-                                std::enable_if_t<polyfill::disjunction<is_insert_raw<T>, is_replace_raw<T>>::value>> {
+    struct statement_serializer<T, std::enable_if_t<std::disjunction<is_insert_raw<T>, is_replace_raw<T>>::value>> {
         using statement_type = T;
 
         template<class Ctx>
@@ -2091,7 +2086,6 @@ namespace sqlite_orm::internal {
         return ss.str();
     }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T, class R, class... Args>
     struct statement_serializer<get_all_optional_t<T, R, Args...>, void> {
         using statement_type = get_all_optional_t<T, R, Args...>;
@@ -2102,7 +2096,6 @@ namespace sqlite_orm::internal {
             return serialize_get_all_impl(get, context);
         }
     };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class T, class R, class... Args>
     struct statement_serializer<get_all_pointer_t<T, R, Args...>, void> {
@@ -2178,8 +2171,8 @@ namespace sqlite_orm::internal {
         using statement_type = conflict_action;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& statement,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             switch (statement) {
                 case conflict_action::replace:
                     return "REPLACE";
@@ -2210,7 +2203,6 @@ namespace sqlite_orm::internal {
         }
     };
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T, class... Ids>
     struct statement_serializer<get_optional_t<T, Ids...>, void> {
         using statement_type = get_optional_t<T, Ids...>;
@@ -2221,7 +2213,6 @@ namespace sqlite_orm::internal {
             return serialize_get_impl(get, context);
         }
     };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class Select>
     struct statement_serializer<Select, match_if<is_select, Select>> {
@@ -2457,8 +2448,8 @@ namespace sqlite_orm::internal {
         using statement_type = trigger_timing;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& statement,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             switch (statement) {
                 case trigger_timing::trigger_before:
                     return "BEFORE";
@@ -2476,8 +2467,8 @@ namespace sqlite_orm::internal {
         using statement_type = trigger_type;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& statement,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             switch (statement) {
                 case trigger_type::trigger_delete:
                     return "DELETE";
@@ -2625,8 +2616,8 @@ namespace sqlite_orm::internal {
     template<class Join>
     struct statement_serializer<
         Join,
-        std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<Join, cross_join_t>,
-                                               polyfill::is_specialization_of<Join, natural_join_t>>::value>> {
+        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<Join, cross_join_t>,
+                                          polyfill::is_specialization_of<Join, natural_join_t>>::value>> {
         using statement_type = Join;
 
         template<class Ctx>
@@ -2753,8 +2744,8 @@ namespace sqlite_orm::internal {
         using statement_type = default_values_t;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
-                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             return "DEFAULT VALUES";
         }
     };

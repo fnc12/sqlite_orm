@@ -6,6 +6,8 @@
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
+#include <optional>  //  std::optional
+#include <string_view>  //  std::string_view
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
@@ -13,7 +15,6 @@
 #include "functional/is_base_template_of.h"
 #include "tuple_helper/tuple_traits.h"
 #include "conditions.h"
-#include "serialize_result_type.h"
 #include "operators.h"
 #include "tags.h"
 #include "alias_traits.h"
@@ -87,122 +88,122 @@ namespace sqlite_orm::internal {
     };
 
     struct typeof_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TYPEOF";
         }
     };
 
     struct unicode_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "UNICODE";
         }
     };
 
     struct length_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "LENGTH";
         }
     };
 
     struct abs_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ABS";
         }
     };
 
     struct lower_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "LOWER";
         }
     };
 
     struct upper_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "UPPER";
         }
     };
 
     struct last_insert_rowid_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "LAST_INSERT_ROWID";
         }
     };
 
     struct total_changes_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TOTAL_CHANGES";
         }
     };
 
     struct changes_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "CHANGES";
         }
     };
 
     struct trim_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TRIM";
         }
     };
 
     struct ltrim_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "LTRIM";
         }
     };
 
     struct rtrim_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "RTRIM";
         }
     };
 
     struct hex_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "HEX";
         }
     };
 
     struct quote_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "QUOTE";
         }
     };
 
     struct randomblob_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "RANDOMBLOB";
         }
     };
 
     struct instr_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "INSTR";
         }
     };
 
     struct replace_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "REPLACE";
         }
     };
 
     struct round_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ROUND";
         }
     };
 
 #if SQLITE_VERSION_NUMBER >= 3007016
     struct char_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "CHAR";
         }
     };
 
     struct random_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "RANDOM";
         }
     };
@@ -210,85 +211,85 @@ namespace sqlite_orm::internal {
 #endif
 
     struct coalesce_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "COALESCE";
         }
     };
 
     struct ifnull_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "IFNULL";
         }
     };
 
     struct nullif_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "NULLIF";
         }
     };
 
     struct date_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "DATE";
         }
     };
 
     struct time_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TIME";
         }
     };
 
     struct datetime_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "DATETIME";
         }
     };
 
     struct julianday_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JULIANDAY";
         }
     };
 
     struct strftime_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "STRFTIME";
         }
     };
 
     struct zeroblob_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ZEROBLOB";
         }
     };
 
     struct substr_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "SUBSTR";
         }
     };
 #ifdef SQLITE_SOUNDEX
     struct soundex_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "SOUNDEX";
         }
     };
 #endif
     struct total_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TOTAL";
         }
     };
 
     struct sum_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "SUM";
         }
     };
 
     struct count_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "COUNT";
         }
     };
@@ -339,36 +340,36 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_operator_argument_v<
         T,
-        std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<T, count_asterisk_t>,
-                                               std::is_same<T, count_asterisk_without_type>>::value>> = true;
+        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<T, count_asterisk_t>,
+                                          std::is_same<T, count_asterisk_without_type>>::value>> = true;
 
     struct avg_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "AVG";
         }
     };
 
     struct max_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "MAX";
         }
     };
 
     struct min_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "MIN";
         }
     };
 
     struct group_concat_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "GROUP_CONCAT";
         }
     };
 
 #if SQLITE_VERSION_NUMBER >= 3008003
     struct printf_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "PRINTF";
         }
     };
@@ -376,7 +377,7 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3032000
     struct iif_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "IIF";
         }
     };
@@ -384,7 +385,7 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3035000
     struct sign_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "SIGN";
         }
     };
@@ -392,13 +393,13 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3038000
     struct format_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "FORMAT";
         }
     };
 
     struct unixepoch_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "UNIXEPOCH";
         }
     };
@@ -406,7 +407,7 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3041000
     struct unhex_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "UNHEX";
         }
     };
@@ -414,13 +415,13 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3043000
     struct octet_length_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "OCTET_LENGTH";
         }
     };
 
     struct timediff_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TIMEDIFF";
         }
     };
@@ -428,19 +429,19 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3044000
     struct concat_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "CONCAT";
         }
     };
 
     struct concat_ws_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "CONCAT_WS";
         }
     };
 
     struct string_agg_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "STRING_AGG";
         }
     };
@@ -448,7 +449,7 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3048000
     struct if_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "IF";
         }
     };
@@ -456,13 +457,13 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3050000
     struct unistr_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "UNISTR";
         }
     };
 
     struct unistr_quote_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "UNISTR_QUOTE";
         }
     };
@@ -470,200 +471,200 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ENABLE_PERCENTILE
     struct median_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "MEDIAN";
         }
     };
 
     struct percentile_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "PERCENTILE";
         }
     };
 
     struct percentile_cont_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "PERCENTILE_CONT";
         }
     };
 
     struct percentile_disc_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "PERCENTILE_DISC";
         }
     };
 #endif
 #ifdef SQLITE_ENABLE_MATH_FUNCTIONS
     struct acos_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ACOS";
         }
     };
 
     struct acosh_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ACOSH";
         }
     };
 
     struct asin_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ASIN";
         }
     };
 
     struct asinh_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ASINH";
         }
     };
 
     struct atan_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ATAN";
         }
     };
 
     struct atan2_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ATAN2";
         }
     };
 
     struct atanh_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "ATANH";
         }
     };
 
     struct ceil_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "CEIL";
         }
     };
 
     struct ceiling_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "CEILING";
         }
     };
 
     struct cos_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "COS";
         }
     };
 
     struct cosh_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "COSH";
         }
     };
 
     struct degrees_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "DEGREES";
         }
     };
 
     struct exp_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "EXP";
         }
     };
 
     struct floor_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "FLOOR";
         }
     };
 
     struct ln_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "LN";
         }
     };
 
     struct log_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "LOG";
         }
     };
 
     struct log10_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "LOG10";
         }
     };
 
     struct log2_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "LOG2";
         }
     };
 
     struct mod_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "MOD";
         }
     };
 
     struct pi_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "PI";
         }
     };
 
     struct pow_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "POW";
         }
     };
 
     struct power_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "POWER";
         }
     };
 
     struct radians_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "RADIANS";
         }
     };
 
     struct sin_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "SIN";
         }
     };
 
     struct sinh_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "SINH";
         }
     };
 
     struct sqrt_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "SQRT";
         }
     };
 
     struct tan_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TAN";
         }
     };
 
     struct tanh_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TANH";
         }
     };
 
     struct trunc_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "TRUNC";
         }
     };
@@ -671,91 +672,91 @@ namespace sqlite_orm::internal {
 #endif  //  SQLITE_ENABLE_MATH_FUNCTIONS
 #ifdef SQLITE_ORM_JSON_SUPPORTED
     struct json_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON";
         }
     };
 
     struct json_array_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_ARRAY";
         }
     };
 
     struct json_array_length_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_ARRAY_LENGTH";
         }
     };
 
     struct json_extract_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_EXTRACT";
         }
     };
 
     struct json_insert_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_INSERT";
         }
     };
 
     struct json_replace_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_REPLACE";
         }
     };
 
     struct json_set_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_SET";
         }
     };
 
     struct json_object_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_OBJECT";
         }
     };
 
     struct json_patch_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_PATCH";
         }
     };
 
     struct json_remove_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_REMOVE";
         }
     };
 
     struct json_type_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_TYPE";
         }
     };
 
     struct json_valid_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_VALID";
         }
     };
 
     struct json_quote_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_QUOTE";
         }
     };
 
     struct json_group_array_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_GROUP_ARRAY";
         }
     };
 
     struct json_group_object_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "JSON_GROUP_OBJECT";
         }
     };
@@ -1819,7 +1820,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class R = void, class... Args>
     constexpr auto coalesce(Args... args)
         -> internal::built_in_function_t<typename mpl::conditional_t<  //  choose R or common type
-                                             std::is_void<R>::value,
+                                             std::is_void_v<R>,
                                              std::common_type<internal::field_type_or_type_t<Args>...>,
                                              polyfill::type_identity<R>>::type,
                                          internal::coalesce_string,
@@ -1833,7 +1834,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class R = void, class X, class Y>
     constexpr auto ifnull(X x, Y y) -> internal::built_in_function_t<
         typename mpl::conditional_t<  //  choose R or common type
-            std::is_void<R>::value,
+            std::is_void_v<R>,
             std::common_type<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
             polyfill::type_identity<R>>::type,
         internal::ifnull_string,
@@ -1845,20 +1846,19 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  NULLIF(X,Y) function https://www.sqlite.org/lang_corefunc.html#nullif
      */
-#if defined(SQLITE_ORM_OPTIONAL_SUPPORTED)
     /**
      *  NULLIF(X,Y) using common return type of X and Y
      */
     template<class R = void,
              class X,
              class Y,
-             std::enable_if_t<polyfill::disjunction_v<polyfill::negation<std::is_void<R>>,
-                                                      polyfill::is_detected<std::common_type_t,
-                                                                            internal::field_type_or_type_t<X>,
-                                                                            internal::field_type_or_type_t<Y>>>,
+             std::enable_if_t<std::disjunction_v<std::negation<std::is_void<R>>,
+                                                 polyfill::is_detected<std::common_type_t,
+                                                                       internal::field_type_or_type_t<X>,
+                                                                       internal::field_type_or_type_t<Y>>>,
                               bool> = true>
     constexpr auto nullif(X x, Y y) {
-        if constexpr (std::is_void<R>::value) {
+        if constexpr (std::is_void_v<R>) {
             using F = internal::built_in_function_t<
                 std::optional<std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>>,
                 internal::nullif_string,
@@ -1872,12 +1872,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return F{std::make_tuple(std::move(x), std::move(y))};
         }
     }
-#else
-    template<class R, class X, class Y>
-    constexpr internal::built_in_function_t<R, internal::nullif_string, X, Y> nullif(X x, Y y) {
-        return {std::make_tuple(std::move(x), std::move(y))};
-    }
-#endif
 
     /**
      *  DATE(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
@@ -2092,13 +2086,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class X,
              class Y,
              class Z,
-             std::enable_if_t<polyfill::disjunction_v<polyfill::negation<std::is_void<R>>,
-                                                      polyfill::is_detected<std::common_type_t,
-                                                                            internal::field_type_or_type_t<Y>,
-                                                                            internal::field_type_or_type_t<Z>>>,
+             std::enable_if_t<std::disjunction_v<std::negation<std::is_void<R>>,
+                                                 polyfill::is_detected<std::common_type_t,
+                                                                       internal::field_type_or_type_t<Y>,
+                                                                       internal::field_type_or_type_t<Z>>>,
                               bool> = true>
     constexpr auto iif(X x, Y y, Z z) {
-        if constexpr (std::is_void<R>::value) {
+        if constexpr (std::is_void_v<R>) {
             using F = internal::built_in_function_t<
                 std::common_type_t<internal::field_type_or_type_t<Y>, internal::field_type_or_type_t<Z>>,
                 internal::iif_string,
@@ -2229,13 +2223,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class X,
              class Y,
              class Z,
-             std::enable_if_t<polyfill::disjunction_v<polyfill::negation<std::is_void<R>>,
-                                                      polyfill::is_detected<std::common_type_t,
-                                                                            internal::field_type_or_type_t<Y>,
-                                                                            internal::field_type_or_type_t<Z>>>,
+             std::enable_if_t<std::disjunction_v<std::negation<std::is_void<R>>,
+                                                 polyfill::is_detected<std::common_type_t,
+                                                                       internal::field_type_or_type_t<Y>,
+                                                                       internal::field_type_or_type_t<Z>>>,
                               bool> = true>
     constexpr auto if_(X x, Y y, Z z) {
-        if constexpr (std::is_void<R>::value) {
+        if constexpr (std::is_void_v<R>) {
             using F = internal::built_in_function_t<
                 std::common_type_t<internal::field_type_or_type_t<Y>, internal::field_type_or_type_t<Z>>,
                 internal::if_string,
@@ -2449,20 +2443,19 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
-        template<
-            class T,
-            std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, T>, is_operator_argument<T>>::value,
-                             bool> = true>
+        template<class T,
+                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, T>, is_operator_argument<T>>::value,
+                                  bool> = true>
         constexpr unary_minus_t<unwrap_expression_t<T>> operator-(T arg) {
             return {unwrap_expression(std::forward<T>(arg))};
         }
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                        std::is_base_of<arithmetic_t, R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                   std::is_base_of<arithmetic_t, R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr add_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator+(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
@@ -2470,10 +2463,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                        std::is_base_of<arithmetic_t, R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                   std::is_base_of<arithmetic_t, R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr sub_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator-(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
@@ -2481,10 +2474,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                        std::is_base_of<arithmetic_t, R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                   std::is_base_of<arithmetic_t, R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr mul_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator*(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
@@ -2492,10 +2485,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                        std::is_base_of<arithmetic_t, R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                   std::is_base_of<arithmetic_t, R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr div_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator/(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
@@ -2503,29 +2496,28 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                        std::is_base_of<arithmetic_t, R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                   std::is_base_of<arithmetic_t, R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr mod_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator%(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
-        template<
-            class T,
-            std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, T>, is_operator_argument<T>>::value,
-                             bool> = true>
+        template<class T,
+                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, T>, is_operator_argument<T>>::value,
+                                  bool> = true>
         constexpr bitwise_not_t<unwrap_expression_t<T>> operator~(T arg) {
             return {unwrap_expression(std::forward<T>(arg))};
         }
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                        std::is_base_of<arithmetic_t, R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                   std::is_base_of<arithmetic_t, R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr bitwise_shift_left_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<<(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
@@ -2533,10 +2525,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                        std::is_base_of<arithmetic_t, R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                   std::is_base_of<arithmetic_t, R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr bitwise_shift_right_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>>(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
@@ -2544,10 +2536,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                        std::is_base_of<arithmetic_t, R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                   std::is_base_of<arithmetic_t, R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr bitwise_and_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator&(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
@@ -2555,10 +2547,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                        std::is_base_of<arithmetic_t, R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                   std::is_base_of<arithmetic_t, R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr bitwise_or_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator|(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};

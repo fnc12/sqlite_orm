@@ -5,11 +5,11 @@
 #include <string>  //  std::string
 #include <utility>  //  std::move
 #include <functional>  //  std::function
+#include <string_view>  //  std::string_view
 #endif
 
 #include "functional/gsl.h"
 #include "error_code.h"
-#include "serialize_result_type.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -61,7 +61,7 @@ namespace sqlite_orm::internal {
         return stmt;
     }
 
-    inline sqlite3_stmt* prepare_stmt(sqlite3* db, serialize_arg_type query) {
+    inline sqlite3_stmt* prepare_stmt(sqlite3* db, std::string_view query) {
         sqlite3_stmt* stmt;
         const int rc = sqlite3_prepare_v2(db, query.data(), int(query.size()), &stmt, nullptr);
         if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
@@ -111,8 +111,8 @@ namespace sqlite_orm::internal {
     }
 
     struct sqlite_executor {
-        std::function<void(serialize_arg_type sql)> will_run_query;
-        std::function<void(serialize_arg_type sql)> did_run_query;
+        std::function<void(std::string_view sql)> will_run_query;
+        std::function<void(std::string_view sql)> did_run_query;
 
         void perform_void_exec(sqlite3* db, orm_gsl::czstring sql) const {
             if (this->will_run_query) {

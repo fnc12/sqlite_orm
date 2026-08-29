@@ -52,7 +52,7 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
 #else
         template<class... ExplicitCols,
-                 std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
+                 std::enable_if_t<std::conjunction_v<std::disjunction<
                                       is_column_alias<ExplicitCols>,
                                       std::is_member_pointer<ExplicitCols>,
                                       std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,

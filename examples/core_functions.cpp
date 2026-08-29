@@ -1266,7 +1266,7 @@ int main(int, char** argv) {
     cout << "SELECT unistr('\\u00e4') = " << storage.select(unistr("\\u00e4")).front() << endl;
 #endif
 
-#if defined(SQLITE_ENABLE_PERCENTILE) && defined(SQLITE_ORM_OPTIONAL_SUPPORTED)
+#if defined(SQLITE_ENABLE_PERCENTILE)
     //  SELECT median(points), percentile(points, 90) FROM marvel
     {
         auto medianPoints = storage.select(median<std::optional<double>>(&MarvelHero::points)).front();

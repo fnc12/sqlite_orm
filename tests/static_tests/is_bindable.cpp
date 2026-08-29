@@ -2,12 +2,8 @@
 #include <catch2/catch_all.hpp>
 #include <memory>  //  std::unique_ptr, std::shared_ptr
 #include <string>  //  std::string
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  //  std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <string_view>
-#endif
 
 using namespace sqlite_orm;
 using internal::is_bindable_v;
@@ -55,18 +51,14 @@ TEST_CASE("is_bindable") {
     STATIC_REQUIRE(is_bindable_v<std::nullptr_t>);
     STATIC_REQUIRE(is_bindable_v<std::unique_ptr<int>>);
     STATIC_REQUIRE(is_bindable_v<std::shared_ptr<int>>);
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
     STATIC_REQUIRE(is_bindable_v<std::string_view>);
 #ifndef SQLITE_ORM_OMITS_CODECVT
     STATIC_REQUIRE(is_bindable_v<std::wstring_view>);
 #endif
-#endif
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     STATIC_REQUIRE(is_bindable_v<std::nullopt_t>);
     STATIC_REQUIRE(is_bindable_v<std::optional<int>>);
     STATIC_REQUIRE(is_bindable_v<std::optional<Custom>>);
     STATIC_REQUIRE_FALSE(is_bindable_v<std::optional<User>>);
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 #if SQLITE_VERSION_NUMBER >= 3020000
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     STATIC_REQUIRE(is_bindable_v<static_pointer_binding_t<std::nullptr_t, carray_pointer_tag>>);

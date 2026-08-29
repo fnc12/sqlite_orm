@@ -14,7 +14,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_select_expression_v = false;
 
     template<class T>
-    using is_select_expression = polyfill::bool_constant<is_select_expression_v<T>>;
+    using is_select_expression = std::bool_constant<is_select_expression_v<T>>;
 
     /**
      *  Nodes that are or contain a DML statement expression.
@@ -23,7 +23,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_raw_dml_expression_v = false;
 
     template<class T>
-    using is_raw_dml_expression = polyfill::bool_constant<is_raw_dml_expression_v<T>>;
+    using is_raw_dml_expression = std::bool_constant<is_raw_dml_expression_v<T>>;
 
     /**
      *  Nodes that are a DML statement expression bound to a mapped object:
@@ -33,5 +33,5 @@ namespace sqlite_orm::internal {
     constexpr bool is_object_dml_expression_v = false;
 
     template<class T>
-    using is_object_dml_expression = polyfill::bool_constant<is_object_dml_expression_v<T>>;
+    using is_object_dml_expression = std::bool_constant<is_object_dml_expression_v<T>>;
 }

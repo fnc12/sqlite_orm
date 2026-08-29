@@ -399,7 +399,6 @@ TEST_CASE("round") {
     test2(34.4158, -1, 34.0);
 }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 TEST_CASE("coalesce") {
     using Catch::Matchers::Equals;
     using std::nullopt, std::optional, std::vector;
@@ -439,9 +438,7 @@ TEST_CASE("coalesce") {
         REQUIRE_THAT(rows, Equals(vector<optional<double>>{0., 1.}));
     }
 }
-#endif
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 TEST_CASE("nullif") {
     using Catch::Matchers::Equals;
     using std::nullopt, std::optional, std::vector;
@@ -463,7 +460,6 @@ TEST_CASE("nullif") {
         REQUIRE(rows.size() == 1);
         REQUIRE(rows[0] == true);
     }
-#if defined(SQLITE_ORM_OPTIONAL_SUPPORTED)
     SECTION("common return type") {
         auto rows = storage.select(&Foo::field, where(nullif(&Foo::field, false)));
         REQUIRE(rows.size() == 1);
@@ -477,9 +473,7 @@ TEST_CASE("nullif") {
         auto rows = storage.select(nullif(&Foo::field, 1), order_by(1));
         REQUIRE_THAT(rows, Equals(vector<optional<int>>{nullopt, 0}));
     }
-#endif
 }
-#endif
 
 TEST_CASE("ifnull") {
     //  obtained from here https://www.sqlitetutorial.net/sqlite-functions/sqlite-ifnull/
@@ -1392,13 +1386,11 @@ TEST_CASE("sign") {
         decltype(rows) expected{1};
         REQUIRE(rows == expected);
     }
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     SECTION("null for a non-numeric argument") {
         auto rows = storage.select(sign<std::optional<int>>("ototo"));
         decltype(rows) expected{std::nullopt};
         REQUIRE(rows == expected);
     }
-#endif
 }
 #endif
 
@@ -1506,7 +1498,6 @@ TEST_CASE("median and percentile") {
     storage.replace(Score{1, 1.0});
     storage.replace(Score{2, 2.0});
     storage.replace(Score{3, 3.0});
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     SECTION("median") {
         auto rows = storage.select(median<std::optional<double>>(&Score::value));
         decltype(rows) expected{2.0};
@@ -1527,6 +1518,5 @@ TEST_CASE("median and percentile") {
         decltype(rows) expected{2.0};
         REQUIRE(rows == expected);
     }
-#endif
 }
 #endif

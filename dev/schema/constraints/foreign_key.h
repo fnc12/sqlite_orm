@@ -185,7 +185,7 @@ namespace sqlite_orm::internal {
          */
         template<class O, class... Base, class... F>
         foreign_key_t<tuple_type, std::tuple<F O::*...>> references(F Base::*... refs) && {
-            static_assert(polyfill::conjunction<is_field_of<F Base::*, O>...>::value,
+            static_assert(std::conjunction<is_field_of<F Base::*, O>...>::value,
                           "Referenced fields must be from explicitly specified derived class");
             static_assert(std::tuple_size<tuple_type>::value == sizeof...(F),
                           "Columns size must be equal to references tuple");
@@ -232,7 +232,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class O, class... Base, class... F>
     constexpr internal::foreign_key_intermediate_t<F O::*...> foreign_key(F Base::*... columns) {
-        static_assert(polyfill::conjunction<internal::is_field_of<F Base::*, O>...>::value,
+        static_assert(std::conjunction<internal::is_field_of<F Base::*, O>...>::value,
                       "Fields must be from explicitly specified derived class");
         return {{columns...}};
     }

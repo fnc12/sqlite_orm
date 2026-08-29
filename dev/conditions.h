@@ -8,6 +8,7 @@
 #include <utility>  //  std::move, std::forward
 #include <sstream>  //  std::stringstream
 #include <ostream>  //  std::flush
+#include <string_view>  //  std::string_view
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
@@ -17,7 +18,6 @@
 #include "schema/constraints/collate.h"  // string_from_collate_argument
 #include "optional_container.h"
 #include "serializer_context.h"
-#include "serialize_result_type.h"
 #include "tags.h"
 #include "table_reference.h"
 #include "alias_traits.h"
@@ -100,7 +100,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_binary_condition_v = is_base_template_of_v<binary_condition, T>;
 
     struct and_condition_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "AND";
         }
     };
@@ -116,7 +116,7 @@ namespace sqlite_orm::internal {
     };
 
     struct or_condition_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "OR";
         }
     };
@@ -132,7 +132,7 @@ namespace sqlite_orm::internal {
     };
 
     struct is_equal_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "=";
         }
     };
@@ -179,7 +179,7 @@ namespace sqlite_orm::internal {
     };
 
     struct is_not_equal_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "!=";
         }
     };
@@ -205,7 +205,7 @@ namespace sqlite_orm::internal {
     };
 
     struct greater_than_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return ">";
         }
     };
@@ -231,7 +231,7 @@ namespace sqlite_orm::internal {
     };
 
     struct greater_or_equal_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return ">=";
         }
     };
@@ -257,7 +257,7 @@ namespace sqlite_orm::internal {
     };
 
     struct less_than_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "<";
         }
     };
@@ -283,7 +283,7 @@ namespace sqlite_orm::internal {
     };
 
     struct less_or_equal_string {
-        serialize_result_type serialize() const {
+        std::string_view serialize() const {
             return "<=";
         }
     };
@@ -430,9 +430,9 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool is_order_by_v = polyfill::disjunction<polyfill::is_specialization_of<T, order_by_t>,
-                                                         polyfill::is_specialization_of<T, multi_order_by_t>,
-                                                         polyfill::is_specialization_of<T, dynamic_order_by_t>>::value;
+    constexpr bool is_order_by_v = std::disjunction<polyfill::is_specialization_of<T, order_by_t>,
+                                                    polyfill::is_specialization_of<T, multi_order_by_t>,
+                                                    polyfill::is_specialization_of<T, dynamic_order_by_t>>::value;
 
     struct like_string {
         operator std::string() const {
@@ -631,7 +631,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_from2_v = polyfill::is_specialization_of_v<T, from2_t>;
 
     template<class T>
-    constexpr bool is_any_from_v = polyfill::disjunction_v<is_from<T>, is_from2<T>>;
+    constexpr bool is_any_from_v = std::disjunction_v<is_from<T>, is_from2<T>>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -683,19 +683,19 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
-        template<class T,
-                 std::enable_if_t<polyfill::disjunction<is_negatable_operand<T>, is_operator_argument<T>>::value,
-                                  bool> = true>
+        template<
+            class T,
+            std::enable_if_t<std::disjunction<is_negatable_operand<T>, is_operator_argument<T>>::value, bool> = true>
         constexpr negated_condition_t<T> operator!(T arg) {
             return {std::move(arg)};
         }
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<is_arithmetic_operand<L>,
-                                                        is_arithmetic_operand<R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr less_than_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
@@ -703,10 +703,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<is_arithmetic_operand<L>,
-                                                        is_arithmetic_operand<R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr less_or_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<=(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
@@ -714,10 +714,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<is_arithmetic_operand<L>,
-                                                        is_arithmetic_operand<R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr greater_than_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
@@ -725,10 +725,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<is_arithmetic_operand<L>,
-                                                        is_arithmetic_operand<R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr greater_or_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>=(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
@@ -736,12 +736,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<is_arithmetic_operand<L>,
-                                                        is_arithmetic_operand<R>,
-                                                        is_conditional_operand<L>,
-                                                        is_conditional_operand<R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_conditional_operand<L>,
+                                                   is_conditional_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value
 #ifndef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
                                       && !is_table_reference_v<L>
 #endif
@@ -753,12 +753,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<is_arithmetic_operand<L>,
-                                                        is_arithmetic_operand<R>,
-                                                        is_conditional_operand<L>,
-                                                        is_conditional_operand<R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_conditional_operand<L>,
+                                                   is_conditional_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr is_not_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator!=(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
@@ -766,10 +766,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<is_conditional_operand<L>,
-                                                        is_conditional_operand<R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                 std::enable_if_t<std::disjunction<is_conditional_operand<L>,
+                                                   is_conditional_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr and_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator&&(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
@@ -777,23 +777,22 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<is_conditional_operand<L>, is_conditional_operand<R>>::value,
-                                  bool> = true>
+                 std::enable_if_t<std::disjunction<is_conditional_operand<L>, is_conditional_operand<R>>::value, bool> =
+                     true>
         constexpr or_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<class L,
                  class R,
-                 std::enable_if_t<
-                     polyfill::conjunction<polyfill::disjunction<is_chainable_operand<L>,
-                                                                 is_chainable_operand<R>,
-                                                                 is_operator_argument<L>,
-                                                                 is_operator_argument<R>>,
-                                           // exclude conditions
-                                           polyfill::negation<polyfill::disjunction<is_conditional_operand<L>,
-                                                                                    is_conditional_operand<R>>>>::value,
-                     bool> = true>
+                 std::enable_if_t<std::conjunction<std::disjunction<is_chainable_operand<L>,
+                                                                    is_chainable_operand<R>,
+                                                                    is_operator_argument<L>,
+                                                                    is_operator_argument<R>>,
+                                                   // exclude conditions
+                                                   std::negation<std::disjunction<is_conditional_operand<L>,
+                                                                                  is_conditional_operand<R>>>>::value,
+                                  bool> = true>
         constexpr conc_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }

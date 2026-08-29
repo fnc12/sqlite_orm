@@ -204,10 +204,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class A,
              class C,
-             std::enable_if_t<
-                 polyfill::conjunction<internal::is_table_alias<A>,
-                                       polyfill::negation<internal::is_cte_moniker<internal::type_t<A>>>>::value,
-                 bool> = true>
+             std::enable_if_t<std::conjunction<internal::is_table_alias<A>,
+                                               std::negation<internal::is_cte_moniker<internal::type_t<A>>>>::value,
+                              bool> = true>
     constexpr auto alias_column(C field) {
         using namespace ::sqlite_orm::internal;
         using aliased_type = type_t<A>;
@@ -228,10 +227,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class A,
              class F,
              class O,
-             std::enable_if_t<
-                 polyfill::conjunction<internal::is_table_alias<A>,
-                                       polyfill::negation<internal::is_cte_moniker<internal::type_t<A>>>>::value,
-                 bool> = true>
+             std::enable_if_t<std::conjunction<internal::is_table_alias<A>,
+                                               std::negation<internal::is_cte_moniker<internal::type_t<A>>>>::value,
+                              bool> = true>
     constexpr auto alias_column(F O::* field) {
         using namespace ::sqlite_orm::internal;
         using aliased_type = type_t<A>;
@@ -294,11 +292,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Create a column reference to an aliased CTE column.
      */
-    template<class A,
-             class C,
-             std::enable_if_t<
-                 polyfill::conjunction_v<internal::is_table_alias<A>, internal::is_cte_moniker<internal::type_t<A>>>,
-                 bool> = true>
+    template<
+        class A,
+        class C,
+        std::enable_if_t<std::conjunction_v<internal::is_table_alias<A>, internal::is_cte_moniker<internal::type_t<A>>>,
+                         bool> = true>
     constexpr auto alias_column(C c) {
         using namespace ::sqlite_orm::internal;
         using cte_moniker_t = type_t<A>;

@@ -38,9 +38,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool is_group_by_v =
-        polyfill::disjunction<polyfill::is_specialization_of<T, group_by_t>,
-                              polyfill::is_specialization_of<T, group_by_with_having>>::value;
+    constexpr bool is_group_by_v = std::disjunction<polyfill::is_specialization_of<T, group_by_t>,
+                                                    polyfill::is_specialization_of<T, group_by_with_having>>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

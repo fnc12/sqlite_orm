@@ -3,7 +3,6 @@
 #include <catch2/catch_all.hpp>
 #include <cstdio>  //  std::remove
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 using namespace sqlite_orm;
 
 enum class Gender {
@@ -165,4 +164,3 @@ TEST_CASE("Custom row extractors") {
         REQUIRE(concatGenders.at(0) == "malefemale");
     }
 }
-#endif

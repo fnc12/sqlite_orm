@@ -6,9 +6,8 @@
 #include <utility>  //  std::pair
 #include <algorithm>  //  std::ranges::transform
 #include <cctype>  // std::toupper
+#include <string_view>  //  std::string_view
 #endif
-
-#include "serialize_result_type.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     enum class locking_mode : signed char {
@@ -18,12 +17,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 namespace sqlite_orm::internal {
-    inline const serialize_result_type& locking_mode_to_string(locking_mode value) {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        static constexpr std::array<serialize_result_type, 2> idx2str = {
-#else
-        static const std::array<serialize_result_type, 2> idx2str = {
-#endif
+    inline std::string_view locking_mode_to_string(locking_mode value) {
+        static constexpr std::array<std::string_view, 2> idx2str = {
             "NORMAL",
             "EXCLUSIVE",
         };

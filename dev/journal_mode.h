@@ -6,9 +6,8 @@
 #include <utility>  //  std::pair
 #include <algorithm>  //  std::ranges::transform
 #include <cctype>  // std::toupper
+#include <string_view>  //  std::string_view
 #endif
-
-#include "serialize_result_type.h"
 
 #if defined(_WINNT_)
 // DELETE is a macro defined in the Windows SDK (winnt.h)
@@ -36,12 +35,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 namespace sqlite_orm::internal {
-    inline const serialize_result_type& journal_mode_to_string(journal_mode value) {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        static constexpr std::array<serialize_result_type, 6> idx2str = {
-#else
-        static const std::array<serialize_result_type, 6> idx2str = {
-#endif
+    inline std::string_view journal_mode_to_string(journal_mode value) {
+        static constexpr std::array<std::string_view, 6> idx2str = {
             "DELETE",
             "TRUNCATE",
             "PERSIST",

@@ -25,7 +25,6 @@ namespace {
                 return false;
             }
         }
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         bool operator()(const std::optional<User>& lhs, const User& rhs) const {
             if (lhs.has_value()) {
                 return this->operator()(*lhs, rhs);
@@ -33,7 +32,6 @@ namespace {
                 return false;
             }
         }
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     };
 }
 
@@ -111,7 +109,6 @@ TEST_CASE("get_all deque") {
             tester.testPreparedStatement<Container>(storage, storage.prepare(get_all_pointer<User, Container>()));
         }
     }
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     //  get_all_optional
     {
         using UserP = std::optional<User>;
@@ -142,5 +139,4 @@ TEST_CASE("get_all deque") {
             tester.testPreparedStatement<Container>(storage, storage.prepare(get_all_optional<User, Container>()));
         }
     }
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 }

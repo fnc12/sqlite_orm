@@ -921,7 +921,6 @@ TEST_CASE("logger") {
                             storage.execute(statement);
                         }
                     }
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                     SECTION("get_all_optional") {
                         SECTION("simple") {
                             std::ignore = storage.get_all_optional<User>();
@@ -932,7 +931,6 @@ TEST_CASE("logger") {
                             storage.execute(statement);
                         }
                     }
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
                     pushExpected(R"(SELECT "users"."id", "users"."name" FROM "users")");
                 }
                 SECTION("where id < 10") {
@@ -956,7 +954,6 @@ TEST_CASE("logger") {
                             storage.execute(statement);
                         }
                     }
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                     SECTION("get_all_optional") {
                         SECTION("simple") {
                             std::ignore = storage.get_all_optional<User>(where(c(&User::id) < 10));
@@ -967,7 +964,6 @@ TEST_CASE("logger") {
                             storage.execute(statement);
                         }
                     }
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
                     pushExpected(R"(SELECT "users"."id", "users"."name" FROM "users" WHERE ("users"."id" < ?))");
                 }
             }
@@ -993,7 +989,6 @@ TEST_CASE("logger") {
                             storage.execute(statement);
                         }
                     }
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                     SECTION("get_all_optional") {
                         SECTION("simple") {
                             std::ignore = storage.get_all_optional<Visit>();
@@ -1004,7 +999,6 @@ TEST_CASE("logger") {
                             storage.execute(statement);
                         }
                     }
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
                     pushExpected(R"(SELECT "visits"."id", "visits"."user_id", "visits"."date" FROM "visits")");
                 }
                 SECTION("where id < 10") {
@@ -1028,7 +1022,6 @@ TEST_CASE("logger") {
                             storage.execute(statement);
                         }
                     }
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                     SECTION("get_all_optional") {
                         SECTION("simple") {
                             std::ignore = storage.get_all_optional<Visit>(where(c(&Visit::id) < 10));
@@ -1039,7 +1032,6 @@ TEST_CASE("logger") {
                             storage.execute(statement);
                         }
                     }
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
                     pushExpected(
                         R"(SELECT "visits"."id", "visits"."user_id", "visits"."date" FROM "visits" WHERE ("visits"."id" < ?))");
                 }
@@ -1235,7 +1227,6 @@ TEST_CASE("logger") {
                 SECTION("get_no_throw") {
                     std::ignore = storage.get_no_throw<User>(1);
                 }
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                 SECTION("get_optional") {
                     SECTION("simple") {
                         std::ignore = storage.get_optional<User>(1);
@@ -1246,7 +1237,6 @@ TEST_CASE("logger") {
                         std::ignore = storage.execute(statement);
                     }
                 }
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
                 pushExpected(R"(SELECT "id", "name" FROM "users" WHERE "id" = ?)");
             }
             SECTION("visits") {
@@ -1278,7 +1268,6 @@ TEST_CASE("logger") {
                 SECTION("get_no_throw") {
                     std::ignore = storage.get_no_throw<Visit>(1);
                 }
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                 SECTION("get_optional") {
                     SECTION("simple") {
                         std::ignore = storage.get_optional<Visit>(1);
@@ -1289,7 +1278,6 @@ TEST_CASE("logger") {
                         std::ignore = storage.execute(statement);
                     }
                 }
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
                 pushExpected(R"(SELECT "id", "user_id", "date" FROM "visits" WHERE "id" = ?)");
             }
         }

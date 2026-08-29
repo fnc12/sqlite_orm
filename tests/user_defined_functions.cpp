@@ -291,11 +291,7 @@ struct NonDefaultCtorAggregateFunction {
 
 TEST_CASE("custom functions") {
     const ErrorCodeExceptionMatcher noMemExceptionMatcher(sqlite_errc(SQLITE_NOMEM));
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
     const ErrorCodeExceptionMatcher notFoundExceptionMatcher(orm_error_code::function_not_found);
-#else
-    const ErrorCodeExceptionMatcher notFoundExceptionMatcher(sqlite_errc(SQLITE_ERROR));
-#endif
 
     SqrtFunction::callsCount = 0;
     StatelessHasPrefixFunction::callsCount = 0;

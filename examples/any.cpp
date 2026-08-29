@@ -14,15 +14,7 @@
  *  BLOB is mapped to std::vector<char>.
 */
 #include <sqlite_orm/sqlite_orm.h>
-#if __has_include(<any>)
 #include <any>
-#endif
-
-#if __cpp_lib_any >= 201606L
-#define ENABLE_THIS_EXAMPLE
-#endif
-
-#ifdef ENABLE_THIS_EXAMPLE
 #include <iomanip>  // std::hex, std::setw, std::setfill
 #include <iostream>
 #include <cstdio>  //  std::remove
@@ -137,10 +129,8 @@ namespace sqlite_orm {
         }
     };
 }
-#endif
 
 int main() {
-#ifdef ENABLE_THIS_EXAMPLE
     struct Value {
         int id = 0;
         std::any value;
@@ -162,6 +152,5 @@ int main() {
         cout << storage.dump(test) << endl;
     }
     cout << endl;
-#endif
     return 0;
 }

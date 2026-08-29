@@ -26,7 +26,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_table_valued_expression_v = polyfill::is_specialization_of_v<T, table_valued_expression>;
 
     template<class T>
-    using is_table_valued_expression = polyfill::bool_constant<is_table_valued_expression_v<T>>;
+    using is_table_valued_expression = std::bool_constant<is_table_valued_expression_v<T>>;
 
     /*
      *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions and virtual tables usable as table-valued functions.

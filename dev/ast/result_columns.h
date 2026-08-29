@@ -4,7 +4,6 @@
 #include <tuple>  //  std::tuple, std::tuple_size
 #include <utility>  //  std::forward, std::move
 #endif
-#include "../functional/cxx_optional.h"
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../tuple_helper/tuple_traits.h"
@@ -14,7 +13,6 @@
 #include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     struct as_optional_t {
         using expression_type = T;
@@ -24,10 +22,6 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_as_optional_v = polyfill::is_specialization_of<T, as_optional_t>::value;
-#else
-    template<class T>
-    constexpr bool is_as_optional_v = false;
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class... Args>
     struct columns_t {
@@ -80,12 +74,10 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     internal::as_optional_t<T> as_optional(T value) {
         return {std::move(value)};
     }
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     /*
      *  Combine multiple columns in a tuple.

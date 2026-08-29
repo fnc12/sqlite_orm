@@ -11,10 +11,6 @@
 #define SQLITE_ORM_EXPORT
 #endif
 
-#if __has_include(<version>)
-#include <version>
-#endif
-
 #if !defined(SQLITE_ORM_MS_MSVC) || (_MSC_VER >= 1920)
 #define SQLITE_ORM_SWITCH_MAYBE_UNUSED [[maybe_unused]]
 #else

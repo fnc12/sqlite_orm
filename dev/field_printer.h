@@ -5,11 +5,11 @@
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector
 #include <memory>  //  std::shared_ptr, std::unique_ptr
+#include <optional>  //  std::optional
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif
-#include "functional/cxx_optional.h"
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
@@ -39,7 +39,7 @@ namespace sqlite_orm::internal {
     template<class T, class SFINAE>
     constexpr bool is_printable_v = false;
     template<class T>
-    constexpr bool is_printable_v<T, polyfill::void_t<indirectly_test_printable<decltype(field_printer<T>{})>>> = true;
+    constexpr bool is_printable_v<T, std::void_t<indirectly_test_printable<decltype(field_printer<T>{})>>> = true;
 }
 
 namespace sqlite_orm {
@@ -124,19 +124,17 @@ namespace sqlite_orm {
             return "NULL";
         }
     };
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<>
     struct field_printer<std::nullopt_t, void> {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const std::nullopt_t&) SQLITE_ORM_OR_CONST_CALLOP {
             return "NULL";
         }
     };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct field_printer<T,
-                         std::enable_if_t<polyfill::conjunction<
-                             is_std_ptr<T>,
-                             internal::is_printable<std::remove_cv_t<typename T::element_type>>>::value>> {
+    struct field_printer<
+        T,
+        std::enable_if_t<std::conjunction<is_std_ptr<T>,
+                                          internal::is_printable<std::remove_cv_t<typename T::element_type>>>::value>> {
         using unqualified_type = std::remove_cv_t<typename T::element_type>;
 
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const T& t) SQLITE_ORM_OR_CONST_CALLOP {
@@ -148,12 +146,11 @@ namespace sqlite_orm {
         }
     };
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     struct field_printer<
         T,
-        std::enable_if_t<polyfill::conjunction_v<polyfill::is_specialization_of<T, std::optional>,
-                                                 internal::is_printable<std::remove_cv_t<typename T::value_type>>>>> {
+        std::enable_if_t<std::conjunction_v<polyfill::is_specialization_of<T, std::optional>,
+                                            internal::is_printable<std::remove_cv_t<typename T::value_type>>>>> {
         using unqualified_type = std::remove_cv_t<typename T::value_type>;
 
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const T& t) SQLITE_ORM_OR_CONST_CALLOP {
@@ -164,5 +161,4 @@ namespace sqlite_orm {
             }
         }
     };
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }

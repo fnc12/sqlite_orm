@@ -6,62 +6,7 @@
 #include <type_traits>
 #endif
 
-#include "mpl/conditional.h"
-
 namespace sqlite_orm::internal::polyfill {
-#if __cpp_lib_void_t >= 201411L
-    using std::void_t;
-#else
-    /*
-     *  Implementation note: Conservative implementation due to CWG issue 1558 (Unused arguments in alias template specializations).
-     */
-    template<class...>
-    struct always_void {
-        using type = void;
-    };
-    template<class... T>
-    using void_t = typename always_void<T...>::type;
-#endif
-
-#if __cpp_lib_bool_constant >= 201505L
-    using std::bool_constant;
-#else
-    template<bool v>
-    using bool_constant = std::integral_constant<bool, v>;
-#endif
-
-#if __cpp_lib_logical_traits >= 201510L && __cpp_lib_type_trait_variable_templates >= 201510L
-    using std::conjunction;
-    using std::conjunction_v;
-    using std::disjunction;
-    using std::disjunction_v;
-    using std::negation;
-    using std::negation_v;
-#else
-    template<typename...>
-    struct conjunction : std::true_type {};
-    template<typename B1>
-    struct conjunction<B1> : B1 {};
-    template<typename B1, typename... Bn>
-    struct conjunction<B1, Bn...> : mpl::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
-    template<typename... Bs>
-    inline constexpr bool conjunction_v = conjunction<Bs...>::value;
-
-    template<typename...>
-    struct disjunction : std::false_type {};
-    template<typename B1>
-    struct disjunction<B1> : B1 {};
-    template<typename B1, typename... Bn>
-    struct disjunction<B1, Bn...> : mpl::conditional_t<bool(B1::value), B1, disjunction<Bn...>> {};
-    template<typename... Bs>
-    inline constexpr bool disjunction_v = disjunction<Bs...>::value;
-
-    template<typename B>
-    struct negation : bool_constant<!bool(B::value)> {};
-    template<typename B>
-    inline constexpr bool negation_v = negation<B>::value;
-#endif
-
 #if __cpp_lib_remove_cvref >= 201711L
     using std::remove_cvref, std::remove_cvref_t;
 #else
@@ -104,7 +49,7 @@ namespace sqlite_orm::internal::polyfill {
     };
 
     template<class Default, template<class...> class Op, class... Args>
-    struct detector<Default, polyfill::void_t<Op<Args...>>, Op, Args...> {
+    struct detector<Default, std::void_t<Op<Args...>>, Op, Args...> {
         using value_t = std::true_type;
         using type = Op<Args...>;
     };
@@ -140,7 +85,7 @@ namespace sqlite_orm::internal::polyfill {
     inline constexpr bool is_specialization_of_v<Primary<Types...>, Primary> = true;
 
     template<typename Type, template<typename...> class Primary>
-    struct is_specialization_of : bool_constant<is_specialization_of_v<Type, Primary>> {};
+    struct is_specialization_of : std::bool_constant<is_specialization_of_v<Type, Primary>> {};
 #endif
 
     template<typename...>

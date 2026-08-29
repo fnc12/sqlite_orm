@@ -23,7 +23,7 @@ namespace sqlite_orm::internal {
      *  Constrains a deleter to be state-less.
      */
     template<typename D>
-    concept stateless_deleter = std::is_empty<D>::value && std::is_default_constructible<D>::value;
+    concept stateless_deleter = std::is_empty_v<D> && std::is_default_constructible_v<D>;
 
     /**
      *  Constrains a deleter to be an integral function constant.
@@ -32,7 +32,7 @@ namespace sqlite_orm::internal {
     concept integral_fp_c = requires {
         typename D::value_type;
         D::value;
-        requires std::is_function<std::remove_pointer_t<typename D::value_type>>::value;
+        requires std::is_function_v<std::remove_pointer_t<typename D::value_type>>;
     };
 
     /**
@@ -42,7 +42,7 @@ namespace sqlite_orm::internal {
     concept yields_fp = requires(D d) {
         // yielding function pointer by using the plus trick
         { +d };
-        requires std::is_function<std::remove_pointer_t<decltype(+d)>>::value;
+        requires std::is_function_v<std::remove_pointer_t<decltype(+d)>>;
     };
 #endif
 
@@ -56,16 +56,16 @@ namespace sqlite_orm::internal {
     };
 #else
     template<typename D>
-    inline constexpr bool is_stateless_deleter_v = std::is_empty<D>::value && std::is_default_constructible<D>::value;
+    inline constexpr bool is_stateless_deleter_v = std::is_empty_v<D> && std::is_default_constructible_v<D>;
 
     template<typename D, typename SFINAE = void>
     struct is_integral_fp_c : std::false_type {};
     template<typename D>
     struct is_integral_fp_c<
         D,
-        polyfill::void_t<typename D::value_type,
-                         decltype(D::value),
-                         std::enable_if_t<std::is_function<std::remove_pointer_t<typename D::value_type>>::value>>>
+        std::void_t<typename D::value_type,
+                    decltype(D::value),
+                    std::enable_if_t<std::is_function_v<std::remove_pointer_t<typename D::value_type>>>>>
         : std::true_type {};
     template<typename D>
     inline constexpr bool is_integral_fp_c_v = is_integral_fp_c<D>::value;
@@ -75,9 +75,8 @@ namespace sqlite_orm::internal {
     template<typename D>
     struct can_yield_fp<
         D,
-        polyfill::void_t<
-            decltype(+std::declval<D>()),
-            std::enable_if_t<std::is_function<std::remove_pointer_t<decltype(+std::declval<D>())>>::value>>>
+        std::void_t<decltype(+std::declval<D>()),
+                    std::enable_if_t<std::is_function_v<std::remove_pointer_t<decltype(+std::declval<D>())>>>>>
         : std::true_type {};
     template<typename D>
     inline constexpr bool can_yield_fp_v = can_yield_fp<D>::value;

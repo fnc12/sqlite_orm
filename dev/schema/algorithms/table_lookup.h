@@ -30,8 +30,9 @@ namespace sqlite_orm::internal {
      *  Note: unlike base_table<>, index_t<>::object_type and trigger_t<>::object_type is always void.
      */
     template<typename DBO, typename Lookup>
-    struct object_type_matches : polyfill::conjunction<polyfill::negation<std::is_void<object_type_t<DBO>>>,
-                                                       std::is_same<Lookup, object_type_t<DBO>>> {};
+    struct object_type_matches
+        : std::conjunction<std::negation<std::is_void<object_type_t<DBO>>>, std::is_same<Lookup, object_type_t<DBO>>> {
+    };
 
     /**
      *  `std::true_type` if given lookup type (object or moniker) is mapped, `std::false_type` otherwise.
@@ -98,7 +99,7 @@ namespace sqlite_orm::internal {
     template<class DBOs, class Lookup, class SFINAE = void>
     struct is_mapped : std::false_type {};
     template<class DBOs, class Lookup>
-    struct is_mapped<DBOs, Lookup, polyfill::void_t<schema_pick_table_t<Lookup, DBOs>>> : std::true_type {};
+    struct is_mapped<DBOs, Lookup, std::void_t<schema_pick_table_t<Lookup, DBOs>>> : std::true_type {};
 #else
     template<class DBOs, class Lookup, class SFINAE = schema_find_table_t<Lookup, DBOs>>
     struct is_mapped : std::true_type {};

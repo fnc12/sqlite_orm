@@ -35,8 +35,8 @@ namespace sqlite_orm::internal {
     template<class P>
     struct column_result_proxy<
         P,
-        std::enable_if_t<polyfill::disjunction_v<is_table_reference<P>, polyfill::is_specialization_of<P, structure>>>>
-        : P {};
+        std::enable_if_t<std::disjunction_v<is_table_reference<P>, polyfill::is_specialization_of<P, structure>>>> : P {
+    };
 
     /*
      *  Calculate result of multiple columns.

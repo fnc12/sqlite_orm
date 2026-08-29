@@ -3,8 +3,8 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <vector>  //  std::vector
+#include <optional>  //  std::optional
 #endif
-#include "functional/cxx_optional.h"
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/gsl.h"
@@ -50,14 +50,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     // Note: char, unsigned/signed char are used for storing integer values, not char values.
     template<class T>
     struct type_printer<T,
-                        std::enable_if_t<polyfill::conjunction<polyfill::negation<internal::is_any_of<T,
-                                                                                                      wchar_t,
+                        std::enable_if_t<std::conjunction<std::negation<internal::is_any_of<T,
+                                                                                            wchar_t,
 #ifdef SQLITE_ORM_CHAR8T_SUPPORTED
-                                                                                                      char8_t,
+                                                                                            char8_t,
 #endif
-                                                                                                      char16_t,
-                                                                                                      char32_t>>,
-                                                               std::is_integral<T>>::value>> : integer_printer {
+                                                                                            char16_t,
+                                                                                            char32_t>>,
+                                                          std::is_integral<T>>::value>> : integer_printer {
     };
 
     template<class T>
@@ -65,19 +65,16 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<class T>
     struct type_printer<T,
-                        std::enable_if_t<polyfill::disjunction<std::is_same<T, orm_gsl::czstring>,
-                                                               std::is_base_of<std::string, T>,
-                                                               std::is_base_of<std::wstring, T>>::value>>
-        : text_printer {};
+                        std::enable_if_t<std::disjunction<std::is_same<T, orm_gsl::czstring>,
+                                                          std::is_base_of<std::string, T>,
+                                                          std::is_base_of<std::wstring, T>>::value>> : text_printer {};
 
     template<class T>
     struct type_printer<T, std::enable_if_t<is_std_ptr<T>::value>> : type_printer<typename T::element_type> {};
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     struct type_printer<T, std::enable_if_t<polyfill::is_specialization_of_v<T, std::optional>>>
         : type_printer<typename T::value_type> {};
-#endif
 
     template<>
     struct type_printer<std::vector<char>, void> : blob_printer {};

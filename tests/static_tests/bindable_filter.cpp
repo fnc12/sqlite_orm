@@ -1,9 +1,7 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 #include <type_traits>  //  std::is_same
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>
-#endif
 
 using namespace sqlite_orm;
 
@@ -52,16 +50,12 @@ TEST_CASE("bindable_filter") {
 #endif
                                  std::vector<char>,
                                  std::nullptr_t,
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                                  std::nullopt_t,
                                  std::optional<int>,
                                  std::optional<Custom>,
-#endif
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                                  std::string_view,
 #ifndef SQLITE_ORM_OMITS_CODECVT
                                  std::wstring_view,
-#endif
 #endif
                                  std::unique_ptr<int>,
                                  std::shared_ptr<int>,

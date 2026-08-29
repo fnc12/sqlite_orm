@@ -7,10 +7,12 @@
 #include <string>
 #include <ostream>
 #include <utility>  //  std::exchange, std::tuple_size, std::make_index_sequence
+#include <functional>  //  std::invoke
+#include <string_view>  //  std::string_view
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, polyfill::is_detected
-#include "functional/cxx_functional_polyfill.h"  // std::unwrap_reference
+#include "functional/cxx_functional_polyfill.h"  // polyfill::unwrap_reference
 #include "functional/gsl.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
@@ -18,7 +20,6 @@
 #include "vocabulary/node_fwd.h"  // column_constraints
 #include "schema/column_identifier.h"
 #include "error_code.h"
-#include "serialize_result_type.h"
 
 namespace sqlite_orm::internal {
     template<class O>
@@ -30,7 +31,7 @@ namespace sqlite_orm::internal {
     template<class T, class Ctx>
     std::string serialize_order_by(const T&, const Ctx&);
 
-    inline void stream_sql_escaped(std::ostream& os, serialize_arg_type str, char char2Escape) {
+    inline void stream_sql_escaped(std::ostream& os, std::string_view str, char char2Escape) {
         for (size_t offset = 0, next; true; offset = next + 1) {
             next = str.find(char2Escape, offset);
 
@@ -45,9 +46,9 @@ namespace sqlite_orm::internal {
     }
 
     inline void stream_identifier(std::ostream& ss,
-                                  serialize_arg_type qualifier,
-                                  serialize_arg_type identifier,
-                                  serialize_arg_type alias) {
+                                  std::string_view qualifier,
+                                  std::string_view identifier,
+                                  std::string_view alias) {
         constexpr char quoteChar = '"';
         constexpr char qualified[] = {quoteChar, '.', '\0'};
         constexpr char aliased[] = {' ', quoteChar, '\0'};
@@ -72,11 +73,11 @@ namespace sqlite_orm::internal {
         }
     }
 
-    inline void stream_identifier(std::ostream& ss, serialize_arg_type identifier, serialize_arg_type alias) {
+    inline void stream_identifier(std::ostream& ss, std::string_view identifier, std::string_view alias) {
         return stream_identifier(ss, "", identifier, alias);
     }
 
-    inline void stream_identifier(std::ostream& ss, serialize_arg_type identifier) {
+    inline void stream_identifier(std::ostream& ss, std::string_view identifier) {
         return stream_identifier(ss, "", identifier, "");
     }
 
@@ -381,16 +382,15 @@ namespace sqlite_orm::internal {
         using object_type = polyfill::remove_cvref_t<decltype(object)>;
         auto& table = pick_table<object_type>(context.db_objects);
 
-        table.template for_each_column_excluding<check_if_excluded>(
-            [&ss, &excluded, &context, &object, first = true](auto& column) mutable {
-                if (excluded(column)) {
-                    return;
-                }
+        table.template for_each_column_excluding<check_if_excluded>([&ss, &excluded, &context, &object, first = true](
+                                                                        auto& column) mutable {
+            if (excluded(column)) {
+                return;
+            }
 
-                static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
-                ss << sep[std::exchange(first, false)]
-                   << serialize(polyfill::invoke(column.member_pointer, object), context);
-            });
+            static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
+            ss << sep[std::exchange(first, false)] << serialize(std::invoke(column.member_pointer, object), context);
+        });
         return ss;
     }
 

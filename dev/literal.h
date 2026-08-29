@@ -18,5 +18,5 @@ namespace sqlite_orm::internal {
     inline constexpr bool is_literal_v = polyfill::is_specialization_of_v<T, literal_holder>;
 
     template<class T>
-    using is_literal = polyfill::bool_constant<is_literal_v<T>>;
+    using is_literal = std::bool_constant<is_literal_v<T>>;
 }

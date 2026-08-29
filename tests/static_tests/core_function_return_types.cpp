@@ -5,10 +5,8 @@
 
 using namespace sqlite_orm;
 using std::is_same;
-using std::nullptr_t;
-#if __cpp_lib_type_trait_variable_templates >= 201510L
 using std::is_same_v;
-#endif
+using std::nullptr_t;
 
 TEST_CASE("Builtin function return types") {
     struct User {
@@ -36,12 +34,10 @@ TEST_CASE("Builtin function return types") {
     // note: return type nullptr_t doesn't make sense but works for unit tests to assert intention
     STATIC_REQUIRE(is_same<decltype(coalesce<nullptr_t>(&User::flag, nullptr))::return_type, nullptr_t>::value);
 
-#if defined(SQLITE_ORM_OPTIONAL_SUPPORTED)
     STATIC_REQUIRE(is_same_v<decltype(nullif(&User::id, 0))::return_type, std::optional<int64>>);
     STATIC_REQUIRE(is_same_v<decltype(nullif(&User::flag, false))::return_type, std::optional<bool>>);
     STATIC_REQUIRE(is_same_v<decltype(nullif(&User::getFlag, false))::return_type, std::optional<bool>>);
     STATIC_REQUIRE(is_same_v<decltype(nullif(&User::flag, 0))::return_type, std::optional<int>>);
-#endif
     // note: return type nullptr_t doesn't make sense but works for unit tests to assert intention
     {
         STATIC_REQUIRE(is_same<decltype(nullif<nullptr_t>(&User::id, 0))::return_type, nullptr_t>::value);

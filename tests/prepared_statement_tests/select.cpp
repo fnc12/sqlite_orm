@@ -62,12 +62,10 @@ TEST_CASE("Prepared select") {
                 REQUIRE_THAT(rows, UnorderedEquals<std::nullptr_t>({nullptr}));
             }
             SECTION("optional") {
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                 auto statement = storage.prepare(select(std::optional<int>()));
                 REQUIRE(get<0>(statement) == std::nullopt);
                 auto rows = storage.execute(statement);
                 REQUIRE_THAT(rows, UnorderedEquals<std::optional<int>>({std::nullopt}));
-#endif
             }
         }
         SECTION("by ref") {

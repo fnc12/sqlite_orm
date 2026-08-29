@@ -6,7 +6,7 @@
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_reference, std::remove_cvref, std::decay
-#include <functional>  //   std::identity
+#include <functional>  //   std::identity, std::invoke
 #include <sstream>  //  std::stringstream
 #include <ostream>  //  std::flush
 #include <map>  //  std::map
@@ -14,14 +14,14 @@
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple, std::tie
 #include <utility>  //  std::forward, std::pair
 #include <algorithm>  //  std::for_each, std::ranges::for_each
+#include <optional>  //  std::optional
 #ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
 #include <generator>
 #endif
 #endif
-#include "functional/cxx_optional.h"
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "functional/cxx_functional_polyfill.h"
+#include "functional/cxx_functional_polyfill.h"  //  polyfill::identity
 #include "functional/gsl.h"
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_traits.h"
@@ -80,7 +80,7 @@ namespace sqlite_orm::internal {
     inline constexpr bool is_preparable_statement_v<
         S,
         E,
-        polyfill::void_t<indirectly_test_preparable<decltype(std::declval<S>().prepare(std::declval<E>()))>>> = true;
+        std::void_t<indirectly_test_preparable<decltype(std::declval<S>().prepare(std::declval<E>()))>>> = true;
 
     template<class Opt, class OptionsTpl>
     decltype(auto) storage_opt_or_default([[maybe_unused]] OptionsTpl& options) {
@@ -521,7 +521,6 @@ namespace sqlite_orm::internal {
         }
 #endif
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         /**
          *  SELECT * routine.
          *  O is an object type to be extracted. Must be specified explicitly.
@@ -536,7 +535,6 @@ namespace sqlite_orm::internal {
             auto statement = this->prepare(sqlite_orm::get_all_optional<O, R>(std::forward<Args>(conditions)...));
             return this->execute(statement);
         }
-#endif
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<orm_table_reference auto table,
@@ -609,7 +607,6 @@ namespace sqlite_orm::internal {
             return std::shared_ptr<O>(this->get_pointer<O>(std::forward<Ids>(ids)...));
         }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         /**
          *  The same as `get` function but doesn't throw an exception if noting found but
          *  returns an empty std::optional. throws std::system_error in case of db error.
@@ -622,7 +619,6 @@ namespace sqlite_orm::internal {
             auto statement = this->prepare(sqlite_orm::get_optional<O>(std::forward<Ids>(ids)...));
             return this->execute(statement);
         }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<orm_table_reference auto table, class... Ids>
@@ -659,10 +655,10 @@ namespace sqlite_orm::internal {
          *  @param m member pointer to class mapped to the storage.
          *  @return count of `m` values from database.
          */
-        template<class F,
-                 class... Args,
-                 std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> =
-                     true>
+        template<
+            class F,
+            class... Args,
+            std::enable_if_t<std::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> = true>
         int count(F field, Args&&... args) {
             this->assert_mapped_type<table_type_of_t<F>>();
             auto rows = this->select(sqlite_orm::count(std::move(field)), std::forward<Args>(args)...);
@@ -678,10 +674,10 @@ namespace sqlite_orm::internal {
          *  @param m is a class member pointer (the same you passed into make_column).
          *  @return average value from database.
          */
-        template<class F,
-                 class... Args,
-                 std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> =
-                     true>
+        template<
+            class F,
+            class... Args,
+            std::enable_if_t<std::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> = true>
         double avg(F field, Args&&... args) {
             this->assert_mapped_type<table_type_of_t<F>>();
             auto rows = this->select(sqlite_orm::avg(std::move(field)), std::forward<Args>(args)...);
@@ -692,9 +688,9 @@ namespace sqlite_orm::internal {
             }
         }
 
-        template<class F,
-                 std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> =
-                     true>
+        template<
+            class F,
+            std::enable_if_t<std::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> = true>
         std::string group_concat(F field) {
             return this->group_concat_internal(std::move(field), {});
         }
@@ -704,12 +700,12 @@ namespace sqlite_orm::internal {
          *  @param m is a class member pointer (the same you passed into make_column).
          *  @return group_concat query result.
          */
-        template<class F,
-                 class... Args,
-                 class Tuple = std::tuple<Args...>,
-                 std::enable_if_t<std::tuple_size<Tuple>::value >= 1, bool> = true,
-                 std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> =
-                     true>
+        template<
+            class F,
+            class... Args,
+            class Tuple = std::tuple<Args...>,
+            std::enable_if_t<std::tuple_size<Tuple>::value >= 1, bool> = true,
+            std::enable_if_t<std::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> = true>
         std::string group_concat(F field, Args&&... args) {
             return this->group_concat_internal(std::move(field), {}, std::forward<Args>(args)...);
         }
@@ -719,20 +715,20 @@ namespace sqlite_orm::internal {
          *  @param m is a class member pointer (the same you passed into make_column).
          *  @return group_concat query result.
          */
-        template<class F,
-                 class... Args,
-                 std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> =
-                     true>
+        template<
+            class F,
+            class... Args,
+            std::enable_if_t<std::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> = true>
         std::string group_concat(F field, std::string y, Args&&... args) {
             return this->group_concat_internal(std::move(field),
                                                std::make_unique<std::string>(std::move(y)),
                                                std::forward<Args>(args)...);
         }
 
-        template<class F,
-                 class... Args,
-                 std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> =
-                     true>
+        template<
+            class F,
+            class... Args,
+            std::enable_if_t<std::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> = true>
         std::string group_concat(F field, orm_gsl::czstring y, Args&&... args) {
             std::unique_ptr<std::string> str;
             if (y) {
@@ -748,11 +744,11 @@ namespace sqlite_orm::internal {
          *  @param m is a class member pointer (the same you passed into make_column).
          *  @return std::unique_ptr with max value or null if sqlite engine returned null.
          */
-        template<class F,
-                 class... Args,
-                 class R = column_result_of_t<db_objects_type, F>,
-                 std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> =
-                     true>
+        template<
+            class F,
+            class... Args,
+            class R = column_result_of_t<db_objects_type, F>,
+            std::enable_if_t<std::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> = true>
         std::unique_ptr<R> max(F field, Args&&... args) {
             this->assert_mapped_type<table_type_of_t<F>>();
             auto rows = this->select(sqlite_orm::max(std::move(field)), std::forward<Args>(args)...);
@@ -768,11 +764,11 @@ namespace sqlite_orm::internal {
          *  @param m is a class member pointer (the same you passed into make_column).
          *  @return std::unique_ptr with min value or null if sqlite engine returned null.
          */
-        template<class F,
-                 class... Args,
-                 class R = column_result_of_t<db_objects_type, F>,
-                 std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> =
-                     true>
+        template<
+            class F,
+            class... Args,
+            class R = column_result_of_t<db_objects_type, F>,
+            std::enable_if_t<std::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> = true>
         std::unique_ptr<R> min(F field, Args&&... args) {
             this->assert_mapped_type<table_type_of_t<F>>();
             auto rows = this->select(sqlite_orm::min(std::move(field)), std::forward<Args>(args)...);
@@ -788,11 +784,11 @@ namespace sqlite_orm::internal {
          *  @param m is a class member pointer (the same you passed into make_column).
          *  @return std::unique_ptr with sum value or null if sqlite engine returned null.
          */
-        template<class F,
-                 class... Args,
-                 class R = column_result_of_t<db_objects_type, F>,
-                 std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> =
-                     true>
+        template<
+            class F,
+            class... Args,
+            class R = column_result_of_t<db_objects_type, F>,
+            std::enable_if_t<std::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> = true>
         std::unique_ptr<R> sum(F field, Args&&... args) {
             this->assert_mapped_type<table_type_of_t<F>>();
             std::vector<std::unique_ptr<double>> rows =
@@ -814,10 +810,10 @@ namespace sqlite_orm::internal {
          *  @return total value (the same as SUM but not nullable. More details here
          *  https://www.sqlite.org/lang_aggfunc.html)
          */
-        template<class F,
-                 class... Args,
-                 std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> =
-                     true>
+        template<
+            class F,
+            class... Args,
+            std::enable_if_t<std::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> = true>
         double total(F field, Args&&... args) {
             this->assert_mapped_type<table_type_of_t<F>>();
             auto rows = this->select(sqlite_orm::total(std::move(field)), std::forward<Args>(args)...);
@@ -914,7 +910,7 @@ namespace sqlite_orm::internal {
                 static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
 
                 ss << sep[std::exchange(first, false)] << column.name << " : '"
-                   << field_printer<field_type>{}(polyfill::invoke(column.member_pointer, object)) << "'";
+                   << field_printer<field_type>{}(std::invoke(column.member_pointer, object)) << "'";
             });
             ss << " }";
             return ss.str();
@@ -935,7 +931,7 @@ namespace sqlite_orm::internal {
 
         template<class It, class Projection = polyfill::identity>
         void replace_range(It from, It to, Projection project = {}) {
-            using O = std::decay_t<decltype(polyfill::invoke(project, *from))>;
+            using O = std::decay_t<decltype(std::invoke(project, *from))>;
             this->assert_mapped_type<O>();
             if (from == to) {
                 return;
@@ -1075,7 +1071,7 @@ namespace sqlite_orm::internal {
 
         template<class It, class Projection = polyfill::identity>
         void insert_range(It from, It to, Projection project = {}) {
-            using O = std::decay_t<decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()))>;
+            using O = std::decay_t<decltype(std::invoke(std::declval<Projection>(), *std::declval<It>()))>;
             this->assert_mapped_type<O>();
             this->assert_insertable_type<O>();
             if (from == to) {
@@ -1417,12 +1413,10 @@ namespace sqlite_orm::internal {
 
         template<typename S>
         prepared_statement_t<S> prepare_impl(S statement) {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
             // check the existence of application-defined functions used in the statement
             iterate_ast(
                 statement,
                 udf_existence_checker{this->scalarFunctions, this->aggregateFunctions, this->collatingFunctions});
-#endif
 
             const auto& exprDBOs = db_objects_for_expression(this->db_objects, statement);
 
@@ -1523,12 +1517,10 @@ namespace sqlite_orm::internal {
             return this->prepare_impl(std::move(statement));
         }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T, class R, class... Args>
         prepared_statement_t<get_all_optional_t<T, R, Args...>> prepare(get_all_optional_t<T, R, Args...> statement) {
             return this->prepare_impl(std::move(statement));
         }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
         template<class T, class... Ids>
         prepared_statement_t<get_t<T, Ids...>> prepare(get_t<T, Ids...> statement) {
@@ -1540,12 +1532,10 @@ namespace sqlite_orm::internal {
             return this->prepare_impl(std::move(statement));
         }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T, class... Ids>
         prepared_statement_t<get_optional_t<T, Ids...>> prepare(get_optional_t<T, Ids...> statement) {
             return this->prepare_impl(std::move(statement));
         }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
         template<class T>
         prepared_statement_t<update_t<T>> prepare(update_t<T> statement) {
@@ -1632,8 +1622,7 @@ namespace sqlite_orm::internal {
             return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
         }
 
-        template<class T,
-                 std::enable_if_t<polyfill::disjunction<is_replace<T>, is_replace_range<T>>::value, bool> = true>
+        template<class T, std::enable_if_t<std::disjunction<is_replace<T>, is_replace_range<T>>::value, bool> = true>
         void execute(const prepared_statement_t<T>& statement) {
             using object_type = statement_object_type_t<decltype(statement)>;
 
@@ -1643,7 +1632,7 @@ namespace sqlite_orm::internal {
                                   bindValue = field_value_binder{stmt}](const object_type& object) mutable {
                 table.template for_each_column_excluding<is_generated_always>(
                     call_as_template_base<column_field>([&bindValue, &object](auto& column) {
-                        bindValue(polyfill::invoke(column.member_pointer, object));
+                        bindValue(std::invoke(column.member_pointer, object));
                     }));
             };
 
@@ -1659,8 +1648,7 @@ namespace sqlite_orm::internal {
                               statement.expression.range.second,
                               [&processObject, &transformer](auto&& item) {
                                   using item_type = decltype(item);
-                                  const object_type& object =
-                                      polyfill::invoke(transformer, std::forward<item_type>(item));
+                                  const object_type& object = std::invoke(transformer, std::forward<item_type>(item));
                                   processObject(object);
                               });
 #endif
@@ -1676,7 +1664,7 @@ namespace sqlite_orm::internal {
          *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
          *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
          */
-        template<class T, std::enable_if_t<polyfill::disjunction<is_insert<T>, is_insert_range<T>>::value, bool> = true>
+        template<class T, std::enable_if_t<std::disjunction<is_insert<T>, is_insert_range<T>>::value, bool> = true>
         int64 execute(const prepared_statement_t<T>& statement) {
             using object_type = statement_object_type_t<decltype(statement)>;
 
@@ -1699,7 +1687,7 @@ namespace sqlite_orm::internal {
                                    (column.template is<is_default>() && table_primary_key_contains(table, column))) {
                             return;
                         }
-                        bindValue(polyfill::invoke(column.member_pointer, object));
+                        bindValue(std::invoke(column.member_pointer, object));
                     });
             };
 
@@ -1715,8 +1703,7 @@ namespace sqlite_orm::internal {
                               statement.expression.range.second,
                               [&processObject, &transformer](auto&& item) {
                                   using item_type = decltype(item);
-                                  const object_type& object =
-                                      polyfill::invoke(transformer, std::forward<item_type>(item));
+                                  const object_type& object = std::invoke(transformer, std::forward<item_type>(item));
                                   processObject(object);
                               });
 #endif
@@ -1750,13 +1737,13 @@ namespace sqlite_orm::internal {
                     if (table_primary_key_contains(table, column)) {
                         return;
                     }
-                    bindValue(polyfill::invoke(column.member_pointer, object));
+                    bindValue(std::invoke(column.member_pointer, object));
                 }));
             table.for_each_column([&table, &bindValue, &object](auto& column) {
                 if (!column.template is<is_primary_key>() && !table_primary_key_contains(table, column)) {
                     return;
                 }
-                bindValue(polyfill::invoke(column.member_pointer, object));
+                bindValue(std::invoke(column.member_pointer, object));
             });
 
             this->executor.perform_single_step(stmt);
@@ -1777,7 +1764,6 @@ namespace sqlite_orm::internal {
             return res;
         }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T, class... Ids>
         std::optional<T> execute(const prepared_statement_t<get_optional_t<T, Ids...>>& statement) {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
@@ -1791,7 +1777,6 @@ namespace sqlite_orm::internal {
             });
             return res;
         }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
         template<class T, class... Ids>
         T execute(const prepared_statement_t<get_t<T, Ids...>>& statement) {
@@ -1799,7 +1784,6 @@ namespace sqlite_orm::internal {
 
             iterate_ast(statement.expression.ids, conditional_binder{stmt});
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             std::optional<T> res;
             this->executor.perform_step(stmt, [&table = this->get_table<T>(), &res](sqlite3_stmt* stmt) {
                 object_from_column_builder<T> builder{res.emplace(), stmt};
@@ -1809,38 +1793,6 @@ namespace sqlite_orm::internal {
                 throw std::system_error{orm_error_code::not_found};
             }
             return std::move(res).value();
-#else
-            auto& table = this->get_table<T>();
-
-            std::string sql;
-            if (this->executor.will_run_query || this->executor.did_run_query) {
-                sql = statement.sql();
-            }
-            if (this->executor.will_run_query) {
-                this->executor.will_run_query(sql);
-            }
-
-            switch (SQLITE_ORM_SWITCH_MAYBE_UNUSED int rc = sqlite3_step(stmt)) {
-                case SQLITE_ROW:
-                    break;
-                case SQLITE_DONE: {
-                    throw std::system_error{orm_error_code::not_found};
-                }
-                default: {
-                    throw_translated_sqlite_error(stmt);
-                }
-            }
-
-            T res;
-            object_from_column_builder<T> builder{res, stmt};
-            table.for_each_column(builder);
-
-            if (this->executor.did_run_query) {
-                this->executor.did_run_query(sql);
-            }
-
-            return res;
-#endif
         }
 
         template<class Select, satisfies<is_select_expression, Select> = true>
@@ -1895,7 +1847,6 @@ namespace sqlite_orm::internal {
             return res;
         }
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T, class R, class... Args>
         R execute(const prepared_statement_t<get_all_optional_t<T, R, Args...>>& statement) {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
@@ -1916,7 +1867,6 @@ namespace sqlite_orm::internal {
 
             return res;
         }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
     };  // struct storage_t
 
     template<class Elements>
@@ -1943,11 +1893,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     auto make_storage(std::string filename, Spec... specifications) {
         using namespace ::sqlite_orm::internal;
 
-        static_assert(
-            polyfill::conjunction_v<
-                polyfill::disjunction<is_database_object<Spec>, polyfill::is_detected<storage_opt_tag_t, Spec>>...>,
-            "a make_storage() argument must be a table, index, trigger, view, virtual table or a storage "
-            "option");
+        static_assert(((is_database_object<Spec>::value || polyfill::is_detected_v<storage_opt_tag_t, Spec>) && ...),
+                      "a make_storage() argument must be a table, index, trigger, view, virtual table or a storage "
+                      "option");
 
         std::tuple specTuple{std::forward<Spec>(specifications)...};
         return internal::make_storage(

@@ -30,7 +30,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T>
     internal::exists_t<T> exists(T expression) {
-        static_assert(polyfill::disjunction<internal::is_select<T>, internal::is_compound_operator<T>>::value,
+        static_assert(std::disjunction<internal::is_select<T>, internal::is_compound_operator<T>>::value,
                       "exists() requires a select statement");
         return {std::move(expression)};
     }

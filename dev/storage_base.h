@@ -6,6 +6,7 @@
 #include <memory>  //  std::allocator, std::unique_ptr, std::make_unique
 #include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
+#include <string_view>  //  std::string_view
 #include <sstream>  //  std::stringstream
 #include <ostream>  //  std::flush
 #include <utility>  //  std::move
@@ -15,10 +16,9 @@
 #include <map>  //  std::map
 #include <type_traits>  //  std::is_same, std::is_aggregate
 #include <algorithm>  //  std::find_if, std::ranges::find
+#include <tuple>  //  std::apply
 #endif
 
-#include "functional/cxx_string_view.h"
-#include "functional/cxx_tuple_polyfill.h"  //  std::apply
 #include "tuple_helper/tuple_iteration.h"
 #include "pragma.h"
 #include "limit_accessor.h"
@@ -33,7 +33,6 @@
 #include "util.h"
 #include "xdestroy_handling.h"
 #include "udf_proxy.h"
-#include "serialize_result_type.h"
 #include "serializing_util.h"
 #include "table_info.h"
 #include "storage_options.h"
@@ -206,7 +205,6 @@ namespace sqlite_orm::internal {
             this->drop_dbo_internal(connection.get(), "TABLE", tableName, true);
         }
 
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         /**
          *  Drops the view with the specified name.
          *  Calls `DROP VIEW "viewName"`.
@@ -226,7 +224,6 @@ namespace sqlite_orm::internal {
             auto connection = this->get_connection();
             this->drop_dbo_internal(connection.get(), "VIEW", viewName, true);
         }
-#endif
 
         /**
          *  Rename table named `from` to `to`.
@@ -255,7 +252,6 @@ namespace sqlite_orm::internal {
             return this->object_exists(connection.get(), "table", tableName);
         }
 
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         /**
          *  Directly checks the actual database whether the specified view exists, bypassing the library's 'storage' mapping.
          *  @return true if view with the specified name exists in the database, false otherwise.
@@ -264,10 +260,9 @@ namespace sqlite_orm::internal {
             auto connection = this->get_connection();
             return this->object_exists(connection.get(), "view", viewName);
         }
-#endif
 
       protected:
-        void rename_table_internal(sqlite3* db, serialize_arg_type oldName, serialize_arg_type newName) const {
+        void rename_table_internal(sqlite3* db, std::string_view oldName, std::string_view newName) const {
             std::string sql;
             {
                 std::stringstream ss;
@@ -278,7 +273,7 @@ namespace sqlite_orm::internal {
             this->executor.perform_void_exec(db, sql.c_str());
         }
 
-        static std::string savepoint_sql(serialize_arg_type statementPrefix, const std::string& savepointName) {
+        static std::string savepoint_sql(std::string_view statementPrefix, const std::string& savepointName) {
             std::stringstream ss;
             ss << statementPrefix << streaming_identifier(savepointName);
             return ss.str();
@@ -512,7 +507,7 @@ namespace sqlite_orm::internal {
                 [](sqlite3_context* context, int nValues, sqlite3_value** values) {
                     proxy_assert_args_count(context, nValues);
                     args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, nValues);
-                    auto result = polyfill::apply(quotedF._callable(), std::move(argsTuple));
+                    auto result = std::apply(quotedF._callable(), std::move(argsTuple));
                     statement_binder<return_type>().result(context, result);
                 },
                 /* finalCall = */
@@ -935,7 +930,7 @@ namespace sqlite_orm::internal {
             return {*this->connection};
         }
 
-        std::vector<std::string> object_names(string_constant_type type) {
+        std::vector<std::string> object_names(std::string_view type) {
             using data_t = std::vector<std::string>;
 
             auto connection = this->get_connection();
@@ -1038,7 +1033,7 @@ namespace sqlite_orm::internal {
                 [](sqlite3_context* context, int nValues, sqlite3_value** values) {
                     auto udfPointer = proxy_get_scalar_udf<F>(is_stateless{}, context, nValues);
                     args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, nValues);
-                    auto result = polyfill::apply(*udfPointer, std::move(argsTuple));
+                    auto result = std::apply(*udfPointer, std::move(argsTuple));
                     statement_binder<return_type>().result(context, result);
                 },
                 udfMemorySpace);
@@ -1073,7 +1068,7 @@ namespace sqlite_orm::internal {
 #if __cpp_lib_bind_front >= 201907L
                     std::apply(std::bind_front(&F::step, udfPointer), std::move(argsTuple));
 #else
-                    polyfill::apply(
+                    std::apply(
                         [udfPointer](auto&&... args) {
                             udfPointer->step(std::forward<decltype(args)>(args)...);
                         },
@@ -1169,7 +1164,7 @@ namespace sqlite_orm::internal {
             return result;
         }
 
-        void drop_dbo_internal(sqlite3* db, orm_gsl::czstring dboKeyword, serialize_arg_type dboName, bool ifExists) {
+        void drop_dbo_internal(sqlite3* db, orm_gsl::czstring dboKeyword, std::string_view dboName, bool ifExists) {
             std::stringstream ss;
             ss << "DROP " << dboKeyword;
             if (ifExists) {
@@ -1179,7 +1174,7 @@ namespace sqlite_orm::internal {
             this->executor.perform_void_exec(db, ss.str().c_str());
         }
 
-        bool object_exists(sqlite3* db, serialize_arg_type type, serialize_arg_type dboName) const {
+        bool object_exists(sqlite3* db, std::string_view type, std::string_view dboName) const {
             bool result = false;
             std::stringstream ss;
             ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal(std::string{type})
@@ -1196,7 +1191,7 @@ namespace sqlite_orm::internal {
             return result;
         }
 
-        std::string retrieve_object_sql(sqlite3* db, serialize_arg_type type, serialize_arg_type dboName) const {
+        std::string retrieve_object_sql(sqlite3* db, std::string_view type, std::string_view dboName) const {
             std::string result;
             std::stringstream ss;
             ss << "SELECT sql FROM sqlite_master WHERE type = " << quote_string_literal(std::string{type})

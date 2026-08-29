@@ -4,8 +4,6 @@
 #if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-
 TEST_CASE("issue1357") {
     struct Employee {
         int64 m_empno;
@@ -47,5 +45,4 @@ TEST_CASE("issue1357") {
     storage.insert(Employee{2, "Allen", "Salesman", 2, "2002-02-12", 20000.0, 0.0, 1});
     REQUIRE_NOTHROW(storage.sync_schema(true));
 }
-#endif
 #endif

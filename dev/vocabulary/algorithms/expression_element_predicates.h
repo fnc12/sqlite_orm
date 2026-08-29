@@ -20,8 +20,7 @@ namespace sqlite_orm::internal {
      *  and a frame specification.
      */
     template<class T>
-    constexpr bool is_window_defn_element_v =
-        polyfill::disjunction_v<is_partition_by<T>, is_order_by<T>, is_frame_spec<T>>;
+    constexpr bool is_window_defn_element_v = std::disjunction_v<is_partition_by<T>, is_order_by<T>, is_frame_spec<T>>;
 
     /**
      *  Whether a pack forms the arguments of an OVER clause: either a lone reference to a named
@@ -50,12 +49,12 @@ namespace sqlite_orm::internal {
      */
     template<class T>
     constexpr bool is_frame_start_bound_v =
-        polyfill::disjunction_v<is_unbounded_preceding<T>, is_preceding<T>, is_current_row<T>, is_following<T>>;
+        std::disjunction_v<is_unbounded_preceding<T>, is_preceding<T>, is_current_row<T>, is_following<T>>;
 
     /**
      *  Whether a node may close a window frame: the frame cannot end with UNBOUNDED PRECEDING.
      */
     template<class T>
     constexpr bool is_frame_end_bound_v =
-        polyfill::disjunction_v<is_preceding<T>, is_current_row<T>, is_following<T>, is_unbounded_following<T>>;
+        std::disjunction_v<is_preceding<T>, is_current_row<T>, is_following<T>, is_unbounded_following<T>>;
 }

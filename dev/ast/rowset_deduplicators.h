@@ -56,7 +56,7 @@ namespace sqlite_orm::internal {
      */
     template<class T>
     constexpr bool is_rowset_deduplicator_v =
-        polyfill::disjunction<is_distinct<T>, polyfill::is_specialization_of<T, all_t>>::value;
+        std::disjunction<is_distinct<T>, polyfill::is_specialization_of<T, all_t>>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

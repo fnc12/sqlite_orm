@@ -116,7 +116,7 @@ namespace sqlite_orm::internal {
     template<typename DBOs, typename... CTETables>
     auto db_objects_cat(const DBOs& dbObjects, CTETables&&... cteTables) {
         return db_objects_cat(dbObjects,
-                              std::make_index_sequence<std::tuple_size<DBOs>::value>{},
+                              std::make_index_sequence<std::tuple_size_v<DBOs>>{},
                               std::forward<CTETables>(cteTables)...);
     }
 #endif
@@ -160,7 +160,7 @@ namespace sqlite_orm::internal {
     template<class DBOs,
              class E,
              size_t Idx = 0,
-             std::enable_if_t<polyfill::negation_v<polyfill::is_specialization_of<E, std::tuple>>, bool> = true>
+             std::enable_if_t<std::negation_v<polyfill::is_specialization_of<E, std::tuple>>, bool> = true>
     auto extract_colref_expressions(const DBOs& /*dbObjects*/, const E& /*col*/, std::index_sequence<Idx> = {})
         -> std::tuple<alias_holder<decltype(n_to_colalias<Idx>())>> {
         return {};
@@ -248,9 +248,9 @@ namespace sqlite_orm::internal {
             return explicitColRef;
         } else if constexpr (is_column<ExplicitColRef>::value) {
             return explicitColRef.member_pointer;
-        } else if constexpr (std::is_same<ExplicitColRef, std::string>::value) {
+        } else if constexpr (std::is_same_v<ExplicitColRef, std::string>) {
             return subselectColRef;
-        } else if constexpr (std::is_same<ExplicitColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>::value) {
+        } else if constexpr (std::is_same_v<ExplicitColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>) {
             return subselectColRef;
         } else {
             static_assert(polyfill::always_false_v<ExplicitColRef>, "Invalid explicit column reference specified");
@@ -262,7 +262,7 @@ namespace sqlite_orm::internal {
                                const SubselectColRefs& subselectColRefs,
                                [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
                                std::index_sequence<Idx...>) {
-        if constexpr (std::tuple_size<ExplicitColRefs>::value != 0) {
+        if constexpr (std::tuple_size_v<ExplicitColRefs> != 0) {
             static_assert((!is_builtin_numeric_column_alias_v<
                                alias_holder_type_or_none_t<std::tuple_element_t<Idx, ExplicitColRefs>>> &&
                            ...),
@@ -295,7 +295,7 @@ namespace sqlite_orm::internal {
 
         using subselect_type = decltype(subSelect);
         using column_results = column_result_of_t<DBOs, subselect_type>;
-        using index_sequence = std::make_index_sequence<std::tuple_size<tuplify_t<column_results>>::value>;
+        using index_sequence = std::make_index_sequence<std::tuple_size_v<tuplify_t<column_results>>>;
         static_assert(cte_type::explicit_colref_count == 0 || cte_type::explicit_colref_count == index_sequence::size(),
                       "Number of explicit columns of common table expression doesn't match the number of columns "
                       "in the subselect.");

@@ -41,15 +41,15 @@ namespace sqlite_orm::internal {
     using aggregate_fin_function_t = decltype(&F::fin);
 
     template<class F>
-    constexpr bool is_scalar_udf_v<F, polyfill::void_t<scalar_call_function_t<F>>> = true;
+    constexpr bool is_scalar_udf_v<F, std::void_t<scalar_call_function_t<F>>> = true;
 
     template<class F>
     constexpr bool is_aggregate_udf_v<
         F,
-        polyfill::void_t<aggregate_step_function_t<F>,
-                         aggregate_fin_function_t<F>,
-                         std::enable_if_t<std::is_member_function_pointer<aggregate_step_function_t<F>>::value>,
-                         std::enable_if_t<std::is_member_function_pointer<aggregate_fin_function_t<F>>::value>>> = true;
+        std::void_t<aggregate_step_function_t<F>,
+                    aggregate_fin_function_t<F>,
+                    std::enable_if_t<std::is_member_function_pointer<aggregate_step_function_t<F>>::value>,
+                    std::enable_if_t<std::is_member_function_pointer<aggregate_fin_function_t<F>>::value>>> = true;
 
     template<class UDF>
     struct function;
@@ -197,7 +197,7 @@ namespace sqlite_orm::internal {
         using udf_type = UDF;
 
         template<class R = decltype(UDF::name()),
-                 std::enable_if_t<polyfill::negation<std::is_same<R, char>>::value, bool> = true>
+                 std::enable_if_t<std::negation<std::is_same<R, char>>::value, bool> = true>
         SQLITE_ORM_STATIC_CALLOP decltype(auto) operator()() SQLITE_ORM_OR_CONST_CALLOP {
             return UDF::name();
         }
@@ -246,7 +246,7 @@ namespace sqlite_orm::internal {
 
     // Always allow binding nullptr to a pointer argument
     template<size_t I, class PointerArg>
-    constexpr bool is_same_pvt_v<I, PointerArg, std::nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
+    constexpr bool is_same_pvt_v<I, PointerArg, std::nullptr_t, std::void_t<typename PointerArg::tag>> = true;
     // Always allow binding nullptr to a pointer argument
     template<size_t I, class P, class T, class D>
     constexpr bool is_same_pvt_v<I, pointer_arg<P, T>, pointer_binding<std::nullptr_t, T, D>, void> = true;
@@ -266,10 +266,9 @@ namespace sqlite_orm::internal {
         return valid;
     }
     template<size_t I, class PointerArg, class Binding>
-    constexpr bool
-        is_same_pvt_v<I, PointerArg, Binding, polyfill::void_t<typename PointerArg::tag, typename Binding::tag>> =
-            assert_same_pointer_tag<I, PointerArg::tag::value, Binding::tag::value>() &&
-            assert_same_pointer_data_type<I, typename PointerArg::qualified_type, typename Binding::qualified_type>();
+    constexpr bool is_same_pvt_v<I, PointerArg, Binding, std::void_t<typename PointerArg::tag, typename Binding::tag>> =
+        assert_same_pointer_tag<I, PointerArg::tag::value, Binding::tag::value>() &&
+        assert_same_pointer_data_type<I, typename PointerArg::qualified_type, typename Binding::qualified_type>();
 #else
     template<size_t I, class PointerArg, class Binding>
     constexpr bool assert_same_pointer_tag() {
@@ -279,9 +278,8 @@ namespace sqlite_orm::internal {
     }
 
     template<size_t I, class PointerArg, class Binding>
-    constexpr bool
-        is_same_pvt_v<I, PointerArg, Binding, polyfill::void_t<typename PointerArg::tag, typename Binding::tag>> =
-            assert_same_pointer_tag<I, typename PointerArg::tag, typename Binding::tag>();
+    constexpr bool is_same_pvt_v<I, PointerArg, Binding, std::void_t<typename PointerArg::tag, typename Binding::tag>> =
+        assert_same_pointer_tag<I, typename PointerArg::tag, typename Binding::tag>();
 #endif
 
     // not a pointer value, currently leave it unchecked
@@ -308,7 +306,7 @@ namespace sqlite_orm::internal {
         constexpr bool valid = validate_pointer_value_type<I,
                                                            std::tuple_element_t<I, FnParams>,
                                                            unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>(
-            polyfill::bool_constant < (polyfill::is_specialization_of_v<func_param_type, pointer_arg>) ||
+            std::bool_constant < (polyfill::is_specialization_of_v<func_param_type, pointer_arg>) ||
             (polyfill::is_specialization_of_v<call_arg_type, pointer_binding>) > {});
 
         return validate_pointer_value_types<FnParams, CallArgs>(polyfill::index_constant<I - 1>{}) && valid;

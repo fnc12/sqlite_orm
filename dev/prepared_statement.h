@@ -4,13 +4,16 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::unique_ptr
 #include <string>  //  std::string
+#include <string_view>  //  std::string_view
 #include <type_traits>  //  std::integral_constant, std::declval, std::is_convertible
 #include <utility>  //  std::move, std::forward, std::exchange, std::pair
 #include <tuple>  //  std::tuple
+#include <functional>  //  std::invoke
+#include <optional>  //  std::optional
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "functional/cxx_functional_polyfill.h"
+#include "functional/cxx_functional_polyfill.h"  //  polyfill::identity
 #include "functional/gsl.h"
 #include "type_traits.h"
 #include "tuple_helper/tuple_traits.h"
@@ -76,11 +79,9 @@ namespace sqlite_orm::internal {
         }
 #endif
 
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         std::string_view column_name(int index) const {
             return sqlite3_column_name(stmt, index);
         }
-#endif
     };
 
     template<class T>
@@ -101,7 +102,7 @@ namespace sqlite_orm::internal {
     inline constexpr bool is_prepared_statement_v = polyfill::is_specialization_of<T, prepared_statement_t>::value;
 
     template<class T>
-    struct is_prepared_statement : polyfill::bool_constant<is_prepared_statement_v<T>> {};
+    struct is_prepared_statement : std::bool_constant<is_prepared_statement_v<T>> {};
 
     /**
      *  T - type of object to obtain from a database
@@ -126,7 +127,6 @@ namespace sqlite_orm::internal {
         conditions_type conditions;
     };
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T, class R, class... Args>
     struct get_all_optional_t {
         using type = T;
@@ -136,7 +136,6 @@ namespace sqlite_orm::internal {
 
         conditions_type conditions;
     };
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class S, class... Wargs>
     struct update_all_t {
@@ -153,7 +152,7 @@ namespace sqlite_orm::internal {
     inline constexpr bool is_update_all_v = polyfill::is_specialization_of<T, update_all_t>::value;
 
     template<class T>
-    using is_update_all = polyfill::bool_constant<is_update_all_v<T>>;
+    using is_update_all = std::bool_constant<is_update_all_v<T>>;
 
     template<class T, class... Args>
     struct remove_all_t {
@@ -167,7 +166,7 @@ namespace sqlite_orm::internal {
     inline constexpr bool is_remove_all_v = polyfill::is_specialization_of<T, remove_all_t>::value;
 
     template<class T>
-    using is_remove_all = polyfill::bool_constant<is_remove_all_v<T>>;
+    using is_remove_all = std::bool_constant<is_remove_all_v<T>>;
 
     template<class T, class... Ids>
     struct get_t {
@@ -185,7 +184,6 @@ namespace sqlite_orm::internal {
         ids_type ids;
     };
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T, class... Ids>
     struct get_optional_t {
         using type = T;
@@ -193,7 +191,6 @@ namespace sqlite_orm::internal {
 
         ids_type ids;
     };
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class T>
     struct update_t {
@@ -221,7 +218,7 @@ namespace sqlite_orm::internal {
     inline constexpr bool is_insert_v = polyfill::is_specialization_of<T, insert_t>::value;
 
     template<class T>
-    struct is_insert : polyfill::bool_constant<is_insert_v<T>> {};
+    struct is_insert : std::bool_constant<is_insert_v<T>> {};
 
     template<class T, class... Cols>
     struct insert_explicit {
@@ -243,7 +240,7 @@ namespace sqlite_orm::internal {
     inline constexpr bool is_replace_v = polyfill::is_specialization_of<T, replace_t>::value;
 
     template<class T>
-    struct is_replace : polyfill::bool_constant<is_replace_v<T>> {};
+    struct is_replace : std::bool_constant<is_replace_v<T>> {};
 
     template<class It, class Projection, class O>
     struct insert_range_t {
@@ -259,7 +256,7 @@ namespace sqlite_orm::internal {
     inline constexpr bool is_insert_range_v = polyfill::is_specialization_of<T, insert_range_t>::value;
 
     template<class T>
-    struct is_insert_range : polyfill::bool_constant<is_insert_range_v<T>> {};
+    struct is_insert_range : std::bool_constant<is_insert_range_v<T>> {};
 
     template<class It, class Projection, class O>
     struct replace_range_t {
@@ -275,7 +272,7 @@ namespace sqlite_orm::internal {
     inline constexpr bool is_replace_range_v = polyfill::is_specialization_of<T, replace_range_t>::value;
 
     template<class T>
-    struct is_replace_range : polyfill::bool_constant<is_replace_range_v<T>> {};
+    struct is_replace_range : std::bool_constant<is_replace_range_v<T>> {};
 
     template<class... Args>
     struct insert_raw_t {
@@ -288,7 +285,7 @@ namespace sqlite_orm::internal {
     inline constexpr bool is_insert_raw_v = polyfill::is_specialization_of<T, insert_raw_t>::value;
 
     template<class T>
-    struct is_insert_raw : polyfill::bool_constant<is_insert_raw_v<T>> {};
+    struct is_insert_raw : std::bool_constant<is_insert_raw_v<T>> {};
 
     template<class... Args>
     struct replace_raw_t {
@@ -301,7 +298,7 @@ namespace sqlite_orm::internal {
     inline constexpr bool is_replace_raw_v = polyfill::is_specialization_of<T, replace_raw_t>::value;
 
     template<class T>
-    struct is_replace_raw : polyfill::bool_constant<is_replace_raw_v<T>> {};
+    struct is_replace_raw : std::bool_constant<is_replace_raw_v<T>> {};
 
     struct default_values_t {};
 
@@ -327,27 +324,26 @@ namespace sqlite_orm::internal {
     constexpr bool is_raw_dml_expression_v<
         DML,
         std::enable_if_t<
-            polyfill::disjunction_v<is_insert_raw<DML>, is_replace_raw<DML>, is_update_all<DML>, is_remove_all<DML>>>> =
+            std::disjunction_v<is_insert_raw<DML>, is_replace_raw<DML>, is_update_all<DML>, is_remove_all<DML>>>> =
         true;
 
     template<class With>
     constexpr bool is_raw_dml_expression_v<
         With,
-        std::enable_if_t<polyfill::conjunction_v<is_with_clause<With>,
-                                                 polyfill::disjunction<is_insert_raw<expression_type_t<With>>,
-                                                                       is_replace_raw<expression_type_t<With>>,
-                                                                       is_update_all<expression_type_t<With>>,
-                                                                       is_remove_all<expression_type_t<With>>>>>> =
-        true;
+        std::enable_if_t<std::conjunction_v<is_with_clause<With>,
+                                            std::disjunction<is_insert_raw<expression_type_t<With>>,
+                                                             is_replace_raw<expression_type_t<With>>,
+                                                             is_update_all<expression_type_t<With>>,
+                                                             is_remove_all<expression_type_t<With>>>>>> = true;
 
     template<class DML>
     constexpr bool is_object_dml_expression_v<
         DML,
-        std::enable_if_t<polyfill::disjunction_v<is_insert<DML>,
-                                                 polyfill::is_specialization_of<DML, insert_explicit>,
-                                                 is_replace<DML>,
-                                                 polyfill::is_specialization_of<DML, update_t>,
-                                                 polyfill::is_specialization_of<DML, remove_t>>>> = true;
+        std::enable_if_t<std::disjunction_v<is_insert<DML>,
+                                            polyfill::is_specialization_of<DML, insert_explicit>,
+                                            is_replace<DML>,
+                                            polyfill::is_specialization_of<DML, update_t>,
+                                            polyfill::is_specialization_of<DML, remove_t>>>> = true;
 
     /**
      *  The delete statement counterpart of `validate_select_clauses()`; see there for the split of
@@ -587,7 +583,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class It, class Projection = polyfill::identity>
     auto replace_range(It from, It to, Projection project = {}) {
-        using O = std::decay_t<decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()))>;
+        using O = std::decay_t<decltype(std::invoke(std::declval<Projection>(), *std::declval<It>()))>;
         return internal::replace_range_t<It, Projection, O>{{std::move(from), std::move(to)}, std::move(project)};
     }
 
@@ -599,7 +595,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::replace_range_t<It, Projection, O> replace_range(It from, It to, Projection project = {}) {
         // validate up front that projected type is convertible to mapped object type, avoiding hard to read error messages later;
         // note: we use `is_convertible` instead of `is_invocable_r` because we do not create dangling references in `storage_t<>::execute()`
-        using projected_type = decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()));
+        using projected_type = decltype(std::invoke(std::declval<Projection>(), *std::declval<It>()));
         static_assert(std::is_convertible<projected_type, const O&>::value,
                       "Projected type must be convertible to mapped object type");
 
@@ -627,7 +623,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class It, class Projection = polyfill::identity>
     auto insert_range(It from, It to, Projection project = {}) {
-        using O = std::decay_t<decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()))>;
+        using O = std::decay_t<decltype(std::invoke(std::declval<Projection>(), *std::declval<It>()))>;
         return internal::insert_range_t<It, Projection, O>{{std::move(from), std::move(to)}, std::move(project)};
     }
 
@@ -639,7 +635,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::insert_range_t<It, Projection, O> insert_range(It from, It to, Projection project = {}) {
         // validate up front that projected type is convertible to mapped object type, avoiding hard to read error messages later;
         // note: we use `is_convertible` instead of `is_invocable_r` because we do not create dangling references in `storage_t<>::execute()`
-        using projected_type = decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()));
+        using projected_type = decltype(std::invoke(std::declval<Projection>(), *std::declval<It>()));
         static_assert(std::is_convertible<projected_type, const O&>::value,
                       "Projected type must be convertible to mapped object type");
 
@@ -767,7 +763,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #endif
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
      *  Create a get optional statement.
      *  T is an object type mapped to a storage.
@@ -779,7 +774,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "Only primary key values are accepted as Ids");
         return {{std::forward<Ids>(ids)...}};
     }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
@@ -887,7 +881,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #endif
 
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
      *  Create a get all optional statement.
      *  T is an object type mapped to a storage.
@@ -901,7 +894,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         internal::validate_get_all_conditions<T, conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
