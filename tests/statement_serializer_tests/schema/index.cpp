@@ -60,7 +60,7 @@ TEST_CASE("statement_serializer index") {
             auto index = make_index<User>("idx", indexed_column(json_extract<bool>(&User::name, "$.field")));
             value = internal::serialize(index, context);
         }
-        expected = "CREATE INDEX \"idx\" ON \"users\" (JSON_EXTRACT(\"name\", '$.field'))";
+        expected = R"(CREATE INDEX "idx" ON "users" (JSON_EXTRACT("name", '$.field')))";
     }
 #endif  //  SQLITE_ORM_JSON_SUPPORTED
     REQUIRE(value == expected);
