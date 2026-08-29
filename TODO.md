@@ -46,6 +46,7 @@
 * URI filenames (`SQLITE_OPEN_URI`): `file:...?mode=...&cache=shared`, shared in-memory databases, `immutable=1`
 * small C API wrappers: `sqlite3_changes64`/`sqlite3_total_changes64` (3.37), `sqlite3_txn_state` (3.34), `sqlite3_error_offset` (3.38), `sqlite3_is_interrupted` (3.41) and `interrupt()`, `sqlite3_db_name` (3.39), `sqlite3_db_readonly` (3.7.11), `sqlite3_stmt_readonly`/`sqlite3_stmt_busy`/`sqlite3_stmt_isexplain`, `sqlite3_setlk_timeout` (3.50)
 * PRAGMA wrappers: `foreign_key_check`, `foreign_key_list`, `table_list` (3.37), `index_list`/`index_info`/`index_xinfo`, `database_list`, `optimize` (3.18), `wal_checkpoint` (incl. `NOOP`, 3.51), `data_version`, `freelist_count`, `page_count`/`page_size`, `cache_size`, `mmap_size`, `temp_store`, `secure_delete`, `defer_foreign_keys`, `query_only`, `incremental_vacuum`, `analysis_limit` (3.32), `trusted_schema` (3.31), `hard_heap_limit` (3.31), `threads`, `case_sensitive_like`, `reverse_unordered_selects`
+* extension loading: `sqlite3_load_extension` / `sqlite3_enable_load_extension`, the `load_extension()` SQL function, and the `SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION` option that enables the C API while keeping the SQL function disabled (recommended for security)
 * session extension (changesets/patchsets, `sqlite3_changegroup`) — large
 
 Please feel free to add any feature that isn't listed here and not implemented yet.
