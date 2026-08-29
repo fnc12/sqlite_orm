@@ -74,7 +74,26 @@ libc++/libstdc++ release tags. Below the CI matrix (g++-10, clang-12, windows-20
 
 ## Decision
 
-Draw it now at **GCC 9 / libc++ 8 (Xcode 11) / VS 2017 15.9**, spend GCC 7-8 and libc++ 7, and
-retire the guards plus the `fdc33d69` concessions — or hold the line until C++20, where the same
-check needs no `<ciso646>` and costs nothing. Only if we draw it now does `README.md:806` change
-from "C++17 compatible compiler" to named versions, plus macOS 10.14 / iOS 12.
+**Drawn now**, at **GCC 9 / libc++ 8 (Xcode 11) / VS 2017 15.9**; GCC 7-8 and libc++ 7 are spent.
+Agreed in the team on 2026-08-29.
+
+## Follow-through
+
+* Enforcement block in `dev/functional/cxx_check_prerequisites.h` (see above); `<version>` dropped from
+  `dev/functional/config.h`, which reaches the macros through `cxx_universal.h`.
+* `polyfill::void_t`, `bool_constant`, the logical traits, `invoke`, `is_invocable` and `apply` removed;
+  call sites name the standard facilities. `functional/cxx_tuple_polyfill.h` deleted.
+  `polyfill` keeps only what is genuinely post-C++17: `remove_cvref`, `type_identity`, `identity`,
+  `unwrap_reference`, plus the never-standardised `is_detected` / `is_specialization_of`.
+* `SQLITE_ORM_OPTIONAL_SUPPORTED` and `SQLITE_ORM_STRING_VIEW_SUPPORTED` removed along with their
+  fallbacks (`std::string`-based `serialize_result_type`, the `strlen`/`wcslen` binder overloads,
+  `nullif()` without a common return type). `functional/cxx_optional.h` and
+  `functional/cxx_string_view.h` deleted; users include `<optional>` / `<string_view>` directly.
+* The `fdc33d69` concessions are reverted: `std::tuple_size_v`, `std::is_same_v`, `std::is_void_v`,
+  `std::is_base_of_v`, `std::is_empty_v`, `std::is_default_constructible_v` and `std::is_function_v`
+  are used again.
+* `README.md` names the versions instead of "C++17 compatible compiler", and records the
+  macOS 10.14 / iOS 12 deployment target.
+
+Still open: `cxx_compiler_quirks.h` keeps its `_MSC_VER < 1920` workarounds — VS 2017 15.9 stays in
+scope, so those are unrelated to this line and are not touched here.

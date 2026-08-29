@@ -803,7 +803,10 @@ If you want to use the lib directly with Make or something else, just set the in
 
 # Requirements
 
-* C++17 compatible compiler.
+* A C++17 compatible compiler **and standard library**: GCC 9 (libstdc++ 9), Clang with libc++ 8 (Xcode 11),
+  or Visual Studio 2017 15.9 (`_MSC_VER` 1916) or newer.
+  On Apple platforms `std::optional` additionally needs a deployment target of macOS 10.14 / iOS 12 or later,
+  because `std::bad_optional_access` lives in the OS dylib.
 * Sqlite3 installed on your system and in the path, so cmake can find it (or linked to you project if you don't use cmake)
 
 # Video from conference
