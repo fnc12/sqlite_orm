@@ -1820,7 +1820,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class R = void, class... Args>
     constexpr auto coalesce(Args... args)
         -> internal::built_in_function_t<typename mpl::conditional_t<  //  choose R or common type
-                                             std::is_void<R>::value,
+                                             std::is_void_v<R>,
                                              std::common_type<internal::field_type_or_type_t<Args>...>,
                                              polyfill::type_identity<R>>::type,
                                          internal::coalesce_string,
@@ -1834,7 +1834,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class R = void, class X, class Y>
     constexpr auto ifnull(X x, Y y) -> internal::built_in_function_t<
         typename mpl::conditional_t<  //  choose R or common type
-            std::is_void<R>::value,
+            std::is_void_v<R>,
             std::common_type<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
             polyfill::type_identity<R>>::type,
         internal::ifnull_string,
@@ -1858,7 +1858,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                                        internal::field_type_or_type_t<Y>>>,
                               bool> = true>
     constexpr auto nullif(X x, Y y) {
-        if constexpr (std::is_void<R>::value) {
+        if constexpr (std::is_void_v<R>) {
             using F = internal::built_in_function_t<
                 std::optional<std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>>,
                 internal::nullif_string,
@@ -2092,7 +2092,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                                        internal::field_type_or_type_t<Z>>>,
                               bool> = true>
     constexpr auto iif(X x, Y y, Z z) {
-        if constexpr (std::is_void<R>::value) {
+        if constexpr (std::is_void_v<R>) {
             using F = internal::built_in_function_t<
                 std::common_type_t<internal::field_type_or_type_t<Y>, internal::field_type_or_type_t<Z>>,
                 internal::iif_string,
@@ -2229,7 +2229,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                                        internal::field_type_or_type_t<Z>>>,
                               bool> = true>
     constexpr auto if_(X x, Y y, Z z) {
-        if constexpr (std::is_void<R>::value) {
+        if constexpr (std::is_void_v<R>) {
             using F = internal::built_in_function_t<
                 std::common_type_t<internal::field_type_or_type_t<Y>, internal::field_type_or_type_t<Z>>,
                 internal::if_string,

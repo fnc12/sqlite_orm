@@ -166,7 +166,7 @@ namespace sqlite_orm::internal {
         std::vector<std::string> columnNames = get_cte_column_names(sel.col, context);
 
         // 2. override column names from cte expression
-        constexpr size_t nExplicitColumns = std::tuple_size<ExplicitColRefs>::value;
+        constexpr size_t nExplicitColumns = std::tuple_size_v<ExplicitColRefs>;
         if constexpr (nExplicitColumns > 0) {
             if (nExplicitColumns != columnNames.size()) {
                 throw std::system_error{orm_error_code::column_not_found};
@@ -188,11 +188,11 @@ namespace sqlite_orm::internal {
                     }
                 } else if constexpr (is_column_v<ColRef>) {
                     columnNames[idx] = colRef.name;
-                } else if constexpr (std::is_same<ColRef, std::string>::value) {
+                } else if constexpr (std::is_same_v<ColRef, std::string>) {
                     if (!colRef.empty()) {
                         columnNames[idx] = colRef;
                     }
-                } else if constexpr (std::is_same<ColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>::value) {
+                } else if constexpr (std::is_same_v<ColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>) {
                     if (columnNames[idx].empty()) {
                         columnNames[idx] = std::to_string(idx + 1);
                     }

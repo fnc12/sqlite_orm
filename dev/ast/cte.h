@@ -79,7 +79,7 @@ namespace sqlite_orm::internal {
         using expression_type = Select;
         using explicit_colrefs_tuple = ExplicitCols;
         using hints_tuple = Hints;
-        static constexpr size_t explicit_colref_count = std::tuple_size<ExplicitCols>::value;
+        static constexpr size_t explicit_colref_count = std::tuple_size_v<ExplicitCols>;
 
         SQLITE_ORM_NOUNIQUEADDRESS hints_tuple hints;
         explicit_colrefs_tuple explicitColumns;

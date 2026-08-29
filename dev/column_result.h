@@ -332,7 +332,7 @@ namespace sqlite_orm::internal {
 
         // lookup ColAlias in the final column references
         using colalias_index = find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
-        static_assert(colalias_index::value < std::tuple_size<typename cte_mapper_type::final_colrefs_tuple>::value,
+        static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
                       "No such column mapped into the CTE");
         using type = std::tuple_element_t<colalias_index::value, typename cte_mapper_type::fields_type>;
     };
