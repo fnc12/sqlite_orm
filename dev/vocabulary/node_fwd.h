@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file Forward-declarations of concrete nodes that have to be used directly in template programming,
- *        e.g. for base-class overloads or metafunctions.
+ *        e.g. for base-class overloads, partial specializations or metafunctions.
  */
 
 namespace sqlite_orm::internal {
@@ -21,4 +21,7 @@ namespace sqlite_orm::internal {
 
     template<class C>
     struct indexed_column_t;
+
+    template<class O>
+    struct order_by_t;
 }
