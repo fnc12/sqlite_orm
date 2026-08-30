@@ -1,0 +1,115 @@
+name: Experimental - VS 2017 (v141)
+
+# The GitHub-hosted Windows images carry only the v143 and v142 toolsets. v141 was dropped when the
+# multi-version build tools were removed in May 2024, and actions/runner-images#12764 reports that adding
+# `Microsoft.VisualStudio.Component.VC.v141.x86.x64` to the installed VS 2022 fails with
+# "Toolset directory for version '14.16' was not found".
+#
+# This workflow probes whether the standalone VS 2017 Build Tools bootstrapper still yields a usable v141
+# on the current image. It cannot fail the run, so the answer can be gathered without putting the CI matrix
+# at risk. The steps are deliberately fine-grained, so that a failure says which part gave out: the
+# installer, the toolset layout, vcpkg's VS 2017 discovery, or the compile itself.
+#
+# Outcome so far: green on windows-2022 in roughly 9 minutes, with the toolset check confirming 14.16, so
+# both of the doubtful parts hold up -- vcpkg does discover a standalone Build Tools instance, and Catch2
+# builds under v141.
+#
+# TODO(release): decide what to do with this file before the release goes out.
+#   a. Keep it as its own workflow, or promote it into ci.yaml as a job of its own. It does not fit the
+#      Windows matrix, because the install, toolset assertion and overlay triplet steps are needed for this
+#      entry alone.
+#   b. Decide whether to drop `continue-on-error`. Nothing else in CI covers v141, so today a regression
+#      against it shows up as a red job that blocks nothing. Against making it gate: the job downloads a
+#      legacy installer from aka.ms, so an upstream change would redden CI for reasons unrelated to the code.
+# Caching the toolset was considered and rejected: restoring only the install directory leaves out the
+# registry and installer state that `vswhere` reads, which is what vcpkg needs to find the toolset at all.
+
+on:
+  # `workflow_dispatch` is only offered for workflows that already live on the default branch, which is
+  # master, while pull requests here target dev -- so the manual button does not appear when the PR lands,
+  # only once this file reaches master. Until then `pull_request` is what exercises the probe. The triggers
+  # otherwise mirror ci.yaml's cadence.
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [dev, master]
+
+env:
+  VCPKG_COMMIT: 4334d8b4c8916018600212ab4dd4bbdc343065d1  # 2025.09.17
+  VS2017_PATH: C:\BuildTools2017
+
+jobs:
+  vs2017:
+    name: VS 2017 (v141), x64, C++17
+    runs-on: windows-2022
+    # never fail the run; this workflow exists to answer a question, not to gate anything
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install VS 2017 Build Tools
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri https://aka.ms/vs/15/release/vs_buildtools.exe -OutFile vs_buildtools.exe
+          $proc = Start-Process -Wait -PassThru -FilePath .\vs_buildtools.exe -ArgumentList @(
+            '--quiet', '--wait', '--norestart', '--nocache',
+            '--installPath', $env:VS2017_PATH,
+            '--add', 'Microsoft.VisualStudio.Workload.VCTools',
+            '--add', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64',
+            # VS 2017's vcvars does not recognise the newer SDKs already on the image
+            '--add', 'Microsoft.VisualStudio.Component.Windows10SDK.17763'
+          )
+          Write-Host "installer exit code: $($proc.ExitCode)"
+          # 0 = success, 3010 = success with a reboot pending; anything else is a real failure
+          if ($proc.ExitCode -notin 0, 3010) { exit $proc.ExitCode }
+
+      - name: Report the installed toolset
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:VS2017_PATH 'VC\Tools\MSVC'
+          if (-not (Test-Path $root)) { throw "no MSVC toolset directory under $root" }
+          $version = (Get-ChildItem $root | Sort-Object Name | Select-Object -Last 1).Name
+          Write-Host "toolset: $version"
+          & (Join-Path $root "$version\bin\Hostx64\x64\cl.exe") 2>&1 | Select-Object -First 1
+          # 14.16.x is what v141 should report; anything else means we did not get what we asked for
+          if (-not $version.StartsWith('14.16')) { throw "expected a 14.16 toolset, got $version" }
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+          vcpkgDirectory: ${{ runner.temp }}/vcpkg
+
+      - name: Write the v141 overlay triplet
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path .vcpkg-triplets | Out-Null
+          @'
+          set(VCPKG_TARGET_ARCHITECTURE x64)
+          set(VCPKG_CRT_LINKAGE dynamic)
+          set(VCPKG_LIBRARY_LINKAGE dynamic)
+          set(VCPKG_PLATFORM_TOOLSET v141)
+          '@ | Set-Content .vcpkg-triplets/x64-windows-v141.cmake
+          Get-Content .vcpkg-triplets/x64-windows-v141.cmake
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          # whether vcpkg discovers the standalone Build Tools instance is itself part of the experiment
+          vcpkg install sqlite3[core,dbstat,math,json1,fts5,rtree,soundex] catch2 `
+            --triplet x64-windows-v141 --overlay-triplets=${{ github.workspace }}/.vcpkg-triplets
+
+      - name: Build and test
+        shell: cmd
+        run: |
+          where ninja || choco install ninja -y --no-progress
+          call "%VS2017_PATH%\VC\Auxiliary\Build\vcvars64.bat" || exit /b 1
+          cl 2>&1 | findstr /C:"Version"
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release ^
+            -DSQLITE_ORM_ENABLE_CXX_17=ON ^
+            -DVCPKG_TARGET_TRIPLET=x64-windows-v141 ^
+            -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake || exit /b 1
+          cmake --build build --parallel || exit /b 1
+          ctest --test-dir build --output-on-failure
