@@ -34,3 +34,38 @@ TEST_CASE("primary key static") {
 #endif
     }
 }
+
+TEST_CASE("primary key classification") {
+    using internal::is_autoincrement_pk_v;
+    using internal::is_column_primary_key_v;
+    using internal::is_primary_key_v;
+
+    struct Object {
+        int id;
+    };
+
+    using ColumnPk = decltype(primary_key());
+    using AutoincrementPk = decltype(primary_key().autoincrement());
+    using TablePk = decltype(primary_key(&Object::id));
+
+    SECTION("column primary key") {
+        STATIC_REQUIRE(is_primary_key_v<ColumnPk>);
+        STATIC_REQUIRE(is_column_primary_key_v<ColumnPk>);
+        STATIC_REQUIRE_FALSE(is_autoincrement_pk_v<ColumnPk>);
+    }
+    SECTION("autoincrement") {
+        //  AUTOINCREMENT only ever decorates a column primary key, hence such a node is a primary key in its own right
+        STATIC_REQUIRE(is_primary_key_v<AutoincrementPk>);
+        STATIC_REQUIRE(is_column_primary_key_v<AutoincrementPk>);
+        STATIC_REQUIRE(is_autoincrement_pk_v<AutoincrementPk>);
+    }
+    SECTION("table primary key") {
+        STATIC_REQUIRE(is_primary_key_v<TablePk>);
+        STATIC_REQUIRE_FALSE(is_column_primary_key_v<TablePk>);
+        STATIC_REQUIRE_FALSE(is_autoincrement_pk_v<TablePk>);
+    }
+    SECTION("other constraint") {
+        STATIC_REQUIRE_FALSE(is_primary_key_v<decltype(unique())>);
+        STATIC_REQUIRE_FALSE(is_autoincrement_pk_v<decltype(unique())>);
+    }
+}

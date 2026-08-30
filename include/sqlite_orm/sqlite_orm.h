@@ -1848,11 +1848,31 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_primary_key = std::bool_constant<is_primary_key_v<T>>;
 
+    /**
+     *  Nodes representing a PRIMARY KEY declared at a single column, i.e. carrying no column list of its own.
+     *
+     *  Note: there is deliberately no `is_table_primary_key` counterpart. A table-level PRIMARY KEY is
+     *  `is_primary_key_v` and not `is_column_primary_key_v`, and the asymmetry is load-bearing: admitting a
+     *  column PRIMARY KEY among the table elements is what lets `validate_base_table_definition()` diagnose it
+     *  as an empty table primary key rather than as an unrecognized table element.
+     */
     template<class T>
     extern const bool is_column_primary_key_v;
 
     template<class T>
     using is_column_primary_key = std::bool_constant<is_column_primary_key_v<T>>;
+
+    /**
+     *  Nodes carrying the AUTOINCREMENT keyword of a column primary key.
+     *
+     *  Note: AUTOINCREMENT only ever decorates a PRIMARY KEY, hence such a node is a primary key
+     *  in its own right - `is_primary_key_v` and `is_column_primary_key_v` hold for it as well.
+     */
+    template<class T>
+    extern const bool is_autoincrement_pk_v;
+
+    template<class T>
+    using is_autoincrement_pk = std::bool_constant<is_autoincrement_pk_v<T>>;
 
     template<class T>
     extern const bool is_foreign_key_v;
@@ -12003,9 +12023,6 @@ namespace sqlite_orm::internal {
 }
 
 namespace sqlite_orm::internal {
-    template<class T>
-    struct primary_key_with_autoincrement;
-
     // Custom type:
     // It is the programmer's responsibility to ensure data integrity in the value range of the custom type
     // and in purview of SQLite using a 64-bit signed integer.
@@ -12049,7 +12066,7 @@ namespace sqlite_orm::internal {
 
         static_assert((is_column_constraint<Op>::value && ...), "Incorrect column constraints");
 
-        if constexpr (tuple_has_template<constraints_type, primary_key_with_autoincrement>::value) {
+        if constexpr (tuple_has<constraints_type, is_autoincrement_pk>::value) {
             check_pkcol<member_field_type_t<G>>::validate_column_primary_key_with_autoincrement();
         }
     }
@@ -22117,141 +22134,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-// #include "schema/index.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple, std::declval, std::tuple_element_t
-#include <string>  //  std::string
-#include <utility>  //  std::forward
-#endif
-
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../tuple_helper/tuple_traits.h"
-
-// #include "../vocabulary/node_traits.h"
-
-// #include "../vocabulary/node_algorithms.h"
-// is_statement_clause, is_index_element_of_v
-// #include "indexed_column.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
-#include <utility>  //  std::move
-#endif
-
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../vocabulary/node_traits.h"
-
-// #include "../vocabulary/traits/structural_traits_fwd.h"
-// Included to specialize traits
-
-namespace sqlite_orm::internal {
-    template<class C>
-    struct indexed_column_t {
-        using column_type = C;
-
-        column_type _column_or_expression;
-        std::string _collation_name;
-        int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
-
-        indexed_column_t<column_type> collate(std::string name) && {
-            _collation_name = std::move(name);
-            return std::move(*this);
-        }
-
-        indexed_column_t<column_type> asc() && {
-            _order = 1;
-            return std::move(*this);
-        }
-
-        indexed_column_t<column_type> desc() && {
-            _order = -1;
-            return std::move(*this);
-        }
-    };
-
-    template<class T>
-    constexpr bool is_indexed_column_v = polyfill::is_specialization_of<T, indexed_column_t>::value;
-
-    template<class C>
-    auto make_indexed_column(C col) {
-        if constexpr (is_indexed_column_v<C> || is_where_v<C>) {
-            return std::move(col);
-        } else {
-            return indexed_column_t<C>{std::move(col)};
-        }
-    }
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  Use this function to specify indexed column inside `make_index` function call.
-     *  Example: make_index("index_name", indexed_column(&User::id).asc())
-     */
-    template<class C>
-    internal::indexed_column_t<C> indexed_column(C column_or_expression) {
-        return {std::move(column_or_expression)};
-    }
-}
-// make_indexed_column
-
-namespace sqlite_orm::internal {
-    struct index_base {
-        std::string name;
-        bool unique = false;
-    };
-
-    template<class T, class... Els>
-    struct index_t : index_base {
-        using elements_type = std::tuple<Els...>;
-        using object_type = void;
-        using table_mapped_type = T;
-
-        elements_type elements;
-    };
-
-    template<class T>
-    constexpr bool is_index_v = polyfill::is_specialization_of_v<T, index_t>;
-
-    template<class T, class... Cols>
-    constexpr void validate_index_arguments() {
-        static_assert(count_tuple<std::tuple<Cols...>, is_where>::value <= 1,
-                      "amount of where arguments can be 0 or 1");
-        static_assert(((is_where_v<Cols> || !is_statement_clause<Cols>::value) && ...),
-                      "a make_index() argument must be an indexed column, an expression or a partial-index WHERE");
-        static_assert((is_index_element_of_v<Cols, T> && ...),
-                      "all indexed columns must belong to the table the index is made for");
-    }
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    template<class T, class... Cols>
-    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
-                                                                                                      Cols... cols) {
-        using namespace ::sqlite_orm::internal;
-        validate_index_arguments<T, Cols...>();
-        return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
-    }
-
-    template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
-    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
-                                                                                                      Cols... cols) {
-        using namespace ::sqlite_orm::internal;
-        validate_index_arguments<T, Cols...>();
-        return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
-    }
-
-    template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
-    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
-    make_unique_index(std::string name, Cols... cols) {
-        using namespace ::sqlite_orm::internal;
-        validate_index_arguments<T, Cols...>();
-        return {std::move(name), true, std::tuple{make_indexed_column(std::move(cols))...}};
-    }
-}
-
 // #include "schema/constraints/primary_key.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -22371,6 +22253,9 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_column_primary_key_v = std::is_base_of<primary_key_t<>, T>::value;
+
+    template<class T>
+    constexpr bool is_autoincrement_pk_v = polyfill::is_specialization_of_v<T, primary_key_with_autoincrement>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -23868,7 +23753,7 @@ namespace sqlite_orm::internal {
             if constexpr (columnsCount > 0) {
                 ss << "(" << streaming_mapped_columns_expressions(statement._columns, context) << ")";
             }
-            if constexpr (polyfill::is_specialization_of<T, primary_key_with_autoincrement>::value) {
+            if constexpr (is_autoincrement_pk_v<T>) {
                 ss << " AUTOINCREMENT";
             }
             return ss.str();
@@ -24732,9 +24617,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class... Cols>
-    struct statement_serializer<index_t<T, Cols...>, void> {
-        using statement_type = index_t<T, Cols...>;
+    template<class Index>
+    struct statement_serializer<Index, std::enable_if_t<is_index<Index>::value>> {
+        using statement_type = Index;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -24744,7 +24629,7 @@ namespace sqlite_orm::internal {
             if (statement.unique) {
                 ss << "UNIQUE ";
             }
-            using indexed_type = typename statement_type::table_mapped_type;
+            using indexed_type = table_mapped_type_t<statement_type>;
             //  no `IF NOT EXISTS`: SQLite strips it from the statement text it stores in the schema table,
             //  and `schema_status()` compares that text with this serialization verbatim
             ss << "INDEX " << streaming_identifier(statement.name) << " ON "
@@ -24961,9 +24846,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... S>
-    struct statement_serializer<trigger_t<S...>, void> {
-        using statement_type = trigger_t<S...>;
+    template<class Trigger>
+    struct statement_serializer<Trigger, std::enable_if_t<is_trigger<Trigger>::value>> {
+        using statement_type = Trigger;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -25262,10 +25147,6 @@ namespace sqlite_orm::internal {
 
 // #include "row_extractor.h"
 
-// #include "schema/index.h"
-
-// #include "schema/triggers.h"
-
 // #include "schema/constraints/generated_always.h"
 // basic_generated_always
 // #include "cte_storage.h"
@@ -25460,6 +25341,10 @@ namespace sqlite_orm::internal {
             });
         }
 
+        //  note: deliberately taking `primary_key_t` by its own type rather than dispatching on `is_primary_key`:
+        //  a derived node such as `primary_key_with_autoincrement<primary_key_t<Cs...>>` binds to the base class and
+        //  shares its instantiation, whereas a constrained function template would instantiate this body once per
+        //  derived type
         template<class... Args>
         std::vector<std::string> table_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
             return create_from_tuple<std::vector<std::string>>(primaryKey._columns,
@@ -27262,8 +27147,8 @@ namespace sqlite_orm::internal {
             return sync_schema_result::already_in_sync;
         }
 
-        template<class T, class... S>
-        sync_schema_result schema_status(const trigger_t<T, S...>& trigger, sqlite3* db, bool, bool*) {
+        template<class Trigger, satisfies<is_trigger, Trigger> = true>
+        sync_schema_result schema_status(const Trigger& trigger, sqlite3* db, bool, bool*) {
             auto dbTriggerSql = this->retrieve_object_sql(db, "trigger", trigger.name);
             if (dbTriggerSql.empty()) {
                 return sync_schema_result::new_table_created;
@@ -27278,8 +27163,8 @@ namespace sqlite_orm::internal {
             return sync_schema_result::dropped_and_recreated;
         }
 
-        template<class... Cols>
-        sync_schema_result schema_status(const index_t<Cols...>& index, sqlite3* db, bool, bool*) {
+        template<class Index, satisfies<is_index, Index> = true>
+        sync_schema_result schema_status(const Index& index, sqlite3* db, bool, bool*) {
             auto dbIndexSql = this->retrieve_object_sql(db, "index", index.name);
             if (dbIndexSql.empty()) {
                 return sync_schema_result::new_table_created;
@@ -27439,8 +27324,8 @@ namespace sqlite_orm::internal {
             return res;
         }
 
-        template<class... Cols>
-        sync_schema_result sync_dbo(const index_t<Cols...>& index, sqlite3* db, bool preserve) {
+        template<class Index, satisfies<is_index, Index> = true>
+        sync_schema_result sync_dbo(const Index& index, sqlite3* db, bool preserve) {
             auto res = this->schema_status(index, db, preserve, nullptr);
             if (res != sync_schema_result::already_in_sync) {
                 if (res == sync_schema_result::dropped_and_recreated) {
@@ -27453,8 +27338,8 @@ namespace sqlite_orm::internal {
             return res;
         }
 
-        template<class... Cols>
-        sync_schema_result sync_dbo(const trigger_t<Cols...>& trigger, sqlite3* db, bool preserve) {
+        template<class Trigger, satisfies<is_trigger, Trigger> = true>
+        sync_schema_result sync_dbo(const Trigger& trigger, sqlite3* db, bool preserve) {
             auto res = this->schema_status(trigger, db, preserve, nullptr);
             if (res != sync_schema_result::already_in_sync) {
                 if (res == sync_schema_result::dropped_and_recreated) {
@@ -28754,6 +28639,139 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "schema/index.h"
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>  //  std::tuple, std::declval, std::tuple_element_t
+#include <string>  //  std::string
+#include <utility>  //  std::forward
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../tuple_helper/tuple_traits.h"
+
+// #include "../vocabulary/node_traits.h"
+
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause, is_index_element_of_v
+// #include "indexed_column.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#include <utility>  //  std::move
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../vocabulary/node_traits.h"
+
+// #include "../vocabulary/traits/structural_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    template<class C>
+    struct indexed_column_t {
+        using column_type = C;
+
+        column_type _column_or_expression;
+        std::string _collation_name;
+        int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
+
+        indexed_column_t<column_type> collate(std::string name) && {
+            _collation_name = std::move(name);
+            return std::move(*this);
+        }
+
+        indexed_column_t<column_type> asc() && {
+            _order = 1;
+            return std::move(*this);
+        }
+
+        indexed_column_t<column_type> desc() && {
+            _order = -1;
+            return std::move(*this);
+        }
+    };
+
+    template<class T>
+    constexpr bool is_indexed_column_v = polyfill::is_specialization_of<T, indexed_column_t>::value;
+
+    template<class C>
+    auto make_indexed_column(C col) {
+        if constexpr (is_indexed_column_v<C> || is_where_v<C>) {
+            return std::move(col);
+        } else {
+            return indexed_column_t<C>{std::move(col)};
+        }
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Use this function to specify indexed column inside `make_index` function call.
+     *  Example: make_index("index_name", indexed_column(&User::id).asc())
+     */
+    template<class C>
+    internal::indexed_column_t<C> indexed_column(C column_or_expression) {
+        return {std::move(column_or_expression)};
+    }
+}
+// make_indexed_column
+
+namespace sqlite_orm::internal {
+    struct index_base {
+        std::string name;
+        bool unique = false;
+    };
+
+    template<class T, class... Els>
+    struct index_t : index_base {
+        using elements_type = std::tuple<Els...>;
+        using object_type = void;
+        using table_mapped_type = T;
+
+        elements_type elements;
+    };
+
+    template<class T>
+    constexpr bool is_index_v = polyfill::is_specialization_of_v<T, index_t>;
+
+    template<class T, class... Cols>
+    constexpr void validate_index_arguments() {
+        static_assert(count_tuple<std::tuple<Cols...>, is_where>::value <= 1,
+                      "amount of where arguments can be 0 or 1");
+        static_assert(((is_where_v<Cols> || !is_statement_clause<Cols>::value) && ...),
+                      "a make_index() argument must be an indexed column, an expression or a partial-index WHERE");
+        static_assert((is_index_element_of_v<Cols, T> && ...),
+                      "all indexed columns must belong to the table the index is made for");
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    template<class T, class... Cols>
+    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
+                                                                                                      Cols... cols) {
+        using namespace ::sqlite_orm::internal;
+        validate_index_arguments<T, Cols...>();
+        return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
+    }
+
+    template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
+    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
+                                                                                                      Cols... cols) {
+        using namespace ::sqlite_orm::internal;
+        validate_index_arguments<T, Cols...>();
+        return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
+    }
+
+    template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
+    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
+    make_unique_index(std::string name, Cols... cols) {
+        using namespace ::sqlite_orm::internal;
+        validate_index_arguments<T, Cols...>();
+        return {std::move(name), true, std::tuple{make_indexed_column(std::move(cols))...}};
+    }
+}
+
 // #include "schema/triggers.h"
 
 // #include "schema/indexed_column.h"
@@ -29793,7 +29811,7 @@ namespace sqlite_orm::internal {
 namespace sqlite_orm::internal {
     template<class... Op>
     std::unique_ptr<std::string> column_constraints<Op...>::default_value() const {
-        static constexpr size_t default_op_index = find_tuple_template<constraints_type, default_t>::value;
+        static constexpr size_t default_op_index = find_tuple_element<constraints_type, is_default>::value;
 
         std::unique_ptr<std::string> value;
         if constexpr (default_op_index != std::tuple_size<constraints_type>::value) {

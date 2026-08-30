@@ -113,6 +113,9 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_column_primary_key_v = std::is_base_of<primary_key_t<>, T>::value;
+
+    template<class T>
+    constexpr bool is_autoincrement_pk_v = polyfill::is_specialization_of_v<T, primary_key_with_autoincrement>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

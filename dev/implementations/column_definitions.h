@@ -16,7 +16,7 @@
 namespace sqlite_orm::internal {
     template<class... Op>
     std::unique_ptr<std::string> column_constraints<Op...>::default_value() const {
-        static constexpr size_t default_op_index = find_tuple_template<constraints_type, default_t>::value;
+        static constexpr size_t default_op_index = find_tuple_element<constraints_type, is_default>::value;
 
         std::unique_ptr<std::string> value;
         if constexpr (default_op_index != std::tuple_size<constraints_type>::value) {

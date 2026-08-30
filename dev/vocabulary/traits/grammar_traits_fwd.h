@@ -58,11 +58,31 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_primary_key = std::bool_constant<is_primary_key_v<T>>;
 
+    /**
+     *  Nodes representing a PRIMARY KEY declared at a single column, i.e. carrying no column list of its own.
+     *
+     *  Note: there is deliberately no `is_table_primary_key` counterpart. A table-level PRIMARY KEY is
+     *  `is_primary_key_v` and not `is_column_primary_key_v`, and the asymmetry is load-bearing: admitting a
+     *  column PRIMARY KEY among the table elements is what lets `validate_base_table_definition()` diagnose it
+     *  as an empty table primary key rather than as an unrecognized table element.
+     */
     template<class T>
     extern const bool is_column_primary_key_v;
 
     template<class T>
     using is_column_primary_key = std::bool_constant<is_column_primary_key_v<T>>;
+
+    /**
+     *  Nodes carrying the AUTOINCREMENT keyword of a column primary key.
+     *
+     *  Note: AUTOINCREMENT only ever decorates a PRIMARY KEY, hence such a node is a primary key
+     *  in its own right - `is_primary_key_v` and `is_column_primary_key_v` hold for it as well.
+     */
+    template<class T>
+    extern const bool is_autoincrement_pk_v;
+
+    template<class T>
+    using is_autoincrement_pk = std::bool_constant<is_autoincrement_pk_v<T>>;
 
     template<class T>
     extern const bool is_foreign_key_v;

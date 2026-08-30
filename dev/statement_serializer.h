@@ -55,7 +55,6 @@
 #include "util.h"
 #include "error_code.h"
 #include "schema/triggers.h"
-#include "schema/index.h"
 #include "schema/constraints/primary_key.h"  // conflict_clause_t
 #include "schema/constraints/generated_always.h"  // basic_generated_always
 #include "vocabulary/node_algorithms.h"  // unwrap_expression
@@ -1446,7 +1445,7 @@ namespace sqlite_orm::internal {
             if constexpr (columnsCount > 0) {
                 ss << "(" << streaming_mapped_columns_expressions(statement._columns, context) << ")";
             }
-            if constexpr (polyfill::is_specialization_of<T, primary_key_with_autoincrement>::value) {
+            if constexpr (is_autoincrement_pk_v<T>) {
                 ss << " AUTOINCREMENT";
             }
             return ss.str();
@@ -2310,9 +2309,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class... Cols>
-    struct statement_serializer<index_t<T, Cols...>, void> {
-        using statement_type = index_t<T, Cols...>;
+    template<class Index>
+    struct statement_serializer<Index, std::enable_if_t<is_index<Index>::value>> {
+        using statement_type = Index;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -2322,7 +2321,7 @@ namespace sqlite_orm::internal {
             if (statement.unique) {
                 ss << "UNIQUE ";
             }
-            using indexed_type = typename statement_type::table_mapped_type;
+            using indexed_type = table_mapped_type_t<statement_type>;
             //  no `IF NOT EXISTS`: SQLite strips it from the statement text it stores in the schema table,
             //  and `schema_status()` compares that text with this serialization verbatim
             ss << "INDEX " << streaming_identifier(statement.name) << " ON "
@@ -2539,9 +2538,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... S>
-    struct statement_serializer<trigger_t<S...>, void> {
-        using statement_type = trigger_t<S...>;
+    template<class Trigger>
+    struct statement_serializer<Trigger, std::enable_if_t<is_trigger<Trigger>::value>> {
+        using statement_type = Trigger;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
