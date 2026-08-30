@@ -5937,8 +5937,9 @@ namespace sqlite_orm::internal {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
+#include <stdexcept>  //  std::domain_error
 #include <tuple>  //  std::make_tuple, std::tuple_size
-#include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
+#include <type_traits>  //  std::forward, std::is_base_of, std::enable_if, std::is_constant_evaluated
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
 #include <optional>  //  std::optional
@@ -9737,6 +9738,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                             X,
                                             internal::literal_holder<double>>
     likelihood(X x, double probability) {
+#if __cpp_lib_is_constant_evaluated >= 201811L
+        //  a probability outside [0.0, 1.0] makes SQLite reject the statement at prepare time;
+        //  when the call is constant-evaluated the error surfaces right here, at compile time
+        if (std::is_constant_evaluated() && !(probability >= 0.0 && probability <= 1.0)) {
+            throw std::domain_error("likelihood() probability must be a constant between 0.0 and 1.0");
+        }
+#endif
         return {std::tuple<X, internal::literal_holder<double>>{std::forward<X>(x), {probability}}};
     }
 

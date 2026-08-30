@@ -433,7 +433,8 @@ TEST_CASE("statement_serializer newer core functions") {
 #endif
 #if SQLITE_VERSION_NUMBER >= 3008001
     SECTION("LIKELIHOOD") {
-        auto expression = likelihood(20, 0.0625);
+        //  constexpr: an out-of-range probability would fail right here, at compile time
+        constexpr auto expression = likelihood(20, 0.0625);
         expected = "LIKELIHOOD(20, 0.0625)";
         value = serialize(expression, context);
     }
