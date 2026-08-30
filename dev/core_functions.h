@@ -2116,7 +2116,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                             X,
                                             internal::literal_holder<double>>
     likelihood(X x, double probability) {
-#if __cpp_lib_is_constant_evaluated >= 201811L
+#ifdef SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
         //  a probability outside [0.0, 1.0] makes SQLite reject the statement at prepare time;
         //  when the call is constant-evaluated the error surfaces right here, at compile time
         if (std::is_constant_evaluated() && !(probability >= 0.0 && probability <= 1.0)) {

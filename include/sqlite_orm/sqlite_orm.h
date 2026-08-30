@@ -347,6 +347,10 @@ using std::nullptr_t;
 #define SQLITE_ORM_CONSTEVAL constexpr
 #endif
 
+#if __cpp_lib_is_constant_evaluated >= 201811L
+#define SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
+#endif
+
 #if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
 #define SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #endif
@@ -9738,7 +9742,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                             X,
                                             internal::literal_holder<double>>
     likelihood(X x, double probability) {
-#if __cpp_lib_is_constant_evaluated >= 201811L
+#ifdef SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
         //  a probability outside [0.0, 1.0] makes SQLite reject the statement at prepare time;
         //  when the call is constant-evaluated the error surfaces right here, at compile time
         if (std::is_constant_evaluated() && !(probability >= 0.0 && probability <= 1.0)) {
