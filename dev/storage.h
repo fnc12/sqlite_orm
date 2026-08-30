@@ -1679,6 +1679,9 @@ namespace sqlite_orm::internal {
 
                 table.template for_each_column_excluding<mpl::disjunction<is_pkcolumn_q, is_generated_always_q>>(
                     [&table, &bindValue, &object](auto& column) {
+#ifdef SQLITE_ORM_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
+                        using table_type = polyfill::remove_cvref_t<decltype(table)>;
+#endif
                         if (!table_type::is_without_rowid::value &&
                             (is_single_table_primary_key(table, column) ||
                              (column.template is<is_default>() && table_primary_key_contains(table, column)))) {

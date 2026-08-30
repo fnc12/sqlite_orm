@@ -95,10 +95,9 @@ if (MSVC)
         add_compile_definitions(_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
     endif()
 
-    if ("${CMAKE_GENERATOR}" MATCHES "(Win64|x64)")
-        message(STATUS "Add /bigobj flag to compiler")
-        add_compile_options(/bigobj)
-    endif()
+    # note: some translation units exceed the object file section limit without `/bigobj`;
+    # this is independent of the target architecture
+    add_compile_options(/bigobj)
 endif()
 
 ucm_print_flags()

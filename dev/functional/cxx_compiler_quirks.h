@@ -66,6 +66,16 @@
 #define SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
 #endif
 
+// msvc 16.11 in C++20 mode fails to look up a type alias declared in an enclosing lambda if the use site is
+// inside a lambda nested in that lambda; a single lambda level is fine.
+// Depending on the complexity of the translation unit this surfaces either as C2653, or as an internal compiler
+// error reported at the end of the translation unit without a source location.
+// Remedy: redeclare the alias in the generic lambda that uses it.
+// Verified broken with 19.29, verified fixed with 19.44 and 19.51; the versions in between were not tested.
+#if defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1944)
+#define SQLITE_ORM_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
+#endif
+
 // overwrite SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #if (__cpp_nontype_template_args < 201911L) &&                                                                         \
     (defined(__clang__) && (__clang_major__ >= 12) && (__cplusplus >= 202002L))
