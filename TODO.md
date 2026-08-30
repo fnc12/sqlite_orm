@@ -48,5 +48,6 @@
 * PRAGMA wrappers: `foreign_key_check`, `foreign_key_list`, `table_list` (3.37), `index_list`/`index_info`/`index_xinfo`, `database_list`, `optimize` (3.18), `wal_checkpoint` (incl. `NOOP`, 3.51), `data_version`, `freelist_count`, `page_count`/`page_size`, `cache_size`, `mmap_size`, `temp_store`, `secure_delete`, `defer_foreign_keys`, `query_only`, `incremental_vacuum`, `analysis_limit` (3.32), `trusted_schema` (3.31), `hard_heap_limit` (3.31), `threads`, `case_sensitive_like`, `reverse_unordered_selects`
 * extension loading: `sqlite3_load_extension` / `sqlite3_enable_load_extension`, the `load_extension()` SQL function, and the `SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION` option that enables the C API while keeping the SQL function disabled (recommended for security)
 * session extension (changesets/patchsets, `sqlite3_changegroup`) — large
+* encryption support via the [SQLite Encryption Extension (SEE)](https://sqlite.org/com/see.html) (`sqlite3_key`/`sqlite3_rekey`), incl. compatible implementations like SQLCipher (`PRAGMA key`) — see #1445
 
 Please feel free to add any feature that isn't listed here and not implemented yet.
