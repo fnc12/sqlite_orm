@@ -382,6 +382,18 @@ TEST_CASE("statement_serializer core functions") {
         }
         value = serialize(expression, context);
     }
+#if SQLITE_VERSION_NUMBER >= 3034000
+    SECTION("SUBSTRING(X,Y)") {
+        constexpr auto expression = substring("Zara", 2);
+        expected = "SUBSTRING('Zara', 2)";
+        value = serialize(expression, context);
+    }
+    SECTION("SUBSTRING(X,Y,Z)") {
+        constexpr auto expression = substring("Natasha", 3, 2);
+        expected = "SUBSTRING('Natasha', 3, 2)";
+        value = serialize(expression, context);
+    }
+#endif
     SECTION("SOUNDEX") {
 #ifdef SQLITE_SOUNDEX
         constexpr auto expression = soundex("Vaso");
