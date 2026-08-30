@@ -1376,8 +1376,16 @@ TEST_CASE("iif") {
 #if SQLITE_VERSION_NUMBER >= 3034000
 TEST_CASE("substring") {
     auto storage = make_storage({});
-    auto rows = storage.select(columns(substring("SQLite substring", 8), substring("SQLite substring", 1, 6)));
-    decltype(rows) expected{{"substring", "SQLite"}};
+    std::vector<std::string> rows;
+    decltype(rows) expected;
+    SECTION("start only") {
+        rows = storage.select(substring("SQLite substring", 8));
+        expected = {"substring"};
+    }
+    SECTION("start and length") {
+        rows = storage.select(substring("SQLite substring", 1, 6));
+        expected = {"SQLite"};
+    }
     REQUIRE(rows == expected);
 }
 #endif
