@@ -7991,17 +7991,11 @@ namespace sqlite_orm::internal {
     };
 
 #if SQLITE_VERSION_NUMBER >= 3008001
-    struct likelihood_string {
-        std::string_view serialize() const {
-            return "LIKELIHOOD";
-        }
-    };
+    //  tag only; the serialization lives in the statement serializer
+    struct likelihood_t {};
 
-    struct unlikely_string {
-        std::string_view serialize() const {
-            return "UNLIKELY";
-        }
-    };
+    //  tag only; the serialization lives in the statement serializer
+    struct unlikely_t {};
 #endif
 
 #if SQLITE_VERSION_NUMBER >= 3008003
@@ -8013,11 +8007,8 @@ namespace sqlite_orm::internal {
 #endif
 
 #if SQLITE_VERSION_NUMBER >= 3008006
-    struct likely_string {
-        std::string_view serialize() const {
-            return "LIKELY";
-        }
-    };
+    //  tag only; the serialization lives in the statement serializer
+    struct likely_t {};
 #endif
 
 #if SQLITE_VERSION_NUMBER >= 3032000
@@ -9742,7 +9733,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class X>
     constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>,
-                                            internal::likelihood_string,
+                                            internal::likelihood_t,
                                             X,
                                             internal::literal_holder<double>>
     likelihood(X x, double probability) {
@@ -9753,8 +9744,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  UNLIKELY(X) function https://www.sqlite.org/lang_corefunc.html#unlikely
      */
     template<class X>
-    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>, internal::unlikely_string, X>
-    unlikely(X x) {
+    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>, internal::unlikely_t, X> unlikely(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
@@ -9774,7 +9764,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  LIKELY(X) function https://www.sqlite.org/lang_corefunc.html#likely
      */
     template<class X>
-    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>, internal::likely_string, X> likely(X x) {
+    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>, internal::likely_t, X> likely(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
@@ -23206,6 +23196,49 @@ namespace sqlite_orm::internal {
     template<class R, class S, class... Args>
     struct statement_serializer<built_in_aggregate_function_t<R, S, Args...>, void>
         : statement_serializer<built_in_function_t<R, S, Args...>, void> {};
+
+#if SQLITE_VERSION_NUMBER >= 3008001
+    template<class R, class... Args>
+    struct statement_serializer<built_in_function_t<R, likelihood_t, Args...>, void> {
+        using statement_type = built_in_function_t<R, likelihood_t, Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << "LIKELIHOOD(" << streaming_expressions_tuple(statement.args, context) << ")";
+            return ss.str();
+        }
+    };
+
+    template<class R, class... Args>
+    struct statement_serializer<built_in_function_t<R, unlikely_t, Args...>, void> {
+        using statement_type = built_in_function_t<R, unlikely_t, Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << "UNLIKELY(" << streaming_expressions_tuple(statement.args, context) << ")";
+            return ss.str();
+        }
+    };
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3008006
+    template<class R, class... Args>
+    struct statement_serializer<built_in_function_t<R, likely_t, Args...>, void> {
+        using statement_type = built_in_function_t<R, likely_t, Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << "LIKELY(" << streaming_expressions_tuple(statement.args, context) << ")";
+            return ss.str();
+        }
+    };
+#endif
 
     template<class F, class... CallArgs>
     struct statement_serializer<function_call<F, CallArgs...>, void> {

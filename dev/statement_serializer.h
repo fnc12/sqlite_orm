@@ -734,6 +734,49 @@ namespace sqlite_orm::internal {
     struct statement_serializer<built_in_aggregate_function_t<R, S, Args...>, void>
         : statement_serializer<built_in_function_t<R, S, Args...>, void> {};
 
+#if SQLITE_VERSION_NUMBER >= 3008001
+    template<class R, class... Args>
+    struct statement_serializer<built_in_function_t<R, likelihood_t, Args...>, void> {
+        using statement_type = built_in_function_t<R, likelihood_t, Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << "LIKELIHOOD(" << streaming_expressions_tuple(statement.args, context) << ")";
+            return ss.str();
+        }
+    };
+
+    template<class R, class... Args>
+    struct statement_serializer<built_in_function_t<R, unlikely_t, Args...>, void> {
+        using statement_type = built_in_function_t<R, unlikely_t, Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << "UNLIKELY(" << streaming_expressions_tuple(statement.args, context) << ")";
+            return ss.str();
+        }
+    };
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3008006
+    template<class R, class... Args>
+    struct statement_serializer<built_in_function_t<R, likely_t, Args...>, void> {
+        using statement_type = built_in_function_t<R, likely_t, Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << "LIKELY(" << streaming_expressions_tuple(statement.args, context) << ")";
+            return ss.str();
+        }
+    };
+#endif
+
     template<class F, class... CallArgs>
     struct statement_serializer<function_call<F, CallArgs...>, void> {
         using statement_type = function_call<F, CallArgs...>;
