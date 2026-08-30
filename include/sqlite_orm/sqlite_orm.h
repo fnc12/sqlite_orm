@@ -18733,7 +18733,7 @@ namespace sqlite_orm::internal {
         std::tuple<const streaming<stream_as::column_constraints>&, const column_constraints<Op...>&, const bool&, Ctx>
             tpl) {
         const auto& column = std::get<1>(tpl);
-        const bool& isNotNull = std::get<2>(tpl);
+        [[maybe_unused]] const bool& isNotNull = std::get<2>(tpl);
         auto& context = std::get<3>(tpl);
 
         using constraints_tuple = decltype(column.constraints);
@@ -22946,7 +22946,9 @@ namespace sqlite_orm::internal {
     };
 
     template<class Tuple, class Ctx>
-    void serialize_over_arguments(std::stringstream& ss, const Tuple& arguments, const Ctx& context) {
+    void serialize_over_arguments(std::stringstream& ss,
+                                  [[maybe_unused]] const Tuple& arguments,
+                                  [[maybe_unused]] const Ctx& context) {
         if constexpr (std::tuple_size_v<Tuple> == 0) {
             ss << " OVER ()";
         } else if constexpr (std::tuple_size_v<Tuple> == 1 && is_window_ref_v<std::tuple_element_t<0, Tuple>>) {

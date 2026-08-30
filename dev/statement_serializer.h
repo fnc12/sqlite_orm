@@ -550,7 +550,9 @@ namespace sqlite_orm::internal {
     };
 
     template<class Tuple, class Ctx>
-    void serialize_over_arguments(std::stringstream& ss, const Tuple& arguments, const Ctx& context) {
+    void serialize_over_arguments(std::stringstream& ss,
+                                  [[maybe_unused]] const Tuple& arguments,
+                                  [[maybe_unused]] const Ctx& context) {
         if constexpr (std::tuple_size_v<Tuple> == 0) {
             ss << " OVER ()";
         } else if constexpr (std::tuple_size_v<Tuple> == 1 && is_window_ref_v<std::tuple_element_t<0, Tuple>>) {
