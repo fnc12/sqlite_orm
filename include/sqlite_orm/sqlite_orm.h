@@ -8014,6 +8014,14 @@ namespace sqlite_orm::internal {
     };
 #endif
 
+#if SQLITE_VERSION_NUMBER >= 3034000
+    struct substring_string {
+        std::string_view serialize() const {
+            return "SUBSTRING";
+        }
+    };
+#endif
+
 #if SQLITE_VERSION_NUMBER >= 3035000
     struct sign_string {
         std::string_view serialize() const {
@@ -9567,6 +9575,24 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     constexpr internal::built_in_function_t<std::string, internal::substr_string, X, Y, Z> substr(X x, Y y, Z z) {
         return {std::tuple<X, Y, Z>{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
     }
+
+#if SQLITE_VERSION_NUMBER >= 3034000
+    /**
+     *  SUBSTRING(X,Y) function https://www.sqlite.org/lang_corefunc.html#substr
+     */
+    template<class X, class Y>
+    constexpr internal::built_in_function_t<std::string, internal::substring_string, X, Y> substring(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+
+    /**
+     *  SUBSTRING(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#substr
+     */
+    template<class X, class Y, class Z>
+    constexpr internal::built_in_function_t<std::string, internal::substring_string, X, Y, Z> substring(X x, Y y, Z z) {
+        return {std::tuple<X, Y, Z>{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
+    }
+#endif
 
 #ifdef SQLITE_SOUNDEX
     /**
