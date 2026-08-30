@@ -3,12 +3,13 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>
 #include <tuple>
-#include <type_traits>  //  std::is_member_pointer_v
+#include <type_traits>  //  std::is_member_pointer_v, std::is_same, std::is_base_of
 #endif
 
 #include "../optional_container.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 // NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
@@ -19,6 +20,12 @@
 namespace sqlite_orm::internal {
     enum class trigger_timing { trigger_before, trigger_after, trigger_instead_of };
     enum class trigger_type { trigger_delete, trigger_insert, trigger_update };
+
+    template<class T>
+    constexpr bool is_trigger_timing_v = std::is_same<T, trigger_timing>::value;
+
+    template<class T>
+    constexpr bool is_trigger_event_v = std::is_same<T, trigger_type>::value;
 
     /**
      *  This class is an intermediate SQLite trigger, to be used with
@@ -133,6 +140,9 @@ namespace sqlite_orm::internal {
         }
     };
 
+    template<class T>
+    constexpr bool is_trigger_spec_v = polyfill::is_specialization_of_v<T, trigger_base_t>;
+
     /**
      *  Contains the trigger type and timing
      */
@@ -156,6 +166,9 @@ namespace sqlite_orm::internal {
         }
     };
 
+    template<class T>
+    constexpr bool is_trigger_event_spec_v = std::is_base_of<trigger_type_base_t, T>::value;
+
     /**
      *  Special case for UPDATE OF (columns)
      *  Contains the trigger type and timing
@@ -178,6 +191,9 @@ namespace sqlite_orm::internal {
             return {*this};
         }
     };
+
+    template<class T>
+    constexpr bool is_trigger_update_of_v = polyfill::is_specialization_of_v<T, trigger_update_type_t>;
 
     struct trigger_timing_t {
         trigger_timing timing;
@@ -216,11 +232,20 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
+    constexpr bool is_raise_v = std::is_same<T, raise_t>::value;
+
+    template<class T>
     struct new_t {
         using expression_type = T;
 
         expression_type expression;
     };
+
+    template<class T>
+    constexpr bool is_new_row_ref_v = polyfill::is_specialization_of_v<T, new_t>;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_new_row_ref_v<T>>> = true;
 
     template<class T>
     struct old_t {
@@ -230,11 +255,10 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool
-        is_operator_argument_v<T,
-                               std::enable_if_t<std::disjunction<polyfill::is_specialization_of<T, new_t>,
-                                                                 polyfill::is_specialization_of<T, old_t>>::value>> =
-            true;
+    constexpr bool is_old_row_ref_v = polyfill::is_specialization_of_v<T, old_t>;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_old_row_ref_v<T>>> = true;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
