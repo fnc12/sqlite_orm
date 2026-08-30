@@ -1373,6 +1373,22 @@ TEST_CASE("iif") {
 }
 #endif
 
+#if SQLITE_VERSION_NUMBER >= 3034000
+TEST_CASE("substring") {
+    auto storage = make_storage({});
+    SECTION("start only") {
+        auto rows = storage.select(substring("SQLite substring", 8));
+        decltype(rows) expected{"substring"};
+        REQUIRE(rows == expected);
+    }
+    SECTION("start and length") {
+        auto rows = storage.select(substring("SQLite substring", 1, 6));
+        decltype(rows) expected{"SQLite"};
+        REQUIRE(rows == expected);
+    }
+}
+#endif
+
 #if SQLITE_VERSION_NUMBER >= 3035000
 TEST_CASE("sign") {
     auto storage = make_storage({});
