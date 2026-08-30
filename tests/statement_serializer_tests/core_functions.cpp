@@ -431,6 +431,25 @@ TEST_CASE("statement_serializer newer core functions") {
         value = serialize(expression, context);
     }
 #endif
+#if SQLITE_VERSION_NUMBER >= 3008001
+    SECTION("LIKELIHOOD") {
+        auto expression = likelihood(20, 0.0625);
+        expected = "LIKELIHOOD(20, 0.0625)";
+        value = serialize(expression, context);
+    }
+    SECTION("UNLIKELY") {
+        auto expression = unlikely(20);
+        expected = "UNLIKELY(20)";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3008006
+    SECTION("LIKELY") {
+        auto expression = likely(20);
+        expected = "LIKELY(20)";
+        value = serialize(expression, context);
+    }
+#endif
 #if SQLITE_VERSION_NUMBER >= 3035000
     SECTION("SIGN") {
         auto expression = sign(-3);

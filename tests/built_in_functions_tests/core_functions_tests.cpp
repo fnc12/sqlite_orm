@@ -1373,6 +1373,40 @@ TEST_CASE("iif") {
 }
 #endif
 
+#if SQLITE_VERSION_NUMBER >= 3008006
+TEST_CASE("planner hints") {
+    struct User {
+        int id = 0;
+    };
+    auto storage = make_storage("", make_table("users", make_column("id", &User::id, primary_key())));
+    storage.sync_schema();
+    storage.replace(User{7});
+
+    std::vector<int> rows;
+    decltype(rows) expected;
+    SECTION("likely") {
+        rows = storage.select(likely(&User::id));
+        expected = {7};
+    }
+    SECTION("unlikely") {
+        rows = storage.select(unlikely(&User::id));
+        expected = {7};
+    }
+    SECTION("likelihood") {
+        rows = storage.select(likelihood(&User::id, 0.9375));
+        expected = {7};
+    }
+    //  the probability is serialized as a literal while other values still bind:
+    //  SQLite rejects preparing a statement whose probability is a bound parameter
+    SECTION("likelihood in a prepared statement with bound parameters") {
+        auto statement = storage.prepare(select(likelihood(&User::id, 0.0625), where(c(&User::id) > 0)));
+        rows = storage.execute(statement);
+        expected = {7};
+    }
+    REQUIRE(rows == expected);
+}
+#endif
+
 #if SQLITE_VERSION_NUMBER >= 3034000
 TEST_CASE("substring") {
     auto storage = make_storage({});
