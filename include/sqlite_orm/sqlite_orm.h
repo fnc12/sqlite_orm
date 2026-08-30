@@ -27762,6 +27762,10 @@ namespace sqlite_orm::internal {
 
                 table.template for_each_column_excluding<mpl::disjunction<is_pkcolumn_q, is_generated_always_q>>(
                     [&table, &bindValue, &object](auto& column) {
+                        // note: msvc 16.11 in C++20 mode fails to look up `table_type` from a lambda nested inside
+                        // another lambda; a single lambda level is fine, which is why the same pattern in the
+                        // statement serializers is unaffected
+                        using table_type = polyfill::remove_cvref_t<decltype(table)>;
                         if (!table_type::is_without_rowid::value &&
                             (is_single_table_primary_key(table, column) ||
                              (column.template is<is_default>() && table_primary_key_contains(table, column)))) {
