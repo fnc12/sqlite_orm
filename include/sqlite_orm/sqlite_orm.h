@@ -7953,6 +7953,40 @@ namespace sqlite_orm::internal {
 
 #endif
 
+    struct sqlite_version_string {
+        std::string_view serialize() const {
+            return "SQLITE_VERSION";
+        }
+    };
+
+    struct sqlite_source_id_string {
+        std::string_view serialize() const {
+            return "SQLITE_SOURCE_ID";
+        }
+    };
+
+#ifndef SQLITE_OMIT_COMPILEOPTION_DIAGS
+    struct sqlite_compileoption_used_string {
+        std::string_view serialize() const {
+            return "SQLITE_COMPILEOPTION_USED";
+        }
+    };
+
+    struct sqlite_compileoption_get_string {
+        std::string_view serialize() const {
+            return "SQLITE_COMPILEOPTION_GET";
+        }
+    };
+#endif
+
+#ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
+    struct sqlite_offset_string {
+        std::string_view serialize() const {
+            return "SQLITE_OFFSET";
+        }
+    };
+#endif
+
     struct coalesce_string {
         std::string_view serialize() const {
             return "COALESCE";
@@ -9584,6 +9618,55 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     constexpr internal::built_in_function_t<int, internal::random_string> random() {
         return {{}};
+    }
+#endif
+
+    /**
+     *  SQLITE_VERSION() function https://www.sqlite.org/lang_corefunc.html#sqlite_version
+     */
+    constexpr internal::built_in_function_t<std::string, internal::sqlite_version_string> sqlite_version() {
+        return {{}};
+    }
+
+    /**
+     *  SQLITE_SOURCE_ID() function https://www.sqlite.org/lang_corefunc.html#sqlite_source_id
+     */
+    constexpr internal::built_in_function_t<std::string, internal::sqlite_source_id_string> sqlite_source_id() {
+        return {{}};
+    }
+
+#ifndef SQLITE_OMIT_COMPILEOPTION_DIAGS
+    /**
+     *  SQLITE_COMPILEOPTION_USED(X) function https://www.sqlite.org/lang_corefunc.html#sqlite_compileoption_used
+     */
+    template<class X>
+    constexpr internal::built_in_function_t<int, internal::sqlite_compileoption_used_string, X>
+    sqlite_compileoption_used(X option) {
+        return {std::tuple<X>{std::forward<X>(option)}};
+    }
+
+    /**
+     *  SQLITE_COMPILEOPTION_GET(N) function https://www.sqlite.org/lang_corefunc.html#sqlite_compileoption_get
+     */
+    template<class N>
+    constexpr internal::built_in_function_t<std::unique_ptr<std::string>, internal::sqlite_compileoption_get_string, N>
+    sqlite_compileoption_get(N n) {
+        return {std::tuple<N>{std::forward<N>(n)}};
+    }
+#endif
+
+#ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
+    /**
+     *  SQLITE_OFFSET(X) function https://www.sqlite.org/lang_corefunc.html#sqlite_offset
+     *
+     *  Only available if the linked SQLite is compiled with SQLITE_ENABLE_OFFSET_SQL_FUNC.
+     */
+    template<class C>
+    constexpr internal::built_in_function_t<std::unique_ptr<int64>, internal::sqlite_offset_string, C>
+    sqlite_offset(C column) {
+        static_assert(polyfill::disjunction<std::is_member_pointer<C>, internal::is_column_pointer<C>>::value,
+                      "sqlite_offset() argument must be a column");
+        return {std::tuple<C>{std::forward<C>(column)}};
     }
 #endif
 

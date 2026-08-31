@@ -1099,6 +1099,15 @@ int main(int, char** argv) {
     cout << "likelihood(42, 0.0625) = " << storage.select(likelihood(42, 0.0625)).front() << endl;
 #endif
 
+    //  SELECT sqlite_version();
+    cout << "sqlite_version() = " << storage.select(sqlite_version()).front() << endl;
+
+#ifndef SQLITE_OMIT_COMPILEOPTION_DIAGS
+    //  SELECT sqlite_compileoption_used('THREADSAFE');
+    cout << "sqlite_compileoption_used('THREADSAFE') = "
+         << storage.select(sqlite_compileoption_used("THREADSAFE")).front() << endl;
+#endif
+
     //  SELECT hex(67);
     cout << "hex(67) = " << storage.select(hex(67)).front() << endl;
 
