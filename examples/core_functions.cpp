@@ -1092,6 +1092,13 @@ int main(int, char** argv) {
          << endl;
 #endif
 
+#if SQLITE_VERSION_NUMBER >= 3008006
+    //  SELECT likely(42), unlikely(42), likelihood(42, 0.0625) -- planner hints, pass the value through
+    cout << "likely(42) = " << storage.select(likely(42)).front() << endl;
+    cout << "unlikely(42) = " << storage.select(unlikely(42)).front() << endl;
+    cout << "likelihood(42, 0.0625) = " << storage.select(likelihood(42, 0.0625)).front() << endl;
+#endif
+
     //  SELECT hex(67);
     cout << "hex(67) = " << storage.select(hex(67)).front() << endl;
 
