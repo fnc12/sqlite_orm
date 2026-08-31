@@ -236,6 +236,16 @@ using std::nullptr_t;
 #define SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
 #endif
 
+// msvc 16.11 in C++20 mode fails to look up a type alias declared in an enclosing lambda if the use site is
+// inside a lambda nested in that lambda; a single lambda level is fine.
+// Depending on the complexity of the translation unit this surfaces either as C2653, or as an internal compiler
+// error reported at the end of the translation unit without a source location.
+// Remedy: redeclare the alias in the generic lambda that uses it.
+// Verified broken with 19.29, verified fixed with 19.44 and 19.51; the versions in between were not tested.
+#if defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1944)
+#define SQLITE_ORM_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
+#endif
+
 // overwrite SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #if (__cpp_nontype_template_args < 201911L) &&                                                                         \
     (defined(__clang__) && (__clang_major__ >= 12) && (__cplusplus >= 202002L))
@@ -18812,7 +18822,7 @@ namespace sqlite_orm::internal {
         std::tuple<const streaming<stream_as::column_constraints>&, const column_constraints<Op...>&, const bool&, Ctx>
             tpl) {
         const auto& column = std::get<1>(tpl);
-        const bool& isNotNull = std::get<2>(tpl);
+        [[maybe_unused]] const bool& isNotNull = std::get<2>(tpl);
         auto& context = std::get<3>(tpl);
 
         using constraints_tuple = decltype(column.constraints);
@@ -23025,11 +23035,19 @@ namespace sqlite_orm::internal {
     };
 
     template<class Tuple, class Ctx>
-    void serialize_over_arguments(std::stringstream& ss, const Tuple& arguments, const Ctx& context) {
-        if constexpr (std::tuple_size<Tuple>::value == 0) {
+    void serialize_over_arguments(std::stringstream& ss,
+                                  [[maybe_unused]] const Tuple& arguments,
+                                  [[maybe_unused]] const Ctx& context) {
+        if constexpr (std::tuple_size_v<Tuple> == 0) {
             ss << " OVER ()";
-        } else if constexpr (std::tuple_size<Tuple>::value == 1 && is_window_ref_v<std::tuple_element_t<0, Tuple>>) {
-            ss << " OVER " << std::get<0>(arguments).name;
+        } else if constexpr (std::tuple_size_v<Tuple> == 1 && is_window_ref_v<std::tuple_element_t<0, Tuple>>) {
+            //  note: msvc 141 resolves a `std::get<0>` at parse time, even here in a branch it has already ruled
+            //  out for an empty argument tuple, and forming that call trips the "tuple index out of bounds"
+            //  static_assert in `std::tuple_element`. Hoisting the index into a constexpr value defers the call
+            //  to instantiation time; the same remedy as b. of SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR,
+            //  although that quirk is about alias templates rather than calls.
+            constexpr size_t windowRefIndex = 0;
+            ss << " OVER " << std::get<windowRefIndex>(arguments).name;
         } else {
             ss << " OVER (" << streaming_actions_tuple(arguments, context) << ")";
         }
@@ -27894,6 +27912,9 @@ namespace sqlite_orm::internal {
 
                 table.template for_each_column_excluding<mpl::disjunction<is_pkcolumn_q, is_generated_always_q>>(
                     [&table, &bindValue, &object](auto& column) {
+#ifdef SQLITE_ORM_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
+                        using table_type = polyfill::remove_cvref_t<decltype(table)>;
+#endif
                         if (!table_type::is_without_rowid::value &&
                             (is_single_table_primary_key(table, column) ||
                              (column.template is<is_default>() && table_primary_key_contains(table, column)))) {
