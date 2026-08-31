@@ -8,8 +8,10 @@
 #include <type_traits>  //  std::false_type, std::true_type
 #endif
 
+#include "../type_traits.h"
 #include "../tuple_helper/tuple_traits.h"
 #include "../table_name_collector.h"
+#include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
     template<class T, class L>
@@ -45,8 +47,8 @@ namespace sqlite_orm::internal {
         dynamic_set_t& operator=(const dynamic_set_t& other) = default;
         dynamic_set_t& operator=(dynamic_set_t&& other) = default;
 
-        template<class L, class R>
-        void push_back(assign_t<L, R> assign) {
+        template<class T, satisfies<is_assign, T> = true>
+        void push_back(T assign) {
             auto newContext = this->context;
             newContext.omit_table_name = true;
             // note: we are only interested in the table name on the left-hand side of the assignment operator expression

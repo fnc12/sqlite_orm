@@ -99,6 +99,18 @@ TEST_CASE("statement clause classification and order are computed at compile tim
         STATIC_REQUIRE_FALSE(internal::is_order_by<Where>::value);
         STATIC_REQUIRE_FALSE(internal::is_order_by<Limit>::value);
         STATIC_REQUIRE_FALSE(internal::is_order_by<decltype(c(&User::id) > 0)>::value);
+        //  an ORDER BY that is not a single ordering term cannot be nested in a multi ORDER BY
+        STATIC_REQUIRE_FALSE(internal::is_order_by<decltype(multi_order_by(order_by(&User::id)))>::value);
+        STATIC_REQUIRE_FALSE(internal::is_order_by<decltype(dynamic_order_by(make_storage("")))>::value);
+    }
+    //  the three spellings of the one ORDER BY clause production
+    SECTION("every ORDER BY spelling is an ORDER BY clause") {
+        STATIC_REQUIRE(internal::is_any_order_by<OrderBy>::value);
+        STATIC_REQUIRE(internal::is_multi_order_by<decltype(multi_order_by(order_by(&User::id)))>::value);
+        STATIC_REQUIRE(internal::is_any_order_by<decltype(multi_order_by(order_by(&User::id)))>::value);
+        STATIC_REQUIRE(internal::is_dynamic_order_by<decltype(dynamic_order_by(make_storage("")))>::value);
+        STATIC_REQUIRE(internal::is_any_order_by<decltype(dynamic_order_by(make_storage("")))>::value);
+        STATIC_REQUIRE_FALSE(internal::is_any_order_by<Where>::value);
     }
 }
 

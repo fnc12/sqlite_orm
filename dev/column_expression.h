@@ -9,6 +9,7 @@
 #include "functional/mpl.h"
 #include "type_traits.h"
 #include "tuple_helper/tuple_transformer.h"
+#include "vocabulary/node_traits.h"
 #include "ast/result_columns.h"
 #include "alias.h"
 #include "storage_traits.h"
@@ -64,21 +65,22 @@ namespace sqlite_orm::internal {
      *  Resolve all columns of a mapped object or CTE.
      *  asterisk_t<O> -> tuple<ColExpr...>
      */
-    template<class DBOs, class E>
+    template<class DBOs, class T>
     struct column_expression_type<
         DBOs,
-        asterisk_t<E>,
-        std::enable_if_t<std::disjunction<std::negation<is_recordset_alias<E>>, is_cte_moniker<E>>::value>>
-        : storage_traits::storage_mapped_column_expressions<DBOs, E> {};
+        T,
+        std::enable_if_t<is_asterisk_v<T> &&
+                         std::disjunction_v<std::negation<is_recordset_alias<type_t<T>>>, is_cte_moniker<type_t<T>>>>>
+        : storage_traits::storage_mapped_column_expressions<DBOs, type_t<T>> {};
 
     /**
      *  Resolve all columns of an aliased object.
      *  asterisk_t<Alias> -> tuple<alias_column_t<Alias, ColExpr>...>
      */
-    template<class DBOs, class A>
-    struct column_expression_type<DBOs, asterisk_t<A>, match_if<is_table_alias, A>>
-        : tuple_transformer<typename storage_traits::storage_mapped_column_expressions<DBOs, type_t<A>>::type,
-                            add_column_alias<A>::template apply_t> {};
+    template<class DBOs, class T>
+    struct column_expression_type<DBOs, T, std::enable_if_t<is_asterisk_v<T> && is_table_alias_v<type_t<T>>>>
+        : tuple_transformer<typename storage_traits::storage_mapped_column_expressions<DBOs, type_t<type_t<T>>>::type,
+                            add_column_alias<type_t<T>>::template apply_t> {};
 
     /**
      *  Resolve multiple columns.

@@ -40,8 +40,8 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr void validate_select_clauses() {
         static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
-        static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
-        static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
+        static_assert(count_tuple<T, is_any_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
+        static_assert(count_tuple<T, is_any_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
         static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
         static_assert(count_tuple<T, is_any_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
         static_assert(std::tuple_size<T>::value == count_tuple<T, is_select_clause>::value,

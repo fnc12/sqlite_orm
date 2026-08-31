@@ -15,6 +15,7 @@
 #include "functional/mpl/conditional.h"
 #include "functional/is_base_template_of.h"
 #include "tuple_helper/tuple_traits.h"
+#include "type_traits.h"
 #include "conditions.h"
 #include "operators.h"
 #include "literal.h"  // literal_holder
@@ -68,17 +69,14 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class C>
-    struct where_t;
-
     template<class R, class S, class... Args>
     struct built_in_aggregate_function_t : built_in_function_t<R, S, Args...> {
         using super = built_in_function_t<R, S, Args...>;
 
         using super::super;
 
-        template<class W>
-        filtered_aggregate_function<built_in_aggregate_function_t<R, S, Args...>, W> filter(where_t<W> wh) {
+        template<class Wh, satisfies<is_where, Wh> = true>
+        filtered_aggregate_function<built_in_aggregate_function_t, expression_type_t<Wh>> filter(Wh wh) {
             return {*this, std::move(wh.expression)};
         }
 
@@ -339,8 +337,8 @@ namespace sqlite_orm::internal {
     struct count_asterisk_t : count_string {
         using type = T;
 
-        template<class W>
-        filtered_aggregate_function<count_asterisk_t<T>, W> filter(where_t<W> wh) {
+        template<class Wh, satisfies<is_where, Wh> = true>
+        filtered_aggregate_function<count_asterisk_t<T>, expression_type_t<Wh>> filter(Wh wh) {
             return {*this, std::move(wh.expression)};
         }
 
@@ -2620,17 +2618,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
-        template<class T,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, T>, is_operator_argument<T>>::value,
-                                  bool> = true>
+        template<
+            class T,
+            std::enable_if_t<std::disjunction<is_arithmetic_operand<T>, is_operator_argument<T>>::value, bool> = true>
         constexpr unary_minus_t<unwrap_expression_t<T>> operator-(T arg) {
             return {unwrap_expression(std::forward<T>(arg))};
         }
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -2640,8 +2638,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -2651,8 +2649,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -2662,8 +2660,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -2673,8 +2671,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -2682,17 +2680,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
-        template<class T,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, T>, is_operator_argument<T>>::value,
-                                  bool> = true>
+        template<
+            class T,
+            std::enable_if_t<std::disjunction<is_arithmetic_operand<T>, is_operator_argument<T>>::value, bool> = true>
         constexpr bitwise_not_t<unwrap_expression_t<T>> operator~(T arg) {
             return {unwrap_expression(std::forward<T>(arg))};
         }
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -2702,8 +2700,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -2713,8 +2711,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -2724,8 +2722,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -2756,7 +2754,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class CP, class X, class Y, class Z>
         requires (internal::hidden_column_of_vtab<CP, fts5>)
-    constexpr internal::highlight_t<typename CP::type, X, Y, Z> highlight(const CP& /*theAnyField*/, X x, Y y, Z z) {
+    constexpr internal::highlight_t<internal::type_t<CP>, X, Y, Z> highlight(const CP& /*theAnyField*/, X x, Y y, Z z) {
         return {std::move(x), std::move(y), std::move(z)};
     }
 
@@ -2780,7 +2778,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class Y,
              class Z,
              std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
-    constexpr internal::highlight_t<typename CP::type, X, Y, Z> highlight(const CP& /*theAnyField*/, X x, Y y, Z z) {
+    constexpr internal::highlight_t<internal::type_t<CP>, X, Y, Z> highlight(const CP& /*theAnyField*/, X x, Y y, Z z) {
         return {std::move(x), std::move(y), std::move(z)};
     }
 

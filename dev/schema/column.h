@@ -16,6 +16,7 @@
 #include "../type_is_nullable.h"
 #include "column_identifier.h"
 #include "../vocabulary/node_algorithms.h"
+#include "../vocabulary/node_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
@@ -110,9 +111,9 @@ namespace sqlite_orm::internal {
         using type = void;
     };
 
-    template<class G, class S, class... Op>
-    struct column_field_expression<column_t<G, S, Op...>, void> {
-        using type = typename column_t<G, S, Op...>::member_pointer_t;
+    template<class T>
+    struct column_field_expression<T, match_if<is_column, T>> {
+        using type = typename T::member_pointer_t;
     };
 
     template<typename T>

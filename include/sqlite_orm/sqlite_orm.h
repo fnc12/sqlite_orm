@@ -2010,6 +2010,9 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_where = std::bool_constant<is_where_v<T>>;
 
+    /**
+     *  Nodes carrying a single ordering term, which is the argument a multi ORDER BY is composed of.
+     */
     template<class T>
     extern const bool is_order_by_v;
 
@@ -2017,10 +2020,35 @@ namespace sqlite_orm::internal {
     using is_order_by = std::bool_constant<is_order_by_v<T>>;
 
     template<class T>
-    extern const bool is_group_by_v;
+    extern const bool is_multi_order_by_v;
 
     template<class T>
-    using is_group_by = std::bool_constant<is_group_by_v<T>>;
+    using is_multi_order_by = std::bool_constant<is_multi_order_by_v<T>>;
+
+    /**
+     *  Nodes carrying an ORDER BY assembled at runtime.
+     */
+    template<class T>
+    extern const bool is_dynamic_order_by_v;
+
+    template<class T>
+    using is_dynamic_order_by = std::bool_constant<is_dynamic_order_by_v<T>>;
+
+    //  the three above are DSL spellings of the one ORDER BY clause production,
+    //  hence grouping them is what corresponds to the SQL grammar
+    template<class T>
+    extern const bool is_any_order_by_v;
+
+    template<class T>
+    using is_any_order_by = std::bool_constant<is_any_order_by_v<T>>;
+
+    //  `group_by_t` and `group_by_with_having` are two DSL spellings of the one GROUP BY clause production,
+    //  hence grouping them is what corresponds to the SQL grammar
+    template<class T>
+    extern const bool is_any_group_by_v;
+
+    template<class T>
+    using is_any_group_by = std::bool_constant<is_any_group_by_v<T>>;
 
     template<class T>
     extern const bool is_from_v;
@@ -2636,8 +2664,23 @@ namespace sqlite_orm::internal {
     template<typename T>
     using expression_type_t = typename T::expression_type;
 
+    /**
+     *  The types of the operand a CASE expression is tested against, and of its ELSE result.
+     */
+    template<typename T>
+    using case_expression_type_t = typename T::case_expression_type;
+
+    template<typename T>
+    using else_expression_type_t = typename T::else_expression_type;
+
     template<typename T>
     using args_type_t = typename T::args_type;
+
+    /**
+     *  The tuple of table expressions a FROM clause names.
+     */
+    template<typename T>
+    using tuple_type_t = typename T::tuple_type;
 
     /**
      *  The function a window function application applies over a window.
@@ -2657,6 +2700,12 @@ namespace sqlite_orm::internal {
     template<typename T>
     using return_type_t = typename T::return_type;
 
+    /**
+     *  The C++ type a condition yields.
+     */
+    template<typename T>
+    using result_type_t = typename T::result_type;
+
     template<class As>
     using alias_type_t = typename As::alias_type;
 
@@ -2675,8 +2724,20 @@ namespace sqlite_orm::internal {
 #endif
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+    /**
+     *  The tuple of CTE bindings a WITH clause carries.
+     */
+    template<typename T>
+    using cte_type_t = typename T::cte_type;
+
     template<typename T>
     using cte_moniker_type_t = typename T::cte_moniker_type;
+
+    /**
+     *  The tuple of column references a CTE binding spells out explicitly, if any.
+     */
+    template<typename T>
+    using explicit_colrefs_tuple_t = typename T::explicit_colrefs_tuple;
 
     template<typename T>
     using cte_mapper_type_t = typename T::cte_mapper_type;
@@ -2727,6 +2788,8 @@ namespace sqlite_orm::internal {
 
     template<class C>
     struct indexed_column_t;
+
+    struct order_by_base;
 
     template<class O>
     struct order_by_t;
@@ -3144,8 +3207,14 @@ namespace sqlite_orm::internal {
      *  or 0 if the type is not a statement-level clause.
      */
     template<class T>
-    constexpr size_t select_clause_rank_v =
-        clause_rank_v<T, is_any_from, is_any_join, is_where, is_group_by, is_window_defn, is_order_by, is_limit>;
+    constexpr size_t select_clause_rank_v = clause_rank_v<T,
+                                                          is_any_from,
+                                                          is_any_join,
+                                                          is_where,
+                                                          is_any_group_by,
+                                                          is_window_defn,
+                                                          is_any_order_by,
+                                                          is_limit>;
 
     /*
      *  Implementation note: a derived struct in favor of an alias template, because it is passed on as a
@@ -3176,7 +3245,7 @@ namespace sqlite_orm::internal {
      *  are admitted and left to SQLite to reject.
      */
     template<class T>
-    constexpr size_t delete_clause_rank_v = clause_rank_v<T, is_where, is_order_by, is_limit>;
+    constexpr size_t delete_clause_rank_v = clause_rank_v<T, is_where, is_any_order_by, is_limit>;
 
     //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
     //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
@@ -3209,7 +3278,7 @@ namespace sqlite_orm::internal {
                                                           is_any_join,
 #endif
                                                           is_where,
-                                                          is_order_by,
+                                                          is_any_order_by,
                                                           is_limit>;
 
     //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
@@ -3265,7 +3334,8 @@ namespace sqlite_orm::internal {
      *  and a frame specification.
      */
     template<class T>
-    constexpr bool is_window_defn_element_v = std::disjunction_v<is_partition_by<T>, is_order_by<T>, is_frame_spec<T>>;
+    constexpr bool is_window_defn_element_v =
+        std::disjunction_v<is_partition_by<T>, is_any_order_by<T>, is_frame_spec<T>>;
 
     /**
      *  Whether a pack forms the arguments of an OVER clause: either a lone reference to a named
@@ -5194,6 +5264,7 @@ namespace sqlite_orm::internal {
      */
     template<class T, class... Args>
     struct struct_t {
+        using object_type = T;
         using columns_type = std::tuple<Args...>;
 
         columns_type columns;
@@ -5483,8 +5554,8 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr void validate_select_clauses() {
         static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
-        static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
-        static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
+        static_assert(count_tuple<T, is_any_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
+        static_assert(count_tuple<T, is_any_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
         static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
         static_assert(count_tuple<T, is_any_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
         static_assert(std::tuple_size<T>::value == count_tuple<T, is_select_clause>::value,
@@ -6072,6 +6143,8 @@ namespace sqlite_orm::internal {
 // #include "functional/is_base_template_of.h"
 
 // #include "tuple_helper/tuple_traits.h"
+
+// #include "type_traits.h"
 
 // #include "conditions.h"
 
@@ -6994,8 +7067,8 @@ namespace sqlite_orm::internal {
 
         dynamic_order_by_t(const context_t& context_) : context(context_) {}
 
-        template<class O>
-        void push_back(order_by_t<O> orderBy) {
+        template<class T, satisfies<is_order_by, T> = true>
+        void push_back(T orderBy) {
             auto newContext = this->context;
             newContext.omit_table_name = false;
             auto columnName = serialize(orderBy._expression, newContext);
@@ -7020,9 +7093,16 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool is_order_by_v = std::disjunction<polyfill::is_specialization_of<T, order_by_t>,
-                                                    polyfill::is_specialization_of<T, multi_order_by_t>,
-                                                    polyfill::is_specialization_of<T, dynamic_order_by_t>>::value;
+    constexpr bool is_order_by_v = polyfill::is_specialization_of_v<T, order_by_t>;
+
+    template<class T>
+    constexpr bool is_multi_order_by_v = polyfill::is_specialization_of_v<T, multi_order_by_t>;
+
+    template<class T>
+    constexpr bool is_dynamic_order_by_v = polyfill::is_specialization_of_v<T, dynamic_order_by_t>;
+
+    template<class T>
+    constexpr bool is_any_order_by_v = std::disjunction_v<is_order_by<T>, is_multi_order_by<T>, is_dynamic_order_by<T>>;
 
     struct like_string {
         operator std::string() const {
@@ -7809,17 +7889,14 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class C>
-    struct where_t;
-
     template<class R, class S, class... Args>
     struct built_in_aggregate_function_t : built_in_function_t<R, S, Args...> {
         using super = built_in_function_t<R, S, Args...>;
 
         using super::super;
 
-        template<class W>
-        filtered_aggregate_function<built_in_aggregate_function_t<R, S, Args...>, W> filter(where_t<W> wh) {
+        template<class Wh, satisfies<is_where, Wh> = true>
+        filtered_aggregate_function<built_in_aggregate_function_t, expression_type_t<Wh>> filter(Wh wh) {
             return {*this, std::move(wh.expression)};
         }
 
@@ -8080,8 +8157,8 @@ namespace sqlite_orm::internal {
     struct count_asterisk_t : count_string {
         using type = T;
 
-        template<class W>
-        filtered_aggregate_function<count_asterisk_t<T>, W> filter(where_t<W> wh) {
+        template<class Wh, satisfies<is_where, Wh> = true>
+        filtered_aggregate_function<count_asterisk_t<T>, expression_type_t<Wh>> filter(Wh wh) {
             return {*this, std::move(wh.expression)};
         }
 
@@ -10361,17 +10438,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
-        template<class T,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, T>, is_operator_argument<T>>::value,
-                                  bool> = true>
+        template<
+            class T,
+            std::enable_if_t<std::disjunction<is_arithmetic_operand<T>, is_operator_argument<T>>::value, bool> = true>
         constexpr unary_minus_t<unwrap_expression_t<T>> operator-(T arg) {
             return {unwrap_expression(std::forward<T>(arg))};
         }
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -10381,8 +10458,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -10392,8 +10469,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -10403,8 +10480,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -10414,8 +10491,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -10423,17 +10500,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
-        template<class T,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, T>, is_operator_argument<T>>::value,
-                                  bool> = true>
+        template<
+            class T,
+            std::enable_if_t<std::disjunction<is_arithmetic_operand<T>, is_operator_argument<T>>::value, bool> = true>
         constexpr bitwise_not_t<unwrap_expression_t<T>> operator~(T arg) {
             return {unwrap_expression(std::forward<T>(arg))};
         }
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -10443,8 +10520,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -10454,8 +10531,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -10465,8 +10542,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                   std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value,
                                   bool> = true>
@@ -10497,7 +10574,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class CP, class X, class Y, class Z>
         requires (internal::hidden_column_of_vtab<CP, fts5>)
-    constexpr internal::highlight_t<typename CP::type, X, Y, Z> highlight(const CP& /*theAnyField*/, X x, Y y, Z z) {
+    constexpr internal::highlight_t<internal::type_t<CP>, X, Y, Z> highlight(const CP& /*theAnyField*/, X x, Y y, Z z) {
         return {std::move(x), std::move(y), std::move(z)};
     }
 
@@ -10521,7 +10598,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class Y,
              class Z,
              std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
-    constexpr internal::highlight_t<typename CP::type, X, Y, Z> highlight(const CP& /*theAnyField*/, X x, Y y, Z z) {
+    constexpr internal::highlight_t<internal::type_t<CP>, X, Y, Z> highlight(const CP& /*theAnyField*/, X x, Y y, Z z) {
         return {std::move(x), std::move(y), std::move(z)};
     }
 
@@ -11469,7 +11546,7 @@ namespace sqlite_orm::internal {
 // #include "column_result.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_base_of
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_arithmetic, std::is_base_of
 #include <functional>  //  std::reference_wrapper
 #include <optional>  //  std::optional
 #endif
@@ -11566,17 +11643,20 @@ namespace sqlite_orm::internal {
 
 // #include "member_traits/member_traits.h"
 
+// #include "vocabulary/node_traits.h"
+
 // #include "mapped_type_proxy.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::remove_const
+#include <type_traits>  //  std::void_t, std::remove_const
 #endif
-
-// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "type_traits.h"
 
 // #include "alias_traits.h"
+
+// #include "vocabulary/node_traits.h"
+// projections
 
 namespace sqlite_orm::internal {
     /** 
@@ -11591,7 +11671,7 @@ namespace sqlite_orm::internal {
     struct mapped_type_proxy : std::remove_const<T> {};
 
     template<class T>
-    struct mapped_type_proxy<T, std::void_t<typename T::enclosing_type>> {
+    struct mapped_type_proxy<T, std::void_t<enclosing_type_t<T>>> {
         using type = enclosing_type_t<T>;
     };
 
@@ -11609,108 +11689,6 @@ namespace sqlite_orm::internal {
 }
 
 // #include "core_functions.h"
-
-// #include "ast/result_columns.h"
-
-// #include "ast/case_expression.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if
-#include <tuple>  //  std::tuple, std::get, std::tuple_cat, std::tuple_size, std::make_tuple
-#include <utility>  //  std::move, std::pair
-#endif
-
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../optional_container.h"
-
-// #include "../vocabulary/traits/grammar_traits_fwd.h"
-// Included to specialize traits
-// #include "../vocabulary/traits/operand_traits_fwd.h"
-// Included to specialize traits
-
-namespace sqlite_orm::internal {
-    template<class T>
-    struct then_t {
-        using expression_type = T;
-
-        expression_type expression;
-    };
-
-    template<class R, class T, class E, class... Args>
-    struct simple_case_t {
-        using return_type = R;
-        using case_expression_type = T;
-        using args_type = std::tuple<Args...>;
-        using else_expression_type = E;
-
-        optional_container<case_expression_type> case_expression;
-        args_type args;
-        optional_container<else_expression_type> else_expression;
-    };
-
-    template<class T>
-    constexpr bool is_case_expression_v = polyfill::is_specialization_of<T, simple_case_t>::value;
-
-    template<class T>
-    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_case_expression_v<T>>> = true;
-
-    /**
-     *  T is a case expression type
-     *  E is else type (void is ELSE is omitted)
-     *  Args... is a pack of WHEN expressions
-     */
-    template<class R, class T, class E, class... Args>
-    struct simple_case_builder {
-        using return_type = R;
-        using case_expression_type = T;
-        using args_type = std::tuple<Args...>;
-        using else_expression_type = E;
-
-        optional_container<case_expression_type> case_expression;
-        args_type args;
-        optional_container<else_expression_type> else_expression;
-
-        template<class W, class Th>
-        simple_case_builder<R, T, E, Args..., std::pair<W, Th>> when(W w, then_t<Th> t) {
-            using result_args_type = std::tuple<Args..., std::pair<W, Th>>;
-            std::pair<W, Th> newPair{std::move(w), std::move(t.expression)};
-            result_args_type result_args = std::tuple_cat(std::move(this->args), std::make_tuple(newPair));
-            std::get<std::tuple_size<result_args_type>::value - 1>(result_args) = std::move(newPair);
-            return {std::move(this->case_expression), std::move(result_args), std::move(this->else_expression)};
-        }
-
-        simple_case_t<R, T, E, Args...> end() {
-            return {std::move(this->case_expression), std::move(args), std::move(this->else_expression)};
-        }
-
-        template<class El>
-        simple_case_builder<R, T, El, Args...> else_(El el) {
-            return {{std::move(this->case_expression)}, std::move(args), {std::move(el)}};
-        }
-    };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    template<class T>
-    internal::then_t<T> then(T t) {
-        return {std::move(t)};
-    }
-
-    template<class R, class T>
-    internal::simple_case_builder<R, T, void> case_(T t) {
-        return {{std::move(t)}};
-    }
-
-    template<class R>
-    internal::simple_case_builder<R, void, void> case_() {
-        return {};
-    }
-}
-
-// #include "ast/select.h"
-
-// #include "ast/compound_operator.h"
 
 // #include "operators.h"
 
@@ -12159,6 +12137,8 @@ namespace sqlite_orm::internal {
 
 // #include "../vocabulary/node_algorithms.h"
 
+// #include "../vocabulary/node_traits.h"
+
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 
@@ -12254,9 +12234,9 @@ namespace sqlite_orm::internal {
         using type = void;
     };
 
-    template<class G, class S, class... Op>
-    struct column_field_expression<column_t<G, S, Op...>, void> {
-        using type = typename column_t<G, S, Op...>::member_pointer_t;
+    template<class T>
+    struct column_field_expression<T, match_if<is_column, T>> {
+        using type = typename T::member_pointer_t;
     };
 
     template<typename T>
@@ -13386,8 +13366,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-// #include "ast/window.h"
-
 // #include "ast/rank.h"
 
 // #include "window_functions.h"
@@ -13662,13 +13640,21 @@ namespace sqlite_orm::internal {
     using column_result_for_tuple_t = transform_tuple_t<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, as_optional_t<T>, void> {
-        using type = std::optional<column_result_of_t<DBOs, T>>;
+    struct column_result_t<DBOs, T, match_if<is_as_optional, T>> {
+        using type = std::optional<column_result_of_t<DBOs, expression_type_t<T>>>;
     };
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, std::optional<T>, void> {
         using type = std::optional<T>;
+    };
+
+    /**
+     *  The concatenated results of a list of column expressions, with a tuple result of a single expression
+     *  spliced into the sequence rather than nested in it.
+     */
+    template<class DBOs, class... Args>
+    struct column_result_t<DBOs, std::tuple<Args...>, void> : conc_tuple<tuplify_t<column_result_of_t<DBOs, Args>>...> {
     };
 
     template<class DBOs, class L, class A>
@@ -13714,29 +13700,27 @@ namespace sqlite_orm::internal {
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<std::is_member_pointer, T>> : member_field_type<T> {};
 
-    template<class DBOs, class R, class S, class... Args>
-    struct column_result_t<DBOs, built_in_function_t<R, S, Args...>, void> {
+    /**
+     *  The result of a built-in function is the return type it declares, except for the functions whose
+     *  result is a `unique_ptr` of their first argument's result - those declare `unique_ptr_result_of<X>`.
+     */
+    template<class DBOs, class R>
+    struct built_in_function_result {
         using type = R;
     };
 
-    template<class DBOs, class R, class S, class... Args>
-    struct column_result_t<DBOs, built_in_aggregate_function_t<R, S, Args...>, void> {
-        using type = R;
+    template<class DBOs, class X>
+    struct built_in_function_result<DBOs, unique_ptr_result_of<X>> {
+        using type = std::unique_ptr<column_result_of_t<DBOs, X>>;
     };
+
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_built_in_function, T>>
+        : built_in_function_result<DBOs, return_type_t<T>> {};
 
     template<class DBOs, class F, class... Args>
     struct column_result_t<DBOs, function_call<F, Args...>, void> {
         using type = typename callable_arguments<F>::return_type;
-    };
-
-    template<class DBOs, class X, class... Rest, class S>
-    struct column_result_t<DBOs, built_in_function_t<unique_ptr_result_of<X>, S, X, Rest...>, void> {
-        using type = std::unique_ptr<column_result_of_t<DBOs, X>>;
-    };
-
-    template<class DBOs, class X, class S>
-    struct column_result_t<DBOs, built_in_aggregate_function_t<unique_ptr_result_of<X>, S, X>, void> {
-        using type = std::unique_ptr<column_result_of_t<DBOs, X>>;
     };
 
     template<class DBOs, class T>
@@ -13747,8 +13731,8 @@ namespace sqlite_orm::internal {
     template<class DBOs, class F, class W>
     struct column_result_t<DBOs, filtered_aggregate_function<F, W>, void> : column_result_t<DBOs, F> {};
 
-    template<class DBOs, class F, class... Args>
-    struct column_result_t<DBOs, over_t<F, Args...>, void> : column_result_t<DBOs, F> {};
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_over, T>> : column_result_t<DBOs, function_type_t<T>> {};
 
     template<class DBOs>
     struct column_result_t<DBOs, row_number_t, void> {
@@ -13816,8 +13800,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_rowset_deduplicator, T>>
-        : column_result_t<DBOs, typename T::expression_type> {};
+    struct column_result_t<DBOs, T, match_if<is_rowset_deduplicator, T>> : column_result_t<DBOs, expression_type_t<T>> {
+    };
 
     template<class DBOs, class L, class R>
     struct column_result_t<DBOs, conc_t<L, R>, void> {
@@ -13912,6 +13896,9 @@ namespace sqlite_orm::internal {
     template<class DBOs, class T, class C>
     struct column_result_t<DBOs, alias_column_t<T, C>, void> : column_result_t<DBOs, C> {};
 
+    //  note: deliberately matching `column_pointer` by its own template rather than dispatching on
+    //  `is_column_pointer`: the CTE column reference below is a refinement of this specialization, and a
+    //  trait-based primary would be ambiguous with it rather than being ordered before it.
     template<class DBOs, class T, class F>
     struct column_result_t<DBOs, column_pointer<T, F>, void> : column_result_t<DBOs, F> {};
 
@@ -13929,29 +13916,27 @@ namespace sqlite_orm::internal {
     };
 #endif
 
-    template<class DBOs, class... Args>
-    struct column_result_t<DBOs, columns_t<Args...>, void>
-        : conc_tuple<tuplify_t<column_result_of_t<DBOs, std::decay_t<Args>>>...> {};
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_columns, T>> : column_result_t<DBOs, columns_type_t<T>> {};
 
-    template<class DBOs, class T, class... Args>
-    struct column_result_t<DBOs, struct_t<T, Args...>, void> {
-        using type = structure<T, tuple_cat_t<tuplify_t<column_result_of_t<DBOs, std::decay_t<Args>>>...>>;
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_struct, T>> {
+        using type = structure<object_type_t<T>, column_result_of_t<DBOs, columns_type_t<T>>>;
     };
 
-    template<class DBOs, class T, class... Args>
-    struct column_result_t<DBOs, select_t<T, Args...>> : column_result_t<DBOs, T> {};
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_select, T>> : column_result_t<DBOs, return_type_t<T>> {};
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_compound_operator, T>> {
-        using type =
-            polyfill::detected_t<common_type_of_t, column_result_for_tuple_t<DBOs, typename T::expressions_tuple>>;
+        using type = polyfill::detected_t<common_type_of_t, column_result_for_tuple_t<DBOs, expressions_tuple_t<T>>>;
         static_assert(!std::is_same<type, polyfill::nonesuch>::value,
                       "Compound select statements must return a common type");
     };
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_binary_condition, T>> {
-        using type = typename T::result_type;
+        using type = result_type_t<T>;
     };
 
     template<class DBOs, class T, class X, class Y, class Z>
@@ -13980,16 +13965,16 @@ namespace sqlite_orm::internal {
         using type = std::string;
     };
 
-    template<class DBOs, class T, class E>
-    struct column_result_t<DBOs, as_t<T, E>, void> : column_result_t<DBOs, std::decay_t<E>> {};
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_as_node, T>> : column_result_t<DBOs, expression_type_t<T>> {};
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, asterisk_t<T>, void>
-        : storage_traits::storage_mapped_columns<DBOs, mapped_type_proxy_t<T>> {};
+    struct column_result_t<DBOs, T, match_if<is_asterisk, T>>
+        : storage_traits::storage_mapped_columns<DBOs, mapped_type_proxy_t<type_t<T>>> {};
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, object_t<T>, void> {
-        using type = table_reference<T>;
+    struct column_result_t<DBOs, T, match_if<is_object_node, T>> {
+        using type = table_reference<type_t<T>>;
     };
 
     template<class DBOs, class T, class E>
@@ -13997,9 +13982,9 @@ namespace sqlite_orm::internal {
         using type = T;
     };
 
-    template<class DBOs, class R, class T, class E, class... Args>
-    struct column_result_t<DBOs, simple_case_t<R, T, E, Args...>, void> {
-        using type = R;
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_case_expression, T>> {
+        using type = return_type_t<T>;
     };
 
     template<class DBOs, class A, class T, class E>
@@ -16225,6 +16210,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <type_traits>  //  std::false_type, std::true_type
 #endif
 
+// #include "../type_traits.h"
+
 // #include "../tuple_helper/tuple_traits.h"
 
 // #include "../table_name_collector.h"
@@ -16328,6 +16315,8 @@ namespace sqlite_orm::internal {
     };
 }
 
+// #include "../vocabulary/node_traits.h"
+
 namespace sqlite_orm::internal {
     template<class T, class L>
     void iterate_ast(const T& t, L&& lambda);
@@ -16362,8 +16351,8 @@ namespace sqlite_orm::internal {
         dynamic_set_t& operator=(const dynamic_set_t& other) = default;
         dynamic_set_t& operator=(dynamic_set_t&& other) = default;
 
-        template<class L, class R>
-        void push_back(assign_t<L, R> assign) {
+        template<class T, satisfies<is_assign, T> = true>
+        void push_back(T assign) {
             auto newContext = this->context;
             newContext.omit_table_name = true;
             // note: we are only interested in the table name on the left-hand side of the assignment operator expression
@@ -16754,7 +16743,8 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr void validate_delete_clauses() {
         static_assert(count_tuple<T, is_where>::value <= 1, "a single statement cannot contain > 1 WHERE blocks");
-        static_assert(count_tuple<T, is_order_by>::value <= 1, "a single statement cannot contain > 1 ORDER BY blocks");
+        static_assert(count_tuple<T, is_any_order_by>::value <= 1,
+                      "a single statement cannot contain > 1 ORDER BY blocks");
         static_assert(count_tuple<T, is_limit>::value <= 1, "a single statement cannot contain > 1 LIMIT blocks");
         static_assert(std::tuple_size<T>::value == count_tuple<T, is_delete_clause>::value,
                       "a DELETE argument must be a WHERE, ORDER BY or LIMIT clause");
@@ -16770,7 +16760,8 @@ namespace sqlite_orm::internal {
     constexpr void validate_update_clauses() {
         static_assert(count_tuple<T, is_any_from>::value <= 1, "a single statement cannot contain > 1 FROM blocks");
         static_assert(count_tuple<T, is_where>::value <= 1, "a single statement cannot contain > 1 WHERE blocks");
-        static_assert(count_tuple<T, is_order_by>::value <= 1, "a single statement cannot contain > 1 ORDER BY blocks");
+        static_assert(count_tuple<T, is_any_order_by>::value <= 1,
+                      "a single statement cannot contain > 1 ORDER BY blocks");
         static_assert(count_tuple<T, is_limit>::value <= 1, "a single statement cannot contain > 1 LIMIT blocks");
         static_assert(std::tuple_size<T>::value == count_tuple<T, is_update_clause>::value,
                       "an UPDATE argument must be a FROM, JOIN, WHERE, ORDER BY or LIMIT clause");
@@ -17454,8 +17445,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/is_not_null.h"
 
-// #include "ast/window.h"
-
 // #include "window_functions.h"
 
 namespace sqlite_orm::internal {
@@ -17547,7 +17536,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct ast_iterator<T, std::enable_if_t<is_group_by<T>::value>> {
+    struct ast_iterator<T, std::enable_if_t<is_any_group_by<T>::value>> {
         using node_type = T;
 
         template<class L>
@@ -17960,19 +17949,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class R, class S, class... Args>
-    struct ast_iterator<built_in_function_t<R, S, Args...>, void> {
-        using node_type = built_in_function_t<R, S, Args...>;
-
-        template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(node.args, lambda);
-        }
-    };
-
-    template<class R, class S, class... Args>
-    struct ast_iterator<built_in_aggregate_function_t<R, S, Args...>, void> {
-        using node_type = built_in_aggregate_function_t<R, S, Args...>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_built_in_function, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -18133,9 +18112,9 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& /*node*/, L& /*lambda*/) SQLITE_ORM_OR_CONST_CALLOP {}
     };
 
-    template<class E>
-    struct ast_iterator<order_by_t<E>, void> {
-        using node_type = order_by_t<E>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_order_by, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -18143,9 +18122,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct ast_iterator<multi_order_by_t<Args...>, void> {
-        using node_type = multi_order_by_t<Args...>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_multi_order_by, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -18548,6 +18527,8 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::r
 
 // #include "tuple_helper/tuple_iteration.h"
 
+// #include "vocabulary/node_traits.h"
+// projections
 // #include "pragma.h"
 
 #include <sqlite3.h>
@@ -21514,66 +21495,6 @@ namespace sqlite_orm::internal {
 
 // #include "ast/excluded.h"
 
-// #include "ast/group_by.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple, std::make_tuple
-#include <type_traits>  //  std::true_type, std::false_type
-#include <utility>  //  std::forward, std::move
-#endif
-
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../vocabulary/traits/grammar_traits_fwd.h"
-// Included to specialize traits
-// #include "../vocabulary/node_algorithms.h"
-// is_statement_clause
-
-namespace sqlite_orm::internal {
-    template<class T, class... Args>
-    struct group_by_with_having {
-        using args_type = std::tuple<Args...>;
-        using expression_type = T;
-
-        args_type args;
-        expression_type expression;
-    };
-
-    /**
-     *  GROUP BY pack holder.
-     */
-    template<class... Args>
-    struct group_by_t {
-        using args_type = std::tuple<Args...>;
-
-        args_type args;
-
-        template<class T>
-        group_by_with_having<T, Args...> having(T expression) {
-            static_assert(!is_statement_clause<T>::value,
-                          "a HAVING condition must be an expression, not a statement clause");
-            return {std::move(this->args), std::move(expression)};
-        }
-    };
-
-    template<class T>
-    constexpr bool is_group_by_v = std::disjunction<polyfill::is_specialization_of<T, group_by_t>,
-                                                    polyfill::is_specialization_of<T, group_by_with_having>>::value;
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  GROUP BY column.
-     *  Example: storage.get_all<Employee>(group_by(&Employee::name))
-     */
-    template<class... Args>
-    internal::group_by_t<Args...> group_by(Args... args) {
-        static_assert((!internal::is_statement_clause<Args>::value && ...),
-                      "a GROUP BY term must be an expression, not a statement clause");
-        return {{std::forward<Args>(args)...}};
-    }
-}
-
 // #include "ast/into.h"
 
 // #include "ast/match.h"
@@ -21719,7 +21640,7 @@ namespace sqlite_orm::internal {
                     (*this)(colExpr, context);
                 });
                 // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
-                if constexpr (tuple_has<typename E::columns_type, is_asterisk>::value) {
+                if constexpr (tuple_has<columns_type_t<E>, is_asterisk>::value) {
                     this->collectedExpressions.shrink_to_fit();
                 }
                 return this->collectedExpressions;
@@ -21853,12 +21774,12 @@ namespace sqlite_orm::internal {
     template<class Asterisk>
     struct cte_column_names_collector<Asterisk, match_if<is_asterisk, Asterisk>> {
         using expression_type = Asterisk;
-        using T = typename Asterisk::type;
+        using recordset_type = type_t<Asterisk>;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::vector<std::string> operator()(const expression_type&,
                                                                      const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            auto& table = pick_table<T>(context.db_objects);
+            auto& table = pick_table<recordset_type>(context.db_objects);
 
             std::vector<std::string> columnNames;
             columnNames.reserve(size_t(table.template count_of<is_column>()));
@@ -21991,6 +21912,12 @@ namespace sqlite_orm::internal {
 
 // #include "functional/gsl.h"
 
+// #include "type_traits.h"
+
+// #include "vocabulary/node_fwd.h"
+// order_by_base
+// #include "vocabulary/node_traits.h"
+
 namespace sqlite_orm::internal {
     template<class T, class SFINAE = void>
     struct order_by_serializer;
@@ -22015,9 +21942,9 @@ namespace sqlite_orm::internal {
         }
     }
 
-    template<class O>
-    struct order_by_serializer<order_by_t<O>, void> {
-        using statement_type = order_by_t<O>;
+    template<class T>
+    struct order_by_serializer<T, match_if<is_order_by, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
@@ -22032,9 +21959,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class C>
-    struct order_by_serializer<dynamic_order_by_t<C>, void> {
-        using statement_type = dynamic_order_by_t<C>;
+    template<class T>
+    struct order_by_serializer<T, match_if<is_dynamic_order_by, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
@@ -22967,9 +22894,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class R, class S, class... Args>
-    struct statement_serializer<built_in_function_t<R, S, Args...>, void> {
-        using statement_type = built_in_function_t<R, S, Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_built_in_function, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -22979,10 +22906,6 @@ namespace sqlite_orm::internal {
             return ss.str();
         }
     };
-
-    template<class R, class S, class... Args>
-    struct statement_serializer<built_in_aggregate_function_t<R, S, Args...>, void>
-        : statement_serializer<built_in_function_t<R, S, Args...>, void> {};
 
     template<class F, class... CallArgs>
     struct statement_serializer<function_call<F, CallArgs...>, void> {
@@ -24323,7 +24246,7 @@ namespace sqlite_orm::internal {
     std::string serialize_get_all_impl(const T& getAll, const Ctx& context) {
         using table_type = type_t<T>;
         using mapped_type = mapped_type_proxy_t<table_type>;
-        constexpr bool hasExplicitFrom2 = tuple_has<typename T::conditions_type, is_from2>::value;
+        constexpr bool hasExplicitFrom2 = tuple_has<conditions_type_t<T>, is_from2>::value;
 
         auto& table = pick_table<mapped_type>(context.db_objects);
 
@@ -24491,7 +24414,7 @@ namespace sqlite_orm::internal {
             }
 
             ss << streaming_serialized(get_column_names(sel.col, subCtx));
-            using conditions_tuple = typename statement_type::conditions_type;
+            using conditions_tuple = conditions_type_t<statement_type>;
             constexpr bool hasExplicitFrom = tuple_has<conditions_tuple, is_any_from>::value;
             if constexpr (!hasExplicitFrom) {
                 using joins_index_sequence = filter_tuple_sequence_t<conditions_tuple, is_any_join>;
@@ -24600,7 +24523,7 @@ namespace sqlite_orm::internal {
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << "FROM ";
-            iterate_tuple<typename From::tuple_type>([&context, &ss, first = true](auto* dummy) mutable {
+            iterate_tuple<tuple_type_t<From>>([&context, &ss, first = true](auto* dummy) mutable {
                 using table_type = std::remove_pointer_t<decltype(dummy)>;
 
                 static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
@@ -24816,9 +24739,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class O>
-    struct statement_serializer<order_by_t<O>, void> {
-        using statement_type = order_by_t<O>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_order_by, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
@@ -24830,9 +24753,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class C>
-    struct statement_serializer<dynamic_order_by_t<C>, void> {
-        using statement_type = dynamic_order_by_t<C>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_dynamic_order_by, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
@@ -24841,9 +24764,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct statement_serializer<multi_order_by_t<Args...>, void> {
-        using statement_type = multi_order_by_t<Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_multi_order_by, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
@@ -24910,25 +24833,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class... Args>
-    struct statement_serializer<group_by_with_having<T, Args...>, void> {
-        using statement_type = group_by_with_having<T, Args...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-            auto newContext = context;
-            newContext.omit_table_name = false;
-            ss << "GROUP BY " << streaming_expressions_tuple(statement.args, newContext) << " HAVING "
-               << serialize(statement.expression, context);
-            return ss.str();
-        }
-    };
-
-    template<class... Args>
-    struct statement_serializer<group_by_t<Args...>, void> {
-        using statement_type = group_by_t<Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_any_group_by, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -24937,6 +24844,10 @@ namespace sqlite_orm::internal {
             auto newContext = context;
             newContext.omit_table_name = false;
             ss << "GROUP BY " << streaming_expressions_tuple(statement.args, newContext);
+            //  the HAVING condition is only carried by the `group_by_with_having` spelling of the clause
+            if constexpr (polyfill::is_detected_v<expression_type_t, statement_type>) {
+                ss << " HAVING " << serialize(statement.expression, context);
+            }
             return ss.str();
         }
     };
@@ -25510,6 +25421,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_transformer.h"
 
+// #include "vocabulary/node_traits.h"
+
 // #include "ast/result_columns.h"
 
 // #include "alias.h"
@@ -25567,21 +25480,22 @@ namespace sqlite_orm::internal {
      *  Resolve all columns of a mapped object or CTE.
      *  asterisk_t<O> -> tuple<ColExpr...>
      */
-    template<class DBOs, class E>
+    template<class DBOs, class T>
     struct column_expression_type<
         DBOs,
-        asterisk_t<E>,
-        std::enable_if_t<std::disjunction<std::negation<is_recordset_alias<E>>, is_cte_moniker<E>>::value>>
-        : storage_traits::storage_mapped_column_expressions<DBOs, E> {};
+        T,
+        std::enable_if_t<is_asterisk_v<T> &&
+                         std::disjunction_v<std::negation<is_recordset_alias<type_t<T>>>, is_cte_moniker<type_t<T>>>>>
+        : storage_traits::storage_mapped_column_expressions<DBOs, type_t<T>> {};
 
     /**
      *  Resolve all columns of an aliased object.
      *  asterisk_t<Alias> -> tuple<alias_column_t<Alias, ColExpr>...>
      */
-    template<class DBOs, class A>
-    struct column_expression_type<DBOs, asterisk_t<A>, match_if<is_table_alias, A>>
-        : tuple_transformer<typename storage_traits::storage_mapped_column_expressions<DBOs, type_t<A>>::type,
-                            add_column_alias<A>::template apply_t> {};
+    template<class DBOs, class T>
+    struct column_expression_type<DBOs, T, std::enable_if_t<is_asterisk_v<T> && is_table_alias_v<type_t<T>>>>
+        : tuple_transformer<typename storage_traits::storage_mapped_column_expressions<DBOs, type_t<type_t<T>>>::type,
+                            add_column_alias<type_t<T>>::template apply_t> {};
 
     /**
      *  Resolve multiple columns.
@@ -25742,6 +25656,9 @@ namespace sqlite_orm::internal {
         return std::make_tuple(get<Idx>(coldef).member_pointer...);
     }
 
+    //  note: the overloads below deliberately take their node by its own template rather than being
+    //  constrained on a classification trait: they are all ordered against the unconstrained
+    //  "any expression" overload, which a trait-constrained overload would be ambiguous with.
     // any expression -> numeric column alias
     template<class DBOs,
              class E,
@@ -25807,7 +25724,7 @@ namespace sqlite_orm::internal {
     template<class DBOs, class O>
     auto extract_colref_expressions(const DBOs& dbObjects, const asterisk_t<O>& /*col*/) {
         using table_type = schema_pick_table_t<O, DBOs>;
-        using elements_type = typename table_type::elements_type;
+        using elements_type = elements_type_t<table_type>;
         using column_idxs = filter_tuple_sequence_t<elements_type, is_column>;
 
         auto& table = pick_table<O>(dbObjects);
@@ -25895,7 +25812,7 @@ namespace sqlite_orm::internal {
         std::vector<std::string> columnNames = collect_cte_column_names(subSelect, cte.explicitColumns, context);
 
         using mapper_type = create_cte_mapper_t<cte_moniker_type_t<cte_type>,
-                                                typename cte_type::explicit_colrefs_tuple,
+                                                explicit_colrefs_tuple_t<cte_type>,
                                                 column_expression_of_t<DBOs, subselect_type>,
                                                 decltype(subselectColRefs),
                                                 polyfill::remove_cvref_t<decltype(finalColRefs)>,
@@ -26900,8 +26817,8 @@ namespace sqlite_orm::internal {
          *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
          *                     If you need the full 64-bit rowid value, use `storage_t<>::execute()` instead, or call `storage_t<>::last_insert_rowid()` after inserting.
          */
-        template<class O, class... Cols>
-        int insert(const O& o, columns_t<Cols...> cols) {
+        template<class O, class Cols, satisfies<is_columns, Cols> = true>
+        int insert(const O& o, Cols cols) {
             static_assert(cols.count > 0, "Use insert or replace with 1 argument instead");
             this->assert_mapped_type<O>();
             auto statement = this->prepare(sqlite_orm::insert(std::ref(o), std::move(cols)));
@@ -29683,6 +29600,100 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/case_expression.h"
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if
+#include <tuple>  //  std::tuple, std::get, std::tuple_cat, std::tuple_size, std::make_tuple
+#include <utility>  //  std::move, std::pair
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../optional_container.h"
+
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../vocabulary/traits/operand_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    template<class T>
+    struct then_t {
+        using expression_type = T;
+
+        expression_type expression;
+    };
+
+    template<class R, class T, class E, class... Args>
+    struct simple_case_t {
+        using return_type = R;
+        using case_expression_type = T;
+        using args_type = std::tuple<Args...>;
+        using else_expression_type = E;
+
+        optional_container<case_expression_type> case_expression;
+        args_type args;
+        optional_container<else_expression_type> else_expression;
+    };
+
+    template<class T>
+    constexpr bool is_case_expression_v = polyfill::is_specialization_of<T, simple_case_t>::value;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_case_expression_v<T>>> = true;
+
+    /**
+     *  T is a case expression type
+     *  E is else type (void is ELSE is omitted)
+     *  Args... is a pack of WHEN expressions
+     */
+    template<class R, class T, class E, class... Args>
+    struct simple_case_builder {
+        using return_type = R;
+        using case_expression_type = T;
+        using args_type = std::tuple<Args...>;
+        using else_expression_type = E;
+
+        optional_container<case_expression_type> case_expression;
+        args_type args;
+        optional_container<else_expression_type> else_expression;
+
+        template<class W, class Th>
+        simple_case_builder<R, T, E, Args..., std::pair<W, Th>> when(W w, then_t<Th> t) {
+            using result_args_type = std::tuple<Args..., std::pair<W, Th>>;
+            std::pair<W, Th> newPair{std::move(w), std::move(t.expression)};
+            result_args_type result_args = std::tuple_cat(std::move(this->args), std::make_tuple(newPair));
+            std::get<std::tuple_size<result_args_type>::value - 1>(result_args) = std::move(newPair);
+            return {std::move(this->case_expression), std::move(result_args), std::move(this->else_expression)};
+        }
+
+        simple_case_t<R, T, E, Args...> end() {
+            return {std::move(this->case_expression), std::move(args), std::move(this->else_expression)};
+        }
+
+        template<class El>
+        simple_case_builder<R, T, El, Args...> else_(El el) {
+            return {{std::move(this->case_expression)}, std::move(args), {std::move(el)}};
+        }
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    template<class T>
+    internal::then_t<T> then(T t) {
+        return {std::move(t)};
+    }
+
+    template<class R, class T>
+    internal::simple_case_builder<R, T, void> case_(T t) {
+        return {{std::move(t)}};
+    }
+
+    template<class R>
+    internal::simple_case_builder<R, void, void> case_() {
+        return {};
+    }
+}
+
 // #include "ast/cast.h"
 
 // #include "ast/compound_operator.h"
@@ -29696,6 +29707,64 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/exists.h"
 
 // #include "ast/group_by.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>  //  std::tuple, std::make_tuple
+#include <type_traits>  //  std::true_type, std::false_type
+#include <utility>  //  std::forward, std::move
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause
+
+namespace sqlite_orm::internal {
+    template<class T, class... Args>
+    struct group_by_with_having {
+        using args_type = std::tuple<Args...>;
+        using expression_type = T;
+
+        args_type args;
+        expression_type expression;
+    };
+
+    /**
+     *  GROUP BY pack holder.
+     */
+    template<class... Args>
+    struct group_by_t {
+        using args_type = std::tuple<Args...>;
+
+        args_type args;
+
+        template<class T>
+        group_by_with_having<T, Args...> having(T expression) {
+            static_assert(!is_statement_clause<T>::value,
+                          "a HAVING condition must be an expression, not a statement clause");
+            return {std::move(this->args), std::move(expression)};
+        }
+    };
+
+    template<class T>
+    constexpr bool is_any_group_by_v = std::disjunction<polyfill::is_specialization_of<T, group_by_t>,
+                                                        polyfill::is_specialization_of<T, group_by_with_having>>::value;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  GROUP BY column.
+     *  Example: storage.get_all<Employee>(group_by(&Employee::name))
+     */
+    template<class... Args>
+    internal::group_by_t<Args...> group_by(Args... args) {
+        static_assert((!internal::is_statement_clause<Args>::value && ...),
+                      "a GROUP BY term must be an expression, not a statement clause");
+        return {{std::forward<Args>(args)...}};
+    }
+}
 
 // #include "ast/in.h"
 
@@ -30033,6 +30102,8 @@ namespace sqlite_orm::internal {
 #endif
 
 // #include "../tuple_helper/tuple_traits.h"
+
+// #include "../vocabulary/node_traits.h"
 
 // #include "../default_value_extractor.h"
 
@@ -30399,6 +30470,8 @@ namespace sqlite_orm::internal {
 
 // #include "type_traits.h"
 
+// #include "vocabulary/node_traits.h"
+// projections
 // #include "prepared_statement.h"
 
 // #include "ast_iterator.h"
@@ -30420,12 +30493,6 @@ namespace sqlite_orm::internal {
 
 // #include "operators.h"
 
-// #include "ast/result_columns.h"
-
-// #include "ast/case_expression.h"
-
-// #include "ast/select.h"
-
 // #include "prepared_statement.h"
 
 // #include "optional_container.h"
@@ -30440,21 +30507,15 @@ namespace sqlite_orm::internal {
 
 // #include "ast/into.h"
 
-// #include "ast/group_by.h"
-
 // #include "ast/match.h"
 
 // #include "ast/cast.h"
-
-// #include "ast/limit.h"
 
 // #include "ast/in.h"
 
 // #include "ast/is_null.h"
 
 // #include "ast/is_not_null.h"
-
-// #include "ast/window.h"
 
 // #include "window_functions.h"
 
@@ -30487,13 +30548,15 @@ namespace sqlite_orm::internal {
     struct node_tuple<std::tuple<Args...>, void> : node_tuple_for<Args...> {};
 
     template<class T>
-    struct node_tuple<as_optional_t<T>, void> : node_tuple<T> {};
+    struct node_tuple<T, match_if<is_as_optional, T>> : node_tuple<expression_type_t<T>> {};
 
-    template<class... Args>
-    struct node_tuple<group_by_t<Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class T, class... Args>
-    struct node_tuple<group_by_with_having<T, Args...>, void> : node_tuple_for<Args..., T> {};
+    /*
+     *  The HAVING condition is only carried by the `group_by_with_having` spelling of the clause;
+     *  for the plain one the detected expression type is `void`, contributing nothing.
+     */
+    template<class T>
+    struct node_tuple<T, match_if<is_any_group_by, T>>
+        : node_tuple_for<args_type_t<T>, polyfill::detected_or_t<void, expression_type_t, T>> {};
 
 #if SQLITE_VERSION_NUMBER >= 3024000
     template<class Targets, class Actions>
@@ -30530,11 +30593,11 @@ namespace sqlite_orm::internal {
     template<char... C>
     struct node_tuple<column_alias<C...>, void> : node_tuple<void> {};
 
-    template<class E>
-    struct node_tuple<order_by_t<E>, void> : node_tuple<E> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_order_by, T>> : node_tuple<expression_type_t<T>> {};
 
-    template<class... E>
-    struct node_tuple<multi_order_by_t<E...>, void> : node_tuple_for<E...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_multi_order_by, T>> : node_tuple<args_type_t<T>> {};
 
     template<class L, class R>
     struct node_tuple<is_equal_with_table_t<L, R>, void> : node_tuple<R> {};
@@ -30566,11 +30629,11 @@ namespace sqlite_orm::internal {
 
     template<class With>
     struct node_tuple<With, match_if<is_with_clause, With>>
-        : node_tuple_for<typename With::cte_type, expression_type_t<With>> {};
+        : node_tuple_for<cte_type_t<With>, expression_type_t<With>> {};
 #endif
 
-    template<class T, class... Args>
-    struct node_tuple<select_t<T, Args...>, void> : node_tuple_for<T, Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_select, T>> : node_tuple_for<return_type_t<T>, conditions_type_t<T>> {};
 
     template<class... Args>
     struct node_tuple<insert_raw_t<Args...>, void> : node_tuple_for<Args...> {};
@@ -30635,11 +30698,8 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<bitwise_not_t<T>, void> : node_tuple<T> {};
 
-    template<class R, class S, class... Args>
-    struct node_tuple<built_in_function_t<R, S, Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class R, class S, class... Args>
-    struct node_tuple<built_in_aggregate_function_t<R, S, Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_built_in_function, T>> : node_tuple<args_type_t<T>> {};
 
     template<class F, class W>
     struct node_tuple<filtered_aggregate_function<F, W>, void> : node_tuple_for<F, W> {};
@@ -30667,8 +30727,9 @@ namespace sqlite_orm::internal {
     template<class T, class O>
     struct node_tuple<inner_join_t<T, O>, void> : node_tuple<O> {};
 
-    template<class R, class T, class E, class... Args>
-    struct node_tuple<simple_case_t<R, T, E, Args...>, void> : node_tuple_for<T, Args..., E> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_case_expression, T>>
+        : node_tuple_for<case_expression_type_t<T>, args_type_t<T>, else_expression_type_t<T>> {};
 
     template<class L, class R>
     struct node_tuple<std::pair<L, R>, void> : node_tuple_for<L, R> {};
@@ -30676,17 +30737,18 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<T, std::enable_if_t<is_as_node<T>::value>> : node_tuple<expression_type_t<T>> {};
 
+    /*
+     *  The implicit `limit(offset, limit)` spelling binds its offset first; every other spelling binds
+     *  the limit first, with a `void` offset expression contributing nothing.
+     */
     template<class T>
-    struct node_tuple<limit_t<T, false, false, void>, void> : node_tuple<T> {};
+    struct node_tuple<T, match_if<is_limit, T>>
+        : mpl::conditional_t<T::offset_is_implicit_v,
+                             node_tuple_for<offset_expression_type_t<T>, expression_type_t<T>>,
+                             node_tuple_for<expression_type_t<T>, offset_expression_type_t<T>>> {};
 
-    template<class T, class O>
-    struct node_tuple<limit_t<T, true, false, O>, void> : node_tuple_for<T, O> {};
-
-    template<class T, class O>
-    struct node_tuple<limit_t<T, true, true, O>, void> : node_tuple_for<O, T> {};
-
-    template<class... TableExpr>
-    struct node_tuple<from2_t<TableExpr...>, void> : node_tuple_for<TableExpr...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_from2, T>> : node_tuple<tuple_type_t<T>> {};
 
     /*
      *  Table reference as part of FROM clause: skip

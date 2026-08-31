@@ -7,6 +7,7 @@
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
+#include "vocabulary/node_traits.h"  // projections
 #include "prepared_statement.h"
 #include "ast_iterator.h"
 #include "node_tuple.h"

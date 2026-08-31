@@ -10,6 +10,7 @@
 #endif
 
 #include "../tuple_helper/tuple_traits.h"
+#include "../vocabulary/node_traits.h"
 #include "../default_value_extractor.h"
 #include "../schema/column.h"
 

@@ -79,8 +79,14 @@ namespace sqlite_orm::internal {
      *  or 0 if the type is not a statement-level clause.
      */
     template<class T>
-    constexpr size_t select_clause_rank_v =
-        clause_rank_v<T, is_any_from, is_any_join, is_where, is_group_by, is_window_defn, is_order_by, is_limit>;
+    constexpr size_t select_clause_rank_v = clause_rank_v<T,
+                                                          is_any_from,
+                                                          is_any_join,
+                                                          is_where,
+                                                          is_any_group_by,
+                                                          is_window_defn,
+                                                          is_any_order_by,
+                                                          is_limit>;
 
     /*
      *  Implementation note: a derived struct in favor of an alias template, because it is passed on as a
@@ -111,7 +117,7 @@ namespace sqlite_orm::internal {
      *  are admitted and left to SQLite to reject.
      */
     template<class T>
-    constexpr size_t delete_clause_rank_v = clause_rank_v<T, is_where, is_order_by, is_limit>;
+    constexpr size_t delete_clause_rank_v = clause_rank_v<T, is_where, is_any_order_by, is_limit>;
 
     //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
     //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
@@ -144,7 +150,7 @@ namespace sqlite_orm::internal {
                                                           is_any_join,
 #endif
                                                           is_where,
-                                                          is_order_by,
+                                                          is_any_order_by,
                                                           is_limit>;
 
     //  a derived struct in favor of an alias template, because it is passed on as a template-template argument

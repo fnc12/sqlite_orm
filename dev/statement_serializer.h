@@ -28,7 +28,6 @@
 #include "tuple_helper/tuple_filter.h"
 #include "ast/upsert_clause.h"
 #include "ast/excluded.h"
-#include "ast/group_by.h"
 #include "ast/into.h"
 #include "ast/match.h"
 #include "ast/rank.h"
@@ -723,9 +722,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class R, class S, class... Args>
-    struct statement_serializer<built_in_function_t<R, S, Args...>, void> {
-        using statement_type = built_in_function_t<R, S, Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_built_in_function, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -735,10 +734,6 @@ namespace sqlite_orm::internal {
             return ss.str();
         }
     };
-
-    template<class R, class S, class... Args>
-    struct statement_serializer<built_in_aggregate_function_t<R, S, Args...>, void>
-        : statement_serializer<built_in_function_t<R, S, Args...>, void> {};
 
     template<class F, class... CallArgs>
     struct statement_serializer<function_call<F, CallArgs...>, void> {
@@ -2079,7 +2074,7 @@ namespace sqlite_orm::internal {
     std::string serialize_get_all_impl(const T& getAll, const Ctx& context) {
         using table_type = type_t<T>;
         using mapped_type = mapped_type_proxy_t<table_type>;
-        constexpr bool hasExplicitFrom2 = tuple_has<typename T::conditions_type, is_from2>::value;
+        constexpr bool hasExplicitFrom2 = tuple_has<conditions_type_t<T>, is_from2>::value;
 
         auto& table = pick_table<mapped_type>(context.db_objects);
 
@@ -2247,7 +2242,7 @@ namespace sqlite_orm::internal {
             }
 
             ss << streaming_serialized(get_column_names(sel.col, subCtx));
-            using conditions_tuple = typename statement_type::conditions_type;
+            using conditions_tuple = conditions_type_t<statement_type>;
             constexpr bool hasExplicitFrom = tuple_has<conditions_tuple, is_any_from>::value;
             if constexpr (!hasExplicitFrom) {
                 using joins_index_sequence = filter_tuple_sequence_t<conditions_tuple, is_any_join>;
@@ -2356,7 +2351,7 @@ namespace sqlite_orm::internal {
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << "FROM ";
-            iterate_tuple<typename From::tuple_type>([&context, &ss, first = true](auto* dummy) mutable {
+            iterate_tuple<tuple_type_t<From>>([&context, &ss, first = true](auto* dummy) mutable {
                 using table_type = std::remove_pointer_t<decltype(dummy)>;
 
                 static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
@@ -2572,9 +2567,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class O>
-    struct statement_serializer<order_by_t<O>, void> {
-        using statement_type = order_by_t<O>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_order_by, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
@@ -2586,9 +2581,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class C>
-    struct statement_serializer<dynamic_order_by_t<C>, void> {
-        using statement_type = dynamic_order_by_t<C>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_dynamic_order_by, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
@@ -2597,9 +2592,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct statement_serializer<multi_order_by_t<Args...>, void> {
-        using statement_type = multi_order_by_t<Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_multi_order_by, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
@@ -2666,25 +2661,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class... Args>
-    struct statement_serializer<group_by_with_having<T, Args...>, void> {
-        using statement_type = group_by_with_having<T, Args...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-            auto newContext = context;
-            newContext.omit_table_name = false;
-            ss << "GROUP BY " << streaming_expressions_tuple(statement.args, newContext) << " HAVING "
-               << serialize(statement.expression, context);
-            return ss.str();
-        }
-    };
-
-    template<class... Args>
-    struct statement_serializer<group_by_t<Args...>, void> {
-        using statement_type = group_by_t<Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_any_group_by, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -2693,6 +2672,10 @@ namespace sqlite_orm::internal {
             auto newContext = context;
             newContext.omit_table_name = false;
             ss << "GROUP BY " << streaming_expressions_tuple(statement.args, newContext);
+            //  the HAVING condition is only carried by the `group_by_with_having` spelling of the clause
+            if constexpr (polyfill::is_detected_v<expression_type_t, statement_type>) {
+                ss << " HAVING " << serialize(statement.expression, context);
+            }
             return ss.str();
         }
     };

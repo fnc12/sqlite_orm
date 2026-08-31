@@ -352,7 +352,8 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr void validate_delete_clauses() {
         static_assert(count_tuple<T, is_where>::value <= 1, "a single statement cannot contain > 1 WHERE blocks");
-        static_assert(count_tuple<T, is_order_by>::value <= 1, "a single statement cannot contain > 1 ORDER BY blocks");
+        static_assert(count_tuple<T, is_any_order_by>::value <= 1,
+                      "a single statement cannot contain > 1 ORDER BY blocks");
         static_assert(count_tuple<T, is_limit>::value <= 1, "a single statement cannot contain > 1 LIMIT blocks");
         static_assert(std::tuple_size<T>::value == count_tuple<T, is_delete_clause>::value,
                       "a DELETE argument must be a WHERE, ORDER BY or LIMIT clause");
@@ -368,7 +369,8 @@ namespace sqlite_orm::internal {
     constexpr void validate_update_clauses() {
         static_assert(count_tuple<T, is_any_from>::value <= 1, "a single statement cannot contain > 1 FROM blocks");
         static_assert(count_tuple<T, is_where>::value <= 1, "a single statement cannot contain > 1 WHERE blocks");
-        static_assert(count_tuple<T, is_order_by>::value <= 1, "a single statement cannot contain > 1 ORDER BY blocks");
+        static_assert(count_tuple<T, is_any_order_by>::value <= 1,
+                      "a single statement cannot contain > 1 ORDER BY blocks");
         static_assert(count_tuple<T, is_limit>::value <= 1, "a single statement cannot contain > 1 LIMIT blocks");
         static_assert(std::tuple_size<T>::value == count_tuple<T, is_update_clause>::value,
                       "an UPDATE argument must be a FROM, JOIN, WHERE, ORDER BY or LIMIT clause");

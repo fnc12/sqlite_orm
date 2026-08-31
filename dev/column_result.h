@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_base_of
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_arithmetic, std::is_base_of
 #include <functional>  //  std::reference_wrapper
 #include <optional>  //  std::optional
 #endif
@@ -16,12 +16,9 @@
 #include "tuple_helper/tuple_transformer.h"
 #include "tuple_helper/same_or_void.h"
 #include "member_traits/member_traits.h"
+#include "vocabulary/node_traits.h"
 #include "mapped_type_proxy.h"
 #include "core_functions.h"
-#include "ast/result_columns.h"
-#include "ast/case_expression.h"
-#include "ast/select.h"
-#include "ast/compound_operator.h"
 #include "operators.h"
 #include "rowid.h"
 #include "column_result_proxy.h"
@@ -36,7 +33,6 @@
 #include "ast/between.h"
 #include "ast/is_null.h"
 #include "ast/is_not_null.h"
-#include "ast/window.h"
 #include "ast/rank.h"
 #include "window_functions.h"
 
@@ -71,13 +67,21 @@ namespace sqlite_orm::internal {
     using column_result_for_tuple_t = transform_tuple_t<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, as_optional_t<T>, void> {
-        using type = std::optional<column_result_of_t<DBOs, T>>;
+    struct column_result_t<DBOs, T, match_if<is_as_optional, T>> {
+        using type = std::optional<column_result_of_t<DBOs, expression_type_t<T>>>;
     };
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, std::optional<T>, void> {
         using type = std::optional<T>;
+    };
+
+    /**
+     *  The concatenated results of a list of column expressions, with a tuple result of a single expression
+     *  spliced into the sequence rather than nested in it.
+     */
+    template<class DBOs, class... Args>
+    struct column_result_t<DBOs, std::tuple<Args...>, void> : conc_tuple<tuplify_t<column_result_of_t<DBOs, Args>>...> {
     };
 
     template<class DBOs, class L, class A>
@@ -123,29 +127,27 @@ namespace sqlite_orm::internal {
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<std::is_member_pointer, T>> : member_field_type<T> {};
 
-    template<class DBOs, class R, class S, class... Args>
-    struct column_result_t<DBOs, built_in_function_t<R, S, Args...>, void> {
+    /**
+     *  The result of a built-in function is the return type it declares, except for the functions whose
+     *  result is a `unique_ptr` of their first argument's result - those declare `unique_ptr_result_of<X>`.
+     */
+    template<class DBOs, class R>
+    struct built_in_function_result {
         using type = R;
     };
 
-    template<class DBOs, class R, class S, class... Args>
-    struct column_result_t<DBOs, built_in_aggregate_function_t<R, S, Args...>, void> {
-        using type = R;
+    template<class DBOs, class X>
+    struct built_in_function_result<DBOs, unique_ptr_result_of<X>> {
+        using type = std::unique_ptr<column_result_of_t<DBOs, X>>;
     };
+
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_built_in_function, T>>
+        : built_in_function_result<DBOs, return_type_t<T>> {};
 
     template<class DBOs, class F, class... Args>
     struct column_result_t<DBOs, function_call<F, Args...>, void> {
         using type = typename callable_arguments<F>::return_type;
-    };
-
-    template<class DBOs, class X, class... Rest, class S>
-    struct column_result_t<DBOs, built_in_function_t<unique_ptr_result_of<X>, S, X, Rest...>, void> {
-        using type = std::unique_ptr<column_result_of_t<DBOs, X>>;
-    };
-
-    template<class DBOs, class X, class S>
-    struct column_result_t<DBOs, built_in_aggregate_function_t<unique_ptr_result_of<X>, S, X>, void> {
-        using type = std::unique_ptr<column_result_of_t<DBOs, X>>;
     };
 
     template<class DBOs, class T>
@@ -156,8 +158,8 @@ namespace sqlite_orm::internal {
     template<class DBOs, class F, class W>
     struct column_result_t<DBOs, filtered_aggregate_function<F, W>, void> : column_result_t<DBOs, F> {};
 
-    template<class DBOs, class F, class... Args>
-    struct column_result_t<DBOs, over_t<F, Args...>, void> : column_result_t<DBOs, F> {};
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_over, T>> : column_result_t<DBOs, function_type_t<T>> {};
 
     template<class DBOs>
     struct column_result_t<DBOs, row_number_t, void> {
@@ -225,8 +227,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_rowset_deduplicator, T>>
-        : column_result_t<DBOs, typename T::expression_type> {};
+    struct column_result_t<DBOs, T, match_if<is_rowset_deduplicator, T>> : column_result_t<DBOs, expression_type_t<T>> {
+    };
 
     template<class DBOs, class L, class R>
     struct column_result_t<DBOs, conc_t<L, R>, void> {
@@ -321,6 +323,9 @@ namespace sqlite_orm::internal {
     template<class DBOs, class T, class C>
     struct column_result_t<DBOs, alias_column_t<T, C>, void> : column_result_t<DBOs, C> {};
 
+    //  note: deliberately matching `column_pointer` by its own template rather than dispatching on
+    //  `is_column_pointer`: the CTE column reference below is a refinement of this specialization, and a
+    //  trait-based primary would be ambiguous with it rather than being ordered before it.
     template<class DBOs, class T, class F>
     struct column_result_t<DBOs, column_pointer<T, F>, void> : column_result_t<DBOs, F> {};
 
@@ -338,29 +343,27 @@ namespace sqlite_orm::internal {
     };
 #endif
 
-    template<class DBOs, class... Args>
-    struct column_result_t<DBOs, columns_t<Args...>, void>
-        : conc_tuple<tuplify_t<column_result_of_t<DBOs, std::decay_t<Args>>>...> {};
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_columns, T>> : column_result_t<DBOs, columns_type_t<T>> {};
 
-    template<class DBOs, class T, class... Args>
-    struct column_result_t<DBOs, struct_t<T, Args...>, void> {
-        using type = structure<T, tuple_cat_t<tuplify_t<column_result_of_t<DBOs, std::decay_t<Args>>>...>>;
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_struct, T>> {
+        using type = structure<object_type_t<T>, column_result_of_t<DBOs, columns_type_t<T>>>;
     };
 
-    template<class DBOs, class T, class... Args>
-    struct column_result_t<DBOs, select_t<T, Args...>> : column_result_t<DBOs, T> {};
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_select, T>> : column_result_t<DBOs, return_type_t<T>> {};
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_compound_operator, T>> {
-        using type =
-            polyfill::detected_t<common_type_of_t, column_result_for_tuple_t<DBOs, typename T::expressions_tuple>>;
+        using type = polyfill::detected_t<common_type_of_t, column_result_for_tuple_t<DBOs, expressions_tuple_t<T>>>;
         static_assert(!std::is_same<type, polyfill::nonesuch>::value,
                       "Compound select statements must return a common type");
     };
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_binary_condition, T>> {
-        using type = typename T::result_type;
+        using type = result_type_t<T>;
     };
 
     template<class DBOs, class T, class X, class Y, class Z>
@@ -389,16 +392,16 @@ namespace sqlite_orm::internal {
         using type = std::string;
     };
 
-    template<class DBOs, class T, class E>
-    struct column_result_t<DBOs, as_t<T, E>, void> : column_result_t<DBOs, std::decay_t<E>> {};
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_as_node, T>> : column_result_t<DBOs, expression_type_t<T>> {};
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, asterisk_t<T>, void>
-        : storage_traits::storage_mapped_columns<DBOs, mapped_type_proxy_t<T>> {};
+    struct column_result_t<DBOs, T, match_if<is_asterisk, T>>
+        : storage_traits::storage_mapped_columns<DBOs, mapped_type_proxy_t<type_t<T>>> {};
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, object_t<T>, void> {
-        using type = table_reference<T>;
+    struct column_result_t<DBOs, T, match_if<is_object_node, T>> {
+        using type = table_reference<type_t<T>>;
     };
 
     template<class DBOs, class T, class E>
@@ -406,9 +409,9 @@ namespace sqlite_orm::internal {
         using type = T;
     };
 
-    template<class DBOs, class R, class T, class E, class... Args>
-    struct column_result_t<DBOs, simple_case_t<R, T, E, Args...>, void> {
-        using type = R;
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_case_expression, T>> {
+        using type = return_type_t<T>;
     };
 
     template<class DBOs, class A, class T, class E>

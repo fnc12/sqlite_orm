@@ -216,6 +216,9 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_where = std::bool_constant<is_where_v<T>>;
 
+    /**
+     *  Nodes carrying a single ordering term, which is the argument a multi ORDER BY is composed of.
+     */
     template<class T>
     extern const bool is_order_by_v;
 
@@ -223,10 +226,35 @@ namespace sqlite_orm::internal {
     using is_order_by = std::bool_constant<is_order_by_v<T>>;
 
     template<class T>
-    extern const bool is_group_by_v;
+    extern const bool is_multi_order_by_v;
 
     template<class T>
-    using is_group_by = std::bool_constant<is_group_by_v<T>>;
+    using is_multi_order_by = std::bool_constant<is_multi_order_by_v<T>>;
+
+    /**
+     *  Nodes carrying an ORDER BY assembled at runtime.
+     */
+    template<class T>
+    extern const bool is_dynamic_order_by_v;
+
+    template<class T>
+    using is_dynamic_order_by = std::bool_constant<is_dynamic_order_by_v<T>>;
+
+    //  the three above are DSL spellings of the one ORDER BY clause production,
+    //  hence grouping them is what corresponds to the SQL grammar
+    template<class T>
+    extern const bool is_any_order_by_v;
+
+    template<class T>
+    using is_any_order_by = std::bool_constant<is_any_order_by_v<T>>;
+
+    //  `group_by_t` and `group_by_with_having` are two DSL spellings of the one GROUP BY clause production,
+    //  hence grouping them is what corresponds to the SQL grammar
+    template<class T>
+    extern const bool is_any_group_by_v;
+
+    template<class T>
+    using is_any_group_by = std::bool_constant<is_any_group_by_v<T>>;
 
     template<class T>
     extern const bool is_from_v;

@@ -84,7 +84,7 @@ namespace sqlite_orm::internal {
                     (*this)(colExpr, context);
                 });
                 // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
-                if constexpr (tuple_has<typename E::columns_type, is_asterisk>::value) {
+                if constexpr (tuple_has<columns_type_t<E>, is_asterisk>::value) {
                     this->collectedExpressions.shrink_to_fit();
                 }
                 return this->collectedExpressions;

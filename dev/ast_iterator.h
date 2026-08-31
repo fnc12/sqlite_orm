@@ -28,7 +28,6 @@
 #include "ast/between.h"
 #include "ast/is_null.h"
 #include "ast/is_not_null.h"
-#include "ast/window.h"
 #include "window_functions.h"
 
 namespace sqlite_orm::internal {
@@ -120,7 +119,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct ast_iterator<T, std::enable_if_t<is_group_by<T>::value>> {
+    struct ast_iterator<T, std::enable_if_t<is_any_group_by<T>::value>> {
         using node_type = T;
 
         template<class L>
@@ -533,19 +532,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class R, class S, class... Args>
-    struct ast_iterator<built_in_function_t<R, S, Args...>, void> {
-        using node_type = built_in_function_t<R, S, Args...>;
-
-        template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(node.args, lambda);
-        }
-    };
-
-    template<class R, class S, class... Args>
-    struct ast_iterator<built_in_aggregate_function_t<R, S, Args...>, void> {
-        using node_type = built_in_aggregate_function_t<R, S, Args...>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_built_in_function, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -706,9 +695,9 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& /*node*/, L& /*lambda*/) SQLITE_ORM_OR_CONST_CALLOP {}
     };
 
-    template<class E>
-    struct ast_iterator<order_by_t<E>, void> {
-        using node_type = order_by_t<E>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_order_by, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -716,9 +705,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct ast_iterator<multi_order_by_t<Args...>, void> {
-        using node_type = multi_order_by_t<Args...>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_multi_order_by, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
