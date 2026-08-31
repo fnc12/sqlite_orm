@@ -357,6 +357,10 @@ using std::nullptr_t;
 #define SQLITE_ORM_CONSTEVAL constexpr
 #endif
 
+#if __cpp_lib_is_constant_evaluated >= 201811L
+#define SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
+#endif
+
 #if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
 #define SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #endif
@@ -5947,8 +5951,9 @@ namespace sqlite_orm::internal {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
+#include <stdexcept>  //  std::domain_error
 #include <tuple>  //  std::make_tuple, std::tuple_size
-#include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
+#include <type_traits>  //  std::forward, std::is_base_of, std::enable_if, std::is_constant_evaluated
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
 #include <optional>  //  std::optional
@@ -7611,6 +7616,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "operators.h"
 
+// #include "literal.h"
+// literal_holder
 // #include "tags.h"
 
 // #include "alias_traits.h"
@@ -7998,10 +8005,32 @@ namespace sqlite_orm::internal {
         }
     };
 
+#if SQLITE_VERSION_NUMBER >= 3008001
+    struct likelihood_string {
+        std::string_view serialize() const {
+            return "LIKELIHOOD";
+        }
+    };
+
+    struct unlikely_string {
+        std::string_view serialize() const {
+            return "UNLIKELY";
+        }
+    };
+#endif
+
 #if SQLITE_VERSION_NUMBER >= 3008003
     struct printf_string {
         std::string_view serialize() const {
             return "PRINTF";
+        }
+    };
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3008006
+    struct likely_string {
+        std::string_view serialize() const {
+            return "LIKELY";
         }
     };
 #endif
@@ -9718,6 +9747,40 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
+#if SQLITE_VERSION_NUMBER >= 3008001
+    /**
+     *  LIKELIHOOD(X,Y) function https://www.sqlite.org/lang_corefunc.html#likelihood
+     *
+     *  The probability is stored as a literal, never as a bound parameter:
+     *  SQLite requires the second argument to be a floating point constant between 0.0 and 1.0,
+     *  and rejects a statement that binds it.
+     */
+    template<class X>
+    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>,
+                                            internal::likelihood_string,
+                                            X,
+                                            internal::literal_holder<double>>
+    likelihood(X x, double probability) {
+#ifdef SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
+        //  a probability outside [0.0, 1.0] makes SQLite reject the statement at prepare time;
+        //  when the call is constant-evaluated the error surfaces right here, at compile time
+        if (std::is_constant_evaluated() && !(probability >= 0.0 && probability <= 1.0)) {
+            throw std::domain_error("likelihood() probability must be a constant between 0.0 and 1.0");
+        }
+#endif
+        return {std::tuple<X, internal::literal_holder<double>>{std::forward<X>(x), {probability}}};
+    }
+
+    /**
+     *  UNLIKELY(X) function https://www.sqlite.org/lang_corefunc.html#unlikely
+     */
+    template<class X>
+    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>, internal::unlikely_string, X>
+    unlikely(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+#endif
+
 #if SQLITE_VERSION_NUMBER >= 3008003
     /**
      *  PRINTF(FORMAT,...) function https://www.sqlite.org/lang_corefunc.html#printf
@@ -9725,6 +9788,16 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... Args>
     constexpr internal::built_in_function_t<std::string, internal::printf_string, Args...> printf(Args... args) {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
+    }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3008006
+    /**
+     *  LIKELY(X) function https://www.sqlite.org/lang_corefunc.html#likely
+     */
+    template<class X>
+    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>, internal::likely_string, X> likely(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
 

@@ -44,6 +44,10 @@
 #define SQLITE_ORM_CONSTEVAL constexpr
 #endif
 
+#if __cpp_lib_is_constant_evaluated >= 201811L
+#define SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
+#endif
+
 #if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
 #define SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #endif
