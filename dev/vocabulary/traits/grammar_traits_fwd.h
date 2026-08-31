@@ -58,11 +58,31 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_primary_key = std::bool_constant<is_primary_key_v<T>>;
 
+    /**
+     *  Nodes representing a PRIMARY KEY declared at a single column, i.e. carrying no column list of its own.
+     *
+     *  Note: there is deliberately no `is_table_primary_key` counterpart. A table-level PRIMARY KEY is
+     *  `is_primary_key_v` and not `is_column_primary_key_v`, and the asymmetry is load-bearing: admitting a
+     *  column PRIMARY KEY among the table elements is what lets `validate_base_table_definition()` diagnose it
+     *  as an empty table primary key rather than as an unrecognized table element.
+     */
     template<class T>
     extern const bool is_column_primary_key_v;
 
     template<class T>
     using is_column_primary_key = std::bool_constant<is_column_primary_key_v<T>>;
+
+    /**
+     *  Nodes carrying the AUTOINCREMENT keyword of a column primary key.
+     *
+     *  Note: AUTOINCREMENT only ever decorates a PRIMARY KEY, hence such a node is a primary key
+     *  in its own right - `is_primary_key_v` and `is_column_primary_key_v` hold for it as well.
+     */
+    template<class T>
+    extern const bool is_autoincrement_pk_v;
+
+    template<class T>
+    using is_autoincrement_pk = std::bool_constant<is_autoincrement_pk_v<T>>;
 
     template<class T>
     extern const bool is_foreign_key_v;
@@ -367,6 +387,82 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_distinct = std::bool_constant<is_distinct_v<T>>;
+
+    /**
+     *  Nodes referencing a column of the row a trigger fires for: OLD.column, NEW.column.
+     *
+     *  Which of the two a trigger body may name depends on the trigger's event - OLD is absent from an
+     *  INSERT trigger, NEW from a DELETE trigger -, which is why they are classified individually.
+     */
+    template<class T>
+    extern const bool is_old_row_ref_v;
+
+    template<class T>
+    using is_old_row_ref = std::bool_constant<is_old_row_ref_v<T>>;
+
+    template<class T>
+    extern const bool is_new_row_ref_v;
+
+    template<class T>
+    using is_new_row_ref = std::bool_constant<is_new_row_ref_v<T>>;
+
+    /**
+     *  Nodes representing a RAISE expression of a trigger body:
+     *  RAISE(IGNORE), RAISE(ROLLBACK | ABORT | FAIL, message).
+     */
+    template<class T>
+    extern const bool is_raise_v;
+
+    template<class T>
+    using is_raise = std::bool_constant<is_raise_v<T>>;
+
+    /**
+     *  Nodes representing the keyword saying when a trigger fires: BEFORE, AFTER, INSTEAD OF.
+     */
+    template<class T>
+    extern const bool is_trigger_timing_v;
+
+    template<class T>
+    using is_trigger_timing = std::bool_constant<is_trigger_timing_v<T>>;
+
+    /**
+     *  Nodes representing the keyword saying what makes a trigger fire: DELETE, INSERT, UPDATE.
+     */
+    template<class T>
+    extern const bool is_trigger_event_v;
+
+    template<class T>
+    using is_trigger_event = std::bool_constant<is_trigger_event_v<T>>;
+
+    /**
+     *  Nodes pairing a trigger's timing with its event, which is one grammar production with an optional
+     *  column list: BEFORE DELETE, AFTER UPDATE, AFTER UPDATE OF (columns).
+     */
+    template<class T>
+    extern const bool is_trigger_event_spec_v;
+
+    template<class T>
+    using is_trigger_event_spec = std::bool_constant<is_trigger_event_spec_v<T>>;
+
+    /**
+     *  Nodes of the UPDATE OF form of that production, which alone carries a column list.
+     *  A refinement of `is_trigger_event_spec_v`, which holds for these nodes as well.
+     */
+    template<class T>
+    extern const bool is_trigger_update_of_v;
+
+    template<class T>
+    using is_trigger_update_of = std::bool_constant<is_trigger_update_of_v<T>>;
+
+    /**
+     *  Nodes specifying everything about a trigger but its name and body: the event spec above,
+     *  the table it watches, FOR EACH ROW, and the WHEN condition.
+     */
+    template<class T>
+    extern const bool is_trigger_spec_v;
+
+    template<class T>
+    using is_trigger_spec = std::bool_constant<is_trigger_spec_v<T>>;
 }
 
 // Role-based grammar traits

@@ -57,8 +57,6 @@
 #include "serializer_context.h"
 #include "object_from_column_builder.h"
 #include "row_extractor.h"
-#include "schema/index.h"
-#include "schema/triggers.h"
 #include "schema/constraints/generated_always.h"  // basic_generated_always
 #include "cte_storage.h"
 #include "util.h"
@@ -1135,8 +1133,8 @@ namespace sqlite_orm::internal {
             return sync_schema_result::already_in_sync;
         }
 
-        template<class T, class... S>
-        sync_schema_result schema_status(const trigger_t<T, S...>& trigger, sqlite3* db, bool, bool*) {
+        template<class Trigger, satisfies<is_trigger, Trigger> = true>
+        sync_schema_result schema_status(const Trigger& trigger, sqlite3* db, bool, bool*) {
             auto dbTriggerSql = this->retrieve_object_sql(db, "trigger", trigger.name);
             if (dbTriggerSql.empty()) {
                 return sync_schema_result::new_table_created;
@@ -1151,8 +1149,8 @@ namespace sqlite_orm::internal {
             return sync_schema_result::dropped_and_recreated;
         }
 
-        template<class... Cols>
-        sync_schema_result schema_status(const index_t<Cols...>& index, sqlite3* db, bool, bool*) {
+        template<class Index, satisfies<is_index, Index> = true>
+        sync_schema_result schema_status(const Index& index, sqlite3* db, bool, bool*) {
             auto dbIndexSql = this->retrieve_object_sql(db, "index", index.name);
             if (dbIndexSql.empty()) {
                 return sync_schema_result::new_table_created;
@@ -1312,8 +1310,8 @@ namespace sqlite_orm::internal {
             return res;
         }
 
-        template<class... Cols>
-        sync_schema_result sync_dbo(const index_t<Cols...>& index, sqlite3* db, bool preserve) {
+        template<class Index, satisfies<is_index, Index> = true>
+        sync_schema_result sync_dbo(const Index& index, sqlite3* db, bool preserve) {
             auto res = this->schema_status(index, db, preserve, nullptr);
             if (res != sync_schema_result::already_in_sync) {
                 if (res == sync_schema_result::dropped_and_recreated) {
@@ -1326,8 +1324,8 @@ namespace sqlite_orm::internal {
             return res;
         }
 
-        template<class... Cols>
-        sync_schema_result sync_dbo(const trigger_t<Cols...>& trigger, sqlite3* db, bool preserve) {
+        template<class Trigger, satisfies<is_trigger, Trigger> = true>
+        sync_schema_result sync_dbo(const Trigger& trigger, sqlite3* db, bool preserve) {
             auto res = this->schema_status(trigger, db, preserve, nullptr);
             if (res != sync_schema_result::already_in_sync) {
                 if (res == sync_schema_result::dropped_and_recreated) {

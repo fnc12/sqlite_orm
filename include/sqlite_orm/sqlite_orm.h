@@ -1852,11 +1852,31 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_primary_key = std::bool_constant<is_primary_key_v<T>>;
 
+    /**
+     *  Nodes representing a PRIMARY KEY declared at a single column, i.e. carrying no column list of its own.
+     *
+     *  Note: there is deliberately no `is_table_primary_key` counterpart. A table-level PRIMARY KEY is
+     *  `is_primary_key_v` and not `is_column_primary_key_v`, and the asymmetry is load-bearing: admitting a
+     *  column PRIMARY KEY among the table elements is what lets `validate_base_table_definition()` diagnose it
+     *  as an empty table primary key rather than as an unrecognized table element.
+     */
     template<class T>
     extern const bool is_column_primary_key_v;
 
     template<class T>
     using is_column_primary_key = std::bool_constant<is_column_primary_key_v<T>>;
+
+    /**
+     *  Nodes carrying the AUTOINCREMENT keyword of a column primary key.
+     *
+     *  Note: AUTOINCREMENT only ever decorates a PRIMARY KEY, hence such a node is a primary key
+     *  in its own right - `is_primary_key_v` and `is_column_primary_key_v` hold for it as well.
+     */
+    template<class T>
+    extern const bool is_autoincrement_pk_v;
+
+    template<class T>
+    using is_autoincrement_pk = std::bool_constant<is_autoincrement_pk_v<T>>;
 
     template<class T>
     extern const bool is_foreign_key_v;
@@ -2161,6 +2181,82 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_distinct = std::bool_constant<is_distinct_v<T>>;
+
+    /**
+     *  Nodes referencing a column of the row a trigger fires for: OLD.column, NEW.column.
+     *
+     *  Which of the two a trigger body may name depends on the trigger's event - OLD is absent from an
+     *  INSERT trigger, NEW from a DELETE trigger -, which is why they are classified individually.
+     */
+    template<class T>
+    extern const bool is_old_row_ref_v;
+
+    template<class T>
+    using is_old_row_ref = std::bool_constant<is_old_row_ref_v<T>>;
+
+    template<class T>
+    extern const bool is_new_row_ref_v;
+
+    template<class T>
+    using is_new_row_ref = std::bool_constant<is_new_row_ref_v<T>>;
+
+    /**
+     *  Nodes representing a RAISE expression of a trigger body:
+     *  RAISE(IGNORE), RAISE(ROLLBACK | ABORT | FAIL, message).
+     */
+    template<class T>
+    extern const bool is_raise_v;
+
+    template<class T>
+    using is_raise = std::bool_constant<is_raise_v<T>>;
+
+    /**
+     *  Nodes representing the keyword saying when a trigger fires: BEFORE, AFTER, INSTEAD OF.
+     */
+    template<class T>
+    extern const bool is_trigger_timing_v;
+
+    template<class T>
+    using is_trigger_timing = std::bool_constant<is_trigger_timing_v<T>>;
+
+    /**
+     *  Nodes representing the keyword saying what makes a trigger fire: DELETE, INSERT, UPDATE.
+     */
+    template<class T>
+    extern const bool is_trigger_event_v;
+
+    template<class T>
+    using is_trigger_event = std::bool_constant<is_trigger_event_v<T>>;
+
+    /**
+     *  Nodes pairing a trigger's timing with its event, which is one grammar production with an optional
+     *  column list: BEFORE DELETE, AFTER UPDATE, AFTER UPDATE OF (columns).
+     */
+    template<class T>
+    extern const bool is_trigger_event_spec_v;
+
+    template<class T>
+    using is_trigger_event_spec = std::bool_constant<is_trigger_event_spec_v<T>>;
+
+    /**
+     *  Nodes of the UPDATE OF form of that production, which alone carries a column list.
+     *  A refinement of `is_trigger_event_spec_v`, which holds for these nodes as well.
+     */
+    template<class T>
+    extern const bool is_trigger_update_of_v;
+
+    template<class T>
+    using is_trigger_update_of = std::bool_constant<is_trigger_update_of_v<T>>;
+
+    /**
+     *  Nodes specifying everything about a trigger but its name and body: the event spec above,
+     *  the table it watches, FOR EACH ROW, and the WHEN condition.
+     */
+    template<class T>
+    extern const bool is_trigger_spec_v;
+
+    template<class T>
+    using is_trigger_spec = std::bool_constant<is_trigger_spec_v<T>>;
 }
 
 // Role-based grammar traits
@@ -2503,6 +2599,15 @@ namespace sqlite_orm::internal {
      */
     template<typename T>
     using table_mapped_type_t = typename T::table_mapped_type;
+
+    /**
+     *  The mapped object type of the table a trigger specification watches.
+     *
+     *  Note: this is what a trigger's `table_mapped_type_t` is read from; the two are the same type,
+     *  named once at the trigger specification and once at the trigger itself.
+     */
+    template<typename T>
+    using table_type_t = typename T::table_type;
 
     template<typename T>
     using elements_type_t = typename T::elements_type;
@@ -12076,9 +12181,6 @@ namespace sqlite_orm::internal {
 }
 
 namespace sqlite_orm::internal {
-    template<class T>
-    struct primary_key_with_autoincrement;
-
     // Custom type:
     // It is the programmer's responsibility to ensure data integrity in the value range of the custom type
     // and in purview of SQLite using a 64-bit signed integer.
@@ -12122,7 +12224,7 @@ namespace sqlite_orm::internal {
 
         static_assert((is_column_constraint<Op>::value && ...), "Incorrect column constraints");
 
-        if constexpr (tuple_has_template<constraints_type, primary_key_with_autoincrement>::value) {
+        if constexpr (tuple_has<constraints_type, is_autoincrement_pk>::value) {
             check_pkcol<member_field_type_t<G>>::validate_column_primary_key_with_autoincrement();
         }
     }
@@ -21884,447 +21986,6 @@ namespace sqlite_orm::internal {
 
 // #include "error_code.h"
 
-// #include "schema/triggers.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>
-#include <tuple>
-#include <type_traits>  //  std::is_member_pointer_v
-#endif
-
-// #include "../optional_container.h"
-
-// #include "../vocabulary/node_traits.h"
-
-// #include "../vocabulary/node_algorithms.h"
-// is_statement_clause
-// #include "../vocabulary/traits/operand_traits_fwd.h"
-// Included to specialize traits
-
-// NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
-// (Could be implemented with a normal trigger that insert or update an internal table and then retreive
-// the event in the C++ code, to call the C++ user callback, with update hooks: https://www.sqlite.org/c3ref/update_hook.html)
-// It could be an interesting feature to bring to sqlite_orm that other libraries don't have ?
-
-namespace sqlite_orm::internal {
-    enum class trigger_timing { trigger_before, trigger_after, trigger_instead_of };
-    enum class trigger_type { trigger_delete, trigger_insert, trigger_update };
-
-    /**
-     *  This class is an intermediate SQLite trigger, to be used with
-     *  `make_trigger` to create a full trigger.
-     *  T is the base of the trigger (contains its type, timing and associated table)
-     *  S is the list of trigger statements
-     */
-    template<class T, class... S>
-    struct partial_trigger_t {
-        using statements_type = std::tuple<S...>;
-
-        /**
-         *  Base of the trigger (contains its type, timing and associated table)
-         */
-        T base;
-        /**
-         *  Statements of the triggers (to be executed when the trigger fires)
-         */
-        statements_type statements;
-
-        partial_trigger_t(T trigger_base, S... statements) :
-            base{std::move(trigger_base)}, statements{std::make_tuple<S...>(std::forward<S>(statements)...)} {}
-
-        partial_trigger_t& end() {
-            return *this;
-        }
-    };
-
-    struct trigger_base {
-        /**
-         *  Name of the trigger
-         */
-        std::string name;
-    };
-
-    /**
-     *  This class represent a SQLite trigger
-     *  T is the base of the trigger (contains its type, timing and associated table)
-     *  S is the list of trigger statments
-     */
-    template<class T, class... S>
-    struct trigger_t : trigger_base {
-        using object_type = void;
-        using table_mapped_type = typename T::table_type;
-        using elements_type = typename partial_trigger_t<T, S...>::statements_type;
-
-        /**
-         *  Base of the trigger (contains its type, timing and associated table)
-         */
-        T base;
-
-        /**
-         *  Statements of the triggers (to be executed when the trigger fires)
-         */
-        elements_type elements;
-    };
-
-    template<class T>
-    constexpr bool is_trigger_v = polyfill::is_specialization_of_v<T, trigger_t>;
-
-    /**
-     *  Base of a trigger. Contains the trigger type/timming and the table type
-     *  T is the table type
-     *  W is `when` expression type
-     *  Type is the trigger base type (type+timing)
-     */
-    template<class T, class W, class Type>
-    struct trigger_base_t {
-        using table_type = T;
-        using when_type = W;
-        using trigger_type_base = Type;
-
-        /**
-         *  Contains the trigger type and timing
-         */
-        trigger_type_base type_base;
-        /**
-         *  Value used to determine if we execute the trigger on each row or on each statement
-         *  (SQLite doesn't support the FOR EACH STATEMENT syntax yet: https://sqlite.org/lang_createtrigger.html#description
-         *  so this value is more of a placeholder for a later update)
-         */
-        bool do_for_each_row = false;
-        /**
-         *  When expression (if any)
-         *  If a WHEN expression is specified, the trigger will only execute
-         *  if the expression evaluates to true when the trigger is fired
-         */
-        optional_container<when_type> container_when;
-
-        trigger_base_t(trigger_type_base type_base_) : type_base(std::move(type_base_)) {}
-
-        trigger_base_t& for_each_row() {
-            this->do_for_each_row = true;
-            return *this;
-        }
-
-        template<class WW>
-        trigger_base_t<T, WW, Type> when(WW expression) {
-            static_assert(!is_statement_clause<WW>::value,
-                          "a WHEN condition of a trigger must be an expression, not a statement clause");
-            trigger_base_t<T, WW, Type> res(this->type_base);
-            res.container_when.field = std::move(expression);
-            return res;
-        }
-
-        template<class... S>
-        partial_trigger_t<trigger_base_t<T, W, Type>, S...> begin(S... statements) {
-            static_assert(
-                ((is_select_expression_v<S> || is_raw_dml_expression_v<S> || is_object_dml_expression_v<S>) && ...),
-                "a trigger body statement must be a complete SELECT, INSERT, UPDATE or DELETE statement");
-            return {*this, std::forward<S>(statements)...};
-        }
-    };
-
-    /**
-     *  Contains the trigger type and timing
-     */
-    struct trigger_type_base_t {
-        /**
-         *  Value indicating if the trigger is run BEFORE, AFTER or INSTEAD OF
-         *  the statement that fired it.
-         */
-        trigger_timing timing;
-        /**
-         *  The type of the statement that would cause the trigger to fire.
-         *  Can be DELETE, INSERT, or UPDATE.
-         */
-        trigger_type type;
-
-        trigger_type_base_t(trigger_timing timing, trigger_type type) : timing(timing), type(type) {}
-
-        template<class T>
-        trigger_base_t<T, void, trigger_type_base_t> on() {
-            return {*this};
-        }
-    };
-
-    /**
-     *  Special case for UPDATE OF (columns)
-     *  Contains the trigger type and timing
-     */
-    template<class... Cs>
-    struct trigger_update_type_t : trigger_type_base_t {
-        using columns_type = std::tuple<Cs...>;
-
-        /**
-         *  Contains the columns the trigger is watching. Will only
-         *  trigger if one of theses columns is updated.
-         */
-        columns_type columns;
-
-        trigger_update_type_t(trigger_timing timing, trigger_type type, Cs... columns) :
-            trigger_type_base_t(timing, type), columns(std::make_tuple<Cs...>(std::forward<Cs>(columns)...)) {}
-
-        template<class T>
-        trigger_base_t<T, void, trigger_update_type_t<Cs...>> on() {
-            return {*this};
-        }
-    };
-
-    struct trigger_timing_t {
-        trigger_timing timing;
-
-        trigger_type_base_t delete_() {
-            return {timing, trigger_type::trigger_delete};
-        }
-
-        trigger_type_base_t insert() {
-            return {timing, trigger_type::trigger_insert};
-        }
-
-        trigger_type_base_t update() {
-            return {timing, trigger_type::trigger_update};
-        }
-
-        template<class... Cs>
-        trigger_update_type_t<Cs...> update_of(Cs... columns) {
-            //  the grammar production is a list of column names, not expressions
-            static_assert(((std::is_member_pointer_v<Cs> || is_column_pointer_v<Cs>) && ...),
-                          "UPDATE OF arguments must be members of the table the trigger watches");
-            return {timing, trigger_type::trigger_update, std::forward<Cs>(columns)...};
-        }
-    };
-
-    struct raise_t {
-        enum class type_t {
-            ignore,
-            rollback,
-            abort,
-            fail,
-        };
-
-        type_t type = type_t::ignore;
-        std::string message;
-    };
-
-    template<class T>
-    struct new_t {
-        using expression_type = T;
-
-        expression_type expression;
-    };
-
-    template<class T>
-    struct old_t {
-        using expression_type = T;
-
-        expression_type expression;
-    };
-
-    template<class T>
-    constexpr bool
-        is_operator_argument_v<T,
-                               std::enable_if_t<std::disjunction<polyfill::is_specialization_of<T, new_t>,
-                                                                 polyfill::is_specialization_of<T, old_t>>::value>> =
-            true;
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  NEW.expression function used within TRIGGER expressions
-     */
-    template<class T>
-    internal::new_t<T> new_(T expression) {
-        return {std::move(expression)};
-    }
-
-    /**
-     *  OLD.expression function used within TRIGGER expressions
-     */
-    template<class T>
-    internal::old_t<T> old(T expression) {
-        return {std::move(expression)};
-    }
-
-    /**
-     *  RAISE(IGNORE) expression used within TRIGGER expressions
-     */
-    inline internal::raise_t raise_ignore() {
-        return {internal::raise_t::type_t::ignore, {}};
-    }
-
-    /**
-     *  RAISE(ROLLBACK, %message%) expression used within TRIGGER expressions
-     */
-    inline internal::raise_t raise_rollback(std::string message) {
-        return {internal::raise_t::type_t::rollback, std::move(message)};
-    }
-
-    /**
-     *  RAISE(ABORT, %message%) expression used within TRIGGER expressions
-     */
-    inline internal::raise_t raise_abort(std::string message) {
-        return {internal::raise_t::type_t::abort, std::move(message)};
-    }
-
-    /**
-     *  RAISE(FAIL, %message%) expression used within TRIGGER expressions
-     */
-    inline internal::raise_t raise_fail(std::string message) {
-        return {internal::raise_t::type_t::fail, std::move(message)};
-    }
-
-    template<class T, class... S>
-    internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...>& part) {
-        return {std::move(name), std::move(part.base), std::move(part.statements)};
-    }
-
-    inline internal::trigger_timing_t before() {
-        return {internal::trigger_timing::trigger_before};
-    }
-
-    inline internal::trigger_timing_t after() {
-        return {internal::trigger_timing::trigger_after};
-    }
-
-    inline internal::trigger_timing_t instead_of() {
-        return {internal::trigger_timing::trigger_instead_of};
-    }
-}
-
-// #include "schema/index.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple, std::declval, std::tuple_element_t
-#include <string>  //  std::string
-#include <utility>  //  std::forward
-#endif
-
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../tuple_helper/tuple_traits.h"
-
-// #include "../vocabulary/node_traits.h"
-
-// #include "../vocabulary/node_algorithms.h"
-// is_statement_clause, is_index_element_of_v
-// #include "indexed_column.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
-#include <utility>  //  std::move
-#endif
-
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../vocabulary/node_traits.h"
-
-// #include "../vocabulary/traits/structural_traits_fwd.h"
-// Included to specialize traits
-
-namespace sqlite_orm::internal {
-    template<class C>
-    struct indexed_column_t {
-        using column_type = C;
-
-        column_type _column_or_expression;
-        std::string _collation_name;
-        int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
-
-        indexed_column_t<column_type> collate(std::string name) && {
-            _collation_name = std::move(name);
-            return std::move(*this);
-        }
-
-        indexed_column_t<column_type> asc() && {
-            _order = 1;
-            return std::move(*this);
-        }
-
-        indexed_column_t<column_type> desc() && {
-            _order = -1;
-            return std::move(*this);
-        }
-    };
-
-    template<class T>
-    constexpr bool is_indexed_column_v = polyfill::is_specialization_of<T, indexed_column_t>::value;
-
-    template<class C>
-    auto make_indexed_column(C col) {
-        if constexpr (is_indexed_column_v<C> || is_where_v<C>) {
-            return std::move(col);
-        } else {
-            return indexed_column_t<C>{std::move(col)};
-        }
-    }
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  Use this function to specify indexed column inside `make_index` function call.
-     *  Example: make_index("index_name", indexed_column(&User::id).asc())
-     */
-    template<class C>
-    internal::indexed_column_t<C> indexed_column(C column_or_expression) {
-        return {std::move(column_or_expression)};
-    }
-}
-// make_indexed_column
-
-namespace sqlite_orm::internal {
-    struct index_base {
-        std::string name;
-        bool unique = false;
-    };
-
-    template<class T, class... Els>
-    struct index_t : index_base {
-        using elements_type = std::tuple<Els...>;
-        using object_type = void;
-        using table_mapped_type = T;
-
-        elements_type elements;
-    };
-
-    template<class T>
-    constexpr bool is_index_v = polyfill::is_specialization_of_v<T, index_t>;
-
-    template<class T, class... Cols>
-    constexpr void validate_index_arguments() {
-        static_assert(count_tuple<std::tuple<Cols...>, is_where>::value <= 1,
-                      "amount of where arguments can be 0 or 1");
-        static_assert(((is_where_v<Cols> || !is_statement_clause<Cols>::value) && ...),
-                      "a make_index() argument must be an indexed column, an expression or a partial-index WHERE");
-        static_assert((is_index_element_of_v<Cols, T> && ...),
-                      "all indexed columns must belong to the table the index is made for");
-    }
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    template<class T, class... Cols>
-    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
-                                                                                                      Cols... cols) {
-        using namespace ::sqlite_orm::internal;
-        validate_index_arguments<T, Cols...>();
-        return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
-    }
-
-    template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
-    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
-                                                                                                      Cols... cols) {
-        using namespace ::sqlite_orm::internal;
-        validate_index_arguments<T, Cols...>();
-        return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
-    }
-
-    template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
-    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
-    make_unique_index(std::string name, Cols... cols) {
-        using namespace ::sqlite_orm::internal;
-        validate_index_arguments<T, Cols...>();
-        return {std::move(name), true, std::tuple{make_indexed_column(std::move(cols))...}};
-    }
-}
-
 // #include "schema/constraints/primary_key.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -22444,6 +22105,9 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_column_primary_key_v = std::is_base_of<primary_key_t<>, T>::value;
+
+    template<class T>
+    constexpr bool is_autoincrement_pk_v = polyfill::is_specialization_of_v<T, primary_key_with_autoincrement>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -23941,7 +23605,7 @@ namespace sqlite_orm::internal {
             if constexpr (columnsCount > 0) {
                 ss << "(" << streaming_mapped_columns_expressions(statement._columns, context) << ")";
             }
-            if constexpr (polyfill::is_specialization_of<T, primary_key_with_autoincrement>::value) {
+            if constexpr (is_autoincrement_pk_v<T>) {
                 ss << " AUTOINCREMENT";
             }
             return ss.str();
@@ -24805,9 +24469,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class... Cols>
-    struct statement_serializer<index_t<T, Cols...>, void> {
-        using statement_type = index_t<T, Cols...>;
+    template<class Index>
+    struct statement_serializer<Index, std::enable_if_t<is_index<Index>::value>> {
+        using statement_type = Index;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -24817,7 +24481,7 @@ namespace sqlite_orm::internal {
             if (statement.unique) {
                 ss << "UNIQUE ";
             }
-            using indexed_type = typename statement_type::table_mapped_type;
+            using indexed_type = table_mapped_type_t<statement_type>;
             //  no `IF NOT EXISTS`: SQLite strips it from the statement text it stores in the schema table,
             //  and `schema_status()` compares that text with this serialization verbatim
             ss << "INDEX " << streaming_identifier(statement.name) << " ON "
@@ -24891,8 +24555,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<old_t<T>, void> {
-        using statement_type = old_t<T>;
+    struct statement_serializer<T, std::enable_if_t<is_old_row_ref<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -24907,8 +24571,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<new_t<T>, void> {
-        using statement_type = new_t<T>;
+    struct statement_serializer<T, std::enable_if_t<is_new_row_ref<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -24922,100 +24586,91 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<raise_t, void> {
-        using statement_type = raise_t;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_raise<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             switch (statement.type) {
-                case raise_t::type_t::ignore:
+                case statement_type::type_t::ignore:
                     return "RAISE(IGNORE)";
 
-                case raise_t::type_t::rollback:
+                case statement_type::type_t::rollback:
                     return "RAISE(ROLLBACK, " + serialize(statement.message, context) + ")";
 
-                case raise_t::type_t::abort:
+                case statement_type::type_t::abort:
                     return "RAISE(ABORT, " + serialize(statement.message, context) + ")";
 
-                case raise_t::type_t::fail:
+                case statement_type::type_t::fail:
                     return "RAISE(FAIL, " + serialize(statement.message, context) + ")";
             }
             return {};
         }
     };
 
-    template<>
-    struct statement_serializer<trigger_timing, void> {
-        using statement_type = trigger_timing;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_trigger_timing<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
                                                              const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             switch (statement) {
-                case trigger_timing::trigger_before:
+                case statement_type::trigger_before:
                     return "BEFORE";
-                case trigger_timing::trigger_after:
+                case statement_type::trigger_after:
                     return "AFTER";
-                case trigger_timing::trigger_instead_of:
+                case statement_type::trigger_instead_of:
                     return "INSTEAD OF";
             }
             return {};
         }
     };
 
-    template<>
-    struct statement_serializer<trigger_type, void> {
-        using statement_type = trigger_type;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_trigger_event<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
                                                              const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             switch (statement) {
-                case trigger_type::trigger_delete:
+                case statement_type::trigger_delete:
                     return "DELETE";
-                case trigger_type::trigger_insert:
+                case statement_type::trigger_insert:
                     return "INSERT";
-                case trigger_type::trigger_update:
+                case statement_type::trigger_update:
                     return "UPDATE";
             }
             return {};
         }
     };
 
-    template<>
-    struct statement_serializer<trigger_type_base_t, void> {
-        using statement_type = trigger_type_base_t;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_trigger_event_spec<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
 
-            ss << serialize(statement.timing, context) << " " << serialize(statement.type, context);
+            ss << serialize(statement.timing, context) << ' ';
+            if constexpr (is_trigger_update_of_v<statement_type>) {
+                //  the UPDATE OF form is the only one carrying a column list; its event is always UPDATE
+                ss << "UPDATE OF " << streaming_mapped_columns_expressions(statement.columns, context);
+            } else {
+                ss << serialize(statement.type, context);
+            }
             return ss.str();
         }
     };
 
-    template<class... Cs>
-    struct statement_serializer<trigger_update_type_t<Cs...>, void> {
-        using statement_type = trigger_update_type_t<Cs...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-
-            ss << serialize(statement.timing, context) << " UPDATE OF "
-               << streaming_mapped_columns_expressions(statement.columns, context);
-            return ss.str();
-        }
-    };
-
-    template<class T, class W, class Trigger>
-    struct statement_serializer<trigger_base_t<T, W, Trigger>, void> {
-        using statement_type = trigger_base_t<T, W, Trigger>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_trigger_spec<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -25023,7 +24678,7 @@ namespace sqlite_orm::internal {
             std::stringstream ss;
 
             ss << serialize(statement.type_base, context);
-            ss << " ON " << streaming_identifier(lookup_table_name<T>(context.db_objects));
+            ss << " ON " << streaming_identifier(lookup_table_name<table_type_t<statement_type>>(context.db_objects));
             if (statement.do_for_each_row) {
                 ss << " FOR EACH ROW";
             }
@@ -25034,9 +24689,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... S>
-    struct statement_serializer<trigger_t<S...>, void> {
-        using statement_type = trigger_t<S...>;
+    template<class Trigger>
+    struct statement_serializer<Trigger, std::enable_if_t<is_trigger<Trigger>::value>> {
+        using statement_type = Trigger;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -25335,10 +24990,6 @@ namespace sqlite_orm::internal {
 
 // #include "row_extractor.h"
 
-// #include "schema/index.h"
-
-// #include "schema/triggers.h"
-
 // #include "schema/constraints/generated_always.h"
 // basic_generated_always
 // #include "cte_storage.h"
@@ -25533,6 +25184,10 @@ namespace sqlite_orm::internal {
             });
         }
 
+        //  note: deliberately taking `primary_key_t` by its own type rather than dispatching on `is_primary_key`:
+        //  a derived node such as `primary_key_with_autoincrement<primary_key_t<Cs...>>` binds to the base class and
+        //  shares its instantiation, whereas a constrained function template would instantiate this body once per
+        //  derived type
         template<class... Args>
         std::vector<std::string> table_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
             return create_from_tuple<std::vector<std::string>>(primaryKey._columns,
@@ -27335,8 +26990,8 @@ namespace sqlite_orm::internal {
             return sync_schema_result::already_in_sync;
         }
 
-        template<class T, class... S>
-        sync_schema_result schema_status(const trigger_t<T, S...>& trigger, sqlite3* db, bool, bool*) {
+        template<class Trigger, satisfies<is_trigger, Trigger> = true>
+        sync_schema_result schema_status(const Trigger& trigger, sqlite3* db, bool, bool*) {
             auto dbTriggerSql = this->retrieve_object_sql(db, "trigger", trigger.name);
             if (dbTriggerSql.empty()) {
                 return sync_schema_result::new_table_created;
@@ -27351,8 +27006,8 @@ namespace sqlite_orm::internal {
             return sync_schema_result::dropped_and_recreated;
         }
 
-        template<class... Cols>
-        sync_schema_result schema_status(const index_t<Cols...>& index, sqlite3* db, bool, bool*) {
+        template<class Index, satisfies<is_index, Index> = true>
+        sync_schema_result schema_status(const Index& index, sqlite3* db, bool, bool*) {
             auto dbIndexSql = this->retrieve_object_sql(db, "index", index.name);
             if (dbIndexSql.empty()) {
                 return sync_schema_result::new_table_created;
@@ -27512,8 +27167,8 @@ namespace sqlite_orm::internal {
             return res;
         }
 
-        template<class... Cols>
-        sync_schema_result sync_dbo(const index_t<Cols...>& index, sqlite3* db, bool preserve) {
+        template<class Index, satisfies<is_index, Index> = true>
+        sync_schema_result sync_dbo(const Index& index, sqlite3* db, bool preserve) {
             auto res = this->schema_status(index, db, preserve, nullptr);
             if (res != sync_schema_result::already_in_sync) {
                 if (res == sync_schema_result::dropped_and_recreated) {
@@ -27526,8 +27181,8 @@ namespace sqlite_orm::internal {
             return res;
         }
 
-        template<class... Cols>
-        sync_schema_result sync_dbo(const trigger_t<Cols...>& trigger, sqlite3* db, bool preserve) {
+        template<class Trigger, satisfies<is_trigger, Trigger> = true>
+        sync_schema_result sync_dbo(const Trigger& trigger, sqlite3* db, bool preserve) {
             auto res = this->schema_status(trigger, db, preserve, nullptr);
             if (res != sync_schema_result::already_in_sync) {
                 if (res == sync_schema_result::dropped_and_recreated) {
@@ -28827,7 +28482,469 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "schema/index.h"
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>  //  std::tuple, std::declval, std::tuple_element_t
+#include <string>  //  std::string
+#include <utility>  //  std::forward
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../tuple_helper/tuple_traits.h"
+
+// #include "../vocabulary/node_traits.h"
+
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause, is_index_element_of_v
+// #include "indexed_column.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#include <utility>  //  std::move
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../vocabulary/node_traits.h"
+
+// #include "../vocabulary/traits/structural_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    template<class C>
+    struct indexed_column_t {
+        using column_type = C;
+
+        column_type _column_or_expression;
+        std::string _collation_name;
+        int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
+
+        indexed_column_t<column_type> collate(std::string name) && {
+            _collation_name = std::move(name);
+            return std::move(*this);
+        }
+
+        indexed_column_t<column_type> asc() && {
+            _order = 1;
+            return std::move(*this);
+        }
+
+        indexed_column_t<column_type> desc() && {
+            _order = -1;
+            return std::move(*this);
+        }
+    };
+
+    template<class T>
+    constexpr bool is_indexed_column_v = polyfill::is_specialization_of<T, indexed_column_t>::value;
+
+    template<class C>
+    auto make_indexed_column(C col) {
+        if constexpr (is_indexed_column_v<C> || is_where_v<C>) {
+            return std::move(col);
+        } else {
+            return indexed_column_t<C>{std::move(col)};
+        }
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Use this function to specify indexed column inside `make_index` function call.
+     *  Example: make_index("index_name", indexed_column(&User::id).asc())
+     */
+    template<class C>
+    internal::indexed_column_t<C> indexed_column(C column_or_expression) {
+        return {std::move(column_or_expression)};
+    }
+}
+// make_indexed_column
+
+namespace sqlite_orm::internal {
+    struct index_base {
+        std::string name;
+        bool unique = false;
+    };
+
+    template<class T, class... Els>
+    struct index_t : index_base {
+        using elements_type = std::tuple<Els...>;
+        using object_type = void;
+        using table_mapped_type = T;
+
+        elements_type elements;
+    };
+
+    template<class T>
+    constexpr bool is_index_v = polyfill::is_specialization_of_v<T, index_t>;
+
+    template<class T, class... Cols>
+    constexpr void validate_index_arguments() {
+        static_assert(count_tuple<std::tuple<Cols...>, is_where>::value <= 1,
+                      "amount of where arguments can be 0 or 1");
+        static_assert(((is_where_v<Cols> || !is_statement_clause<Cols>::value) && ...),
+                      "a make_index() argument must be an indexed column, an expression or a partial-index WHERE");
+        static_assert((is_index_element_of_v<Cols, T> && ...),
+                      "all indexed columns must belong to the table the index is made for");
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    template<class T, class... Cols>
+    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
+                                                                                                      Cols... cols) {
+        using namespace ::sqlite_orm::internal;
+        validate_index_arguments<T, Cols...>();
+        return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
+    }
+
+    template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
+    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
+                                                                                                      Cols... cols) {
+        using namespace ::sqlite_orm::internal;
+        validate_index_arguments<T, Cols...>();
+        return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
+    }
+
+    template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
+    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
+    make_unique_index(std::string name, Cols... cols) {
+        using namespace ::sqlite_orm::internal;
+        validate_index_arguments<T, Cols...>();
+        return {std::move(name), true, std::tuple{make_indexed_column(std::move(cols))...}};
+    }
+}
+
 // #include "schema/triggers.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>
+#include <tuple>
+#include <type_traits>  //  std::is_member_pointer_v, std::is_same, std::is_base_of
+#endif
+
+// #include "../optional_container.h"
+
+// #include "../vocabulary/node_traits.h"
+
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../vocabulary/traits/operand_traits_fwd.h"
+// Included to specialize traits
+
+// NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
+// (Could be implemented with a normal trigger that insert or update an internal table and then retreive
+// the event in the C++ code, to call the C++ user callback, with update hooks: https://www.sqlite.org/c3ref/update_hook.html)
+// It could be an interesting feature to bring to sqlite_orm that other libraries don't have ?
+
+namespace sqlite_orm::internal {
+    enum class trigger_timing { trigger_before, trigger_after, trigger_instead_of };
+    enum class trigger_type { trigger_delete, trigger_insert, trigger_update };
+
+    template<class T>
+    constexpr bool is_trigger_timing_v = std::is_same<T, trigger_timing>::value;
+
+    template<class T>
+    constexpr bool is_trigger_event_v = std::is_same<T, trigger_type>::value;
+
+    /**
+     *  This class is an intermediate SQLite trigger, to be used with
+     *  `make_trigger` to create a full trigger.
+     *  T is the base of the trigger (contains its type, timing and associated table)
+     *  S is the list of trigger statements
+     */
+    template<class T, class... S>
+    struct partial_trigger_t {
+        using statements_type = std::tuple<S...>;
+
+        /**
+         *  Base of the trigger (contains its type, timing and associated table)
+         */
+        T base;
+        /**
+         *  Statements of the triggers (to be executed when the trigger fires)
+         */
+        statements_type statements;
+
+        partial_trigger_t(T trigger_base, S... statements) :
+            base{std::move(trigger_base)}, statements{std::make_tuple<S...>(std::forward<S>(statements)...)} {}
+
+        partial_trigger_t& end() {
+            return *this;
+        }
+    };
+
+    struct trigger_base {
+        /**
+         *  Name of the trigger
+         */
+        std::string name;
+    };
+
+    /**
+     *  This class represent a SQLite trigger
+     *  T is the base of the trigger (contains its type, timing and associated table)
+     *  S is the list of trigger statments
+     */
+    template<class T, class... S>
+    struct trigger_t : trigger_base {
+        using object_type = void;
+        using table_mapped_type = typename T::table_type;
+        using elements_type = typename partial_trigger_t<T, S...>::statements_type;
+
+        /**
+         *  Base of the trigger (contains its type, timing and associated table)
+         */
+        T base;
+
+        /**
+         *  Statements of the triggers (to be executed when the trigger fires)
+         */
+        elements_type elements;
+    };
+
+    template<class T>
+    constexpr bool is_trigger_v = polyfill::is_specialization_of_v<T, trigger_t>;
+
+    /**
+     *  Base of a trigger. Contains the trigger type/timming and the table type
+     *  T is the table type
+     *  W is `when` expression type
+     *  Type is the trigger base type (type+timing)
+     */
+    template<class T, class W, class Type>
+    struct trigger_base_t {
+        using table_type = T;
+        using when_type = W;
+        using trigger_type_base = Type;
+
+        /**
+         *  Contains the trigger type and timing
+         */
+        trigger_type_base type_base;
+        /**
+         *  Value used to determine if we execute the trigger on each row or on each statement
+         *  (SQLite doesn't support the FOR EACH STATEMENT syntax yet: https://sqlite.org/lang_createtrigger.html#description
+         *  so this value is more of a placeholder for a later update)
+         */
+        bool do_for_each_row = false;
+        /**
+         *  When expression (if any)
+         *  If a WHEN expression is specified, the trigger will only execute
+         *  if the expression evaluates to true when the trigger is fired
+         */
+        optional_container<when_type> container_when;
+
+        trigger_base_t(trigger_type_base type_base_) : type_base(std::move(type_base_)) {}
+
+        trigger_base_t& for_each_row() {
+            this->do_for_each_row = true;
+            return *this;
+        }
+
+        template<class WW>
+        trigger_base_t<T, WW, Type> when(WW expression) {
+            static_assert(!is_statement_clause<WW>::value,
+                          "a WHEN condition of a trigger must be an expression, not a statement clause");
+            trigger_base_t<T, WW, Type> res(this->type_base);
+            res.container_when.field = std::move(expression);
+            return res;
+        }
+
+        template<class... S>
+        partial_trigger_t<trigger_base_t<T, W, Type>, S...> begin(S... statements) {
+            static_assert(
+                ((is_select_expression_v<S> || is_raw_dml_expression_v<S> || is_object_dml_expression_v<S>) && ...),
+                "a trigger body statement must be a complete SELECT, INSERT, UPDATE or DELETE statement");
+            return {*this, std::forward<S>(statements)...};
+        }
+    };
+
+    template<class T>
+    constexpr bool is_trigger_spec_v = polyfill::is_specialization_of_v<T, trigger_base_t>;
+
+    /**
+     *  Contains the trigger type and timing
+     */
+    struct trigger_type_base_t {
+        /**
+         *  Value indicating if the trigger is run BEFORE, AFTER or INSTEAD OF
+         *  the statement that fired it.
+         */
+        trigger_timing timing;
+        /**
+         *  The type of the statement that would cause the trigger to fire.
+         *  Can be DELETE, INSERT, or UPDATE.
+         */
+        trigger_type type;
+
+        trigger_type_base_t(trigger_timing timing, trigger_type type) : timing(timing), type(type) {}
+
+        template<class T>
+        trigger_base_t<T, void, trigger_type_base_t> on() {
+            return {*this};
+        }
+    };
+
+    template<class T>
+    constexpr bool is_trigger_event_spec_v = std::is_base_of<trigger_type_base_t, T>::value;
+
+    /**
+     *  Special case for UPDATE OF (columns)
+     *  Contains the trigger type and timing
+     */
+    template<class... Cs>
+    struct trigger_update_type_t : trigger_type_base_t {
+        using columns_type = std::tuple<Cs...>;
+
+        /**
+         *  Contains the columns the trigger is watching. Will only
+         *  trigger if one of theses columns is updated.
+         */
+        columns_type columns;
+
+        trigger_update_type_t(trigger_timing timing, trigger_type type, Cs... columns) :
+            trigger_type_base_t(timing, type), columns(std::make_tuple<Cs...>(std::forward<Cs>(columns)...)) {}
+
+        template<class T>
+        trigger_base_t<T, void, trigger_update_type_t<Cs...>> on() {
+            return {*this};
+        }
+    };
+
+    template<class T>
+    constexpr bool is_trigger_update_of_v = polyfill::is_specialization_of_v<T, trigger_update_type_t>;
+
+    struct trigger_timing_t {
+        trigger_timing timing;
+
+        trigger_type_base_t delete_() {
+            return {timing, trigger_type::trigger_delete};
+        }
+
+        trigger_type_base_t insert() {
+            return {timing, trigger_type::trigger_insert};
+        }
+
+        trigger_type_base_t update() {
+            return {timing, trigger_type::trigger_update};
+        }
+
+        template<class... Cs>
+        trigger_update_type_t<Cs...> update_of(Cs... columns) {
+            //  the grammar production is a list of column names, not expressions
+            static_assert(((std::is_member_pointer_v<Cs> || is_column_pointer_v<Cs>) && ...),
+                          "UPDATE OF arguments must be members of the table the trigger watches");
+            return {timing, trigger_type::trigger_update, std::forward<Cs>(columns)...};
+        }
+    };
+
+    struct raise_t {
+        enum class type_t {
+            ignore,
+            rollback,
+            abort,
+            fail,
+        };
+
+        type_t type = type_t::ignore;
+        std::string message;
+    };
+
+    template<class T>
+    constexpr bool is_raise_v = std::is_same<T, raise_t>::value;
+
+    template<class T>
+    struct new_t {
+        using expression_type = T;
+
+        expression_type expression;
+    };
+
+    template<class T>
+    constexpr bool is_new_row_ref_v = polyfill::is_specialization_of_v<T, new_t>;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_new_row_ref_v<T>>> = true;
+
+    template<class T>
+    struct old_t {
+        using expression_type = T;
+
+        expression_type expression;
+    };
+
+    template<class T>
+    constexpr bool is_old_row_ref_v = polyfill::is_specialization_of_v<T, old_t>;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_old_row_ref_v<T>>> = true;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  NEW.expression function used within TRIGGER expressions
+     */
+    template<class T>
+    internal::new_t<T> new_(T expression) {
+        return {std::move(expression)};
+    }
+
+    /**
+     *  OLD.expression function used within TRIGGER expressions
+     */
+    template<class T>
+    internal::old_t<T> old(T expression) {
+        return {std::move(expression)};
+    }
+
+    /**
+     *  RAISE(IGNORE) expression used within TRIGGER expressions
+     */
+    inline internal::raise_t raise_ignore() {
+        return {internal::raise_t::type_t::ignore, {}};
+    }
+
+    /**
+     *  RAISE(ROLLBACK, %message%) expression used within TRIGGER expressions
+     */
+    inline internal::raise_t raise_rollback(std::string message) {
+        return {internal::raise_t::type_t::rollback, std::move(message)};
+    }
+
+    /**
+     *  RAISE(ABORT, %message%) expression used within TRIGGER expressions
+     */
+    inline internal::raise_t raise_abort(std::string message) {
+        return {internal::raise_t::type_t::abort, std::move(message)};
+    }
+
+    /**
+     *  RAISE(FAIL, %message%) expression used within TRIGGER expressions
+     */
+    inline internal::raise_t raise_fail(std::string message) {
+        return {internal::raise_t::type_t::fail, std::move(message)};
+    }
+
+    template<class T, class... S>
+    internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...>& part) {
+        return {std::move(name), std::move(part.base), std::move(part.statements)};
+    }
+
+    inline internal::trigger_timing_t before() {
+        return {internal::trigger_timing::trigger_before};
+    }
+
+    inline internal::trigger_timing_t after() {
+        return {internal::trigger_timing::trigger_after};
+    }
+
+    inline internal::trigger_timing_t instead_of() {
+        return {internal::trigger_timing::trigger_instead_of};
+    }
+}
 
 // #include "schema/indexed_column.h"
 
@@ -29866,7 +29983,7 @@ namespace sqlite_orm::internal {
 namespace sqlite_orm::internal {
     template<class... Op>
     std::unique_ptr<std::string> column_constraints<Op...>::default_value() const {
-        static constexpr size_t default_op_index = find_tuple_template<constraints_type, default_t>::value;
+        static constexpr size_t default_op_index = find_tuple_element<constraints_type, is_default>::value;
 
         std::unique_ptr<std::string> value;
         if constexpr (default_op_index != std::tuple_size<constraints_type>::value) {

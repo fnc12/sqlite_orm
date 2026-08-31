@@ -120,9 +120,6 @@ namespace sqlite_orm::internal {
 }
 
 namespace sqlite_orm::internal {
-    template<class T>
-    struct primary_key_with_autoincrement;
-
     // Custom type:
     // It is the programmer's responsibility to ensure data integrity in the value range of the custom type
     // and in purview of SQLite using a 64-bit signed integer.
@@ -166,7 +163,7 @@ namespace sqlite_orm::internal {
 
         static_assert((is_column_constraint<Op>::value && ...), "Incorrect column constraints");
 
-        if constexpr (tuple_has_template<constraints_type, primary_key_with_autoincrement>::value) {
+        if constexpr (tuple_has<constraints_type, is_autoincrement_pk>::value) {
             check_pkcol<member_field_type_t<G>>::validate_column_primary_key_with_autoincrement();
         }
     }

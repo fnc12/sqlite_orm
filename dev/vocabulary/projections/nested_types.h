@@ -35,6 +35,15 @@ namespace sqlite_orm::internal {
     template<typename T>
     using table_mapped_type_t = typename T::table_mapped_type;
 
+    /**
+     *  The mapped object type of the table a trigger specification watches.
+     *
+     *  Note: this is what a trigger's `table_mapped_type_t` is read from; the two are the same type,
+     *  named once at the trigger specification and once at the trigger itself.
+     */
+    template<typename T>
+    using table_type_t = typename T::table_type;
+
     template<typename T>
     using elements_type_t = typename T::elements_type;
 
