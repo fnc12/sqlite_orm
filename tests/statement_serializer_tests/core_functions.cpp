@@ -431,6 +431,28 @@ TEST_CASE("statement_serializer newer core functions") {
         value = serialize(expression, context);
     }
 #endif
+    SECTION("SQLITE_VERSION") {
+        constexpr auto expression = sqlite_version();
+        expected = "SQLITE_VERSION()";
+        value = serialize(expression, context);
+    }
+    SECTION("SQLITE_SOURCE_ID") {
+        constexpr auto expression = sqlite_source_id();
+        expected = "SQLITE_SOURCE_ID()";
+        value = serialize(expression, context);
+    }
+#ifndef SQLITE_OMIT_COMPILEOPTION_DIAGS
+    SECTION("SQLITE_COMPILEOPTION_USED") {
+        constexpr auto expression = sqlite_compileoption_used("THREADSAFE");
+        expected = "SQLITE_COMPILEOPTION_USED('THREADSAFE')";
+        value = serialize(expression, context);
+    }
+    SECTION("SQLITE_COMPILEOPTION_GET") {
+        constexpr auto expression = sqlite_compileoption_get(1);
+        expected = "SQLITE_COMPILEOPTION_GET(1)";
+        value = serialize(expression, context);
+    }
+#endif
 #if SQLITE_VERSION_NUMBER >= 3008001
     SECTION("LIKELIHOOD") {
         //  constexpr: an out-of-range probability would fail right here, at compile time

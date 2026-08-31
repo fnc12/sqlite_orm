@@ -1373,6 +1373,53 @@ TEST_CASE("iif") {
 }
 #endif
 
+TEST_CASE("introspection functions") {
+    auto storage = make_storage({});
+    std::vector<std::string> rows;
+    decltype(rows) expected;
+    SECTION("sqlite_version") {
+        rows = storage.select(sqlite_version());
+        expected = {SQLITE_VERSION};
+    }
+    SECTION("sqlite_source_id") {
+        rows = storage.select(sqlite_source_id());
+        expected = {SQLITE_SOURCE_ID};
+    }
+    REQUIRE(rows == expected);
+}
+
+#ifndef SQLITE_OMIT_COMPILEOPTION_DIAGS
+TEST_CASE("sqlite_compileoption_used") {
+    auto storage = make_storage({});
+    //  THREADSAFE is always among the reported compile options
+    auto rows = storage.select(sqlite_compileoption_used("THREADSAFE"));
+    decltype(rows) expected{1};
+    REQUIRE(rows == expected);
+}
+
+TEST_CASE("sqlite_compileoption_get") {
+    auto storage = make_storage({});
+    //  an out-of-range index yields NULL
+    auto rows = storage.select(sqlite_compileoption_get(100000));
+    decltype(rows) expected{};
+    expected.push_back(nullptr);
+    REQUIRE(rows == expected);
+}
+#endif
+
+#ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
+TEST_CASE("sqlite_offset") {
+    struct User {
+        int id = 0;
+    };
+    auto storage = make_storage("", make_table("users", make_column("id", &User::id, primary_key())));
+    storage.sync_schema();
+    storage.replace(User{1});
+    auto rows = storage.select(sqlite_offset(&User::id));
+    REQUIRE(rows.size() == 1);
+}
+#endif
+
 #if SQLITE_VERSION_NUMBER >= 3008006
 TEST_CASE("planner hints") {
     struct User {
