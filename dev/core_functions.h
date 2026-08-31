@@ -370,11 +370,17 @@ namespace sqlite_orm::internal {
     };
 
 #if SQLITE_VERSION_NUMBER >= 3008001
-    //  tag only; the serialization lives in the statement serializer
-    struct likelihood_t {};
+    struct likelihood_string {
+        std::string_view serialize() const {
+            return "LIKELIHOOD";
+        }
+    };
 
-    //  tag only; the serialization lives in the statement serializer
-    struct unlikely_t {};
+    struct unlikely_string {
+        std::string_view serialize() const {
+            return "UNLIKELY";
+        }
+    };
 #endif
 
 #if SQLITE_VERSION_NUMBER >= 3008003
@@ -386,8 +392,11 @@ namespace sqlite_orm::internal {
 #endif
 
 #if SQLITE_VERSION_NUMBER >= 3008006
-    //  tag only; the serialization lives in the statement serializer
-    struct likely_t {};
+    struct likely_string {
+        std::string_view serialize() const {
+            return "LIKELY";
+        }
+    };
 #endif
 
 #if SQLITE_VERSION_NUMBER >= 3032000
@@ -2112,7 +2121,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class X>
     constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>,
-                                            internal::likelihood_t,
+                                            internal::likelihood_string,
                                             X,
                                             internal::literal_holder<double>>
     likelihood(X x, double probability) {
@@ -2130,7 +2139,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  UNLIKELY(X) function https://www.sqlite.org/lang_corefunc.html#unlikely
      */
     template<class X>
-    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>, internal::unlikely_t, X> unlikely(X x) {
+    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>, internal::unlikely_string, X>
+    unlikely(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
@@ -2150,7 +2160,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  LIKELY(X) function https://www.sqlite.org/lang_corefunc.html#likely
      */
     template<class X>
-    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>, internal::likely_t, X> likely(X x) {
+    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>, internal::likely_string, X> likely(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
