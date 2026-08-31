@@ -20325,9 +20325,9 @@ namespace sqlite_orm::internal {
          *  into a new file, leaving the database itself untouched. The file must not exist yet.
          *  More info: https://www.sqlite.org/lang_vacuum.html#vacuuminto
          */
-        void vacuum_into(const std::string& filename) {
+        void vacuum_into(std::string_view filename) {
             std::stringstream ss;
-            ss << "VACUUM INTO " << quote_string_literal(filename) << std::flush;
+            ss << "VACUUM INTO " << quote_string_literal(std::string{filename}) << std::flush;
             auto connection = this->get_connection();
             this->executor.perform_void_exec(connection.get(), ss.str().c_str());
         }
