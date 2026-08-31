@@ -2,6 +2,7 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 #include <cstring>  //  std::strcmp
+#include <cstdio>  //  std::remove
 #include "catch_matchers.h"
 
 using namespace sqlite_orm;
@@ -766,3 +767,46 @@ TEST_CASE("Explicit insert") {
         }
     }
 }
+
+#if SQLITE_VERSION_NUMBER >= 3027000
+TEST_CASE("vacuum into") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    auto sourcePath = "vacuum_into_source.sqlite";
+    auto backupPath = "vacuum_into_backup.sqlite";
+    std::remove(sourcePath);
+    std::remove(backupPath);
+
+    auto makeTable = [] {
+        return make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name));
+    };
+    {
+        auto storage = make_storage(sourcePath, makeTable());
+        storage.sync_schema();
+        storage.replace(User{1, "Leony"});
+        storage.replace(User{2, "Ototo"});
+        storage.vacuum_into(backupPath);
+    }
+    auto backupStorage = make_storage(backupPath, makeTable());
+    auto rows = backupStorage.select(columns(&User::id, &User::name));
+    decltype(rows) expected{{1, "Leony"}, {2, "Ototo"}};
+    REQUIRE(rows == expected);
+    std::remove(sourcePath);
+    std::remove(backupPath);
+}
+
+TEST_CASE("vacuum into an existing file fails") {
+    struct User {
+        int id = 0;
+    };
+    auto sourcePath = "vacuum_into_occupied.sqlite";
+    std::remove(sourcePath);
+    auto storage = make_storage(sourcePath, make_table("users", make_column("id", &User::id, primary_key())));
+    storage.sync_schema();
+    //  the target must not exist yet; the database file itself surely does
+    REQUIRE_THROWS_AS(storage.vacuum_into(sourcePath), std::system_error);
+    std::remove(sourcePath);
+}
+#endif

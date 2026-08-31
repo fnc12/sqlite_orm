@@ -20319,6 +20319,20 @@ namespace sqlite_orm::internal {
             this->executor.perform_void_exec(connection.get(), "VACUUM");
         }
 
+#if SQLITE_VERSION_NUMBER >= 3027000
+        /**
+         *  `VACUUM INTO` query: writes a vacuumed, transactionally consistent copy of the database
+         *  into a new file, leaving the database itself untouched. The file must not exist yet.
+         *  More info: https://www.sqlite.org/lang_vacuum.html#vacuuminto
+         */
+        void vacuum_into(const std::string& filename) {
+            std::stringstream ss;
+            ss << "VACUUM INTO " << quote_string_literal(filename) << std::flush;
+            auto connection = this->get_connection();
+            this->executor.perform_void_exec(connection.get(), ss.str().c_str());
+        }
+#endif
+
         /**
          *  Checks whether table exists in db. Doesn't check storage itself - works only with actual database.
          *  Note: table can be not mapped to a storage
