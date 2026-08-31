@@ -159,6 +159,10 @@ namespace sqlite_orm::internal {
             });
         }
 
+        //  note: deliberately taking `primary_key_t` by its own type rather than dispatching on `is_primary_key`:
+        //  a derived node such as `primary_key_with_autoincrement<primary_key_t<Cs...>>` binds to the base class and
+        //  shares its instantiation, whereas a constrained function template would instantiate this body once per
+        //  derived type
         template<class... Args>
         std::vector<std::string> table_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
             return create_from_tuple<std::vector<std::string>>(primaryKey._columns,
