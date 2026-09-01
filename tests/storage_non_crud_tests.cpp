@@ -2,6 +2,7 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 #include <cstring>  //  std::strcmp
+#include <cstdio>  //  std::remove
 #include "catch_matchers.h"
 
 using namespace sqlite_orm;
@@ -765,4 +766,92 @@ TEST_CASE("Explicit insert") {
             }
         }
     }
+}
+
+#if SQLITE_VERSION_NUMBER >= 3027000
+TEST_CASE("vacuum into") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    auto sourcePath = "vacuum_into_source.sqlite";
+    auto backupPath = "vacuum_into_backup.sqlite";
+    std::remove(sourcePath);
+    std::remove(backupPath);
+
+    auto makeTable = [] {
+        return make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name));
+    };
+    {
+        auto storage = make_storage(sourcePath, makeTable());
+        storage.sync_schema();
+        storage.replace(User{1, "Leony"});
+        storage.replace(User{2, "Ototo"});
+        storage.vacuum_into(backupPath);
+    }
+    auto backupStorage = make_storage(backupPath, makeTable());
+    auto rows = backupStorage.select(columns(&User::id, &User::name));
+    decltype(rows) expected{{1, "Leony"}, {2, "Ototo"}};
+    REQUIRE(rows == expected);
+    std::remove(sourcePath);
+    std::remove(backupPath);
+}
+
+TEST_CASE("vacuum into an existing file fails") {
+    struct User {
+        int id = 0;
+    };
+    auto sourcePath = "vacuum_into_occupied.sqlite";
+    std::remove(sourcePath);
+    auto storage = make_storage(sourcePath, make_table("users", make_column("id", &User::id, primary_key())));
+    storage.sync_schema();
+    //  the target must not exist yet; the database file itself surely does
+    REQUIRE_THROWS_AS(storage.vacuum_into(sourcePath), std::system_error);
+    std::remove(sourcePath);
+}
+#endif
+
+TEST_CASE("analyze") {
+    struct User {
+        int id = 0;
+    };
+    auto storage = make_storage("", make_table("users", make_column("id", &User::id, primary_key())));
+    storage.sync_schema();
+    storage.replace(User{1});
+    SECTION("the whole database") {
+        storage.analyze();
+    }
+    SECTION("a single table") {
+        storage.analyze("users");
+    }
+    //  ANALYZE materializes its statistics in the sqlite_stat1 table
+    REQUIRE(storage.table_exists("sqlite_stat1"));
+}
+
+TEST_CASE("reindex") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    auto storage =
+        make_storage("",
+                     make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
+                     make_index("idx_users_name", &User::name));
+    storage.sync_schema();
+    storage.replace(User{1, "Leony"});
+    SECTION("everything") {
+        storage.reindex();
+    }
+    SECTION("a single index") {
+        storage.reindex("idx_users_name");
+    }
+#if SQLITE_VERSION_NUMBER >= 3053000
+    SECTION("expression indexes") {
+        storage.reindex_expressions();
+    }
+#endif
+    //  the index must stay usable after the rebuild
+    auto rows = storage.select(&User::name, where(c(&User::name) == "Leony"));
+    decltype(rows) expected{"Leony"};
+    REQUIRE(rows == expected);
 }
