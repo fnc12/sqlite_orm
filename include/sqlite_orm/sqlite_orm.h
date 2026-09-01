@@ -16484,6 +16484,32 @@ namespace sqlite_orm::internal {
         std::string_view column_name(int index) const {
             return sqlite3_column_name(stmt, index);
         }
+
+        /**
+         *  sqlite3_stmt_readonly function: whether the statement makes no direct changes
+         *  to the content of the database file.
+         */
+        bool readonly() const {
+            return sqlite3_stmt_readonly(this->stmt) != 0;
+        }
+
+        /**
+         *  sqlite3_stmt_busy function: whether the statement has been stepped at least once
+         *  but has not run to completion or been reset.
+         */
+        bool busy() const {
+            return sqlite3_stmt_busy(this->stmt) != 0;
+        }
+
+#if SQLITE_VERSION_NUMBER >= 3028000
+        /**
+         *  sqlite3_stmt_isexplain function: 1 if the statement is an EXPLAIN statement,
+         *  2 if it is an EXPLAIN QUERY PLAN, 0 for an ordinary statement.
+         */
+        int is_explain() const {
+            return sqlite3_stmt_isexplain(this->stmt);
+        }
+#endif
     };
 
     template<class T>
@@ -18534,6 +18560,7 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::r
 #include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
+#include <optional>  //  std::optional
 #include <sstream>  //  std::stringstream
 #include <ostream>  //  std::flush
 #include <utility>  //  std::move
@@ -19879,6 +19906,35 @@ namespace sqlite_orm::internal {
 
 // #include "util.h"
 
+// #include "transaction_state.h"
+
+#include <sqlite3.h>
+
+#if SQLITE_VERSION_NUMBER >= 3034000
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  Transaction state of a database connection, as reported by `sqlite3_txn_state()`.
+     */
+    enum class transaction_state {
+        /**
+         *  no transaction is currently pending
+         */
+        none = SQLITE_TXN_NONE,
+
+        /**
+         *  currently executing a read transaction
+         */
+        read = SQLITE_TXN_READ,
+
+        /**
+         *  currently executing a write transaction
+         */
+        write = SQLITE_TXN_WRITE,
+    };
+}
+#endif
+
 // #include "xdestroy_handling.h"
 
 // #include "udf_proxy.h"
@@ -20452,6 +20508,117 @@ namespace sqlite_orm::internal {
             auto connection = this->get_connection();
             return sqlite3_last_insert_rowid(connection.get());
         }
+
+#if SQLITE_VERSION_NUMBER >= 3037000
+        /**
+         *  sqlite3_changes64 function.
+         */
+        int64 changes64() {
+            auto connection = this->get_connection();
+            return sqlite3_changes64(connection.get());
+        }
+
+        /**
+         *  sqlite3_total_changes64 function.
+         */
+        int64 total_changes64() {
+            auto connection = this->get_connection();
+            return sqlite3_total_changes64(connection.get());
+        }
+#endif
+
+        /**
+         *  sqlite3_interrupt function: causes any pending database operation on this connection
+         *  to abort and return at its earliest opportunity.
+         */
+        void interrupt() {
+            auto connection = this->get_connection();
+            sqlite3_interrupt(connection.get());
+        }
+
+#if SQLITE_VERSION_NUMBER >= 3041000
+        /**
+         *  sqlite3_is_interrupted function: whether an interrupt is currently in effect
+         *  on this connection.
+         */
+        bool is_interrupted() {
+            auto connection = this->get_connection();
+            return sqlite3_is_interrupted(connection.get()) != 0;
+        }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3034000
+        /**
+         *  sqlite3_txn_state function: the transaction state across all schemas of this connection.
+         */
+        transaction_state txn_state() {
+            auto connection = this->get_connection();
+            return static_cast<transaction_state>(sqlite3_txn_state(connection.get(), nullptr));
+        }
+
+        /**
+         *  sqlite3_txn_state function limited to a single schema.
+         *  Returns an empty optional if no schema with the given name is attached.
+         */
+        std::optional<transaction_state> txn_state(std::string_view schema) {
+            auto connection = this->get_connection();
+            const int state = sqlite3_txn_state(connection.get(), std::string{schema}.c_str());
+            if (state < 0) {
+                return std::nullopt;
+            }
+            return static_cast<transaction_state>(state);
+        }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3038000
+        /**
+         *  sqlite3_error_offset function: the byte offset of the token the most recent error
+         *  relates to within its SQL text, or -1 if not applicable.
+         */
+        int error_offset() {
+            auto connection = this->get_connection();
+            return sqlite3_error_offset(connection.get());
+        }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3039000
+        /**
+         *  sqlite3_db_name function: the name of the schema at the given index.
+         *  Returns an empty optional if the index is out of range.
+         */
+        std::optional<std::string> db_name(int index) {
+            auto connection = this->get_connection();
+            if (orm_gsl::czstring name = sqlite3_db_name(connection.get(), index)) {
+                return std::string{name};
+            }
+            return std::nullopt;
+        }
+#endif
+
+        /**
+         *  sqlite3_db_readonly function: whether the schema with the given name is read-only.
+         *  Returns an empty optional if no schema with the given name is attached.
+         *  The parameterless overload below reports on the main schema.
+         */
+        std::optional<bool> db_readonly(std::string_view schema) {
+            auto connection = this->get_connection();
+            const int result = sqlite3_db_readonly(connection.get(), std::string{schema}.c_str());
+            if (result < 0) {
+                return std::nullopt;
+            }
+            return result != 0;
+        }
+
+#if SQLITE_VERSION_NUMBER >= 3050000
+        /**
+         *  sqlite3_setlk_timeout function: a separate timeout, distinct from the busy timeout,
+         *  for blocking locks on builds that support them. A no-op returning SQLITE_OK elsewhere.
+         */
+        int setlk_timeout(int ms, bool blockOnConnect = false) {
+            auto connection = this->get_connection();
+            return sqlite3_setlk_timeout(connection.get(), ms, blockOnConnect ? SQLITE_SETLK_BLOCK_ON_CONNECT : 0);
+        }
+#endif
 
         int busy_timeout(int ms) {
             auto connection = this->get_connection();

@@ -855,3 +855,117 @@ TEST_CASE("reindex") {
     decltype(rows) expected{"Leony"};
     REQUIRE(rows == expected);
 }
+
+TEST_CASE("small C API wrappers") {
+    struct User {
+        int id = 0;
+    };
+    auto storage = make_storage("", make_table("users", make_column("id", &User::id, primary_key())));
+    storage.sync_schema();
+    storage.replace(User{1});
+
+#if SQLITE_VERSION_NUMBER >= 3037000
+    SECTION("changes64") {
+        REQUIRE(storage.changes64() == 1);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3041000
+    SECTION("interrupt is reported while in effect") {
+        storage.interrupt();
+        REQUIRE(storage.is_interrupted());
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3034000
+    SECTION("transaction state") {
+        transaction_state actual;
+        decltype(actual) expected;
+        SECTION("idle") {
+            actual = storage.txn_state();
+            expected = transaction_state::none;
+        }
+        SECTION("inside a write transaction") {
+            storage.begin_transaction();
+            storage.replace(User{2});
+            actual = storage.txn_state();
+            expected = transaction_state::write;
+            storage.rollback();
+        }
+        REQUIRE(actual == expected);
+    }
+    SECTION("transaction state of an unknown schema") {
+        REQUIRE(storage.txn_state("nope") == std::nullopt);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3038000
+    SECTION("error offset without an error") {
+        REQUIRE(storage.error_offset() == -1);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3039000
+    SECTION("schema names") {
+        std::optional<std::string> actual;
+        decltype(actual) expected;
+        SECTION("the main schema") {
+            actual = storage.db_name(0);
+            expected = "main";
+        }
+        SECTION("an out-of-range index") {
+            actual = storage.db_name(5);
+            expected = std::nullopt;
+        }
+        REQUIRE(actual == expected);
+    }
+#endif
+    SECTION("read-only state") {
+        std::optional<bool> actual;
+        decltype(actual) expected;
+        SECTION("the main schema is writable") {
+            actual = storage.db_readonly();
+            expected = false;
+        }
+        SECTION("an unknown schema") {
+            actual = storage.db_readonly("nope");
+            expected = std::nullopt;
+        }
+        REQUIRE(actual == expected);
+    }
+#if SQLITE_VERSION_NUMBER >= 3050000
+    SECTION("setlk timeout") {
+        REQUIRE(storage.setlk_timeout(100) == SQLITE_OK);
+    }
+#endif
+}
+
+TEST_CASE("prepared statement introspection") {
+    struct User {
+        int id = 0;
+    };
+    auto storage = make_storage("", make_table("users", make_column("id", &User::id, primary_key())));
+    storage.sync_schema();
+
+    bool actual = false;
+    bool expected = false;
+    SECTION("a select statement is read-only") {
+        auto statement = storage.prepare(select(&User::id));
+        actual = statement.readonly();
+        expected = true;
+    }
+    SECTION("a remove statement is not read-only") {
+        auto statement = storage.prepare(remove<User>(1));
+        actual = statement.readonly();
+        expected = false;
+    }
+    SECTION("a fresh statement is not busy") {
+        auto statement = storage.prepare(select(&User::id));
+        actual = statement.busy();
+        expected = false;
+    }
+#if SQLITE_VERSION_NUMBER >= 3028000
+    SECTION("an ordinary statement is not an EXPLAIN") {
+        auto statement = storage.prepare(select(&User::id));
+        actual = statement.is_explain() != 0;
+        expected = false;
+    }
+#endif
+    REQUIRE(actual == expected);
+}
