@@ -82,6 +82,32 @@ namespace sqlite_orm::internal {
         std::string_view column_name(int index) const {
             return sqlite3_column_name(stmt, index);
         }
+
+        /**
+         *  sqlite3_stmt_readonly function: whether the statement makes no direct changes
+         *  to the content of the database file.
+         */
+        int readonly() const {
+            return sqlite3_stmt_readonly(this->stmt);
+        }
+
+        /**
+         *  sqlite3_stmt_busy function: whether the statement has been stepped at least once
+         *  but has not run to completion or been reset.
+         */
+        int busy() const {
+            return sqlite3_stmt_busy(this->stmt);
+        }
+
+#if SQLITE_VERSION_NUMBER >= 3028000
+        /**
+         *  sqlite3_stmt_isexplain function: 1 if the statement is an EXPLAIN statement,
+         *  2 if it is an EXPLAIN QUERY PLAN, 0 for an ordinary statement.
+         */
+        int is_explain() const {
+            return sqlite3_stmt_isexplain(this->stmt);
+        }
+#endif
     };
 
     template<class T>
