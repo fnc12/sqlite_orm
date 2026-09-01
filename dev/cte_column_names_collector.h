@@ -12,6 +12,7 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
+#include "tuple_helper/tuple_transformer.h"
 #include "type_traits.h"
 #include "error_code.h"
 #include "alias.h"
@@ -106,13 +107,11 @@ namespace sqlite_orm::internal {
                                                                      const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             auto& table = pick_table<recordset_type>(context.db_objects);
 
-            std::vector<std::string> columnNames;
-            columnNames.reserve(size_t(table.template count_of<is_column>()));
-
-            table.for_each_column([&columnNames](const column_identifier& column) {
-                columnNames.push_back(column.name);
-            });
-            return columnNames;
+            using table_type = polyfill::remove_cvref_t<decltype(table)>;
+            using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
+            return create_from_tuple<std::vector<std::string>>(table.elements,
+                                                               column_index_sequence{},
+                                                               &column_identifier::name);
         }
     };
 
