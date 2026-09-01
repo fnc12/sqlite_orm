@@ -410,9 +410,9 @@ namespace sqlite_orm::internal {
          *  sqlite3_is_interrupted function: whether an interrupt is currently in effect
          *  on this connection.
          */
-        bool is_interrupted() {
+        int is_interrupted() {
             auto connection = this->get_connection();
-            return sqlite3_is_interrupted(connection.get()) != 0;
+            return sqlite3_is_interrupted(connection.get());
         }
 #endif
 

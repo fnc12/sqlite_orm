@@ -16489,16 +16489,16 @@ namespace sqlite_orm::internal {
          *  sqlite3_stmt_readonly function: whether the statement makes no direct changes
          *  to the content of the database file.
          */
-        bool readonly() const {
-            return sqlite3_stmt_readonly(this->stmt) != 0;
+        int readonly() const {
+            return sqlite3_stmt_readonly(this->stmt);
         }
 
         /**
          *  sqlite3_stmt_busy function: whether the statement has been stepped at least once
          *  but has not run to completion or been reset.
          */
-        bool busy() const {
-            return sqlite3_stmt_busy(this->stmt) != 0;
+        int busy() const {
+            return sqlite3_stmt_busy(this->stmt);
         }
 
 #if SQLITE_VERSION_NUMBER >= 3028000
@@ -20541,9 +20541,9 @@ namespace sqlite_orm::internal {
          *  sqlite3_is_interrupted function: whether an interrupt is currently in effect
          *  on this connection.
          */
-        bool is_interrupted() {
+        int is_interrupted() {
             auto connection = this->get_connection();
-            return sqlite3_is_interrupted(connection.get()) != 0;
+            return sqlite3_is_interrupted(connection.get());
         }
 #endif
 

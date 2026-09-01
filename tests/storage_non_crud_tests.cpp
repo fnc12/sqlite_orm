@@ -872,7 +872,7 @@ TEST_CASE("small C API wrappers") {
 #if SQLITE_VERSION_NUMBER >= 3041000
     SECTION("interrupt is reported while in effect") {
         storage.interrupt();
-        REQUIRE(storage.is_interrupted());
+        REQUIRE(storage.is_interrupted() != 0);
     }
 #endif
 #if SQLITE_VERSION_NUMBER >= 3034000
@@ -943,21 +943,23 @@ TEST_CASE("prepared statement introspection") {
     auto storage = make_storage("", make_table("users", make_column("id", &User::id, primary_key())));
     storage.sync_schema();
 
+    //  the wrappers pass the C API values through; the SQLite contract for the boolean-like
+    //  answers is zero/non-zero, so that is what the assertions test
     bool actual = false;
     bool expected = false;
     SECTION("a select statement is read-only") {
         auto statement = storage.prepare(select(&User::id));
-        actual = statement.readonly();
+        actual = statement.readonly() != 0;
         expected = true;
     }
     SECTION("a remove statement is not read-only") {
         auto statement = storage.prepare(remove<User>(1));
-        actual = statement.readonly();
+        actual = statement.readonly() != 0;
         expected = false;
     }
     SECTION("a fresh statement is not busy") {
         auto statement = storage.prepare(select(&User::id));
-        actual = statement.busy();
+        actual = statement.busy() != 0;
         expected = false;
     }
 #if SQLITE_VERSION_NUMBER >= 3028000
