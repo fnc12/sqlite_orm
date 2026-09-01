@@ -458,7 +458,7 @@ namespace sqlite_orm::internal {
         std::optional<std::string> db_name(int index) {
             auto connection = this->get_connection();
             if (orm_gsl::czstring name = sqlite3_db_name(connection.get(), index)) {
-                return std::string{name};
+                return name;
             }
             return std::nullopt;
         }
