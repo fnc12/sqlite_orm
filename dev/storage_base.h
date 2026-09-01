@@ -257,6 +257,57 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
+         *  `ANALYZE` query: gathers statistics about tables and indexes for the query planner.
+         *  More info: https://www.sqlite.org/lang_analyze.html
+         */
+        void analyze() {
+            auto connection = this->get_connection();
+            this->executor.perform_void_exec(connection.get(), "ANALYZE");
+        }
+
+        /**
+         *  `ANALYZE` query limited to a single schema, table or index.
+         *  More info: https://www.sqlite.org/lang_analyze.html
+         */
+        void analyze(std::string_view name) {
+            std::stringstream ss;
+            ss << "ANALYZE " << streaming_identifier(name) << std::flush;
+            auto connection = this->get_connection();
+            this->executor.perform_void_exec(connection.get(), ss.str().c_str());
+        }
+
+        /**
+         *  `REINDEX` query: rebuilds all indexes.
+         *  More info: https://www.sqlite.org/lang_reindex.html
+         */
+        void reindex() {
+            auto connection = this->get_connection();
+            this->executor.perform_void_exec(connection.get(), "REINDEX");
+        }
+
+        /**
+         *  `REINDEX` query limited to a collation, table or index.
+         *  More info: https://www.sqlite.org/lang_reindex.html
+         */
+        void reindex(std::string_view name) {
+            std::stringstream ss;
+            ss << "REINDEX " << streaming_identifier(name) << std::flush;
+            auto connection = this->get_connection();
+            this->executor.perform_void_exec(connection.get(), ss.str().c_str());
+        }
+
+#if SQLITE_VERSION_NUMBER >= 3053000
+        /**
+         *  `REINDEX EXPRESSIONS` query: rebuilds indexes on expressions, repairing stale ones.
+         *  More info: https://www.sqlite.org/lang_reindex.html
+         */
+        void reindex_expressions() {
+            auto connection = this->get_connection();
+            this->executor.perform_void_exec(connection.get(), "REINDEX EXPRESSIONS");
+        }
+#endif
+
+        /**
          *  Checks whether table exists in db. Doesn't check storage itself - works only with actual database.
          *  Note: table can be not mapped to a storage
          *  @return true if table with a given name exists in db, false otherwise.

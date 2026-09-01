@@ -810,3 +810,48 @@ TEST_CASE("vacuum into an existing file fails") {
     std::remove(sourcePath);
 }
 #endif
+
+TEST_CASE("analyze") {
+    struct User {
+        int id = 0;
+    };
+    auto storage = make_storage("", make_table("users", make_column("id", &User::id, primary_key())));
+    storage.sync_schema();
+    storage.replace(User{1});
+    SECTION("the whole database") {
+        storage.analyze();
+    }
+    SECTION("a single table") {
+        storage.analyze("users");
+    }
+    //  ANALYZE materializes its statistics in the sqlite_stat1 table
+    REQUIRE(storage.table_exists("sqlite_stat1"));
+}
+
+TEST_CASE("reindex") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    auto storage =
+        make_storage("",
+                     make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
+                     make_index("idx_users_name", &User::name));
+    storage.sync_schema();
+    storage.replace(User{1, "Leony"});
+    SECTION("everything") {
+        storage.reindex();
+    }
+    SECTION("a single index") {
+        storage.reindex("idx_users_name");
+    }
+#if SQLITE_VERSION_NUMBER >= 3053000
+    SECTION("expression indexes") {
+        storage.reindex_expressions();
+    }
+#endif
+    //  the index must stay usable after the rebuild
+    auto rows = storage.select(&User::name, where(c(&User::name) == "Leony"));
+    decltype(rows) expected{"Leony"};
+    REQUIRE(rows == expected);
+}
