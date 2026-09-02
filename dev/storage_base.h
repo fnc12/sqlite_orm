@@ -21,6 +21,7 @@
 #endif
 
 #include "tuple_helper/tuple_iteration.h"
+#include "vocabulary/node_traits.h"  // projections
 #include "pragma.h"
 #include "limit_accessor.h"
 #include "transaction_guard.h"

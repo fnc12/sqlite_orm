@@ -462,8 +462,8 @@ namespace sqlite_orm::internal {
 
         dynamic_order_by_t(const context_t& context_) : context(context_) {}
 
-        template<class O>
-        void push_back(order_by_t<O> orderBy) {
+        template<class T, satisfies<is_order_by, T> = true>
+        void push_back(T orderBy) {
             auto newContext = this->context;
             newContext.omit_table_name = false;
             auto columnName = serialize(orderBy._expression, newContext);
@@ -488,9 +488,16 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool is_order_by_v = std::disjunction<polyfill::is_specialization_of<T, order_by_t>,
-                                                    polyfill::is_specialization_of<T, multi_order_by_t>,
-                                                    polyfill::is_specialization_of<T, dynamic_order_by_t>>::value;
+    constexpr bool is_order_by_v = polyfill::is_specialization_of_v<T, order_by_t>;
+
+    template<class T>
+    constexpr bool is_multi_order_by_v = polyfill::is_specialization_of_v<T, multi_order_by_t>;
+
+    template<class T>
+    constexpr bool is_dynamic_order_by_v = polyfill::is_specialization_of_v<T, dynamic_order_by_t>;
+
+    template<class T>
+    constexpr bool is_any_order_by_v = std::disjunction_v<is_order_by<T>, is_multi_order_by<T>, is_dynamic_order_by<T>>;
 
     struct like_string {
         operator std::string() const {

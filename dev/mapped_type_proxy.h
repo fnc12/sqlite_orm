@@ -1,12 +1,12 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::remove_const
+#include <type_traits>  //  std::void_t, std::remove_const
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 #include "alias_traits.h"
+#include "vocabulary/node_traits.h"  // projections
 
 namespace sqlite_orm::internal {
     /** 
@@ -21,7 +21,7 @@ namespace sqlite_orm::internal {
     struct mapped_type_proxy : std::remove_const<T> {};
 
     template<class T>
-    struct mapped_type_proxy<T, std::void_t<typename T::enclosing_type>> {
+    struct mapped_type_proxy<T, std::void_t<enclosing_type_t<T>>> {
         using type = enclosing_type_t<T>;
     };
 

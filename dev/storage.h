@@ -960,8 +960,8 @@ namespace sqlite_orm::internal {
          *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
          *                     If you need the full 64-bit rowid value, use `storage_t<>::execute()` instead, or call `storage_t<>::last_insert_rowid()` after inserting.
          */
-        template<class O, class... Cols>
-        int insert(const O& o, columns_t<Cols...> cols) {
+        template<class O, class Cols, satisfies<is_columns, Cols> = true>
+        int insert(const O& o, Cols cols) {
             static_assert(cols.count > 0, "Use insert or replace with 1 argument instead");
             this->assert_mapped_type<O>();
             auto statement = this->prepare(sqlite_orm::insert(std::ref(o), std::move(cols)));

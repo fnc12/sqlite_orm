@@ -11,9 +11,6 @@
 #include "tuple_helper/tuple_filter.h"
 #include "conditions.h"
 #include "operators.h"
-#include "ast/result_columns.h"
-#include "ast/case_expression.h"
-#include "ast/select.h"
 #include "prepared_statement.h"
 #include "optional_container.h"
 #include "core_functions.h"
@@ -21,14 +18,11 @@
 #include "ast/excluded.h"
 #include "ast/upsert_clause.h"
 #include "ast/into.h"
-#include "ast/group_by.h"
 #include "ast/match.h"
 #include "ast/cast.h"
-#include "ast/limit.h"
 #include "ast/in.h"
 #include "ast/is_null.h"
 #include "ast/is_not_null.h"
-#include "ast/window.h"
 #include "window_functions.h"
 #include "vocabulary/node_traits.h"
 
@@ -59,13 +53,15 @@ namespace sqlite_orm::internal {
     struct node_tuple<std::tuple<Args...>, void> : node_tuple_for<Args...> {};
 
     template<class T>
-    struct node_tuple<as_optional_t<T>, void> : node_tuple<T> {};
+    struct node_tuple<T, match_if<is_as_optional, T>> : node_tuple<expression_type_t<T>> {};
 
-    template<class... Args>
-    struct node_tuple<group_by_t<Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class T, class... Args>
-    struct node_tuple<group_by_with_having<T, Args...>, void> : node_tuple_for<Args..., T> {};
+    /*
+     *  The HAVING condition is only carried by the `group_by_with_having` spelling of the clause;
+     *  for the plain one the detected expression type is `void`, contributing nothing.
+     */
+    template<class T>
+    struct node_tuple<T, match_if<is_any_group_by, T>>
+        : node_tuple_for<args_type_t<T>, polyfill::detected_or_t<void, expression_type_t, T>> {};
 
 #if SQLITE_VERSION_NUMBER >= 3024000
     template<class Targets, class Actions>
@@ -102,11 +98,11 @@ namespace sqlite_orm::internal {
     template<char... C>
     struct node_tuple<column_alias<C...>, void> : node_tuple<void> {};
 
-    template<class E>
-    struct node_tuple<order_by_t<E>, void> : node_tuple<E> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_order_by, T>> : node_tuple<expression_type_t<T>> {};
 
-    template<class... E>
-    struct node_tuple<multi_order_by_t<E...>, void> : node_tuple_for<E...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_multi_order_by, T>> : node_tuple<args_type_t<T>> {};
 
     template<class L, class R>
     struct node_tuple<is_equal_with_table_t<L, R>, void> : node_tuple<R> {};
@@ -138,11 +134,11 @@ namespace sqlite_orm::internal {
 
     template<class With>
     struct node_tuple<With, match_if<is_with_clause, With>>
-        : node_tuple_for<typename With::cte_type, expression_type_t<With>> {};
+        : node_tuple_for<cte_type_t<With>, expression_type_t<With>> {};
 #endif
 
-    template<class T, class... Args>
-    struct node_tuple<select_t<T, Args...>, void> : node_tuple_for<T, Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_select, T>> : node_tuple_for<return_type_t<T>, conditions_type_t<T>> {};
 
     template<class... Args>
     struct node_tuple<insert_raw_t<Args...>, void> : node_tuple_for<Args...> {};
@@ -207,11 +203,8 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<bitwise_not_t<T>, void> : node_tuple<T> {};
 
-    template<class R, class S, class... Args>
-    struct node_tuple<built_in_function_t<R, S, Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class R, class S, class... Args>
-    struct node_tuple<built_in_aggregate_function_t<R, S, Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_built_in_function, T>> : node_tuple<args_type_t<T>> {};
 
     template<class F, class W>
     struct node_tuple<filtered_aggregate_function<F, W>, void> : node_tuple_for<F, W> {};
@@ -239,8 +232,9 @@ namespace sqlite_orm::internal {
     template<class T, class O>
     struct node_tuple<inner_join_t<T, O>, void> : node_tuple<O> {};
 
-    template<class R, class T, class E, class... Args>
-    struct node_tuple<simple_case_t<R, T, E, Args...>, void> : node_tuple_for<T, Args..., E> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_case_expression, T>>
+        : node_tuple_for<case_expression_type_t<T>, args_type_t<T>, else_expression_type_t<T>> {};
 
     template<class L, class R>
     struct node_tuple<std::pair<L, R>, void> : node_tuple_for<L, R> {};
@@ -248,17 +242,18 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<T, std::enable_if_t<is_as_node<T>::value>> : node_tuple<expression_type_t<T>> {};
 
+    /*
+     *  The implicit `limit(offset, limit)` spelling binds its offset first; every other spelling binds
+     *  the limit first, with a `void` offset expression contributing nothing.
+     */
     template<class T>
-    struct node_tuple<limit_t<T, false, false, void>, void> : node_tuple<T> {};
+    struct node_tuple<T, match_if<is_limit, T>>
+        : mpl::conditional_t<T::offset_is_implicit_v,
+                             node_tuple_for<offset_expression_type_t<T>, expression_type_t<T>>,
+                             node_tuple_for<expression_type_t<T>, offset_expression_type_t<T>>> {};
 
-    template<class T, class O>
-    struct node_tuple<limit_t<T, true, false, O>, void> : node_tuple_for<T, O> {};
-
-    template<class T, class O>
-    struct node_tuple<limit_t<T, true, true, O>, void> : node_tuple_for<O, T> {};
-
-    template<class... TableExpr>
-    struct node_tuple<from2_t<TableExpr...>, void> : node_tuple_for<TableExpr...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_from2, T>> : node_tuple<tuple_type_t<T>> {};
 
     /*
      *  Table reference as part of FROM clause: skip

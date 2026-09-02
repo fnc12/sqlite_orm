@@ -99,12 +99,12 @@ namespace sqlite_orm::internal {
     template<class Asterisk>
     struct cte_column_names_collector<Asterisk, match_if<is_asterisk, Asterisk>> {
         using expression_type = Asterisk;
-        using T = typename Asterisk::type;
+        using recordset_type = type_t<Asterisk>;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::vector<std::string> operator()(const expression_type&,
                                                                      const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            auto& table = pick_table<T>(context.db_objects);
+            auto& table = pick_table<recordset_type>(context.db_objects);
 
             std::vector<std::string> columnNames;
             columnNames.reserve(size_t(table.template count_of<is_column>()));

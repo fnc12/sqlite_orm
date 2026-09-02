@@ -71,8 +71,23 @@ namespace sqlite_orm::internal {
     template<typename T>
     using expression_type_t = typename T::expression_type;
 
+    /**
+     *  The types of the operand a CASE expression is tested against, and of its ELSE result.
+     */
+    template<typename T>
+    using case_expression_type_t = typename T::case_expression_type;
+
+    template<typename T>
+    using else_expression_type_t = typename T::else_expression_type;
+
     template<typename T>
     using args_type_t = typename T::args_type;
+
+    /**
+     *  The tuple of table expressions a FROM clause names.
+     */
+    template<typename T>
+    using tuple_type_t = typename T::tuple_type;
 
     /**
      *  The function a window function application applies over a window.
@@ -92,6 +107,12 @@ namespace sqlite_orm::internal {
     template<typename T>
     using return_type_t = typename T::return_type;
 
+    /**
+     *  The C++ type a condition yields.
+     */
+    template<typename T>
+    using result_type_t = typename T::result_type;
+
     template<class As>
     using alias_type_t = typename As::alias_type;
 
@@ -110,8 +131,20 @@ namespace sqlite_orm::internal {
 #endif
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+    /**
+     *  The tuple of CTE bindings a WITH clause carries.
+     */
+    template<typename T>
+    using cte_type_t = typename T::cte_type;
+
     template<typename T>
     using cte_moniker_type_t = typename T::cte_moniker_type;
+
+    /**
+     *  The tuple of column references a CTE binding spells out explicitly, if any.
+     */
+    template<typename T>
+    using explicit_colrefs_tuple_t = typename T::explicit_colrefs_tuple;
 
     template<typename T>
     using cte_mapper_type_t = typename T::cte_mapper_type;

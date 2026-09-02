@@ -156,6 +156,9 @@ namespace sqlite_orm::internal {
         return std::make_tuple(get<Idx>(coldef).member_pointer...);
     }
 
+    //  note: the overloads below deliberately take their node by its own template rather than being
+    //  constrained on a classification trait: they are all ordered against the unconstrained
+    //  "any expression" overload, which a trait-constrained overload would be ambiguous with.
     // any expression -> numeric column alias
     template<class DBOs,
              class E,
@@ -221,7 +224,7 @@ namespace sqlite_orm::internal {
     template<class DBOs, class O>
     auto extract_colref_expressions(const DBOs& dbObjects, const asterisk_t<O>& /*col*/) {
         using table_type = schema_pick_table_t<O, DBOs>;
-        using elements_type = typename table_type::elements_type;
+        using elements_type = elements_type_t<table_type>;
         using column_idxs = filter_tuple_sequence_t<elements_type, is_column>;
 
         auto& table = pick_table<O>(dbObjects);
@@ -309,7 +312,7 @@ namespace sqlite_orm::internal {
         std::vector<std::string> columnNames = collect_cte_column_names(subSelect, cte.explicitColumns, context);
 
         using mapper_type = create_cte_mapper_t<cte_moniker_type_t<cte_type>,
-                                                typename cte_type::explicit_colrefs_tuple,
+                                                explicit_colrefs_tuple_t<cte_type>,
                                                 column_expression_of_t<DBOs, subselect_type>,
                                                 decltype(subselectColRefs),
                                                 polyfill::remove_cvref_t<decltype(finalColRefs)>,

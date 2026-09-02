@@ -8,6 +8,9 @@
 #endif
 
 #include "functional/gsl.h"
+#include "type_traits.h"
+#include "vocabulary/node_fwd.h"  // order_by_base
+#include "vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
     template<class T, class SFINAE = void>
@@ -33,9 +36,9 @@ namespace sqlite_orm::internal {
         }
     }
 
-    template<class O>
-    struct order_by_serializer<order_by_t<O>, void> {
-        using statement_type = order_by_t<O>;
+    template<class T>
+    struct order_by_serializer<T, match_if<is_order_by, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
@@ -50,9 +53,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class C>
-    struct order_by_serializer<dynamic_order_by_t<C>, void> {
-        using statement_type = dynamic_order_by_t<C>;
+    template<class T>
+    struct order_by_serializer<T, match_if<is_dynamic_order_by, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,

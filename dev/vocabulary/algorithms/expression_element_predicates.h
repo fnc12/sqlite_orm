@@ -20,7 +20,8 @@ namespace sqlite_orm::internal {
      *  and a frame specification.
      */
     template<class T>
-    constexpr bool is_window_defn_element_v = std::disjunction_v<is_partition_by<T>, is_order_by<T>, is_frame_spec<T>>;
+    constexpr bool is_window_defn_element_v =
+        std::disjunction_v<is_partition_by<T>, is_any_order_by<T>, is_frame_spec<T>>;
 
     /**
      *  Whether a pack forms the arguments of an OVER clause: either a lone reference to a named

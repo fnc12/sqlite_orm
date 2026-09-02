@@ -42,6 +42,7 @@ namespace sqlite_orm::internal {
      */
     template<class T, class... Args>
     struct struct_t {
+        using object_type = T;
         using columns_type = std::tuple<Args...>;
 
         columns_type columns;
