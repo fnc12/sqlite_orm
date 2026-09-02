@@ -91,6 +91,24 @@ TEST_CASE("statement_serializer comparison operators") {
         value = serialize(is_equal<User>("Tom Gregory"), context);
         expected = R"("users" = 'Tom Gregory')";
     }
+    SECTION("is") {
+        value = serialize(is(&User::name, "lala"), context);
+        expected = R"("name" IS 'lala')";
+    }
+    SECTION("is_not") {
+        value = serialize(is_not(&User::name, "lala"), context);
+        expected = R"("name" IS NOT 'lala')";
+    }
+#if SQLITE_VERSION_NUMBER >= 3039000
+    SECTION("is_distinct_from") {
+        value = serialize(is_distinct_from(&User::name, "lala"), context);
+        expected = R"("name" IS DISTINCT FROM 'lala')";
+    }
+    SECTION("is_not_distinct_from") {
+        value = serialize(is_not_distinct_from(&User::name, "lala"), context);
+        expected = R"("name" IS NOT DISTINCT FROM 'lala')";
+    }
+#endif
     SECTION("subquery") {
         context.use_parentheses = false;
         value = serialize(greater_than(&User::id, select(avg(&User::id))), context);
