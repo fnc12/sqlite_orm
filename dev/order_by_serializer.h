@@ -31,6 +31,16 @@ namespace sqlite_orm::internal {
                 ss << " DESC";
                 break;
         }
+#if SQLITE_VERSION_NUMBER >= 3030000
+        switch (orderBy._nulls) {
+            case 1:
+                ss << " NULLS FIRST";
+                break;
+            case -1:
+                ss << " NULLS LAST";
+                break;
+        }
+#endif
     }
 
     template<class O>

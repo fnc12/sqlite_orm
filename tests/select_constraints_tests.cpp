@@ -2,6 +2,7 @@
 #include <catch2/catch_all.hpp>
 
 #include <ctime>  //  std::time_t
+#include <optional>  //  std::optional
 
 using namespace sqlite_orm;
 
@@ -557,3 +558,45 @@ TEST_CASE("rows") {
     decltype(rows) expected{true};
     REQUIRE(rows == expected);
 }
+
+#if SQLITE_VERSION_NUMBER >= 3030000
+TEST_CASE("order by null placement") {
+    struct Player {
+        int id = 0;
+        std::optional<int> score;
+    };
+    auto storage = make_storage(
+        {},
+        make_table("players", make_column("id", &Player::id, primary_key()), make_column("score", &Player::score)));
+    storage.sync_schema();
+    storage.replace(Player{1, 10});
+    storage.replace(Player{2, std::nullopt});
+    storage.replace(Player{3, 20});
+
+    std::vector<int> rows;
+    decltype(rows) expected;
+    SECTION("ascending puts NULLs first by default") {
+        rows = storage.select(&Player::id, order_by(&Player::score).asc());
+        expected = {2, 1, 3};
+    }
+    SECTION("ascending with NULLS LAST") {
+        rows = storage.select(&Player::id, order_by(&Player::score).asc().nulls_last());
+        expected = {1, 3, 2};
+    }
+    SECTION("descending puts NULLs last by default") {
+        rows = storage.select(&Player::id, order_by(&Player::score).desc());
+        expected = {3, 1, 2};
+    }
+    SECTION("descending with NULLS FIRST") {
+        rows = storage.select(&Player::id, order_by(&Player::score).desc().nulls_first());
+        expected = {2, 3, 1};
+    }
+    SECTION("dynamic order by with NULLS LAST") {
+        auto orderBy = dynamic_order_by(storage);
+        orderBy.push_back(order_by(&Player::score).desc().nulls_last());
+        rows = storage.select(&Player::id, orderBy);
+        expected = {3, 1, 2};
+    }
+    REQUIRE(rows == expected);
+}
+#endif
