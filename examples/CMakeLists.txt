@@ -21,7 +21,15 @@ foreach(file ${files})
             # disabled due to examples potentially containing deprecated features
             -Wno-deprecated-declarations
             # disabled due to unit tests testing overaligned structs
-            -Wno-interference-size)
+            -Wno-interference-size
+            # signed/unsigned comparison mismatches are errors
+            -Werror=sign-compare)
+    elseif(MSVC AND MSVC_VERSION GREATER_EQUAL 1930)
+        target_compile_options(${file_basename} PUBLIC
+            # signed/unsigned comparison mismatches are errors: C4018 (relational), C4388/C4389 (equality)
+            /we4018
+            /we4388
+            /we4389)
     endif()
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION GREATER_EQUAL 16)

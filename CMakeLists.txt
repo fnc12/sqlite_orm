@@ -69,15 +69,10 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(sqlite_orm INTERFACE
         -Wreorder
         -Werror=reorder
-        -Werror=sign-compare
     )
 elseif(MSVC)
     target_compile_options(sqlite_orm INTERFACE
         /we5038
-        # signed/unsigned comparison mismatches as errors: C4018 (relational), C4388/C4389 (equality)
-        /we4018
-        /we4388
-        /we4389
     )
 endif()
 

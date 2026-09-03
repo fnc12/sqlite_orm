@@ -77,6 +77,16 @@ if(MSVC)
         # C4458: 'symbol': deprecated
         # disabled due to unit tests testing deprecated features
         /wd4996)
+    if(MSVC_VERSION GREATER_EQUAL 1930)
+        target_compile_options(unit_tests PUBLIC
+            # third-party headers (Catch2) are exempt from warnings; VS 2022+
+            /external:anglebrackets
+            /external:W0
+            # signed/unsigned comparison mismatches are errors: C4018 (relational), C4388/C4389 (equality)
+            /we4018
+            /we4388
+            /we4389)
+    endif()
     if (CMAKE_CXX_FLAGS MATCHES "/D_UNICODE")
         # explicitly set the entry point of the executable file,
         # otherwise for some reason the linker will not pick up `wmain`, which is provided by the static Catch2 library
@@ -91,7 +101,9 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
         # perfectly valid to have missing field initializers in library's test code
         -Wno-missing-field-initializers
         # suppress warnings about unused variables in test code
-        -Wno-unused-variable)
+        -Wno-unused-variable
+        # signed/unsigned comparison mismatches are errors
+        -Werror=sign-compare)
 endif()
     
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION GREATER_EQUAL 16)
