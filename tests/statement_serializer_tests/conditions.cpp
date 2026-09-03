@@ -50,6 +50,54 @@ TEST_CASE("statement_serializer conditions") {
             value = serialize(expression, ctx);
             expected = R"(ORDER BY "user"."id" DESC)";
         }
+#if SQLITE_VERSION_NUMBER >= 3030000
+        SECTION("nulls first") {
+            auto expression = order_by(&User::id).nulls_first();
+            value = serialize(expression, ctx);
+            expected = R"(ORDER BY "user"."id" NULLS FIRST)";
+        }
+        SECTION("nulls last") {
+            auto expression = order_by(&User::id).nulls_last();
+            value = serialize(expression, ctx);
+            expected = R"(ORDER BY "user"."id" NULLS LAST)";
+        }
+        SECTION("asc, nulls first") {
+            auto expression = order_by(&User::id).asc().nulls_first();
+            value = serialize(expression, ctx);
+            expected = R"(ORDER BY "user"."id" ASC NULLS FIRST)";
+        }
+        SECTION("asc, nulls last") {
+            auto expression = order_by(&User::id).asc().nulls_last();
+            value = serialize(expression, ctx);
+            expected = R"(ORDER BY "user"."id" ASC NULLS LAST)";
+        }
+        SECTION("desc, nulls first") {
+            auto expression = order_by(&User::id).desc().nulls_first();
+            value = serialize(expression, ctx);
+            expected = R"(ORDER BY "user"."id" DESC NULLS FIRST)";
+        }
+        SECTION("desc, nulls last") {
+            auto expression = order_by(&User::id).desc().nulls_last();
+            value = serialize(expression, ctx);
+            expected = R"(ORDER BY "user"."id" DESC NULLS LAST)";
+        }
+        SECTION("the builder order does not matter") {
+            auto expression = order_by(&User::id).nulls_last().desc();
+            value = serialize(expression, ctx);
+            expected = R"(ORDER BY "user"."id" DESC NULLS LAST)";
+        }
+        SECTION("collated, desc, nulls last") {
+            auto expression = order_by(&User::name).collate_nocase().desc().nulls_last();
+            value = serialize(expression, ctx);
+            expected = R"(ORDER BY "user"."name" COLLATE NOCASE DESC NULLS LAST)";
+        }
+        SECTION("multi with mixed null placements") {
+            auto expression =
+                multi_order_by(order_by(&User::id).asc().nulls_last(), order_by(&User::name).desc().nulls_first());
+            value = serialize(expression, ctx);
+            expected = R"(ORDER BY "user"."id" ASC NULLS LAST, "user"."name" DESC NULLS FIRST)";
+        }
+#endif
         SECTION("multi, single") {
             auto expression = multi_order_by(order_by(&User::id));
             value = serialize(expression, ctx);
