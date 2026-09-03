@@ -7032,6 +7032,7 @@ namespace sqlite_orm::internal {
     struct order_by_base {
         std::string _collate_argument;
         int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
+        int _nulls = 0;  //  1 = nulls first, -1 = nulls last, 0 = unspecified
     };
 
     struct order_by_string {
@@ -7062,6 +7063,20 @@ namespace sqlite_orm::internal {
             res._order = -1;
             return res;
         }
+
+#if SQLITE_VERSION_NUMBER >= 3030000
+        order_by_t nulls_first() const {
+            auto res = *this;
+            res._nulls = 1;
+            return res;
+        }
+
+        order_by_t nulls_last() const {
+            auto res = *this;
+            res._nulls = -1;
+            return res;
+        }
+#endif
 
         order_by_t collate_binary() const {
             auto res = *this;
@@ -7110,8 +7125,8 @@ namespace sqlite_orm::internal {
     struct dynamic_order_by_entry_t : order_by_base {
         std::string name;
 
-        dynamic_order_by_entry_t(decltype(name) name_, std::string collate_argument_, int asc_desc_) :
-            order_by_base{std::move(collate_argument_), asc_desc_}, name(std::move(name_)) {}
+        dynamic_order_by_entry_t(decltype(name) name_, std::string collate_argument_, int asc_desc_, int nulls_) :
+            order_by_base{std::move(collate_argument_), asc_desc_, nulls_}, name(std::move(name_)) {}
     };
 
     /**
@@ -7130,7 +7145,10 @@ namespace sqlite_orm::internal {
             auto newContext = this->context;
             newContext.omit_table_name = false;
             auto columnName = serialize(orderBy._expression, newContext);
-            this->entries.emplace_back(std::move(columnName), std::move(orderBy._collate_argument), orderBy._order);
+            this->entries.emplace_back(std::move(columnName),
+                                       std::move(orderBy._collate_argument),
+                                       orderBy._order,
+                                       orderBy._nulls);
         }
 
         const_iterator begin() const {
@@ -22282,6 +22300,16 @@ namespace sqlite_orm::internal {
                 ss << " DESC";
                 break;
         }
+#if SQLITE_VERSION_NUMBER >= 3030000
+        switch (orderBy._nulls) {
+            case 1:
+                ss << " NULLS FIRST";
+                break;
+            case -1:
+                ss << " NULLS LAST";
+                break;
+        }
+#endif
     }
 
     template<class T>
