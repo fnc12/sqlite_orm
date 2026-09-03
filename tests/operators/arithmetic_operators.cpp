@@ -31,7 +31,7 @@ TEST_CASE("Arithmetic operators") {
         for (size_t i = 0; i < rows.size(); ++i) {
             auto& row = rows[i];
             auto& name = names[i];
-            REQUIRE(int(row) == name.length() + 1000);
+            REQUIRE(size_t(row) == name.length() + 1000);
         }
     }
     {  //  +
@@ -39,7 +39,7 @@ TEST_CASE("Arithmetic operators") {
         for (size_t i = 0; i < rows.size(); ++i) {
             auto& row = rows[i];
             auto& name = names[i];
-            REQUIRE(int(std::get<0>(row)) == name.length() + 1000);
+            REQUIRE(size_t(std::get<0>(row)) == name.length() + 1000);
         }
     }
     {  //  ||

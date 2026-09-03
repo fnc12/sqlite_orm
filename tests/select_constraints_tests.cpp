@@ -335,7 +335,7 @@ TEST_CASE("Case") {
                 .end(),
             order_by(&Track2::name));
         auto verifyRows = [&storage](auto& rows) {
-            REQUIRE(rows.size() == storage.count<Track2>());
+            REQUIRE(rows.size() == static_cast<size_t>(storage.count<Track2>()));
             REQUIRE(rows[0] == "long");
             REQUIRE(rows[1] == "medium");
             REQUIRE(rows[2] == "long");
