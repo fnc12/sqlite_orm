@@ -1267,6 +1267,157 @@ namespace sqlite_orm::internal {
     using check_if_projected_is_type = mpl::pass_result_of_fn<check_if_is_type<T>, ProjOp>;
 }
 
+// #include "functional/type_traits.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_empty, std::is_aggregate, std::declval
+#if __cpp_lib_unwrap_ref >= 201811L
+#include <utility>  //  std::reference_wrapper
+#else
+#include <functional>  //  std::reference_wrapper
+#endif
+#endif
+
+// #include "cxx_type_traits_polyfill.h"
+
+// C++ generic traits used throughout the library
+namespace sqlite_orm::internal {
+    template<class T, class... Types>
+    using is_any_of = std::disjunction<std::is_same<T, Types>...>;
+
+    /**
+     *  The element type behind a storage slot of type `T`, always non-reference and
+     *  non-const -- akin to `std::iterator_traits<It>::value_type` versus `reference`:
+     *  it describes what is stored, not what accessing it hands back.
+     *
+     *  A `std::reference_wrapper<U>` names `U` with any top-level const on `U` stripped;
+     *  everything else is decayed via `remove_cvref`. This intentionally diverges from
+     *  `forward_ref`/`unwrap_ref_or_forward_t`, which preserve a wrapped referent's
+     *  constness -- the two agree on identity but not necessarily on constness.
+     *
+     *  Note: the `reference_wrapper` specialization matches only on a bare, unqualified
+     *  `std::reference_wrapper<T>`. A `T` that is itself a reference or a cv-qualified
+     *  reference_wrapper (as would arise from a forwarding reference or an lvalue member
+     *  access) currently falls through to the primary template and stays wrapped. Not
+     *  exercised by any caller in this library today.
+     */
+    template<class T>
+    struct value_unref_type : std::remove_const<T> {};
+
+    template<class T>
+    struct value_unref_type<std::reference_wrapper<T>> : std::remove_const<T> {};
+
+    template<class T>
+    using value_unref_type_t = typename value_unref_type<T>::type;
+
+    /**
+     *  Perfectly forward a value, unwrapping a `std::reference_wrapper` on the way.
+     *
+     *  A `reference_wrapper` argument yields an lvalue reference to the referenced object,
+     *  whatever the wrapper's own value category and constness - the referent is
+     *  independent of the wrapper that names it. Every other argument is forwarded
+     *  unchanged.
+     *
+     *  This is the value-level facility that `std::unwrap_reference` doesn't provide on
+     *  its own: `std::unwrap_reference` unwraps only when its argument type is exactly a
+     *  bare `reference_wrapper<U>`, not a reference to one. `value_unref_type` is the
+     *  companion that names the resulting object's type instead of a reference to it,
+     *  though it always strips constness where this preserves it -- see `value_unref_type`.
+     */
+    template<class T>
+    decltype(auto) forward_ref(T&& x) {
+        if constexpr (polyfill::is_specialization_of_v<polyfill::remove_cvref_t<T>, std::reference_wrapper>) {
+            return x.get();
+        } else {
+            return std::forward<T>(x);
+        }
+    }
+
+    /**
+     *  Unwrap a `std::reference_wrapper` lvalue, or pass any other lvalue through as-is.
+     *
+     *  Accepts lvalues only, hence always returns an lvalue reference - use it to reach the
+     *  object behind a stored member or tuple element that may or may not be a
+     *  `reference_wrapper`, without deciding at the call site which of the two it is.
+     *  The argument's constness carries over, except through a `reference_wrapper`, whose
+     *  referent is unaffected by the constness of the wrapper.
+     */
+    template<class T>
+    decltype(auto) forward_lvalue_ref(T& refd) {
+        return forward_ref(refd);
+    }
+
+    /**
+     *  The reference type `forward_ref()` returns for `T`: `T&` stays `T&`, a bare `T`
+     *  becomes `T&&`, and a `reference_wrapper<U>` in any form becomes `U&`.
+     *
+     *  Where `value_unref_type` answers what element type sits behind a storage type,
+     *  this answers what accessing that storage hands out -- the two agree on identity,
+     *  but this one preserves a wrapped referent's constness where `value_unref_type`
+     *  strips it.
+     */
+    template<class T>
+    struct unwrap_ref_or_forward {
+        using type = decltype(forward_ref(std::declval<T>()));
+    };
+
+    template<class T>
+    using unwrap_ref_or_forward_t = typename unwrap_ref_or_forward<T>::type;
+
+    template<class T>
+    using is_eval_order_garanteed = std::is_aggregate<T>;
+}
+
+// SFINAE helpers for types and functions
+namespace sqlite_orm::internal {
+    // enable_if for types
+    template<template<typename...> class Op, class... Args>
+    using match_if = std::enable_if_t<Op<Args...>::value>;
+
+    // enable_if for types
+    template<template<typename...> class Op, class... Args>
+    using match_if_not = std::enable_if_t<std::negation<Op<Args...>>::value>;
+
+    // enable_if for types
+    template<class T, template<typename...> class Primary>
+    using match_specialization_of = std::enable_if_t<polyfill::is_specialization_of<T, Primary>::value>;
+
+    // enable_if for functions
+    template<template<typename...> class Op, class... Args>
+    using satisfies = std::enable_if_t<Op<Args...>::value, bool>;
+
+    // enable_if for functions
+    template<template<typename...> class Op, class... Args>
+    using satisfies_not = std::enable_if_t<std::negation<Op<Args...>>::value, bool>;
+
+    // enable_if for functions
+    template<class T, template<typename...> class Primary>
+    using satisfies_is_specialization_of = std::enable_if_t<polyfill::is_specialization_of<T, Primary>::value, bool>;
+}
+
+// type name template alias projectors for syntactic sugar
+namespace sqlite_orm::internal {
+    template<typename T>
+    using type_t = typename T::type;
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<auto a>
+    using auto_type_t = typename decltype(a)::type;
+#endif
+
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    template<typename T>
+    concept stateless = std::is_empty_v<T>;
+#endif
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    template<class T>
+    concept orm_names_type = requires { typename T::type; };
+#endif
+}
+
 // #include "tuple_helper/tuple_traits.h"
 
 // #include "../functional/cxx_type_traits_polyfill.h"
@@ -1494,12 +1645,41 @@ namespace sqlite_orm::internal {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_reference, std::common_type, std::index_sequence, std::make_index_sequence, std::forward, std::move, std::integral_constant, std::declval
 #include <tuple>  //  std::tuple_size, std::get
-#include <utility>  // std::forward_like
 #include <functional>  //  std::invoke
 #endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
+// #include "../functional/cxx_utility_polyfill.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <utility>
+#endif
+
+namespace sqlite_orm::internal {
+    namespace polyfill {
+#if __cpp_lib_forward_like >= 202207L
+        using std::forward_like;
+#else
+        template<class T, class U>
+        constexpr auto&& forward_like(U&& x) noexcept {
+            constexpr bool is_adding_const = std::is_const_v<std::remove_reference_t<T>>;
+            if constexpr (std::is_lvalue_reference_v<T&&>) {
+                if constexpr (is_adding_const)
+                    return std::as_const(x);
+                else
+                    return static_cast<U&>(x);
+            } else {
+                if constexpr (is_adding_const)
+                    return std::move(std::as_const(x));
+                else
+                    return std::move(x);
+            }
+        }
+#endif
+    }
+}
+//  polyfill::forward_like
 // #include "../functional/cxx_functional_polyfill.h"
 //  polyfill::identity
 // #include "../functional/mpl.h"
@@ -1589,14 +1769,14 @@ namespace sqlite_orm::internal {
         return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
     }
 
-#if defined(SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED) && __cpp_lib_forward_like >= 202207L
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
     /*
      *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
      */
-    template<class R, class Tpl, class Projection = std::identity>
+    template<class R, class Tpl, class Projection = polyfill::identity>
     constexpr R create_from_tuple(Tpl&& tpl, Projection project = {}) {
         auto& [... elements] = tpl;
-        return R{std::invoke(project, std::forward_like<Tpl>(elements))...};
+        return R{std::invoke(project, polyfill::forward_like<Tpl>(elements))...};
     }
 #else
     /*
@@ -1615,14 +1795,14 @@ namespace sqlite_orm::internal {
         return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
     }
 
-#if defined(SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED) && __cpp_lib_forward_like >= 202207L
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
     /*
      *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
      */
     template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
     constexpr auto create_from_tuple(Tpl&& tpl, Projection project = {}) {
         auto& [... elements] = tpl;
-        return R{std::invoke(project, std::forward_like<Tpl>(elements))...};
+        return R{std::invoke(project, polyfill::forward_like<Tpl>(elements))...};
     }
 #else
     /*
@@ -1702,84 +1882,6 @@ namespace sqlite_orm::internal {
     lambda_as_template_base<Base, L> call_as_template_base(L lambda) {
         return {std::move(lambda)};
     }
-}
-
-// #include "type_traits.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_same, std::is_empty, std::is_aggregate
-#if __cpp_lib_unwrap_ref >= 201811L
-#include <utility>  //  std::reference_wrapper
-#else
-#include <functional>  //  std::reference_wrapper
-#endif
-#endif
-
-// #include "functional/cxx_type_traits_polyfill.h"
-
-// C++ generic traits used throughout the library
-namespace sqlite_orm::internal {
-    template<class T, class... Types>
-    using is_any_of = std::disjunction<std::is_same<T, Types>...>;
-
-    template<class T>
-    struct value_unref_type : polyfill::remove_cvref<T> {};
-
-    template<class T>
-    struct value_unref_type<std::reference_wrapper<T>> : std::remove_const<T> {};
-
-    template<class T>
-    using value_unref_type_t = typename value_unref_type<T>::type;
-
-    template<class T>
-    using is_eval_order_garanteed = std::is_aggregate<T>;
-
-    // enable_if for types
-    template<template<typename...> class Op, class... Args>
-    using match_if = std::enable_if_t<Op<Args...>::value>;
-
-    // enable_if for types
-    template<template<typename...> class Op, class... Args>
-    using match_if_not = std::enable_if_t<std::negation<Op<Args...>>::value>;
-
-    // enable_if for types
-    template<class T, template<typename...> class Primary>
-    using match_specialization_of = std::enable_if_t<polyfill::is_specialization_of<T, Primary>::value>;
-
-    // enable_if for functions
-    template<template<typename...> class Op, class... Args>
-    using satisfies = std::enable_if_t<Op<Args...>::value, bool>;
-
-    // enable_if for functions
-    template<template<typename...> class Op, class... Args>
-    using satisfies_not = std::enable_if_t<std::negation<Op<Args...>>::value, bool>;
-
-    // enable_if for functions
-    template<class T, template<typename...> class Primary>
-    using satisfies_is_specialization_of = std::enable_if_t<polyfill::is_specialization_of<T, Primary>::value, bool>;
-}
-
-// type name template alias projectors for syntactic sugar
-namespace sqlite_orm::internal {
-    template<typename T>
-    using type_t = typename T::type;
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<auto a>
-    using auto_type_t = typename decltype(a)::type;
-#endif
-
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    template<typename T>
-    concept stateless = std::is_empty_v<T>;
-#endif
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    template<class T>
-    concept orm_names_type = requires { typename T::type; };
-#endif
 }
 
 // #include "vocabulary/node_traits.h"
@@ -2497,7 +2599,7 @@ namespace sqlite_orm::internal {
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "../../type_traits.h"
+// #include "../../functional/type_traits.h"
 
 // #include "../../member_traits/member_traits.h"
 
@@ -3739,7 +3841,7 @@ namespace sqlite_orm::internal {
 }
 #endif
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "member_traits/field_of.h"
 
@@ -3754,7 +3856,7 @@ namespace sqlite_orm::internal {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -3922,7 +4024,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "table_reference.h"
 
@@ -4666,10 +4768,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "functional/type_traits.h"
+
 // #include "vocabulary/algorithms/field_predicates_fwd.h"
 // Included to define is_printable_v
-// #include "type_traits.h"
-
 // #include "is_std_ptr.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -5399,9 +5501,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../tuple_helper/tuple_transformer.h"
+// #include "../functional/type_traits.h"
 
-// #include "../type_traits.h"
+// #include "../tuple_helper/tuple_transformer.h"
 
 // #include "../alias.h"
 
@@ -6142,9 +6244,9 @@ namespace sqlite_orm::internal {
 
 // #include "functional/is_base_template_of.h"
 
-// #include "tuple_helper/tuple_traits.h"
+// #include "functional/type_traits.h"
 
-// #include "type_traits.h"
+// #include "tuple_helper/tuple_traits.h"
 
 // #include "conditions.h"
 
@@ -6163,7 +6265,7 @@ namespace sqlite_orm::internal {
 
 // #include "functional/is_base_template_of.h"
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "collate_argument.h"
 
@@ -6295,7 +6397,7 @@ namespace sqlite_orm::internal {
 
 // #include "functional/gsl.h"
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "is_std_ptr.h"
 
@@ -10642,10 +10744,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "functional/type_traits.h"
+
 // #include "vocabulary/algorithms/field_predicates_fwd.h"
 // Included to define is_bindable_v
-// #include "type_traits.h"
-
 // #include "is_std_ptr.h"
 
 // #include "tuple_helper/tuple_filter.h"
@@ -11557,7 +11659,7 @@ namespace sqlite_orm::internal {
 
 // #include "functional/mpl.h"
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "tuple_helper/tuple_traits.h"
 
@@ -11651,7 +11753,7 @@ namespace sqlite_orm::internal {
 #include <type_traits>  //  std::void_t, std::remove_const
 #endif
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "alias_traits.h"
 
@@ -11769,7 +11871,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "tuple_helper/tuple_transformer.h"
 
@@ -11900,7 +12002,7 @@ namespace sqlite_orm::internal {
 #include <tuple>  //  std::tuple
 #endif
 
-// #include "../type_traits.h"
+// #include "../functional/type_traits.h"
 
 namespace sqlite_orm::internal {
     template<class... DBO>
@@ -11947,9 +12049,9 @@ namespace sqlite_orm::internal {
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "../../vocabulary/node_traits.h"
+// #include "../../functional/type_traits.h"
 
-// #include "../../type_traits.h"
+// #include "../../vocabulary/node_traits.h"
 
 // #include "../db_objects.h"
 
@@ -12071,9 +12173,9 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../tuple_helper/tuple_traits.h"
+// #include "../functional/type_traits.h"
 
-// #include "../type_traits.h"
+// #include "../tuple_helper/tuple_traits.h"
 
 // #include "../member_traits/member_traits.h"
 
@@ -12497,7 +12599,7 @@ namespace sqlite_orm::internal {
     struct function_traits<F O::*> : function_traits<F> {};
 }
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -14264,13 +14366,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functional/index_sequence_util.h"
 
+// #include "functional/type_traits.h"
+
 // #include "tuple_helper/tuple_traits.h"
 
 // #include "tuple_helper/tuple_filter.h"
 
 // #include "tuple_helper/tuple_iteration.h"
-
-// #include "type_traits.h"
 
 // #include "vocabulary/node_traits.h"
 
@@ -14454,7 +14556,7 @@ namespace sqlite_orm::internal {
 
 // #include "functional/gsl.h"
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "is_std_ptr.h"
 
@@ -15186,9 +15288,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functional/gsl.h"
 
-// #include "member_traits/member_traits.h"
+// #include "functional/type_traits.h"
 
-// #include "type_traits.h"
+// #include "member_traits/member_traits.h"
 
 // #include "vocabulary/node_fwd.h"
 // column_field
@@ -15576,7 +15678,7 @@ namespace sqlite_orm::internal {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "tuple_helper/tuple_iteration.h"
 
@@ -15610,7 +15712,7 @@ namespace sqlite_orm::internal {
 //  polyfill::identity
 // #include "functional/gsl.h"
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "tuple_helper/tuple_traits.h"
 
@@ -16210,7 +16312,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <type_traits>  //  std::false_type, std::true_type
 #endif
 
-// #include "../type_traits.h"
+// #include "../functional/type_traits.h"
 
 // #include "../tuple_helper/tuple_traits.h"
 
@@ -16547,7 +16649,7 @@ namespace sqlite_orm::internal {
 
     template<class T, class... Args>
     struct remove_all_t {
-        using type = T;
+        using object_type = T;
         using conditions_type = std::tuple<Args...>;
 
         conditions_type conditions;
@@ -16585,14 +16687,14 @@ namespace sqlite_orm::internal {
 
     template<class T>
     struct update_t {
-        using type = T;
+        using object_type = T;
 
-        type object;
+        object_type object;
     };
 
     template<class T, class... Ids>
     struct remove_t {
-        using type = T;
+        using object_type = T;
         using ids_type = std::tuple<Ids...>;
 
         ids_type ids;
@@ -16600,9 +16702,9 @@ namespace sqlite_orm::internal {
 
     template<class T>
     struct insert_t {
-        using type = T;
+        using object_type = T;
 
-        type object;
+        object_type object;
     };
 
     template<class T>
@@ -16613,18 +16715,18 @@ namespace sqlite_orm::internal {
 
     template<class T, class... Cols>
     struct insert_explicit {
-        using type = T;
+        using object_type = T;
         using columns_type = columns_t<Cols...>;
 
-        type obj;
+        object_type object;
         columns_type columns;
     };
 
     template<class T>
     struct replace_t {
-        using type = T;
+        using object_type = T;
 
-        type object;
+        object_type object;
     };
 
     template<class T>
@@ -18574,9 +18676,9 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::r
 // polyfill::unwrap_reference
 // #include "functional/gsl.h"
 
-// #include "tuple_helper/tuple_iteration.h"
+// #include "functional/type_traits.h"
 
-// #include "type_traits.h"
+// #include "tuple_helper/tuple_iteration.h"
 
 // #include "vocabulary/node_traits.h"
 
@@ -21394,9 +21496,12 @@ namespace sqlite_orm::internal {
 // #include "expression_object_type.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::decay, std::remove_reference
-#include <functional>  //  std::reference_wrapper
+#include <type_traits>  //  std::remove_reference
 #endif
+
+// #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "functional/type_traits.h"
 
 // #include "vocabulary/node_traits.h"
 
@@ -21437,70 +21542,10 @@ namespace sqlite_orm::internal {
     template<class T, class... Cols>
     struct expression_object_type<insert_explicit<T, Cols...>, void> : value_unref_type<T> {};
 
-    template<class T>
-    struct get_ref_t {
-
-        template<class O>
-        SQLITE_ORM_STATIC_CALLOP auto& operator()(O& t) SQLITE_ORM_OR_CONST_CALLOP {
-            return t;
-        }
-    };
-
-    template<class T>
-    struct get_ref_t<std::reference_wrapper<T>> {
-
-        template<class O>
-        SQLITE_ORM_STATIC_CALLOP auto& operator()(O& t) SQLITE_ORM_OR_CONST_CALLOP {
-            return t.get();
-        }
-    };
-
-    template<class T>
-    auto& get_ref(T& t) {
-        using arg_type = std::decay_t<T>;
-        get_ref_t<arg_type> g;
-        return g(t);
+    template<class DML>
+    decltype(auto) access_dml_object(DML& statement) {
+        return forward_lvalue_ref(statement.expression.object);
     }
-
-    template<class T>
-    struct get_object_t;
-
-    template<class T>
-    auto& get_object(T& t) {
-        using expression_type = std::decay_t<T>;
-        get_object_t<expression_type> obj;
-        return obj(t);
-    }
-
-    template<class T>
-    struct get_object_t<replace_t<T>> {
-        using expression_type = replace_t<T>;
-
-        template<class O>
-        SQLITE_ORM_STATIC_CALLOP auto& operator()(O& e) SQLITE_ORM_OR_CONST_CALLOP {
-            return get_ref(e.object);
-        }
-    };
-
-    template<class T>
-    struct get_object_t<insert_t<T>> {
-        using expression_type = insert_t<T>;
-
-        template<class O>
-        SQLITE_ORM_STATIC_CALLOP auto& operator()(O& e) SQLITE_ORM_OR_CONST_CALLOP {
-            return get_ref(e.object);
-        }
-    };
-
-    template<class T>
-    struct get_object_t<update_t<T>> {
-        using expression_type = update_t<T>;
-
-        template<class O>
-        SQLITE_ORM_STATIC_CALLOP auto& operator()(O& e) SQLITE_ORM_OR_CONST_CALLOP {
-            return get_ref(e.object);
-        }
-    };
 }
 
 // #include "statement_serializer.h"
@@ -21552,7 +21597,7 @@ namespace sqlite_orm::internal {
 
 // #include "functional/mpl.h"
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "tuple_helper/tuple_filter.h"
 
@@ -21605,7 +21650,7 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::move
 #endif
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "tuple_helper/tuple_traits.h"
 
@@ -21747,9 +21792,9 @@ namespace sqlite_orm::internal {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "tuple_helper/tuple_transformer.h"
+// #include "functional/type_traits.h"
 
-// #include "type_traits.h"
+// #include "tuple_helper/tuple_transformer.h"
 
 // #include "error_code.h"
 
@@ -21977,7 +22022,7 @@ namespace sqlite_orm::internal {
 
 // #include "functional/gsl.h"
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "vocabulary/node_fwd.h"
 // order_by_base
@@ -23907,7 +23952,7 @@ namespace sqlite_orm::internal {
         using statement_type = replace_t<T>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             using object_type = expression_object_type_t<statement_type>;
             auto& table = pick_table<object_type>(context.db_objects);
@@ -23918,7 +23963,7 @@ namespace sqlite_orm::internal {
                << streaming_field_values_excluding(check_if<is_generated_always>{},
                                                    always_default<std::false_type>,  //  don't exclude
                                                    context,
-                                                   get_ref(statement.object))
+                                                   forward_lvalue_ref(expression.object))
                << ")";
             return ss.str();
         }
@@ -23929,7 +23974,7 @@ namespace sqlite_orm::internal {
         using statement_type = insert_explicit<T, Cols...>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& ins,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             constexpr size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
             static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
@@ -23937,11 +23982,12 @@ namespace sqlite_orm::internal {
             auto& table = pick_table<object_type>(context.db_objects);
             std::stringstream ss;
             ss << "INSERT INTO " << streaming_identifier(table.name) << " ";
-            ss << "(" << streaming_mapped_columns_expressions(ins.columns.columns, context) << ") "
+            ss << "(" << streaming_mapped_columns_expressions(expression.columns.columns, context) << ") "
                << "VALUES (";
             iterate_tuple(
-                ins.columns.columns,
-                [&ss, &context, &object = get_ref(ins.obj), first = true](auto& memberPointer) mutable {
+                expression.columns.columns,
+                [&ss, &context, &object = forward_lvalue_ref(expression.object), first = true](
+                    auto& memberPointer) mutable {
                     using member_pointer_type = std::remove_reference_t<decltype(memberPointer)>;
                     static_assert(!is_setter_v<member_pointer_type>, "Unable to use setter within insert explicit");
 
@@ -23958,7 +24004,7 @@ namespace sqlite_orm::internal {
         using statement_type = update_t<T>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             using object_type = expression_object_type_t<statement_type>;
             auto& table = pick_table<object_type>(context.db_objects);
@@ -23966,7 +24012,8 @@ namespace sqlite_orm::internal {
             std::stringstream ss;
             ss << "UPDATE " << streaming_identifier(table.name) << " SET ";
             table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
-                [&table, &ss, &context, &object = get_ref(statement.object), first = true](auto& column) mutable {
+                [&table, &ss, &context, &object = forward_lvalue_ref(expression.object), first = true](
+                    auto& column) mutable {
                     if (table_primary_key_contains(table, column)) {
                         return;
                     }
@@ -23977,7 +24024,8 @@ namespace sqlite_orm::internal {
                 });
             ss << " WHERE ";
             table.for_each_column(
-                [&table, &context, &ss, &object = get_ref(statement.object), first = true](auto& column) mutable {
+                [&table, &context, &ss, &object = forward_lvalue_ref(expression.object), first = true](
+                    auto& column) mutable {
                     if (!column.template is<is_primary_key>() && !table_primary_key_contains(table, column)) {
                         return;
                     }
@@ -24062,17 +24110,17 @@ namespace sqlite_orm::internal {
         using statement_type = update_all_t<S, Wargs...>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            const auto& tableNames = collect_table_names(statement.set, context);
+            const auto& tableNames = collect_table_names(expression.set, context);
             if (tableNames.empty()) {
                 throw std::system_error{orm_error_code::no_tables_specified};
             }
             const std::string& tableName = tableNames.begin()->first;
 
             std::stringstream ss;
-            ss << "UPDATE " << streaming_identifier(tableName) << ' ' << serialize(statement.set, context)
-               << streaming_conditions_tuple(statement.conditions, context);
+            ss << "UPDATE " << streaming_identifier(tableName) << ' ' << serialize(expression.set, context)
+               << streaming_conditions_tuple(expression.conditions, context);
             return ss.str();
         }
     };
@@ -24082,7 +24130,7 @@ namespace sqlite_orm::internal {
         using statement_type = insert_t<T>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             using object_type = expression_object_type_t<statement_type>;
             auto& table = pick_table<object_type>(context.db_objects);
@@ -24130,7 +24178,7 @@ namespace sqlite_orm::internal {
                                       (column.template is<is_default>() && table_primary_key_contains(table, column)));
                           },
                           context,
-                          get_ref(statement.object))
+                          forward_lvalue_ref(expression.object))
                    << ")";
             }
 
@@ -25083,6 +25131,8 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/mpl.h"
 
+// #include "../functional/type_traits.h"
+
 // #include "../tuple_helper/tuple_filter.h"
 
 // #include "../tuple_helper/tuple_iteration.h"
@@ -25092,8 +25142,6 @@ namespace sqlite_orm::internal {
 // #include "../member_traits/member_traits.h"
 
 // #include "../member_traits/field_of.h"
-
-// #include "../type_traits.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -25362,11 +25410,13 @@ namespace sqlite_orm::internal {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if
-#include <utility>  //  std::move, std::forward, std::declval, std::forward_like
+#include <utility>  //  std::move, std::forward, std::declval
 #endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
+// #include "../functional/cxx_utility_polyfill.h"
+//  polyfill::forward_like
 // #include "in.h"
 
 // #include "../conditions.h"
@@ -25386,30 +25436,30 @@ namespace sqlite_orm::internal {
     struct quoted_expression_t {
         T _value;
 
-#if defined(SQLITE_ORM_DEDUCING_THIS_SUPPORTED) && __cpp_lib_forward_like >= 202207L
+#ifdef SQLITE_ORM_DEDUCING_THIS_SUPPORTED
         template<class Self, class R>
         assign_t<T, R> operator=(this Self&& self, R right) {
-            return {std::forward_like<Self>(self._value), std::move(right)};
+            return {polyfill::forward_like<Self>(self._value), std::move(right)};
         }
 
         template<class Self, class... Args>
         in_t<T, Args...> in(this Self&& self, Args... args) {
-            return {std::forward_like<Self>(self._value), {std::forward<Args>(args)...}, false};
+            return {polyfill::forward_like<Self>(self._value), {std::forward<Args>(args)...}, false};
         }
 
         template<class Self, class... Args>
         in_t<T, Args...> not_in(this Self&& self, Args... args) {
-            return {std::forward_like<Self>(self._value), {std::forward<Args>(args)...}, true};
+            return {polyfill::forward_like<Self>(self._value), {std::forward<Args>(args)...}, true};
         }
 
         template<class Self, class R>
         and_condition_t<T, R> and_(this Self&& self, R right) {
-            return {std::forward_like<Self>(self._value), std::move(right)};
+            return {polyfill::forward_like<Self>(self._value), std::move(right)};
         }
 
         template<class Self, class R>
         or_condition_t<T, R> or_(this Self&& self, R right) {
-            return {std::forward_like<Self>(self._value), std::move(right)};
+            return {polyfill::forward_like<Self>(self._value), std::move(right)};
         }
 #else
         template<class R>
@@ -25482,7 +25532,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functional/mpl.h"
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "tuple_helper/tuple_transformer.h"
 
@@ -27534,7 +27584,7 @@ namespace sqlite_orm::internal {
 
             tuple_value_binder{stmt}(
                 statement.expression.columns.columns,
-                [&table = this->get_table<object_type>(), &object = statement.expression.obj](auto& memberPointer) {
+                [&table = this->get_table<object_type>(), &object = access_dml_object(statement)](auto& memberPointer) {
                     return table.object_field_value(object, memberPointer);
                 });
 
@@ -27573,7 +27623,7 @@ namespace sqlite_orm::internal {
                               });
 #endif
             } else {
-                const object_type& object = get_object(statement.expression);
+                const object_type& object = access_dml_object(statement);
                 processObject(object);
             };
 
@@ -27631,7 +27681,7 @@ namespace sqlite_orm::internal {
                               });
 #endif
             } else {
-                const object_type& object = get_object(statement.expression);
+                const object_type& object = access_dml_object(statement);
                 processObject(object);
             }
 
@@ -27654,7 +27704,7 @@ namespace sqlite_orm::internal {
             auto& table = this->get_table<object_type>();
 
             field_value_binder bindValue{stmt};
-            auto& object = get_object(statement.expression);
+            const object_type& object = access_dml_object(statement);
             table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                 call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
                     if (table_primary_key_contains(table, column)) {
@@ -28301,7 +28351,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/gsl.h"
 
-// #include "../type_traits.h"
+// #include "../functional/type_traits.h"
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -29845,7 +29895,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif  //  SQLITE_ORM_IMPORT_STD_MODULE
 
-// #include "../type_traits.h"
+// #include "../functional/type_traits.h"
 
 // #include "../optional_container.h"
 
@@ -30298,7 +30348,7 @@ namespace sqlite_orm::internal {
 #include <system_error>  //  std::system_error
 #endif
 
-// #include "../type_traits.h"
+// #include "../functional/type_traits.h"
 
 // #include "../sqlite_schema_table.h"
 
@@ -30354,8 +30404,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline constexpr orm_table_alias auto sqlite_schema = "sqlite_schema"_alias.for_<sqlite_master>();
 #endif
 }
-
-// #include "../type_traits.h"
 
 // #include "../util.h"
 
@@ -30533,7 +30581,7 @@ namespace sqlite_orm::internal {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "vocabulary/node_traits.h"
 // projections
@@ -30550,7 +30598,7 @@ namespace sqlite_orm::internal {
 #include <functional>  //  std::reference_wrapper
 #endif
 
-// #include "type_traits.h"
+// #include "functional/type_traits.h"
 
 // #include "tuple_helper/tuple_filter.h"
 
@@ -30927,103 +30975,104 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<int N, class T, class... Ids>
     auto& get(internal::prepared_statement_t<internal::get_t<T, Ids...>>& statement) {
-        return internal::get_ref(std::get<N>(statement.expression.ids));
+        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
 
     template<int N, class T, class... Ids>
     const auto& get(const internal::prepared_statement_t<internal::get_t<T, Ids...>>& statement) {
-        return internal::get_ref(std::get<N>(statement.expression.ids));
+        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
 
     template<int N, class T, class... Ids>
     auto& get(internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>>& statement) {
-        return internal::get_ref(std::get<N>(statement.expression.ids));
+        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
 
     template<int N, class T, class... Ids>
     const auto& get(const internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>>& statement) {
-        return internal::get_ref(std::get<N>(statement.expression.ids));
+        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
 
     template<int N, class T, class... Ids>
     auto& get(internal::prepared_statement_t<internal::get_optional_t<T, Ids...>>& statement) {
-        return internal::get_ref(std::get<N>(statement.expression.ids));
+        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
 
     template<int N, class T, class... Ids>
     const auto& get(const internal::prepared_statement_t<internal::get_optional_t<T, Ids...>>& statement) {
-        return internal::get_ref(std::get<N>(statement.expression.ids));
+        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
 
     template<int N, class T, class... Ids>
     auto& get(internal::prepared_statement_t<internal::remove_t<T, Ids...>>& statement) {
-        return internal::get_ref(std::get<N>(statement.expression.ids));
+        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
 
     template<int N, class T, class... Ids>
     const auto& get(const internal::prepared_statement_t<internal::remove_t<T, Ids...>>& statement) {
-        return internal::get_ref(std::get<N>(statement.expression.ids));
+        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
 
     template<int N, class T>
     auto& get(internal::prepared_statement_t<internal::update_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for update statement");
-        return internal::get_ref(statement.expression.object);
+        return internal::access_dml_object(statement);
     }
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<internal::update_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for update statement");
-        return internal::get_ref(statement.expression.object);
+        return internal::access_dml_object(statement);
     }
 
     template<int N, class T, class... Cols>
     auto& get(internal::prepared_statement_t<internal::insert_explicit<T, Cols...>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return internal::get_ref(statement.expression.obj);
+        return internal::access_dml_object(statement);
     }
 
     template<int N, class T, class... Cols>
     const auto& get(const internal::prepared_statement_t<internal::insert_explicit<T, Cols...>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return internal::get_ref(statement.expression.obj);
+        return internal::access_dml_object(statement);
     }
 
     template<int N, class T>
     auto& get(internal::prepared_statement_t<internal::replace_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for replace statement");
-        return internal::get_ref(statement.expression.object);
+        return internal::access_dml_object(statement);
     }
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<internal::replace_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for replace statement");
-        return internal::get_ref(statement.expression.object);
+        return internal::access_dml_object(statement);
     }
 
     template<int N, class T>
     auto& get(internal::prepared_statement_t<internal::insert_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return internal::get_ref(statement.expression.object);
+        return internal::access_dml_object(statement);
     }
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<internal::insert_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return internal::get_ref(statement.expression.object);
+        return internal::access_dml_object(statement);
     }
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<T>& statement) {
+        using namespace ::sqlite_orm::internal;
         using statement_type = polyfill::remove_cvref_t<decltype(statement)>;
-        using expression_type = internal::expression_type_t<statement_type>;
-        using node_tuple = internal::node_tuple_t<expression_type>;
-        using bind_tuple = internal::bindable_filter_t<node_tuple>;
+        using expression_type = expression_type_t<statement_type>;
+        using node_tuple = node_tuple_t<expression_type>;
+        using bind_tuple = bindable_filter_t<node_tuple>;
         using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
         const result_type* result = nullptr;
-        internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
+        iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
             using node_type = polyfill::remove_cvref_t<decltype(node)>;
-            if constexpr (internal::is_bindable<node_type>::value) {
+            if constexpr (is_bindable<node_type>::value) {
                 ++index;
                 if constexpr (std::is_same<result_type, node_type>::value) {
                     if (index == N) {
@@ -31032,21 +31081,22 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                 }
             }
         });
-        return internal::get_ref(*result);
+        return forward_lvalue_ref(*result);
     }
 
     template<int N, class T>
     auto& get(internal::prepared_statement_t<T>& statement) {
+        using namespace ::sqlite_orm::internal;
         using statement_type = std::remove_reference_t<decltype(statement)>;
-        using expression_type = internal::expression_type_t<statement_type>;
-        using node_tuple = internal::node_tuple_t<expression_type>;
-        using bind_tuple = internal::bindable_filter_t<node_tuple>;
+        using expression_type = expression_type_t<statement_type>;
+        using node_tuple = node_tuple_t<expression_type>;
+        using bind_tuple = bindable_filter_t<node_tuple>;
         using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
         result_type* result = nullptr;
 
-        internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
+        iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
             using node_type = polyfill::remove_cvref_t<decltype(node)>;
-            if constexpr (internal::is_bindable<node_type>::value) {
+            if constexpr (is_bindable<node_type>::value) {
                 ++index;
                 if constexpr (std::is_same<result_type, node_type>::value) {
                     if (index == N) {
@@ -31055,7 +31105,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                 }
             }
         });
-        return internal::get_ref(*result);
+        return forward_lvalue_ref(*result);
     }
 }
 #pragma once

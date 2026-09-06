@@ -17,8 +17,8 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/type_traits.h"
 #include "vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_bindable_v
-#include "type_traits.h"
 #include "is_std_ptr.h"
 #include "tuple_helper/tuple_filter.h"
 #include "error_code.h"

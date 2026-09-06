@@ -24,7 +24,7 @@
 #include "functional/gsl.h"
 #include "functional/always_default.h"
 #include "functional/mpl.h"
-#include "type_traits.h"
+#include "functional/type_traits.h"
 #include "tuple_helper/tuple_filter.h"
 #include "ast/upsert_clause.h"
 #include "ast/excluded.h"
@@ -1670,7 +1670,7 @@ namespace sqlite_orm::internal {
         using statement_type = replace_t<T>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             using object_type = expression_object_type_t<statement_type>;
             auto& table = pick_table<object_type>(context.db_objects);
@@ -1681,7 +1681,7 @@ namespace sqlite_orm::internal {
                << streaming_field_values_excluding(check_if<is_generated_always>{},
                                                    always_default<std::false_type>,  //  don't exclude
                                                    context,
-                                                   get_ref(statement.object))
+                                                   forward_lvalue_ref(expression.object))
                << ")";
             return ss.str();
         }
@@ -1692,7 +1692,7 @@ namespace sqlite_orm::internal {
         using statement_type = insert_explicit<T, Cols...>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& ins,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             constexpr size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
             static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
@@ -1700,11 +1700,12 @@ namespace sqlite_orm::internal {
             auto& table = pick_table<object_type>(context.db_objects);
             std::stringstream ss;
             ss << "INSERT INTO " << streaming_identifier(table.name) << " ";
-            ss << "(" << streaming_mapped_columns_expressions(ins.columns.columns, context) << ") "
+            ss << "(" << streaming_mapped_columns_expressions(expression.columns.columns, context) << ") "
                << "VALUES (";
             iterate_tuple(
-                ins.columns.columns,
-                [&ss, &context, &object = get_ref(ins.obj), first = true](auto& memberPointer) mutable {
+                expression.columns.columns,
+                [&ss, &context, &object = forward_lvalue_ref(expression.object), first = true](
+                    auto& memberPointer) mutable {
                     using member_pointer_type = std::remove_reference_t<decltype(memberPointer)>;
                     static_assert(!is_setter_v<member_pointer_type>, "Unable to use setter within insert explicit");
 
@@ -1721,7 +1722,7 @@ namespace sqlite_orm::internal {
         using statement_type = update_t<T>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             using object_type = expression_object_type_t<statement_type>;
             auto& table = pick_table<object_type>(context.db_objects);
@@ -1729,7 +1730,8 @@ namespace sqlite_orm::internal {
             std::stringstream ss;
             ss << "UPDATE " << streaming_identifier(table.name) << " SET ";
             table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
-                [&table, &ss, &context, &object = get_ref(statement.object), first = true](auto& column) mutable {
+                [&table, &ss, &context, &object = forward_lvalue_ref(expression.object), first = true](
+                    auto& column) mutable {
                     if (table_primary_key_contains(table, column)) {
                         return;
                     }
@@ -1740,7 +1742,8 @@ namespace sqlite_orm::internal {
                 });
             ss << " WHERE ";
             table.for_each_column(
-                [&table, &context, &ss, &object = get_ref(statement.object), first = true](auto& column) mutable {
+                [&table, &context, &ss, &object = forward_lvalue_ref(expression.object), first = true](
+                    auto& column) mutable {
                     if (!column.template is<is_primary_key>() && !table_primary_key_contains(table, column)) {
                         return;
                     }
@@ -1825,17 +1828,17 @@ namespace sqlite_orm::internal {
         using statement_type = update_all_t<S, Wargs...>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            const auto& tableNames = collect_table_names(statement.set, context);
+            const auto& tableNames = collect_table_names(expression.set, context);
             if (tableNames.empty()) {
                 throw std::system_error{orm_error_code::no_tables_specified};
             }
             const std::string& tableName = tableNames.begin()->first;
 
             std::stringstream ss;
-            ss << "UPDATE " << streaming_identifier(tableName) << ' ' << serialize(statement.set, context)
-               << streaming_conditions_tuple(statement.conditions, context);
+            ss << "UPDATE " << streaming_identifier(tableName) << ' ' << serialize(expression.set, context)
+               << streaming_conditions_tuple(expression.conditions, context);
             return ss.str();
         }
     };
@@ -1845,7 +1848,7 @@ namespace sqlite_orm::internal {
         using statement_type = insert_t<T>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             using object_type = expression_object_type_t<statement_type>;
             auto& table = pick_table<object_type>(context.db_objects);
@@ -1893,7 +1896,7 @@ namespace sqlite_orm::internal {
                                       (column.template is<is_default>() && table_primary_key_contains(table, column)));
                           },
                           context,
-                          get_ref(statement.object))
+                          forward_lvalue_ref(expression.object))
                    << ")";
             }
 

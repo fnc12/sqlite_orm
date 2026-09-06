@@ -4,7 +4,7 @@
 #include <type_traits>  //  std::void_t, std::remove_const
 #endif
 
-#include "type_traits.h"
+#include "functional/type_traits.h"
 #include "alias_traits.h"
 #include "vocabulary/node_traits.h"  // projections
 

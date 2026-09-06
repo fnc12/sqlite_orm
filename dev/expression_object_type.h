@@ -1,10 +1,11 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::decay, std::remove_reference
-#include <functional>  //  std::reference_wrapper
+#include <type_traits>  //  std::remove_reference
 #endif
 
+#include "functional/cxx_type_traits_polyfill.h"
+#include "functional/type_traits.h"
 #include "vocabulary/node_traits.h"
 #include "prepared_statement.h"
 
@@ -43,68 +44,8 @@ namespace sqlite_orm::internal {
     template<class T, class... Cols>
     struct expression_object_type<insert_explicit<T, Cols...>, void> : value_unref_type<T> {};
 
-    template<class T>
-    struct get_ref_t {
-
-        template<class O>
-        SQLITE_ORM_STATIC_CALLOP auto& operator()(O& t) SQLITE_ORM_OR_CONST_CALLOP {
-            return t;
-        }
-    };
-
-    template<class T>
-    struct get_ref_t<std::reference_wrapper<T>> {
-
-        template<class O>
-        SQLITE_ORM_STATIC_CALLOP auto& operator()(O& t) SQLITE_ORM_OR_CONST_CALLOP {
-            return t.get();
-        }
-    };
-
-    template<class T>
-    auto& get_ref(T& t) {
-        using arg_type = std::decay_t<T>;
-        get_ref_t<arg_type> g;
-        return g(t);
+    template<class DML>
+    decltype(auto) access_dml_object(DML& statement) {
+        return forward_lvalue_ref(statement.expression.object);
     }
-
-    template<class T>
-    struct get_object_t;
-
-    template<class T>
-    auto& get_object(T& t) {
-        using expression_type = std::decay_t<T>;
-        get_object_t<expression_type> obj;
-        return obj(t);
-    }
-
-    template<class T>
-    struct get_object_t<replace_t<T>> {
-        using expression_type = replace_t<T>;
-
-        template<class O>
-        SQLITE_ORM_STATIC_CALLOP auto& operator()(O& e) SQLITE_ORM_OR_CONST_CALLOP {
-            return get_ref(e.object);
-        }
-    };
-
-    template<class T>
-    struct get_object_t<insert_t<T>> {
-        using expression_type = insert_t<T>;
-
-        template<class O>
-        SQLITE_ORM_STATIC_CALLOP auto& operator()(O& e) SQLITE_ORM_OR_CONST_CALLOP {
-            return get_ref(e.object);
-        }
-    };
-
-    template<class T>
-    struct get_object_t<update_t<T>> {
-        using expression_type = update_t<T>;
-
-        template<class O>
-        SQLITE_ORM_STATIC_CALLOP auto& operator()(O& e) SQLITE_ORM_OR_CONST_CALLOP {
-            return get_ref(e.object);
-        }
-    };
 }

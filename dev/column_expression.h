@@ -7,7 +7,7 @@
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/mpl.h"
-#include "type_traits.h"
+#include "functional/type_traits.h"
 #include "tuple_helper/tuple_transformer.h"
 #include "vocabulary/node_traits.h"
 #include "ast/result_columns.h"

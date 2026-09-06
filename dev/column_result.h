@@ -9,7 +9,7 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/gsl.h"
 #include "functional/mpl.h"
-#include "type_traits.h"
+#include "functional/type_traits.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_fy.h"
 #include "tuple_helper/tuple_filter.h"

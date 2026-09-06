@@ -4,7 +4,7 @@
 #include <utility>  //  std::move
 #endif  //  SQLITE_ORM_IMPORT_STD_MODULE
 
-#include "../type_traits.h"
+#include "../functional/type_traits.h"
 #include "../optional_container.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause

@@ -24,11 +24,11 @@
 #include "functional/cxx_functional_polyfill.h"  //  polyfill::identity
 #include "functional/gsl.h"
 #include "functional/mpl.h"
+#include "functional/type_traits.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_transformer.h"
 #include "tuple_helper/tuple_iteration.h"
-#include "type_traits.h"
 #include "vocabulary/node_traits.h"
 #include "vocabulary/node_algorithms.h"
 #include "vocabulary/node_fwd.h"  // column_field
@@ -1612,7 +1612,7 @@ namespace sqlite_orm::internal {
 
             tuple_value_binder{stmt}(
                 statement.expression.columns.columns,
-                [&table = this->get_table<object_type>(), &object = statement.expression.obj](auto& memberPointer) {
+                [&table = this->get_table<object_type>(), &object = access_dml_object(statement)](auto& memberPointer) {
                     return table.object_field_value(object, memberPointer);
                 });
 
@@ -1651,7 +1651,7 @@ namespace sqlite_orm::internal {
                               });
 #endif
             } else {
-                const object_type& object = get_object(statement.expression);
+                const object_type& object = access_dml_object(statement);
                 processObject(object);
             };
 
@@ -1709,7 +1709,7 @@ namespace sqlite_orm::internal {
                               });
 #endif
             } else {
-                const object_type& object = get_object(statement.expression);
+                const object_type& object = access_dml_object(statement);
                 processObject(object);
             }
 
@@ -1732,7 +1732,7 @@ namespace sqlite_orm::internal {
             auto& table = this->get_table<object_type>();
 
             field_value_binder bindValue{stmt};
-            auto& object = get_object(statement.expression);
+            const object_type& object = access_dml_object(statement);
             table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                 call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
                     if (table_primary_key_contains(table, column)) {

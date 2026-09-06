@@ -19,8 +19,8 @@
 #endif
 
 #include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/type_traits.h"
 #include "../../vocabulary/node_traits.h"
-#include "../../type_traits.h"
 #include "../db_objects.h"
 
 namespace sqlite_orm::internal {

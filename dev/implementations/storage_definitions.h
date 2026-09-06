@@ -13,9 +13,8 @@
 #include <system_error>  //  std::system_error
 #endif
 
-#include "../type_traits.h"
+#include "../functional/type_traits.h"
 #include "../sqlite_schema_table.h"
-#include "../type_traits.h"
 #include "../util.h"
 #include "../serializing_util.h"
 #include "../storage.h"

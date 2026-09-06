@@ -10,8 +10,8 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/type_traits.h"
 #include "../tuple_helper/tuple_traits.h"
-#include "../type_traits.h"
 #include "../member_traits/member_traits.h"
 #include "../type_is_nullable.h"
 #include "column_identifier.h"

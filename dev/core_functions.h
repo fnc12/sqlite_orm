@@ -14,8 +14,8 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/mpl/conditional.h"
 #include "functional/is_base_template_of.h"
+#include "functional/type_traits.h"
 #include "tuple_helper/tuple_traits.h"
-#include "type_traits.h"
 #include "conditions.h"
 #include "operators.h"
 #include "literal.h"  // literal_holder

@@ -5,10 +5,10 @@
 #endif
 
 #include "functional/index_sequence_util.h"
+#include "functional/type_traits.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_iteration.h"
-#include "type_traits.h"
 #include "vocabulary/node_traits.h"
 #include "cte_types.h"
 #include "schema/db_objects.h"

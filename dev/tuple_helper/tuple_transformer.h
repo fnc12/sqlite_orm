@@ -3,11 +3,11 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_reference, std::common_type, std::index_sequence, std::make_index_sequence, std::forward, std::move, std::integral_constant, std::declval
 #include <tuple>  //  std::tuple_size, std::get
-#include <utility>  // std::forward_like
 #include <functional>  //  std::invoke
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_utility_polyfill.h"  //  polyfill::forward_like
 #include "../functional/cxx_functional_polyfill.h"  //  polyfill::identity
 #include "../functional/mpl.h"
 
@@ -96,14 +96,14 @@ namespace sqlite_orm::internal {
         return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
     }
 
-#if defined(SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED) && __cpp_lib_forward_like >= 202207L
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
     /*
      *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
      */
-    template<class R, class Tpl, class Projection = std::identity>
+    template<class R, class Tpl, class Projection = polyfill::identity>
     constexpr R create_from_tuple(Tpl&& tpl, Projection project = {}) {
         auto& [... elements] = tpl;
-        return R{std::invoke(project, std::forward_like<Tpl>(elements))...};
+        return R{std::invoke(project, polyfill::forward_like<Tpl>(elements))...};
     }
 #else
     /*
@@ -122,14 +122,14 @@ namespace sqlite_orm::internal {
         return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
     }
 
-#if defined(SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED) && __cpp_lib_forward_like >= 202207L
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
     /*
      *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
      */
     template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
     constexpr auto create_from_tuple(Tpl&& tpl, Projection project = {}) {
         auto& [... elements] = tpl;
-        return R{std::invoke(project, std::forward_like<Tpl>(elements))...};
+        return R{std::invoke(project, polyfill::forward_like<Tpl>(elements))...};
     }
 #else
     /*

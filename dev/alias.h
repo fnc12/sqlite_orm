@@ -13,7 +13,7 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/mpl/conditional.h"
 #include "functional/cstring_literal.h"
-#include "type_traits.h"
+#include "functional/type_traits.h"
 #include "member_traits/field_of.h"
 #include "alias_traits.h"
 #include "vocabulary/node_traits.h"

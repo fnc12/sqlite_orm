@@ -8,7 +8,7 @@
 #endif
 
 #include "functional/gsl.h"
-#include "type_traits.h"
+#include "functional/type_traits.h"
 #include "vocabulary/node_fwd.h"  // order_by_base
 #include "vocabulary/node_traits.h"
 
