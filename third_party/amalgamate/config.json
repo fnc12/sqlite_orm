@@ -11,7 +11,10 @@
     "dev/get_prepared_statement.h",
     "dev/vtabs/vtabs.h",
     "dev/carray.h",
+    "dev/async/async.h",
     "dev/functional/finish_macros.h"
   ],
-  "include_paths": [ "dev" ]
+  "include_paths": [
+    "dev"
+  ]
 }
