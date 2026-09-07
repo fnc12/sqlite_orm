@@ -936,6 +936,20 @@ TEST_CASE("small C API wrappers") {
 #endif
 }
 
+#ifdef SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
+TEST_CASE("load extension") {
+    //  an in-memory storage keeps its one connection open, so the enabling below outlives the call
+    auto storage = make_storage("");
+    SECTION("loading is off by default") {}
+    SECTION("loading an inexistent file fails cleanly") {
+        REQUIRE(storage.enable_load_extension(true) == SQLITE_OK);
+    }
+    //  either way the load must fail with a translated error: not authorized
+    //  (unless the SQLite build enables the C API by default, as Debian's does) or file not found
+    REQUIRE_THROWS_AS(storage.load_extension("inexistent_extension_file"), std::system_error);
+}
+#endif
+
 TEST_CASE("prepared statement introspection") {
     struct User {
         int id = 0;

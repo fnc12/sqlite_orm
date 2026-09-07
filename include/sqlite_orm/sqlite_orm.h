@@ -318,6 +318,17 @@ using std::nullptr_t;
 #define SQLITE_ORM_JSON_SUPPORTED
 #endif
 
+/*
+ *  The extension loading API is compiled in unless SQLite was built with `SQLITE_OMIT_LOAD_EXTENSION`.
+ *  Apple's system SQLite is such a build, and it also strips `sqlite3_load_extension` from its header
+ *  without defining the omit macro, leaving nothing for the preprocessor to test for. Hence extension
+ *  loading is off on Apple platforms by default; when building against an unrestricted SQLite there
+ *  (e.g. from Homebrew or vcpkg), request it by defining `SQLITE_ORM_ENABLE_LOAD_EXTENSION`.
+ */
+#if !defined(SQLITE_OMIT_LOAD_EXTENSION) && (!defined(__APPLE__) || defined(SQLITE_ORM_ENABLE_LOAD_EXTENSION))
+#define SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
+#endif
+
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
 #else
@@ -20733,6 +20744,50 @@ namespace sqlite_orm::internal {
             auto connection = this->get_connection();
             return sqlite3_busy_timeout(connection.get(), ms);
         }
+
+#ifdef SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
+        /**
+         *  sqlite3_db_config function with the SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION option:
+         *  turns extension loading via `load_extension()` below on or off. Extension loading is off by default.
+         *  Deliberately leaves the `load_extension()` SQL function disabled, as recommended for security reasons.
+         *  Note that the setting belongs to the open connection, so it does not outlive it;
+         *  in-memory storages and storages after `open_forever()` keep their connection open.
+         *  More info: https://www.sqlite.org/c3ref/c_dbconfig_defensive.html#sqlitedbconfigenableloadextension
+         */
+        int enable_load_extension(bool onoff) {
+            auto connection = this->get_connection();
+            return sqlite3_db_config(connection.get(),
+                                     SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION,
+                                     int(onoff),
+                                     static_cast<int*>(nullptr));
+        }
+
+        /**
+         *  sqlite3_load_extension function: loads a run-time loadable extension from a shared library file.
+         *  `entryPoint` names the extension's initialization function;
+         *  if empty, SQLite derives the name from the file name.
+         *  Extension loading must have been turned on with `enable_load_extension()` beforehand.
+         *  More info: https://www.sqlite.org/c3ref/load_extension.html
+         */
+        void load_extension(std::string_view file, std::string_view entryPoint = {}) {
+            auto connection = this->get_connection();
+            const std::string fileString{file};
+            const std::string entryPointString{entryPoint};
+            char* errorMessage = nullptr;
+            const int rc = sqlite3_load_extension(connection.get(),
+                                                  fileString.c_str(),
+                                                  entryPoint.empty() ? nullptr : entryPointString.c_str(),
+                                                  &errorMessage);
+            if (rc != SQLITE_OK) {
+                std::string message;
+                if (errorMessage) {
+                    message = errorMessage;
+                    sqlite3_free(errorMessage);
+                }
+                throw std::system_error{sqlite_errc(rc), std::move(message)};
+            }
+        }
+#endif
 
         /**
          *  Returns libsqlite3 version, not sqlite_orm
