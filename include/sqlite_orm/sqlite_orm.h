@@ -20327,6 +20327,9 @@ namespace sqlite_orm::internal {
         std::map<std::string, collating_function> collatingFunctions;
         const int cachedForeignKeysCount;
         std::function<int(int)> _busy_handler;
+#ifdef SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
+        std::optional<bool> _loadExtensionEnabled;
+#endif
         std::list<udf_proxy> scalarFunctions;
         std::list<udf_proxy> aggregateFunctions;
         const sqlite_executor executor;
@@ -20750,16 +20753,19 @@ namespace sqlite_orm::internal {
          *  sqlite3_db_config function with the SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION option:
          *  turns extension loading via `load_extension()` below on or off. Extension loading is off by default.
          *  Deliberately leaves the `load_extension()` SQL function disabled, as recommended for security reasons.
-         *  Note that the setting belongs to the open connection, so it does not outlive it;
-         *  in-memory storages and storages after `open_forever()` keep their connection open.
+         *  Like the journal mode, the setting is remembered and applied anew to every connection the storage opens.
          *  More info: https://www.sqlite.org/c3ref/c_dbconfig_defensive.html#sqlitedbconfigenableloadextension
          */
         int enable_load_extension(bool onoff) {
             auto connection = this->get_connection();
-            return sqlite3_db_config(connection.get(),
-                                     SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION,
-                                     int(onoff),
-                                     static_cast<int*>(nullptr));
+            const int rc = sqlite3_db_config(connection.get(),
+                                             SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION,
+                                             int(onoff),
+                                             static_cast<int*>(nullptr));
+            if (rc == SQLITE_OK) {
+                this->_loadExtensionEnabled = onoff;
+            }
+            return rc;
         }
 
         /**
@@ -21467,6 +21473,15 @@ namespace sqlite_orm::internal {
             for (auto [id, value]: this->limit.limits) {
                 sqlite3_limit(db, id, value);
             }
+
+#ifdef SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
+            if (this->_loadExtensionEnabled.has_value()) {
+                sqlite3_db_config(db,
+                                  SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION,
+                                  int(*this->_loadExtensionEnabled),
+                                  static_cast<int*>(nullptr));
+            }
+#endif
 
             if (_busy_handler) {
                 sqlite3_busy_handler(db, busy_handler_callback, this);
