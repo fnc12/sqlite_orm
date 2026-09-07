@@ -11436,21 +11436,16 @@ namespace sqlite_orm {
                                                               std::is_same<V, std::string_view>>::value>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
-            auto stringData = this->string_data(value);
-            return sqlite3_bind_text(stmt, index, stringData.first, stringData.second, SQLITE_TRANSIENT);
+            const std::string_view stringData = value;
+            return sqlite3_bind_text(stmt, index, stringData.data(), int(stringData.size()), SQLITE_TRANSIENT);
         }
 
         void result(sqlite3_context* context, const V& value) const {
-            auto stringData = this->string_data(value);
-            auto dataCopy = new char[stringData.second + 1];
+            const std::string_view stringData = value;
+            auto dataCopy = new char[stringData.size() + 1];
             constexpr auto deleter = std::default_delete<char[]>{};
-            strncpy(dataCopy, stringData.first, stringData.second + 1);
-            sqlite3_result_text(context, dataCopy, stringData.second, obtain_xdestroy_for(deleter, dataCopy));
-        }
-
-      private:
-        std::pair<const char*, int> string_data(std::string_view s) const {
-            return {s.data(), int(s.size())};
+            strncpy(dataCopy, stringData.data(), stringData.size() + 1);
+            sqlite3_result_text(context, dataCopy, int(stringData.size()), obtain_xdestroy_for(deleter, dataCopy));
         }
     };
 
@@ -11458,24 +11453,19 @@ namespace sqlite_orm {
     template<class V>
     struct statement_binder<V,
                             std::enable_if_t<std::disjunction<std::is_base_of<std::wstring, V>,
-                                                              std::is_same<V, const wchar_t*>,
+                                                              std::is_same<V, orm_gsl::cwzstring>,
                                                               std::is_same<V, std::wstring_view>>::value>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
-            auto stringData = this->string_data(value);
+            const std::wstring_view stringData = value;
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-            std::string utf8Str = converter.to_bytes(stringData.first, stringData.first + stringData.second);
+            std::string utf8Str = converter.to_bytes(stringData.data(), stringData.data() + stringData.size());
             return statement_binder<decltype(utf8Str)>().bind(stmt, index, utf8Str);
         }
 
         void result(sqlite3_context* context, const V& value) const {
-            auto stringData = this->string_data(value);
-            sqlite3_result_text16(context, stringData.first, stringData.second, nullptr);
-        }
-
-      private:
-        std::pair<const wchar_t*, int> string_data(std::wstring_view s) const {
-            return {s.data(), int(s.size())};
+            const std::wstring_view stringData = value;
+            sqlite3_result_text16(context, stringData.data(), int(stringData.size()), nullptr);
         }
     };
 #endif
@@ -22397,7 +22387,7 @@ namespace sqlite_orm::internal {
             return quote_string_literal(field_printer<std::wstring>{}(c));
         }
 
-        static std::string do_serialize(const wchar_t* c) {
+        static std::string do_serialize(orm_gsl::cwzstring c) {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             return quote_string_literal(converter.to_bytes(c));
         }

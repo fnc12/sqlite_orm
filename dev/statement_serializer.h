@@ -115,7 +115,7 @@ namespace sqlite_orm::internal {
             return quote_string_literal(field_printer<std::wstring>{}(c));
         }
 
-        static std::string do_serialize(const wchar_t* c) {
+        static std::string do_serialize(orm_gsl::cwzstring c) {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             return quote_string_literal(converter.to_bytes(c));
         }
