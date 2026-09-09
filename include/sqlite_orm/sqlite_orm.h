@@ -13756,6 +13756,32 @@ namespace sqlite_orm::internal {
     };
 
     /**
+     *  Result for the most simple queries like `SELECT 1`
+     */
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<std::is_arithmetic, T>> {
+        using type = T;
+    };
+
+    /**
+     *  Result for the most simple queries like `SELECT 'ototo'`
+     */
+    template<class DBOs>
+    struct column_result_t<DBOs, orm_gsl::czstring, void> {
+        using type = std::string;
+    };
+
+    template<class DBOs>
+    struct column_result_t<DBOs, std::string_view, void> {
+        using type = std::string;
+    };
+
+    template<class DBOs>
+    struct column_result_t<DBOs, std::string, void> {
+        using type = std::string;
+    };
+
+    /**
      *  The concatenated results of a list of column expressions, with a tuple result of a single expression
      *  spliced into the sequence rather than nested in it.
      */
@@ -14053,27 +14079,6 @@ namespace sqlite_orm::internal {
 
     template<class DBOs, class T, class X, class Y, class Z>
     struct column_result_t<DBOs, highlight_t<T, X, Y, Z>, void> {
-        using type = std::string;
-    };
-
-    /**
-     *  Result for the most simple queries like `SELECT 1`
-     */
-    template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<std::is_arithmetic, T>> {
-        using type = T;
-    };
-
-    /**
-     *  Result for the most simple queries like `SELECT 'ototo'`
-     */
-    template<class DBOs>
-    struct column_result_t<DBOs, orm_gsl::czstring, void> {
-        using type = std::string;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, std::string, void> {
         using type = std::string;
     };
 

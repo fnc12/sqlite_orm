@@ -6,6 +6,8 @@ using std::tuple;
 using namespace sqlite_orm;
 using internal::structure;
 using internal::table_reference;
+using namespace std::string_literals;
+using namespace std::string_view_literals;
 
 template<class Type, class E>
 void do_assert() {
@@ -48,6 +50,17 @@ TEST_CASE("column_result_of_t") {
         std::make_tuple(make_table("users", make_column("id", &User::id), make_column("name", &User::name)));
     using db_objects_t = decltype(dbObjects);
 
+    runTest<db_objects_t, int>(42);
+    runTest<db_objects_t, unsigned int>(42u);
+    runTest<db_objects_t, long>(42l);
+    runTest<db_objects_t, unsigned long>(42ul);
+    runTest<db_objects_t, long long>(42ll);
+    runTest<db_objects_t, unsigned long long>(42ull);
+    runTest<db_objects_t, double>(42.);
+    runTest<db_objects_t, float>(42.f);
+    runTest<db_objects_t, std::string>("");
+    runTest<db_objects_t, std::string>(""sv);
+    runTest<db_objects_t, std::string>(""s);
     runTest<db_objects_t, int>(&User::id);
     runTest<db_objects_t, std::string>(&User::name);
     {
