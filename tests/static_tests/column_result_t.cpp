@@ -50,6 +50,8 @@ TEST_CASE("column_result_of_t") {
         std::make_tuple(make_table("users", make_column("id", &User::id), make_column("name", &User::name)));
     using db_objects_t = decltype(dbObjects);
 
+    runTest<db_objects_t, short>(short(42));
+    runTest<db_objects_t, unsigned short>((unsigned short)42u);
     runTest<db_objects_t, int>(42);
     runTest<db_objects_t, unsigned int>(42u);
     runTest<db_objects_t, long>(42l);
@@ -61,6 +63,11 @@ TEST_CASE("column_result_of_t") {
     runTest<db_objects_t, std::string>("");
     runTest<db_objects_t, std::string>(""sv);
     runTest<db_objects_t, std::string>(""s);
+#ifndef SQLITE_ORM_OMITS_CODECVT
+    runTest<db_objects_t, std::string>(L"");
+    runTest<db_objects_t, std::string>(L""sv);
+    runTest<db_objects_t, std::string>(L""s);
+#endif
     runTest<db_objects_t, int>(&User::id);
     runTest<db_objects_t, std::string>(&User::name);
     {

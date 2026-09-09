@@ -13782,6 +13782,24 @@ namespace sqlite_orm::internal {
     };
 
     /**
+     *  Result for the most simple queries like `SELECT 'ototo'`
+     */
+    template<class DBOs>
+    struct column_result_t<DBOs, orm_gsl::cwzstring, void> {
+        using type = std::string;
+    };
+
+    template<class DBOs>
+    struct column_result_t<DBOs, std::wstring_view, void> {
+        using type = std::string;
+    };
+
+    template<class DBOs>
+    struct column_result_t<DBOs, std::wstring, void> {
+        using type = std::string;
+    };
+
+    /**
      *  The concatenated results of a list of column expressions, with a tuple result of a single expression
      *  spliced into the sequence rather than nested in it.
      */

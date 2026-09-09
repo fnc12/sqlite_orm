@@ -2,6 +2,8 @@
 #include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
+using namespace std::string_literals;
+using namespace std::string_view_literals;
 
 TEST_CASE("Simple query") {
     auto storage = make_storage("");
@@ -17,6 +19,38 @@ TEST_CASE("Simple query") {
         REQUIRE(ototo.size() == 1);
         REQUIRE(ototo.front() == "ototo");
     }
+    {
+        //  SELECT 'ototo'
+        auto ototo = storage.select("ototo"sv);
+        REQUIRE(ototo.size() == 1);
+        REQUIRE(ototo.front() == "ototo");
+    }
+    {
+        //  SELECT 'ototo'
+        auto ototo = storage.select("ototo"s);
+        REQUIRE(ototo.size() == 1);
+        REQUIRE(ototo.front() == "ototo");
+    }
+#ifndef SQLITE_ORM_OMITS_CODECVT
+    {
+        //  SELECT 'ototo'
+        auto ototo = storage.select(L"ototo");
+        REQUIRE(ototo.size() == 1);
+        REQUIRE(ototo.front() == "ototo");
+    }
+    {
+        //  SELECT 'ototo'
+        auto ototo = storage.select(L"ototo"sv);
+        REQUIRE(ototo.size() == 1);
+        REQUIRE(ototo.front() == "ototo");
+    }
+    {
+        //  SELECT 'ototo'
+        auto ototo = storage.select(L"ototo"s);
+        REQUIRE(ototo.size() == 1);
+        REQUIRE(ototo.front() == "ototo");
+    }
+#endif
     {
         //  SELECT 1 + 1
         auto two = storage.select(c(1) + 1);
