@@ -30,7 +30,9 @@
 
 namespace sqlite_orm::internal {
     template<class T>
-    struct unique_ptr_result_of {};
+    struct nullable_result_proxy {
+        using expression_type = T;
+    };
 
     /**
      *  Base class for operator overloading
@@ -2141,7 +2143,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  MAX(X) aggregate function.
      */
     template<class X>
-    constexpr internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X>
+    constexpr internal::built_in_aggregate_function_t<internal::nullable_result_proxy<X>, internal::max_string, X>
     max(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -2150,7 +2152,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  MIN(X) aggregate function.
      */
     template<class X>
-    constexpr internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X>
+    constexpr internal::built_in_aggregate_function_t<internal::nullable_result_proxy<X>, internal::min_string, X>
     min(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -2160,7 +2162,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    constexpr internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Y, Rest...>
+    constexpr internal::built_in_function_t<internal::nullable_result_proxy<X>, internal::max_string, X, Y, Rest...>
     max(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
@@ -2170,7 +2172,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    constexpr internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Y, Rest...>
+    constexpr internal::built_in_function_t<internal::nullable_result_proxy<X>, internal::min_string, X, Y, Rest...>
     min(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }

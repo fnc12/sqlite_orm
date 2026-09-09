@@ -2984,6 +2984,8 @@ namespace sqlite_orm::internal {
     template<class T, class SFINAE = void>
     extern const bool is_printable_v;
 
+    //  a derived struct in favor of an alias template to be on the safe side in case it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
     template<class T>
     struct is_printable : std::bool_constant<is_printable_v<T>> {};
 }
@@ -7952,7 +7954,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 namespace sqlite_orm::internal {
     template<class T>
-    struct unique_ptr_result_of {};
+    struct nullable_result_proxy {
+        using expression_type = T;
+    };
 
     /**
      *  Base class for operator overloading
@@ -10063,7 +10067,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  MAX(X) aggregate function.
      */
     template<class X>
-    constexpr internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X>
+    constexpr internal::built_in_aggregate_function_t<internal::nullable_result_proxy<X>, internal::max_string, X>
     max(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -10072,7 +10076,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  MIN(X) aggregate function.
      */
     template<class X>
-    constexpr internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X>
+    constexpr internal::built_in_aggregate_function_t<internal::nullable_result_proxy<X>, internal::min_string, X>
     min(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -10082,7 +10086,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    constexpr internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Y, Rest...>
+    constexpr internal::built_in_function_t<internal::nullable_result_proxy<X>, internal::max_string, X, Y, Rest...>
     max(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
@@ -10092,7 +10096,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    constexpr internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Y, Rest...>
+    constexpr internal::built_in_function_t<internal::nullable_result_proxy<X>, internal::min_string, X, Y, Rest...>
     min(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
@@ -10746,12 +10750,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functional/type_traits.h"
 
-// #include "vocabulary/algorithms/field_predicates_fwd.h"
-// Included to define is_bindable_v
-// #include "is_std_ptr.h"
-
 // #include "tuple_helper/tuple_filter.h"
 
+// #include "is_std_ptr.h"
+
+// #include "vocabulary/algorithms/field_predicates_fwd.h"
+// Included to define is_bindable_v
 // #include "error_code.h"
 
 // #include "arithmetic_tag.h"
@@ -13804,21 +13808,27 @@ namespace sqlite_orm::internal {
 
     /**
      *  The result of a built-in function is the return type it declares, except for the functions whose
-     *  result is a `unique_ptr` of their first argument's result - those declare `unique_ptr_result_of<X>`.
+     *  result is a `unique_ptr` of their first argument's result - those declare `nullable_result_proxy<X>`.
      */
-    template<class DBOs, class R>
-    struct built_in_function_result {
-        using type = R;
-    };
-
-    template<class DBOs, class X>
-    struct built_in_function_result<DBOs, unique_ptr_result_of<X>> {
-        using type = std::unique_ptr<column_result_of_t<DBOs, X>>;
+    template<class DBOs, class T>
+    struct column_result_t<DBOs,
+                           T,
+                           std::enable_if_t<std::conjunction<
+                               is_built_in_function<T>,
+                               polyfill::is_specialization_of<return_type_t<T>, nullable_result_proxy>>::value>> {
+        using expression_type = expression_type_t<return_type_t<T>>;
+        using type = std::unique_ptr<column_result_of_t<DBOs, expression_type>>;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_built_in_function, T>>
-        : built_in_function_result<DBOs, return_type_t<T>> {};
+    struct column_result_t<
+        DBOs,
+        T,
+        std::enable_if_t<std::conjunction<
+            is_built_in_function<T>,
+            std::negation<polyfill::is_specialization_of<return_type_t<T>, nullable_result_proxy>>>::value>> {
+        using type = return_type_t<T>;
+    };
 
     template<class DBOs, class F, class... Args>
     struct column_result_t<DBOs, function_call<F, Args...>, void> {
@@ -14558,9 +14568,9 @@ namespace sqlite_orm::internal {
 
 // #include "functional/type_traits.h"
 
-// #include "is_std_ptr.h"
-
 // #include "tuple_helper/tuple_transformer.h"
+
+// #include "is_std_ptr.h"
 
 // #include "column_result_proxy.h"
 

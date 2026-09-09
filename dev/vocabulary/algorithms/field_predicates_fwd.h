@@ -36,6 +36,8 @@ namespace sqlite_orm::internal {
     template<class T, class SFINAE = void>
     extern const bool is_printable_v;
 
+    //  a derived struct in favor of an alias template to be on the safe side in case it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
     template<class T>
     struct is_printable : std::bool_constant<is_printable_v<T>> {};
 }

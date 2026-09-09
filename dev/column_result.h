@@ -129,21 +129,27 @@ namespace sqlite_orm::internal {
 
     /**
      *  The result of a built-in function is the return type it declares, except for the functions whose
-     *  result is a `unique_ptr` of their first argument's result - those declare `unique_ptr_result_of<X>`.
+     *  result is a `unique_ptr` of their first argument's result - those declare `nullable_result_proxy<X>`.
      */
-    template<class DBOs, class R>
-    struct built_in_function_result {
-        using type = R;
-    };
-
-    template<class DBOs, class X>
-    struct built_in_function_result<DBOs, unique_ptr_result_of<X>> {
-        using type = std::unique_ptr<column_result_of_t<DBOs, X>>;
+    template<class DBOs, class T>
+    struct column_result_t<DBOs,
+                           T,
+                           std::enable_if_t<std::conjunction<
+                               is_built_in_function<T>,
+                               polyfill::is_specialization_of<return_type_t<T>, nullable_result_proxy>>::value>> {
+        using expression_type = expression_type_t<return_type_t<T>>;
+        using type = std::unique_ptr<column_result_of_t<DBOs, expression_type>>;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_built_in_function, T>>
-        : built_in_function_result<DBOs, return_type_t<T>> {};
+    struct column_result_t<
+        DBOs,
+        T,
+        std::enable_if_t<std::conjunction<
+            is_built_in_function<T>,
+            std::negation<polyfill::is_specialization_of<return_type_t<T>, nullable_result_proxy>>>::value>> {
+        using type = return_type_t<T>;
+    };
 
     template<class DBOs, class F, class... Args>
     struct column_result_t<DBOs, function_call<F, Args...>, void> {
