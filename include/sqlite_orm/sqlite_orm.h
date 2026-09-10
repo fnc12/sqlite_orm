@@ -8902,6 +8902,32 @@ namespace sqlite_orm::internal {
         argument1_type argument1{};
         argument2_type argument2{};
     };
+
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+    struct bm25_string {
+        std::string_view serialize() const {
+            return "BM25";
+        }
+    };
+
+    struct snippet_string {
+        std::string_view serialize() const {
+            return "SNIPPET";
+        }
+    };
+
+    /*
+     *  An FTS5 auxiliary function: a built-in function whose first argument in SQL is the FTS5 table itself,
+     *  which is identified by the mapped object type `T` and serialized as the looked-up table name.
+     */
+    template<class R, class S, class T, class... Args>
+    struct fts5_auxiliary_function_t : built_in_function_t<R, S, Args...> {
+        using table_type = T;
+        using super = built_in_function_t<R, S, Args...>;
+
+        using super::super;
+    };
+#endif
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -10860,6 +10886,148 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     constexpr internal::highlight_t<typename Hidden::enclosing_type, X, Y, Z>
     highlight(F Hidden::* /*theAnyField*/, X x, Y y, Z z) {
         return {std::move(x), std::move(y), std::move(z)};
+    }
+#endif
+
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    /**
+     *  The FTS5 bm25 auxiliary function. Optionally takes one weight per mapped table column.
+     *  See https://www.sqlite.org/fts5.html#the_bm25_function
+     */
+    template<class CP, class... Ws>
+        requires (internal::hidden_column_of_vtab<CP, fts5>)
+    constexpr internal::fts5_auxiliary_function_t<double, internal::bm25_string, internal::type_t<CP>, Ws...>
+    bm25(const CP& /*theAnyField*/, Ws... weights) {
+        return {std::make_tuple(std::move(weights)...)};
+    }
+
+    /**
+     *  The FTS5 bm25 auxiliary function. Optionally takes one weight per mapped table column.
+     *  See https://www.sqlite.org/fts5.html#the_bm25_function
+     */
+    template<class Hidden, class F, class... Ws>
+        requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
+    constexpr internal::fts5_auxiliary_function_t<double, internal::bm25_string, typename Hidden::enclosing_type, Ws...>
+    bm25(F Hidden::* /*theAnyField*/, Ws... weights) {
+        return {std::make_tuple(std::move(weights)...)};
+    }
+
+    /**
+     *  The FTS5 snippet auxiliary function: returns the text of the column `columnIndex` with the matches
+     *  surrounded by `matchOpen`/`matchClose`, truncated to at most `tokenCount` tokens,
+     *  with `ellipses` marking the truncations.
+     *  See https://www.sqlite.org/fts5.html#the_snippet_function
+     */
+    template<class CP, class X1, class X2, class X3, class X4, class X5>
+        requires (internal::hidden_column_of_vtab<CP, fts5>)
+    constexpr internal::
+        fts5_auxiliary_function_t<std::string, internal::snippet_string, internal::type_t<CP>, X1, X2, X3, X4, X5>
+        snippet(const CP& /*theAnyField*/, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
+        return {std::make_tuple(std::move(columnIndex),
+                                std::move(matchOpen),
+                                std::move(matchClose),
+                                std::move(ellipses),
+                                std::move(tokenCount))};
+    }
+
+    /**
+     *  The FTS5 snippet auxiliary function: returns the text of the column `columnIndex` with the matches
+     *  surrounded by `matchOpen`/`matchClose`, truncated to at most `tokenCount` tokens,
+     *  with `ellipses` marking the truncations.
+     *  See https://www.sqlite.org/fts5.html#the_snippet_function
+     */
+    template<class Hidden, class F, class X1, class X2, class X3, class X4, class X5>
+        requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
+    constexpr internal::fts5_auxiliary_function_t<std::string,
+                                                  internal::snippet_string,
+                                                  typename Hidden::enclosing_type,
+                                                  X1,
+                                                  X2,
+                                                  X3,
+                                                  X4,
+                                                  X5>
+    snippet(F Hidden::* /*theAnyField*/, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
+        return {std::make_tuple(std::move(columnIndex),
+                                std::move(matchOpen),
+                                std::move(matchClose),
+                                std::move(ellipses),
+                                std::move(tokenCount))};
+    }
+#else
+    /**
+     *  The FTS5 bm25 auxiliary function. Optionally takes one weight per mapped table column.
+     *  See https://www.sqlite.org/fts5.html#the_bm25_function
+     */
+    template<class CP, class... Ws, std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
+    constexpr internal::fts5_auxiliary_function_t<double, internal::bm25_string, internal::type_t<CP>, Ws...>
+    bm25(const CP& /*theAnyField*/, Ws... weights) {
+        return {std::make_tuple(std::move(weights)...)};
+    }
+
+    /**
+     *  The FTS5 bm25 auxiliary function. Optionally takes one weight per mapped table column.
+     *  See https://www.sqlite.org/fts5.html#the_bm25_function
+     */
+    template<class Hidden,
+             class F,
+             class... Ws,
+             std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
+    constexpr internal::fts5_auxiliary_function_t<double, internal::bm25_string, typename Hidden::enclosing_type, Ws...>
+    bm25(F Hidden::* /*theAnyField*/, Ws... weights) {
+        return {std::make_tuple(std::move(weights)...)};
+    }
+
+    /**
+     *  The FTS5 snippet auxiliary function: returns the text of the column `columnIndex` with the matches
+     *  surrounded by `matchOpen`/`matchClose`, truncated to at most `tokenCount` tokens,
+     *  with `ellipses` marking the truncations.
+     *  See https://www.sqlite.org/fts5.html#the_snippet_function
+     */
+    template<class CP,
+             class X1,
+             class X2,
+             class X3,
+             class X4,
+             class X5,
+             std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
+    constexpr internal::
+        fts5_auxiliary_function_t<std::string, internal::snippet_string, internal::type_t<CP>, X1, X2, X3, X4, X5>
+        snippet(const CP& /*theAnyField*/, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
+        return {std::make_tuple(std::move(columnIndex),
+                                std::move(matchOpen),
+                                std::move(matchClose),
+                                std::move(ellipses),
+                                std::move(tokenCount))};
+    }
+
+    /**
+     *  The FTS5 snippet auxiliary function: returns the text of the column `columnIndex` with the matches
+     *  surrounded by `matchOpen`/`matchClose`, truncated to at most `tokenCount` tokens,
+     *  with `ellipses` marking the truncations.
+     *  See https://www.sqlite.org/fts5.html#the_snippet_function
+     */
+    template<class Hidden,
+             class F,
+             class X1,
+             class X2,
+             class X3,
+             class X4,
+             class X5,
+             std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
+    constexpr internal::fts5_auxiliary_function_t<std::string,
+                                                  internal::snippet_string,
+                                                  typename Hidden::enclosing_type,
+                                                  X1,
+                                                  X2,
+                                                  X3,
+                                                  X4,
+                                                  X5>
+    snippet(F Hidden::* /*theAnyField*/, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
+        return {std::make_tuple(std::move(columnIndex),
+                                std::move(matchOpen),
+                                std::move(matchClose),
+                                std::move(ellipses),
+                                std::move(tokenCount))};
     }
 #endif
 #endif
@@ -16581,6 +16749,13 @@ namespace sqlite_orm::internal {
                 using table_type = typename ColRef::table_type;
                 this->table_names.emplace(lookup_table_name<table_type>(this->db_objects), "");
             }
+            // ...
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+            else if constexpr (polyfill::is_specialization_of_v<ColRef, fts5_auxiliary_function_t>) {
+                using table_type = typename ColRef::table_type;
+                this->table_names.emplace(lookup_table_name<table_type>(this->db_objects), "");
+            }
+#endif
             // ...
             else {
                 // Do nothing for other types of expressions
@@ -22968,6 +23143,26 @@ namespace sqlite_orm::internal {
             return ss.str();
         }
     };
+
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+    template<class R, class S, class T, class... Args>
+    struct statement_serializer<fts5_auxiliary_function_t<R, S, T, Args...>, void> {
+        using statement_type = fts5_auxiliary_function_t<R, S, T, Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            auto& tableName = lookup_table_name<T>(context.db_objects);
+            ss << statement.serialize() << "(" << streaming_identifier(tableName);
+            if constexpr (statement_type::args_size > 0) {
+                ss << ", " << streaming_expressions_tuple(statement.args, context);
+            }
+            ss << ")";
+            return ss.str();
+        }
+    };
+#endif
 
     /**
      *  Serializer for literal values.

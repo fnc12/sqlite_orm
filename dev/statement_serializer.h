@@ -283,6 +283,26 @@ namespace sqlite_orm::internal {
         }
     };
 
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+    template<class R, class S, class T, class... Args>
+    struct statement_serializer<fts5_auxiliary_function_t<R, S, T, Args...>, void> {
+        using statement_type = fts5_auxiliary_function_t<R, S, T, Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            auto& tableName = lookup_table_name<T>(context.db_objects);
+            ss << statement.serialize() << "(" << streaming_identifier(tableName);
+            if constexpr (statement_type::args_size > 0) {
+                ss << ", " << streaming_expressions_tuple(statement.args, context);
+            }
+            ss << ")";
+            return ss.str();
+        }
+    };
+#endif
+
     /**
      *  Serializer for literal values.
      */

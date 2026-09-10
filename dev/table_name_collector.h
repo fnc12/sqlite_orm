@@ -86,6 +86,13 @@ namespace sqlite_orm::internal {
                 this->table_names.emplace(lookup_table_name<table_type>(this->db_objects), "");
             }
             // ...
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+            else if constexpr (polyfill::is_specialization_of_v<ColRef, fts5_auxiliary_function_t>) {
+                using table_type = typename ColRef::table_type;
+                this->table_names.emplace(lookup_table_name<table_type>(this->db_objects), "");
+            }
+#endif
+            // ...
             else {
                 // Do nothing for other types of expressions
             }
