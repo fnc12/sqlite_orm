@@ -1962,7 +1962,7 @@ namespace sqlite_orm::internal {
                     newContext.omit_table_name = true;
                     newContext.use_parentheses = true;
                     ss << serialize(value, newContext);
-                } else if constexpr (is_values_v<value_type> || is_select_v<value_type>) {
+                } else if constexpr (is_any_values_v<value_type> || is_select_v<value_type>) {
                     auto newContext = context;
                     newContext.use_parentheses = false;
                     ss << serialize(value, newContext);
@@ -2785,7 +2785,14 @@ namespace sqlite_orm::internal {
             if (context.use_parentheses) {
                 ss << '(';
             }
-            ss << "VALUES " << streaming_dynamic_expressions(statement.vector, context);
+            ss << "VALUES ";
+            {
+                //  every row is parenthesized in its own right, independently of whether the
+                //  row list as a whole is - just as in the static spelling above
+                Ctx rowContext = context;
+                rowContext.use_parentheses = true;
+                ss << streaming_dynamic_expressions(statement.vector, rowContext);
+            }
             if (context.use_parentheses) {
                 ss << ')';
             }

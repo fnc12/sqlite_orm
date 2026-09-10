@@ -100,11 +100,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::replace_raw_t<Args...> replace(Args... args) {
         using args_tuple = std::tuple<Args...>;
         using internal::count_tuple;
+        using internal::is_any_values;
         using internal::is_columns;
         using internal::is_default_values;
         using internal::is_into;
         using internal::is_select;
-        using internal::is_values;
 
         constexpr int intoArgsCount = count_tuple<args_tuple, is_into>::value;
         static_assert(intoArgsCount != 0, "Raw replace must have into<T> argument");
@@ -113,7 +113,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         constexpr int columnsArgsCount = count_tuple<args_tuple, is_columns>::value;
         static_assert(columnsArgsCount < 2, "Raw replace must have only one columns(...) argument");
 
-        constexpr int valuesArgsCount = count_tuple<args_tuple, is_values>::value;
+        constexpr int valuesArgsCount = count_tuple<args_tuple, is_any_values>::value;
         static_assert(valuesArgsCount < 2, "Raw replace must have only one values(...) argument");
 
         constexpr int defaultValuesCount = count_tuple<args_tuple, is_default_values>::value;

@@ -266,19 +266,20 @@ namespace sqlite_orm::internal {
 
     /**
      *  Nodes carrying a VALUES row list assembled at runtime.
-     *
-     *  Note: no trait groups this with `is_values_v` the way `is_any_set_v` groups the two SET
-     *  spellings, and there is no principled reason for the asymmetry - the two are spellings of
-     *  the one VALUES production and are written in the same positions. The one place they are
-     *  not interchangeable is the argument check of a raw `insert()`/`replace()`, which counts
-     *  `is_values` and so admits the static spelling only; a grouping trait is what that check
-     *  would need to accept both.
      */
     template<class T>
     extern const bool is_dynamic_values_v;
 
     template<class T>
     using is_dynamic_values = std::bool_constant<is_dynamic_values_v<T>>;
+
+    //  the two above are DSL spellings of the one VALUES production,
+    //  hence grouping them is what corresponds to the SQL grammar
+    template<class T>
+    extern const bool is_any_values_v;
+
+    template<class T>
+    using is_any_values = std::bool_constant<is_any_values_v<T>>;
 
     /**
      *  Nodes carrying the assignments of an UPDATE: SET column = expression, ...

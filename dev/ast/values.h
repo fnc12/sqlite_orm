@@ -27,6 +27,9 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_dynamic_values_v = polyfill::is_specialization_of<T, dynamic_values_t>::value;
+
+    template<class T>
+    constexpr bool is_any_values_v = std::disjunction<is_values<T>, is_dynamic_values<T>>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

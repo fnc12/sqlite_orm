@@ -2162,19 +2162,20 @@ namespace sqlite_orm::internal {
 
     /**
      *  Nodes carrying a VALUES row list assembled at runtime.
-     *
-     *  Note: no trait groups this with `is_values_v` the way `is_any_set_v` groups the two SET
-     *  spellings, and there is no principled reason for the asymmetry - the two are spellings of
-     *  the one VALUES production and are written in the same positions. The one place they are
-     *  not interchangeable is the argument check of a raw `insert()`/`replace()`, which counts
-     *  `is_values` and so admits the static spelling only; a grouping trait is what that check
-     *  would need to accept both.
      */
     template<class T>
     extern const bool is_dynamic_values_v;
 
     template<class T>
     using is_dynamic_values = std::bool_constant<is_dynamic_values_v<T>>;
+
+    //  the two above are DSL spellings of the one VALUES production,
+    //  hence grouping them is what corresponds to the SQL grammar
+    template<class T>
+    extern const bool is_any_values_v;
+
+    template<class T>
+    using is_any_values = std::bool_constant<is_any_values_v<T>>;
 
     /**
      *  Nodes carrying the assignments of an UPDATE: SET column = expression, ...
@@ -21260,13 +21261,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::insert_raw_t<Args...> insert(Args... args) {
         using args_tuple = std::tuple<Args...>;
         using internal::count_tuple;
+        using internal::is_any_values;
         using internal::is_columns;
         using internal::is_default_values;
         using internal::is_insert_constraint;
         using internal::is_into;
         using internal::is_select;
         using internal::is_upsert_clause;
-        using internal::is_values;
 
         constexpr int orArgsCount = count_tuple<args_tuple, is_insert_constraint>::value;
         static_assert(orArgsCount < 2, "Raw insert must have only one OR... argument");
@@ -21278,7 +21279,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         constexpr int columnsArgsCount = count_tuple<args_tuple, is_columns>::value;
         static_assert(columnsArgsCount < 2, "Raw insert must have only one columns(...) argument");
 
-        constexpr int valuesArgsCount = count_tuple<args_tuple, is_values>::value;
+        constexpr int valuesArgsCount = count_tuple<args_tuple, is_any_values>::value;
         static_assert(valuesArgsCount < 2, "Raw insert must have only one values(...) argument");
 
         constexpr int defaultValuesCount = count_tuple<args_tuple, is_default_values>::value;
@@ -21472,11 +21473,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::replace_raw_t<Args...> replace(Args... args) {
         using args_tuple = std::tuple<Args...>;
         using internal::count_tuple;
+        using internal::is_any_values;
         using internal::is_columns;
         using internal::is_default_values;
         using internal::is_into;
         using internal::is_select;
-        using internal::is_values;
 
         constexpr int intoArgsCount = count_tuple<args_tuple, is_into>::value;
         static_assert(intoArgsCount != 0, "Raw replace must have into<T> argument");
@@ -21485,7 +21486,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         constexpr int columnsArgsCount = count_tuple<args_tuple, is_columns>::value;
         static_assert(columnsArgsCount < 2, "Raw replace must have only one columns(...) argument");
 
-        constexpr int valuesArgsCount = count_tuple<args_tuple, is_values>::value;
+        constexpr int valuesArgsCount = count_tuple<args_tuple, is_any_values>::value;
         static_assert(valuesArgsCount < 2, "Raw replace must have only one values(...) argument");
 
         constexpr int defaultValuesCount = count_tuple<args_tuple, is_default_values>::value;
@@ -24709,7 +24710,7 @@ namespace sqlite_orm::internal {
                     newContext.omit_table_name = true;
                     newContext.use_parentheses = true;
                     ss << serialize(value, newContext);
-                } else if constexpr (is_values_v<value_type> || is_select_v<value_type>) {
+                } else if constexpr (is_any_values_v<value_type> || is_select_v<value_type>) {
                     auto newContext = context;
                     newContext.use_parentheses = false;
                     ss << serialize(value, newContext);
@@ -25532,7 +25533,14 @@ namespace sqlite_orm::internal {
             if (context.use_parentheses) {
                 ss << '(';
             }
-            ss << "VALUES " << streaming_dynamic_expressions(statement.vector, context);
+            ss << "VALUES ";
+            {
+                //  every row is parenthesized in its own right, independently of whether the
+                //  row list as a whole is - just as in the static spelling above
+                Ctx rowContext = context;
+                rowContext.use_parentheses = true;
+                ss << streaming_dynamic_expressions(statement.vector, rowContext);
+            }
             if (context.use_parentheses) {
                 ss << ')';
             }
@@ -30725,6 +30733,9 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_dynamic_values_v = polyfill::is_specialization_of<T, dynamic_values_t>::value;
+
+    template<class T>
+    constexpr bool is_any_values_v = std::disjunction<is_values<T>, is_dynamic_values<T>>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

@@ -67,6 +67,9 @@ TEST_CASE("statements") {
         STATIC_REQUIRE(internal::is_values_v<decltype(values(std::make_tuple(0)))>);
         STATIC_REQUIRE(internal::is_dynamic_values_v<decltype(values(std::vector<int>{}))>);
         STATIC_REQUIRE_FALSE(internal::is_values_v<decltype(values(std::vector<int>{}))>);
+        //  ... but both are the one VALUES production, which is what a raw INSERT accepts
+        STATIC_REQUIRE(internal::is_any_values_v<decltype(values(std::make_tuple(0)))>);
+        STATIC_REQUIRE(internal::is_any_values_v<decltype(values(std::vector<int>{}))>);
         STATIC_REQUIRE(internal::is_set_v<decltype(set(c(&Object::id) = 0))>);
         STATIC_REQUIRE(internal::is_any_set_v<decltype(set(c(&Object::id) = 0))>);
         STATIC_REQUIRE_FALSE(internal::is_dynamic_set_v<decltype(set(c(&Object::id) = 0))>);

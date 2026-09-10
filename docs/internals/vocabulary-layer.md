@@ -387,7 +387,8 @@ Decided, not yet done. The destination is settled in each case; only the work re
   The DML family has been lifted: the statements (`is_insert_v` and its
   `insert_explicit`/range/raw siblings, the `is_replace_*` family, `is_update_v` /
   `is_update_all_v`, `is_remove_v` / `is_remove_all_v`) and the clauses and modifiers only they
-  take (`is_into_v`, `is_values_v` / `is_dynamic_values_v`, `is_set_v` / `is_dynamic_set_v` /
+  take (`is_into_v`, `is_values_v` / `is_dynamic_values_v` / `is_any_values_v`,
+  `is_set_v` / `is_dynamic_set_v` /
   `is_any_set_v`, `is_upsert_clause_v`, `is_insert_constraint_v`, `is_default_values_v`).
   The statement nodes live in `ast/dml/`, one header per statement kind — `insert.h`,
   `replace.h`, `update.h`, `remove.h` — alongside the clause and modifier nodes no statement kind
