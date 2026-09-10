@@ -30784,6 +30784,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/values.h"
 
+/** @file The VALUES row list, in both of the DSL spellings sqlite_orm offers for it - spelled out
+ *        statically, or assembled at runtime.
+ *
+ *        Note: this header sits outside `ast/dml/`, unlike the other clause nodes a raw INSERT or
+ *        REPLACE takes, because a VALUES row list is written both as an INSERT's rows and as the
+ *        operand of an IN - in either spelling.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple

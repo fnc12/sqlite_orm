@@ -384,20 +384,6 @@ Decided, not yet done. The destination is settled in each case; only the work re
   `is_alias_v` / `is_column_alias_v` / `is_recordset_alias_v` / `is_table_alias_v`,
   `is_cte_moniker_v`, `is_table_valued_expression_v`, `is_literal_v`.
 
-  The DML family has been lifted: the statements (`is_insert_v` and its
-  `insert_explicit`/range/raw siblings, the `is_replace_*` family, `is_update_v` /
-  `is_update_all_v`, `is_remove_v` / `is_remove_all_v`) and the clauses and modifiers only they
-  take (`is_into_v`, `is_values_v` / `is_dynamic_values_v` / `is_any_values_v`,
-  `is_set_v` / `is_dynamic_set_v` /
-  `is_any_set_v`, `is_upsert_clause_v`, `is_insert_constraint_v`, `is_default_values_v`).
-  The statement nodes live in `ast/dml/`, one header per statement kind — `insert.h`,
-  `replace.h`, `update.h`, `remove.h` — alongside the clause and modifier nodes no statement kind
-  other than these takes: `into.h` and `default_values.h` (INSERT and REPLACE), `upsert_clause.h`
-  (INSERT), `set.h` (UPDATE). `ast/values.h` stays outside, because a VALUES row list is written
-  both as an INSERT's rows and as the operand of an IN - in both of its spellings. None of the DML
-  headers needs a DSL header of its own beyond `ast/result_columns.h`, which `insert.h` takes
-  because `insert_explicit` names `columns_t` concretely.
-
   Each needs triage before being moved — not every `is_*_v` in a node header is DSL node
   classification. Several are language- or binding-level mechanics
   (`is_stateless_deleter_v`, `is_unusable_for_xdestroy_v`, `is_bindable_v`,
