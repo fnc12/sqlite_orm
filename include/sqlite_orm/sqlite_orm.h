@@ -20763,7 +20763,7 @@ namespace sqlite_orm::internal {
                                              int(onoff),
                                              static_cast<int*>(nullptr));
             if (rc == SQLITE_OK) {
-                this->_loadExtensionEnabled = onoff;
+                _loadExtensionEnabled = onoff;
             }
             return rc;
         }
@@ -20775,22 +20775,18 @@ namespace sqlite_orm::internal {
          *  Extension loading must have been turned on with `enable_load_extension()` beforehand.
          *  More info: https://www.sqlite.org/c3ref/load_extension.html
          */
-        void load_extension(std::string_view file, std::string_view entryPoint = {}) {
+        void load_extension(const std::string& file, const std::string& entryPoint = {}) {
             auto connection = this->get_connection();
-            const std::string fileString{file};
-            const std::string entryPointString{entryPoint};
-            char* errorMessage = nullptr;
+            orm_gsl::zstring errorMessage = nullptr;
             const int rc = sqlite3_load_extension(connection.get(),
-                                                  fileString.c_str(),
-                                                  entryPoint.empty() ? nullptr : entryPointString.c_str(),
+                                                  file.c_str(),
+                                                  entryPoint.empty() ? nullptr : entryPoint.c_str(),
                                                   &errorMessage);
             if (rc != SQLITE_OK) {
-                std::string message;
-                if (errorMessage) {
-                    message = errorMessage;
+                const scope_guard freeErrorMessageGuard{[errorMessage] {
                     sqlite3_free(errorMessage);
-                }
-                throw std::system_error{sqlite_errc(rc), std::move(message)};
+                }};
+                throw std::system_error{sqlite_errc(rc), errorMessage ? errorMessage : ""};
             }
         }
 #endif
@@ -21475,10 +21471,10 @@ namespace sqlite_orm::internal {
             }
 
 #ifdef SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
-            if (this->_loadExtensionEnabled.has_value()) {
+            if (_loadExtensionEnabled.has_value()) {
                 sqlite3_db_config(db,
                                   SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION,
-                                  int(*this->_loadExtensionEnabled),
+                                  int(*_loadExtensionEnabled),
                                   static_cast<int*>(nullptr));
             }
 #endif
