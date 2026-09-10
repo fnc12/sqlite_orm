@@ -62,6 +62,34 @@ namespace sqlite_orm::internal {
     constexpr bool is_raw_dml_expression_v<
         With,
         std::enable_if_t<std::conjunction_v<is_with_clause<With>, is_replace_raw<expression_type_t<With>>>>> = true;
+
+    /**
+     *  The raw replace statement counterpart of `validate_select_clauses()`; see there for the split
+     *  of responsibilities between this and the clause factories.
+     */
+    template<class T>
+    constexpr void validate_replace_clauses() {
+        constexpr int intoArgsCount = count_tuple<T, is_into>::value;
+        static_assert(intoArgsCount != 0, "Raw replace must have into<T> argument");
+        static_assert(intoArgsCount < 2, "Raw replace must have only one into<T> argument");
+
+        constexpr int columnsArgsCount = count_tuple<T, is_columns>::value;
+        static_assert(columnsArgsCount < 2, "Raw replace must have only one columns(...) argument");
+
+        constexpr int valuesArgsCount = count_tuple<T, is_any_values>::value;
+        static_assert(valuesArgsCount < 2, "Raw replace must have only one values(...) argument");
+
+        constexpr int defaultValuesCount = count_tuple<T, is_default_values>::value;
+        static_assert(defaultValuesCount < 2, "Raw replace must have only one default_values() argument");
+
+        constexpr int selectsArgsCount = count_tuple<T, is_select>::value;
+        static_assert(selectsArgsCount < 2, "Raw replace must have only one select(...) argument");
+
+        constexpr int argsCount = int(std::tuple_size<T>::value);
+        static_assert(argsCount ==
+                          intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount + selectsArgsCount,
+                      "Raw replace has invalid arguments");
+    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -99,34 +127,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... Args>
     internal::replace_raw_t<Args...> replace(Args... args) {
         using args_tuple = std::tuple<Args...>;
-        using internal::count_tuple;
-        using internal::is_any_values;
-        using internal::is_columns;
-        using internal::is_default_values;
-        using internal::is_into;
-        using internal::is_select;
-
-        constexpr int intoArgsCount = count_tuple<args_tuple, is_into>::value;
-        static_assert(intoArgsCount != 0, "Raw replace must have into<T> argument");
-        static_assert(intoArgsCount < 2, "Raw replace must have only one into<T> argument");
-
-        constexpr int columnsArgsCount = count_tuple<args_tuple, is_columns>::value;
-        static_assert(columnsArgsCount < 2, "Raw replace must have only one columns(...) argument");
-
-        constexpr int valuesArgsCount = count_tuple<args_tuple, is_any_values>::value;
-        static_assert(valuesArgsCount < 2, "Raw replace must have only one values(...) argument");
-
-        constexpr int defaultValuesCount = count_tuple<args_tuple, is_default_values>::value;
-        static_assert(defaultValuesCount < 2, "Raw replace must have only one default_values() argument");
-
-        constexpr int selectsArgsCount = count_tuple<args_tuple, is_select>::value;
-        static_assert(selectsArgsCount < 2, "Raw replace must have only one select(...) argument");
-
-        constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
-        static_assert(argsCount ==
-                          intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount + selectsArgsCount,
-                      "Raw replace has invalid arguments");
-
+        internal::validate_replace_clauses<args_tuple>();
         return {{std::forward<Args>(args)...}};
     }
 
