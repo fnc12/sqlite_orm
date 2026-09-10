@@ -15,10 +15,13 @@
 
 // DML accessors
 namespace sqlite_orm::internal {
-    /*  
+    /*
      *  Access the main DML expression of a with clause or the passed in DML expression.
      */
-    template<class DML, satisfies<is_raw_dml_expression, DML> = true>
+    template<class DML>
+#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+        requires (is_raw_dml_expression_v<DML>)
+#endif
     constexpr decltype(auto) access_main_dml(const DML& dml) {
         if constexpr (is_with_clause_v<DML>) {
             return (dml.expression);
@@ -55,8 +58,15 @@ namespace sqlite_orm::internal {
 
     /*
      *  Access the mapped object a prepared object DML statement carries.
+     *
+     *  `is_object_dml_expression` alone would be one notch too wide: a `remove<O>(ids)` names its
+     *  object by primary key and carries no object to reach for. Hence the second half.
      */
     template<class DML>
+#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+        requires (is_object_dml_expression_v<expression_type_t<DML>> &&
+                  requires(DML& statement) { statement.expression.object; })
+#endif
     decltype(auto) access_dml_object(DML& statement) {
         return forward_lvalue_ref(statement.expression.object);
     }
