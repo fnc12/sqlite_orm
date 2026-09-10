@@ -204,6 +204,64 @@ namespace sqlite_orm::internal {
         }
     };
 
+    struct is_string {
+        std::string_view serialize() const {
+            return "IS";
+        }
+    };
+
+    /**
+     *  IS operator object
+     */
+    template<class L, class R>
+    struct is_t : binary_condition<L, R, is_string, bool>, negatable_t {
+        using binary_condition<L, R, is_string, bool>::binary_condition;
+    };
+
+    struct is_not_string {
+        std::string_view serialize() const {
+            return "IS NOT";
+        }
+    };
+
+    /**
+     *  IS NOT operator object
+     */
+    template<class L, class R>
+    struct is_not_t : binary_condition<L, R, is_not_string, bool>, negatable_t {
+        using binary_condition<L, R, is_not_string, bool>::binary_condition;
+    };
+
+#if SQLITE_VERSION_NUMBER >= 3039000
+    struct is_distinct_from_string {
+        std::string_view serialize() const {
+            return "IS DISTINCT FROM";
+        }
+    };
+
+    /**
+     *  IS DISTINCT FROM operator object
+     */
+    template<class L, class R>
+    struct is_distinct_from_t : binary_condition<L, R, is_distinct_from_string, bool>, negatable_t {
+        using binary_condition<L, R, is_distinct_from_string, bool>::binary_condition;
+    };
+
+    struct is_not_distinct_from_string {
+        std::string_view serialize() const {
+            return "IS NOT DISTINCT FROM";
+        }
+    };
+
+    /**
+     *  IS NOT DISTINCT FROM operator object
+     */
+    template<class L, class R>
+    struct is_not_distinct_from_t : binary_condition<L, R, is_not_distinct_from_string, bool>, negatable_t {
+        using binary_condition<L, R, is_not_distinct_from_string, bool>::binary_condition;
+    };
+#endif
+
     struct greater_than_string {
         std::string_view serialize() const {
             return ">";
@@ -311,6 +369,7 @@ namespace sqlite_orm::internal {
     struct order_by_base {
         std::string _collate_argument;
         int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
+        int _nulls = 0;  //  1 = nulls first, -1 = nulls last, 0 = unspecified
     };
 
     struct order_by_string {
@@ -341,6 +400,20 @@ namespace sqlite_orm::internal {
             res._order = -1;
             return res;
         }
+
+#if SQLITE_VERSION_NUMBER >= 3030000
+        order_by_t nulls_first() const {
+            auto res = *this;
+            res._nulls = 1;
+            return res;
+        }
+
+        order_by_t nulls_last() const {
+            auto res = *this;
+            res._nulls = -1;
+            return res;
+        }
+#endif
 
         order_by_t collate_binary() const {
             auto res = *this;
@@ -389,8 +462,8 @@ namespace sqlite_orm::internal {
     struct dynamic_order_by_entry_t : order_by_base {
         std::string name;
 
-        dynamic_order_by_entry_t(decltype(name) name_, std::string collate_argument_, int asc_desc_) :
-            order_by_base{std::move(collate_argument_), asc_desc_}, name(std::move(name_)) {}
+        dynamic_order_by_entry_t(decltype(name) name_, std::string collate_argument_, int asc_desc_, int nulls_) :
+            order_by_base{std::move(collate_argument_), asc_desc_, nulls_}, name(std::move(name_)) {}
     };
 
     /**
@@ -409,7 +482,10 @@ namespace sqlite_orm::internal {
             auto newContext = this->context;
             newContext.omit_table_name = false;
             auto columnName = serialize(orderBy._expression, newContext);
-            this->entries.emplace_back(std::move(columnName), std::move(orderBy._collate_argument), orderBy._order);
+            this->entries.emplace_back(std::move(columnName),
+                                       std::move(orderBy._collate_argument),
+                                       orderBy._order,
+                                       orderBy._nulls);
         }
 
         const_iterator begin() const {
@@ -947,6 +1023,58 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(lhs), std::move(rhs)};
     }
+
+    /**
+     *  IS operator: a NULL-safe equality comparison, `NULL IS NULL` evaluates to true.
+     *  Example: storage.select(is(&User::middleName, std::nullopt))
+     */
+    template<class L, class R>
+    constexpr internal::is_t<L, R> is(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "is() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
+        return {std::move(lhs), std::move(rhs)};
+    }
+
+    /**
+     *  IS NOT operator: a NULL-safe inequality comparison, `1 IS NOT NULL` evaluates to true.
+     *  Example: storage.select(is_not(&User::middleName, std::nullopt))
+     */
+    template<class L, class R>
+    constexpr internal::is_not_t<L, R> is_not(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "is_not() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
+        return {std::move(lhs), std::move(rhs)};
+    }
+
+#if SQLITE_VERSION_NUMBER >= 3039000
+    /**
+     *  IS DISTINCT FROM operator: equivalent to IS NOT, for compatibility with PostgreSQL
+     *  and the SQL standards.
+     *  Example: storage.select(is_distinct_from(&User::middleName, &User::name))
+     */
+    template<class L, class R>
+    constexpr internal::is_distinct_from_t<L, R> is_distinct_from(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "is_distinct_from() arguments must be bindable values or sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
+        return {std::move(lhs), std::move(rhs)};
+    }
+
+    /**
+     *  IS NOT DISTINCT FROM operator: equivalent to IS, for compatibility with PostgreSQL
+     *  and the SQL standards.
+     *  Example: storage.select(is_not_distinct_from(&User::middleName, &User::name))
+     */
+    template<class L, class R>
+    constexpr internal::is_not_distinct_from_t<L, R> is_not_distinct_from(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "is_not_distinct_from() arguments must be bindable values or sqlite_orm-recognized operands: "
+                      "member pointers, column pointers, c()-wrapped values, aliases or expressions");
+        return {std::move(lhs), std::move(rhs)};
+    }
+#endif
 
     template<class L, class R>
     constexpr internal::greater_than_t<L, R> greater_than(L lhs, R rhs) {

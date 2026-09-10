@@ -6971,6 +6971,64 @@ namespace sqlite_orm::internal {
         }
     };
 
+    struct is_string {
+        std::string_view serialize() const {
+            return "IS";
+        }
+    };
+
+    /**
+     *  IS operator object
+     */
+    template<class L, class R>
+    struct is_t : binary_condition<L, R, is_string, bool>, negatable_t {
+        using binary_condition<L, R, is_string, bool>::binary_condition;
+    };
+
+    struct is_not_string {
+        std::string_view serialize() const {
+            return "IS NOT";
+        }
+    };
+
+    /**
+     *  IS NOT operator object
+     */
+    template<class L, class R>
+    struct is_not_t : binary_condition<L, R, is_not_string, bool>, negatable_t {
+        using binary_condition<L, R, is_not_string, bool>::binary_condition;
+    };
+
+#if SQLITE_VERSION_NUMBER >= 3039000
+    struct is_distinct_from_string {
+        std::string_view serialize() const {
+            return "IS DISTINCT FROM";
+        }
+    };
+
+    /**
+     *  IS DISTINCT FROM operator object
+     */
+    template<class L, class R>
+    struct is_distinct_from_t : binary_condition<L, R, is_distinct_from_string, bool>, negatable_t {
+        using binary_condition<L, R, is_distinct_from_string, bool>::binary_condition;
+    };
+
+    struct is_not_distinct_from_string {
+        std::string_view serialize() const {
+            return "IS NOT DISTINCT FROM";
+        }
+    };
+
+    /**
+     *  IS NOT DISTINCT FROM operator object
+     */
+    template<class L, class R>
+    struct is_not_distinct_from_t : binary_condition<L, R, is_not_distinct_from_string, bool>, negatable_t {
+        using binary_condition<L, R, is_not_distinct_from_string, bool>::binary_condition;
+    };
+#endif
+
     struct greater_than_string {
         std::string_view serialize() const {
             return ">";
@@ -7078,6 +7136,7 @@ namespace sqlite_orm::internal {
     struct order_by_base {
         std::string _collate_argument;
         int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
+        int _nulls = 0;  //  1 = nulls first, -1 = nulls last, 0 = unspecified
     };
 
     struct order_by_string {
@@ -7108,6 +7167,20 @@ namespace sqlite_orm::internal {
             res._order = -1;
             return res;
         }
+
+#if SQLITE_VERSION_NUMBER >= 3030000
+        order_by_t nulls_first() const {
+            auto res = *this;
+            res._nulls = 1;
+            return res;
+        }
+
+        order_by_t nulls_last() const {
+            auto res = *this;
+            res._nulls = -1;
+            return res;
+        }
+#endif
 
         order_by_t collate_binary() const {
             auto res = *this;
@@ -7156,8 +7229,8 @@ namespace sqlite_orm::internal {
     struct dynamic_order_by_entry_t : order_by_base {
         std::string name;
 
-        dynamic_order_by_entry_t(decltype(name) name_, std::string collate_argument_, int asc_desc_) :
-            order_by_base{std::move(collate_argument_), asc_desc_}, name(std::move(name_)) {}
+        dynamic_order_by_entry_t(decltype(name) name_, std::string collate_argument_, int asc_desc_, int nulls_) :
+            order_by_base{std::move(collate_argument_), asc_desc_, nulls_}, name(std::move(name_)) {}
     };
 
     /**
@@ -7176,7 +7249,10 @@ namespace sqlite_orm::internal {
             auto newContext = this->context;
             newContext.omit_table_name = false;
             auto columnName = serialize(orderBy._expression, newContext);
-            this->entries.emplace_back(std::move(columnName), std::move(orderBy._collate_argument), orderBy._order);
+            this->entries.emplace_back(std::move(columnName),
+                                       std::move(orderBy._collate_argument),
+                                       orderBy._order,
+                                       orderBy._nulls);
         }
 
         const_iterator begin() const {
@@ -7714,6 +7790,58 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(lhs), std::move(rhs)};
     }
+
+    /**
+     *  IS operator: a NULL-safe equality comparison, `NULL IS NULL` evaluates to true.
+     *  Example: storage.select(is(&User::middleName, std::nullopt))
+     */
+    template<class L, class R>
+    constexpr internal::is_t<L, R> is(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "is() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
+        return {std::move(lhs), std::move(rhs)};
+    }
+
+    /**
+     *  IS NOT operator: a NULL-safe inequality comparison, `1 IS NOT NULL` evaluates to true.
+     *  Example: storage.select(is_not(&User::middleName, std::nullopt))
+     */
+    template<class L, class R>
+    constexpr internal::is_not_t<L, R> is_not(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "is_not() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
+        return {std::move(lhs), std::move(rhs)};
+    }
+
+#if SQLITE_VERSION_NUMBER >= 3039000
+    /**
+     *  IS DISTINCT FROM operator: equivalent to IS NOT, for compatibility with PostgreSQL
+     *  and the SQL standards.
+     *  Example: storage.select(is_distinct_from(&User::middleName, &User::name))
+     */
+    template<class L, class R>
+    constexpr internal::is_distinct_from_t<L, R> is_distinct_from(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "is_distinct_from() arguments must be bindable values or sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
+        return {std::move(lhs), std::move(rhs)};
+    }
+
+    /**
+     *  IS NOT DISTINCT FROM operator: equivalent to IS, for compatibility with PostgreSQL
+     *  and the SQL standards.
+     *  Example: storage.select(is_not_distinct_from(&User::middleName, &User::name))
+     */
+    template<class L, class R>
+    constexpr internal::is_not_distinct_from_t<L, R> is_not_distinct_from(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "is_not_distinct_from() arguments must be bindable values or sqlite_orm-recognized operands: "
+                      "member pointers, column pointers, c()-wrapped values, aliases or expressions");
+        return {std::move(lhs), std::move(rhs)};
+    }
+#endif
 
     template<class L, class R>
     constexpr internal::greater_than_t<L, R> greater_than(L lhs, R rhs) {
@@ -16608,6 +16736,32 @@ namespace sqlite_orm::internal {
         std::string_view column_name(int index) const {
             return sqlite3_column_name(stmt, index);
         }
+
+        /**
+         *  sqlite3_stmt_readonly function: whether the statement makes no direct changes
+         *  to the content of the database file.
+         */
+        int readonly() const {
+            return sqlite3_stmt_readonly(this->stmt);
+        }
+
+        /**
+         *  sqlite3_stmt_busy function: whether the statement has been stepped at least once
+         *  but has not run to completion or been reset.
+         */
+        int busy() const {
+            return sqlite3_stmt_busy(this->stmt);
+        }
+
+#if SQLITE_VERSION_NUMBER >= 3028000
+        /**
+         *  sqlite3_stmt_isexplain function: 1 if the statement is an EXPLAIN statement,
+         *  2 if it is an EXPLAIN QUERY PLAN, 0 for an ordinary statement.
+         */
+        int is_explain() const {
+            return sqlite3_stmt_isexplain(this->stmt);
+        }
+#endif
     };
 
     template<class T>
@@ -18648,6 +18802,7 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::r
 #include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
+#include <optional>  //  std::optional
 #include <sstream>  //  std::stringstream
 #include <ostream>  //  std::flush
 #include <utility>  //  std::move
@@ -19995,6 +20150,35 @@ namespace sqlite_orm::internal {
 
 // #include "util.h"
 
+// #include "transaction_state.h"
+
+#include <sqlite3.h>
+
+#if SQLITE_VERSION_NUMBER >= 3034000
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  Transaction state of a database connection, as reported by `sqlite3_txn_state()`.
+     */
+    enum class transaction_state {
+        /**
+         *  no transaction is currently pending
+         */
+        none = SQLITE_TXN_NONE,
+
+        /**
+         *  currently executing a read transaction
+         */
+        read = SQLITE_TXN_READ,
+
+        /**
+         *  currently executing a write transaction
+         */
+        write = SQLITE_TXN_WRITE,
+    };
+}
+#endif
+
 // #include "xdestroy_handling.h"
 
 // #include "udf_proxy.h"
@@ -20568,6 +20752,117 @@ namespace sqlite_orm::internal {
             auto connection = this->get_connection();
             return sqlite3_last_insert_rowid(connection.get());
         }
+
+#if SQLITE_VERSION_NUMBER >= 3037000
+        /**
+         *  sqlite3_changes64 function.
+         */
+        int64 changes64() {
+            auto connection = this->get_connection();
+            return sqlite3_changes64(connection.get());
+        }
+
+        /**
+         *  sqlite3_total_changes64 function.
+         */
+        int64 total_changes64() {
+            auto connection = this->get_connection();
+            return sqlite3_total_changes64(connection.get());
+        }
+#endif
+
+        /**
+         *  sqlite3_interrupt function: causes any pending database operation on this connection
+         *  to abort and return at its earliest opportunity.
+         */
+        void interrupt() {
+            auto connection = this->get_connection();
+            sqlite3_interrupt(connection.get());
+        }
+
+#if SQLITE_VERSION_NUMBER >= 3041000
+        /**
+         *  sqlite3_is_interrupted function: whether an interrupt is currently in effect
+         *  on this connection.
+         */
+        int is_interrupted() {
+            auto connection = this->get_connection();
+            return sqlite3_is_interrupted(connection.get());
+        }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3034000
+        /**
+         *  sqlite3_txn_state function: the transaction state across all schemas of this connection.
+         */
+        transaction_state txn_state() {
+            auto connection = this->get_connection();
+            return static_cast<transaction_state>(sqlite3_txn_state(connection.get(), nullptr));
+        }
+
+        /**
+         *  sqlite3_txn_state function limited to a single schema.
+         *  Returns an empty optional if no schema with the given name is attached.
+         */
+        std::optional<transaction_state> txn_state(std::string_view schema) {
+            auto connection = this->get_connection();
+            const int state = sqlite3_txn_state(connection.get(), std::string{schema}.c_str());
+            if (state < 0) {
+                return std::nullopt;
+            }
+            return static_cast<transaction_state>(state);
+        }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3038000
+        /**
+         *  sqlite3_error_offset function: the byte offset of the token the most recent error
+         *  relates to within its SQL text, or -1 if not applicable.
+         */
+        int error_offset() {
+            auto connection = this->get_connection();
+            return sqlite3_error_offset(connection.get());
+        }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3039000
+        /**
+         *  sqlite3_db_name function: the name of the schema at the given index.
+         *  Returns an empty optional if the index is out of range.
+         */
+        std::optional<std::string> db_name(int index) {
+            auto connection = this->get_connection();
+            if (orm_gsl::czstring name = sqlite3_db_name(connection.get(), index)) {
+                return name;
+            }
+            return std::nullopt;
+        }
+#endif
+
+        /**
+         *  sqlite3_db_readonly function: whether the schema with the given name is read-only.
+         *  Returns an empty optional if no schema with the given name is attached.
+         *  The parameterless overload below reports on the main schema.
+         */
+        std::optional<bool> db_readonly(std::string_view schema) {
+            auto connection = this->get_connection();
+            const int result = sqlite3_db_readonly(connection.get(), std::string{schema}.c_str());
+            if (result < 0) {
+                return std::nullopt;
+            }
+            return result != 0;
+        }
+
+#if SQLITE_VERSION_NUMBER >= 3050000
+        /**
+         *  sqlite3_setlk_timeout function: a separate timeout, distinct from the busy timeout,
+         *  for blocking locks on builds that support them. A no-op returning SQLITE_OK elsewhere.
+         */
+        int setlk_timeout(int ms, bool blockOnConnect = false) {
+            auto connection = this->get_connection();
+            return sqlite3_setlk_timeout(connection.get(), ms, blockOnConnect ? SQLITE_SETLK_BLOCK_ON_CONNECT : 0);
+        }
+#endif
 
         int busy_timeout(int ms) {
             auto connection = this->get_connection();
@@ -22083,6 +22378,16 @@ namespace sqlite_orm::internal {
                 ss << " DESC";
                 break;
         }
+#if SQLITE_VERSION_NUMBER >= 3030000
+        switch (orderBy._nulls) {
+            case 1:
+                ss << " NULLS FIRST";
+                break;
+            case -1:
+                ss << " NULLS LAST";
+                break;
+        }
+#endif
     }
 
     template<class T>
