@@ -2065,6 +2065,173 @@ namespace sqlite_orm::internal {
     using is_tokenize = std::bool_constant<is_tokenize_v<T>>;
 }
 
+// DML classifier traits
+namespace sqlite_orm::internal {
+    /**
+     *  Nodes representing a DML statement - INSERT, REPLACE, UPDATE, DELETE -, one trait per DSL spelling.
+     *
+     *  SQLite knows four DML productions, but sqlite_orm spells several of them more than once: an INSERT
+     *  is written against a mapped object, against a range of them, against an explicit column list, or
+     *  raw; a DELETE is written as `remove` against a primary key or as `remove_all` against conditions.
+     *  Which spellings share a role across those productions is the subject of the semantic traits
+     *  `is_object_dml_expression_v` and `is_raw_dml_expression_v`.
+     */
+    template<class T>
+    extern const bool is_insert_v;
+
+    template<class T>
+    using is_insert = std::bool_constant<is_insert_v<T>>;
+
+    template<class T>
+    extern const bool is_insert_explicit_v;
+
+    template<class T>
+    using is_insert_explicit = std::bool_constant<is_insert_explicit_v<T>>;
+
+    template<class T>
+    extern const bool is_insert_range_v;
+
+    template<class T>
+    using is_insert_range = std::bool_constant<is_insert_range_v<T>>;
+
+    template<class T>
+    extern const bool is_insert_raw_v;
+
+    template<class T>
+    using is_insert_raw = std::bool_constant<is_insert_raw_v<T>>;
+
+    template<class T>
+    extern const bool is_replace_v;
+
+    template<class T>
+    using is_replace = std::bool_constant<is_replace_v<T>>;
+
+    template<class T>
+    extern const bool is_replace_range_v;
+
+    template<class T>
+    using is_replace_range = std::bool_constant<is_replace_range_v<T>>;
+
+    template<class T>
+    extern const bool is_replace_raw_v;
+
+    template<class T>
+    using is_replace_raw = std::bool_constant<is_replace_raw_v<T>>;
+
+    template<class T>
+    extern const bool is_update_v;
+
+    template<class T>
+    using is_update = std::bool_constant<is_update_v<T>>;
+
+    template<class T>
+    extern const bool is_update_all_v;
+
+    template<class T>
+    using is_update_all = std::bool_constant<is_update_all_v<T>>;
+
+    template<class T>
+    extern const bool is_remove_v;
+
+    template<class T>
+    using is_remove = std::bool_constant<is_remove_v<T>>;
+
+    template<class T>
+    extern const bool is_remove_all_v;
+
+    template<class T>
+    using is_remove_all = std::bool_constant<is_remove_all_v<T>>;
+
+    /**
+     *  Nodes naming the table a raw INSERT or REPLACE targets: INTO table.
+     */
+    template<class T>
+    extern const bool is_into_v;
+
+    template<class T>
+    using is_into = std::bool_constant<is_into_v<T>>;
+
+    /**
+     *  Nodes carrying the rows a raw INSERT or REPLACE supplies: VALUES (...), (...).
+     */
+    template<class T>
+    extern const bool is_values_v;
+
+    template<class T>
+    using is_values = std::bool_constant<is_values_v<T>>;
+
+    /**
+     *  Nodes carrying a VALUES row list assembled at runtime.
+     *
+     *  Note: no trait groups this with `is_values_v` the way `is_any_set_v` groups the two SET
+     *  spellings, and there is no principled reason for the asymmetry - the two are spellings of
+     *  the one VALUES production and are written in the same positions. The one place they are
+     *  not interchangeable is the argument check of a raw `insert()`/`replace()`, which counts
+     *  `is_values` and so admits the static spelling only; a grouping trait is what that check
+     *  would need to accept both.
+     */
+    template<class T>
+    extern const bool is_dynamic_values_v;
+
+    template<class T>
+    using is_dynamic_values = std::bool_constant<is_dynamic_values_v<T>>;
+
+    /**
+     *  Nodes carrying the assignments of an UPDATE: SET column = expression, ...
+     */
+    template<class T>
+    extern const bool is_set_v;
+
+    template<class T>
+    using is_set = std::bool_constant<is_set_v<T>>;
+
+    /**
+     *  Nodes carrying a SET assembled at runtime.
+     */
+    template<class T>
+    extern const bool is_dynamic_set_v;
+
+    template<class T>
+    using is_dynamic_set = std::bool_constant<is_dynamic_set_v<T>>;
+
+    //  the two above are DSL spellings of the one SET clause production,
+    //  hence grouping them is what corresponds to the SQL grammar
+    template<class T>
+    extern const bool is_any_set_v;
+
+    template<class T>
+    using is_any_set = std::bool_constant<is_any_set_v<T>>;
+
+    /**
+     *  Nodes carrying the upsert clause of a raw INSERT:
+     *  ON CONFLICT (...) DO NOTHING, ON CONFLICT (...) DO UPDATE SET ...
+     */
+    template<class T>
+    extern const bool is_upsert_clause_v;
+
+    template<class T>
+    using is_upsert_clause = std::bool_constant<is_upsert_clause_v<T>>;
+
+    /**
+     *  Nodes carrying the conflict resolution modifier of a raw INSERT:
+     *  OR ABORT, OR FAIL, OR IGNORE, OR REPLACE, OR ROLLBACK.
+     */
+    template<class T>
+    extern const bool is_insert_constraint_v;
+
+    template<class T>
+    using is_insert_constraint = std::bool_constant<is_insert_constraint_v<T>>;
+
+    /**
+     *  Nodes representing the DEFAULT VALUES modifier of a raw INSERT or REPLACE.
+     */
+    template<class T>
+    extern const bool is_default_values_v;
+
+    template<class T>
+    using is_default_values = std::bool_constant<is_default_values_v<T>>;
+}
+
 // Classifier traits
 namespace sqlite_orm::internal {
     template<class T>
@@ -2779,6 +2946,13 @@ namespace sqlite_orm::internal {
     using args_type_t = typename T::args_type;
 
     /**
+     *  The tuple of arguments a node assembled from a variadic argument list carries,
+     *  e.g. a VALUES row or the parts of a raw INSERT.
+     */
+    template<typename T>
+    using args_tuple_t = typename T::args_tuple;
+
+    /**
      *  The tuple of table expressions a FROM clause names.
      */
     template<typename T>
@@ -2798,6 +2972,30 @@ namespace sqlite_orm::internal {
 
     template<typename T>
     using conditions_type_t = typename T::conditions_type;
+
+    /**
+     *  The SET clause of an UPDATE statement, in either its static or its dynamic spelling.
+     */
+    template<typename T>
+    using set_type_t = typename T::set_type;
+
+    /**
+     *  The tuple of assignments a SET clause spells out.
+     */
+    template<typename T>
+    using assigns_type_t = typename T::assigns_type;
+
+    /**
+     *  The tuple of actions an upsert clause resolves a conflict with.
+     */
+    template<typename T>
+    using actions_tuple_t = typename T::actions_tuple;
+
+    /**
+     *  The tuple of primary key values a statement addresses a single record by.
+     */
+    template<typename T>
+    using ids_type_t = typename T::ids_type;
 
     template<typename T>
     using return_type_t = typename T::return_type;
@@ -3540,13 +3738,64 @@ namespace sqlite_orm::internal {
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if
+#include <type_traits>  //  std::enable_if, std::remove_reference
 #include <utility>  //  std::declval, std::move
 #endif
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
+// #include "../../functional/type_traits.h"
+//  match_if, value_unref_type, forward_lvalue_ref
 // #include "../node_traits.h"
+
+// DML accessors
+namespace sqlite_orm::internal {
+    /*  
+     *  Access the main DML expression of a with clause or the passed in DML expression.
+     */
+    template<class DML, satisfies<is_raw_dml_expression, DML> = true>
+    constexpr decltype(auto) access_main_dml(const DML& dml) {
+        if constexpr (is_with_clause_v<DML>) {
+            return (dml.expression);
+        } else {
+            return dml;
+        }
+    }
+
+    template<class DML>
+    using main_dml_t = polyfill::remove_cvref_t<decltype(access_main_dml(std::declval<DML>()))>;
+
+    /*
+     *  The mapped object type a DML expression operates on, uniformly across the DSL spellings
+     *  that name that object differently.
+     */
+    template<class T, class SFINAE = void>
+    struct expression_object_type;
+
+    //  the object spellings store the object the way it was handed to them, which may be a `reference_wrapper`
+    template<class T>
+    struct expression_object_type<T, match_if<is_object_dml_expression, T>> : value_unref_type<object_type_t<T>> {};
+
+    //  the range spellings have already deduced the object type from their projection
+    template<class T>
+    struct expression_object_type<T, std::enable_if_t<std::disjunction_v<is_insert_range<T>, is_replace_range<T>>>> {
+        using type = object_type_t<T>;
+    };
+
+    template<class T>
+    using expression_object_type_t = typename expression_object_type<T>::type;
+
+    template<typename S>
+    using statement_object_type_t = expression_object_type_t<expression_type_t<std::remove_reference_t<S>>>;
+
+    /*
+     *  Access the mapped object a prepared object DML statement carries.
+     */
+    template<class DML>
+    decltype(auto) access_dml_object(DML& statement) {
+        return forward_lvalue_ref(statement.expression.object);
+    }
+}
 
 namespace sqlite_orm::internal {
     /*  
@@ -3576,21 +3825,6 @@ namespace sqlite_orm::internal {
 
     template<class Select>
     using main_select_t = polyfill::remove_cvref_t<decltype(access_main_select(std::declval<Select>()))>;
-
-    /*  
-     *  Access the main DML expression of a with clause or the passed in DML expression.
-     */
-    template<class DML, satisfies<is_raw_dml_expression, DML> = true>
-    constexpr decltype(auto) access_main_dml(const DML& dml) {
-        if constexpr (is_with_clause_v<DML>) {
-            return (dml.expression);
-        } else {
-            return dml;
-        }
-    }
-
-    template<class DML>
-    using main_dml_t = polyfill::remove_cvref_t<decltype(access_main_dml(std::declval<DML>()))>;
 
     /*  
      *  Move a possibly quoted plain expression or the expression itself.
@@ -8042,36 +8276,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "vocabulary/node_traits.h"
 
 // #include "vocabulary/node_algorithms.h"
-
-// #include "ast/into.h"
-
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../table_reference.h"
-
-namespace sqlite_orm::internal {
-    template<class T>
-    struct into_t {
-        using type = T;
-    };
-
-    template<class T>
-    using is_into = polyfill::is_specialization_of<T, into_t>;
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    template<class T>
-    internal::into_t<T> into() {
-        return {};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_table_reference auto table>
-    auto into() {
-        return into<internal::auto_decay_table_ref_t<table>>();
-    }
-#endif
-}
 
 // #include "ast/window.h"
 
@@ -15860,22 +16064,24 @@ namespace sqlite_orm::internal {
 #include <memory>  //  std::unique_ptr
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
-#include <type_traits>  //  std::integral_constant, std::declval, std::is_convertible
-#include <utility>  //  std::move, std::forward, std::exchange, std::pair
-#include <tuple>  //  std::tuple
-#include <functional>  //  std::invoke
+#include <type_traits>  //  std::integral_constant, std::bool_constant
+#include <utility>  //  std::move, std::forward, std::exchange
+#include <tuple>  //  std::tuple, std::tuple_element
+#include <vector>  //  std::vector
 #include <optional>  //  std::optional
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/cxx_functional_polyfill.h"
-//  polyfill::identity
 // #include "functional/gsl.h"
 
 // #include "functional/type_traits.h"
 
-// #include "tuple_helper/tuple_traits.h"
+// #include "functional/mpl.h"
+
+// #include "functional/index_sequence_util.h"
+
+// #include "tuple_helper/tuple_filter.h"
 
 // #include "connection_holder.h"
 
@@ -16337,351 +16543,16 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "ast/result_columns.h"
-
 // #include "ast/select.h"
 // validate_select_clauses
-// #include "values.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <vector>  //  std::vector
-#include <tuple>  //  std::tuple
-#include <utility>  //  std::forward, std::move
-#endif
-
-// #include "functional/cxx_type_traits_polyfill.h"
-
-namespace sqlite_orm::internal {
-    template<class... Args>
-    struct values_t {
-        using args_tuple = std::tuple<Args...>;
-
-        args_tuple tuple;
-    };
-
-    template<class T>
-    inline constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
-
-    template<class T>
-    using is_values = std::bool_constant<is_values_v<T>>;
-
-    template<class T>
-    struct dynamic_values_t {
-        std::vector<T> vector;
-    };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    template<class... Args>
-    internal::values_t<Args...> values(Args... args) {
-        return {{std::forward<Args>(args)...}};
-    }
-
-    template<class T>
-    internal::dynamic_values_t<T> values(std::vector<T> vector) {
-        return {{std::move(vector)}};
-    }
-}
-
 // #include "table_reference.h"
 
 // #include "mapped_type_proxy.h"
 
-// #include "ast/upsert_clause.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#if SQLITE_VERSION_NUMBER >= 3024000
-#include <tuple>  //  std::tuple
-#include <utility>  //  std::forward, std::move
-#endif
-#endif
-
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-namespace sqlite_orm::internal {
-#if SQLITE_VERSION_NUMBER >= 3024000
-    template<class T, class A>
-    struct upsert_clause;
-
-    template<class... Args>
-    struct conflict_target {
-        using args_tuple = std::tuple<Args...>;
-
-        args_tuple args;
-
-        upsert_clause<args_tuple, std::tuple<>> do_nothing() {
-            return {std::move(this->args), {}};
-        }
-
-        template<class... ActionsArgs>
-        upsert_clause<args_tuple, std::tuple<ActionsArgs...>> do_update(ActionsArgs... actions) {
-            return {std::move(this->args), {std::forward<ActionsArgs>(actions)...}};
-        }
-    };
-
-    template<class... TargetArgs, class... ActionsArgs>
-    struct upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>> {
-        using target_args_tuple = std::tuple<TargetArgs...>;
-        using actions_tuple = std::tuple<ActionsArgs...>;
-
-        target_args_tuple target_args;
-
-        actions_tuple actions;
-    };
-#endif
-
-    template<class T>
-    inline constexpr bool is_upsert_clause_v =
-#if SQLITE_VERSION_NUMBER >= 3024000
-        polyfill::is_specialization_of<T, upsert_clause>::value;
-#else
-        false;
-#endif
-
-    template<class T>
-    using is_upsert_clause = std::bool_constant<is_upsert_clause_v<T>>;
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-#if SQLITE_VERSION_NUMBER >= 3024000
-    /**
-     *  ON CONFLICT upsert clause builder function.
-     *  @example
-     *  storage.insert(into<Employee>(),
-     *            columns(&Employee::id, &Employee::name, &Employee::age, &Employee::address, &Employee::salary),
-     *            values(std::make_tuple(3, "Sofia", 26, "Madrid", 15000.0),
-     *                 std::make_tuple(4, "Doja", 26, "LA", 25000.0)),
-     *            on_conflict(&Employee::id).do_update(set(c(&Employee::name) = excluded(&Employee::name),
-     *                                           c(&Employee::age) = excluded(&Employee::age),
-     *                                           c(&Employee::address) = excluded(&Employee::address),
-     *                                           c(&Employee::salary) = excluded(&Employee::salary))));
-     */
-    template<class... Args>
-    internal::conflict_target<Args...> on_conflict(Args... args) {
-        return {{std::forward<Args>(args)...}};
-    }
-#endif
-}
-
-// #include "ast/set.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple, std::tuple_size
-#include <string>  //  std::string
-#include <vector>  //  std::vector
-#include <sstream>  //  std::stringstream
-#include <type_traits>  //  std::false_type, std::true_type
-#endif
-
-// #include "../functional/type_traits.h"
-
-// #include "../tuple_helper/tuple_traits.h"
-
-// #include "../table_name_collector.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <set>  //  std::set
-#include <string>  //  std::string
-#include <utility>  //  std::pair, std::move
-#endif
-
-// #include "mapped_type_proxy.h"
-
-// #include "vocabulary/node_traits.h"
-
-// #include "rowid.h"
-
-// #include "alias.h"
-
-// #include "core_functions.h"
-
-// #include "schema/algorithms/table_lookup.h"
-// lookup_table_name
-
-namespace sqlite_orm::internal {
-    struct table_name_collector_base {
-        using table_name_set = std::set<std::pair<std::string, std::string>>;
-
-        table_name_set table_names;
-    };
-
-    template<class DBOs>
-    struct table_name_collector : table_name_collector_base {
-        using db_objects_type = DBOs;
-
-        const db_objects_type& db_objects;
-
-        table_name_collector(const db_objects_type& dbObjects) : db_objects{dbObjects} {}
-
-        template<class ColRef>
-        void operator()(const ColRef&) {
-            if constexpr (std::is_member_pointer<ColRef>::value) {
-                using table_type = table_type_of_t<ColRef>;
-                auto tableName = lookup_table_name<mapped_type_proxy_t<table_type>>(this->db_objects);
-                this->table_names.emplace(std::move(tableName), "");
-            }
-            // ...
-            else if constexpr (is_column_pointer_v<ColRef>) {
-                using table_type = table_type_of_t<ColRef>;
-                auto tableName = lookup_table_name<mapped_type_proxy_t<table_type>>(this->db_objects);
-                this->table_names.emplace(std::move(tableName), alias_extractor<table_type>::as_alias());
-            }
-            // ...
-            else if constexpr (polyfill::is_specialization_of_v<ColRef, alias_column_t>) {
-                // note: instead of accessing the column, we are interested in the type the column is aliased into
-                using A = alias_type_t<ColRef>;
-                auto tableName = lookup_table_name<mapped_type_proxy_t<A>>(this->db_objects);
-                this->table_names.emplace(std::move(tableName), alias_extractor<A>::as_alias());
-            }
-            // ...
-            else if constexpr (polyfill::is_specialization_of_v<ColRef, count_asterisk_t>) {
-                using table_type = type_t<ColRef>;
-                auto tableName = lookup_table_name<table_type>(this->db_objects);
-                if (!tableName.empty()) {
-                    this->table_names.emplace(std::move(tableName), "");
-                }
-            }
-            // ...
-            else if constexpr (is_asterisk_v<ColRef>) {
-                using recordset_type = type_t<ColRef>;
-                auto tableName = lookup_table_name<mapped_type_proxy_t<recordset_type>>(this->db_objects);
-                this->table_names.emplace(std::move(tableName), alias_extractor<recordset_type>::as_alias());
-            }
-            // ...
-            else if constexpr (is_object_node_v<ColRef> || polyfill::is_specialization_of_v<ColRef, table_rowid_t> ||
-                               polyfill::is_specialization_of_v<ColRef, table_oid_t> ||
-                               polyfill::is_specialization_of_v<ColRef, table__rowid_t>) {
-                using table_type = type_t<ColRef>;
-                this->table_names.emplace(lookup_table_name<table_type>(this->db_objects), "");
-            }
-            // ...
-            else {
-                // Do nothing for other types of expressions
-            }
-        }
-
-        /*  
-         *  Invoked by the AST iterator for the node itself
-         */
-        template<class ColRef>
-        void operator()(std::true_type, const ColRef&) {
-            // ...
-            if constexpr (polyfill::is_specialization_of_v<ColRef, highlight_t>) {
-                using table_type = typename ColRef::table_type;
-                this->table_names.emplace(lookup_table_name<table_type>(this->db_objects), "");
-            }
-            // ...
-            else {
-                // Do nothing for other types of expressions
-            }
-        }
-    };
-}
-
-// #include "../vocabulary/node_traits.h"
-
-namespace sqlite_orm::internal {
-    template<class T, class L>
-    void iterate_ast(const T& t, L&& lambda);
-
-    template<class... Args>
-    struct set_t {
-        using assigns_type = std::tuple<Args...>;
-
-        assigns_type assigns;
-    };
-
-    template<class T>
-    struct is_set : std::false_type {};
-
-    template<class... Args>
-    struct is_set<set_t<Args...>> : std::true_type {};
-
-    struct dynamic_set_entry {
-        std::string serialized_value;
-    };
-
-    template<class C>
-    struct dynamic_set_t {
-        using context_t = C;
-        using entry_t = dynamic_set_entry;
-        using const_iterator = typename std::vector<entry_t>::const_iterator;
-
-        dynamic_set_t(const context_t& context_) : context(context_), collector(this->context.db_objects) {}
-
-        dynamic_set_t(const dynamic_set_t& other) = default;
-        dynamic_set_t(dynamic_set_t&& other) = default;
-        dynamic_set_t& operator=(const dynamic_set_t& other) = default;
-        dynamic_set_t& operator=(dynamic_set_t&& other) = default;
-
-        template<class T, satisfies<is_assign, T> = true>
-        void push_back(T assign) {
-            auto newContext = this->context;
-            newContext.omit_table_name = true;
-            // note: we are only interested in the table name on the left-hand side of the assignment operator expression
-            iterate_ast(assign.lhs, this->collector);
-            std::stringstream ss;
-            ss << serialize(assign.lhs, newContext) << ' ' << assign.serialize() << ' '
-               << serialize(assign.rhs, context);
-            this->entries.push_back({ss.str()});
-        }
-
-        const_iterator begin() const {
-            return this->entries.begin();
-        }
-
-        const_iterator end() const {
-            return this->entries.end();
-        }
-
-        void clear() {
-            this->entries.clear();
-            this->collector.table_names.clear();
-        }
-
-        std::vector<entry_t> entries;
-        context_t context;
-        table_name_collector<typename context_t::db_objects_type> collector;
-    };
-
-    template<class C>
-    struct is_set<dynamic_set_t<C>> : std::true_type {};
-
-    template<class C>
-    struct is_dynamic_set : std::false_type {};
-
-    template<class C>
-    struct is_dynamic_set<dynamic_set_t<C>> : std::true_type {};
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  SET keyword used in UPDATE ... SET queries.
-     *  Args must have `assign_t` type. E.g. set(assign(&User::id, 5)) or set(c(&User::id) = 5)
-     */
-    template<class... Args>
-    internal::set_t<Args...> set(Args... args) {
-        using arg_tuple = std::tuple<Args...>;
-        static_assert(std::tuple_size<arg_tuple>::value == internal::count_tuple<arg_tuple, internal::is_assign>::value,
-                      "set function accepts assign operators only");
-        return {std::make_tuple(std::forward<Args>(args)...)};
-    }
-
-    /**
-     *  SET keyword used in UPDATE ... SET queries. It is dynamic version. It means use can add amount of arguments now known at compilation time but known at runtime.
-     */
-    template<class S>
-    internal::dynamic_set_t<internal::serializer_context<typename S::db_objects_type>> dynamic_set(const S& storage) {
-        return {obtain_db_objects(storage)};
-    }
-}
-
 // #include "vocabulary/node_traits.h"
 
 // #include "vocabulary/node_algorithms.h"
-// access_main_dml
-// #include "vocabulary/traits/semantic_traits_fwd.h"
-// Included to specialize traits
+// is_bindable_v
 
 namespace sqlite_orm::internal {
     struct prepared_statement_base {
@@ -16817,37 +16688,6 @@ namespace sqlite_orm::internal {
         conditions_type conditions;
     };
 
-    template<class S, class... Wargs>
-    struct update_all_t {
-        using set_type = S;
-        using conditions_type = std::tuple<Wargs...>;
-
-        static_assert(is_set<S>::value, "update_all_t must have set or dynamic set as the first argument");
-
-        set_type set;
-        conditions_type conditions;
-    };
-
-    template<class T>
-    inline constexpr bool is_update_all_v = polyfill::is_specialization_of<T, update_all_t>::value;
-
-    template<class T>
-    using is_update_all = std::bool_constant<is_update_all_v<T>>;
-
-    template<class T, class... Args>
-    struct remove_all_t {
-        using object_type = T;
-        using conditions_type = std::tuple<Args...>;
-
-        conditions_type conditions;
-    };
-
-    template<class T>
-    inline constexpr bool is_remove_all_v = polyfill::is_specialization_of<T, remove_all_t>::value;
-
-    template<class T>
-    using is_remove_all = std::bool_constant<is_remove_all_v<T>>;
-
     template<class T, class... Ids>
     struct get_t {
         using type = T;
@@ -16872,192 +16712,6 @@ namespace sqlite_orm::internal {
         ids_type ids;
     };
 
-    template<class T>
-    struct update_t {
-        using object_type = T;
-
-        object_type object;
-    };
-
-    template<class T, class... Ids>
-    struct remove_t {
-        using object_type = T;
-        using ids_type = std::tuple<Ids...>;
-
-        ids_type ids;
-    };
-
-    template<class T>
-    struct insert_t {
-        using object_type = T;
-
-        object_type object;
-    };
-
-    template<class T>
-    inline constexpr bool is_insert_v = polyfill::is_specialization_of<T, insert_t>::value;
-
-    template<class T>
-    struct is_insert : std::bool_constant<is_insert_v<T>> {};
-
-    template<class T, class... Cols>
-    struct insert_explicit {
-        using object_type = T;
-        using columns_type = columns_t<Cols...>;
-
-        object_type object;
-        columns_type columns;
-    };
-
-    template<class T>
-    struct replace_t {
-        using object_type = T;
-
-        object_type object;
-    };
-
-    template<class T>
-    inline constexpr bool is_replace_v = polyfill::is_specialization_of<T, replace_t>::value;
-
-    template<class T>
-    struct is_replace : std::bool_constant<is_replace_v<T>> {};
-
-    template<class It, class Projection, class O>
-    struct insert_range_t {
-        using iterator_type = It;
-        using transformer_type = Projection;
-        using object_type = O;
-
-        std::pair<iterator_type, iterator_type> range;
-        transformer_type transformer;
-    };
-
-    template<class T>
-    inline constexpr bool is_insert_range_v = polyfill::is_specialization_of<T, insert_range_t>::value;
-
-    template<class T>
-    struct is_insert_range : std::bool_constant<is_insert_range_v<T>> {};
-
-    template<class It, class Projection, class O>
-    struct replace_range_t {
-        using iterator_type = It;
-        using transformer_type = Projection;
-        using object_type = O;
-
-        std::pair<iterator_type, iterator_type> range;
-        transformer_type transformer;
-    };
-
-    template<class T>
-    inline constexpr bool is_replace_range_v = polyfill::is_specialization_of<T, replace_range_t>::value;
-
-    template<class T>
-    struct is_replace_range : std::bool_constant<is_replace_range_v<T>> {};
-
-    template<class... Args>
-    struct insert_raw_t {
-        using args_tuple = std::tuple<Args...>;
-
-        args_tuple args;
-    };
-
-    template<class T>
-    inline constexpr bool is_insert_raw_v = polyfill::is_specialization_of<T, insert_raw_t>::value;
-
-    template<class T>
-    struct is_insert_raw : std::bool_constant<is_insert_raw_v<T>> {};
-
-    template<class... Args>
-    struct replace_raw_t {
-        using args_tuple = std::tuple<Args...>;
-
-        args_tuple args;
-    };
-
-    template<class T>
-    inline constexpr bool is_replace_raw_v = polyfill::is_specialization_of<T, replace_raw_t>::value;
-
-    template<class T>
-    struct is_replace_raw : std::bool_constant<is_replace_raw_v<T>> {};
-
-    struct default_values_t {};
-
-    template<class T>
-    using is_default_values = std::is_same<T, default_values_t>;
-
-    enum class conflict_action {
-        abort,
-        fail,
-        ignore,
-        replace,
-        rollback,
-    };
-
-    struct insert_constraint {
-        conflict_action action = conflict_action::abort;
-    };
-
-    template<class T>
-    using is_insert_constraint = std::is_same<T, insert_constraint>;
-
-    template<class DML>
-    constexpr bool is_raw_dml_expression_v<
-        DML,
-        std::enable_if_t<
-            std::disjunction_v<is_insert_raw<DML>, is_replace_raw<DML>, is_update_all<DML>, is_remove_all<DML>>>> =
-        true;
-
-    template<class With>
-    constexpr bool is_raw_dml_expression_v<
-        With,
-        std::enable_if_t<std::conjunction_v<is_with_clause<With>,
-                                            std::disjunction<is_insert_raw<expression_type_t<With>>,
-                                                             is_replace_raw<expression_type_t<With>>,
-                                                             is_update_all<expression_type_t<With>>,
-                                                             is_remove_all<expression_type_t<With>>>>>> = true;
-
-    template<class DML>
-    constexpr bool is_object_dml_expression_v<
-        DML,
-        std::enable_if_t<std::disjunction_v<is_insert<DML>,
-                                            polyfill::is_specialization_of<DML, insert_explicit>,
-                                            is_replace<DML>,
-                                            polyfill::is_specialization_of<DML, update_t>,
-                                            polyfill::is_specialization_of<DML, remove_t>>>> = true;
-
-    /**
-     *  The delete statement counterpart of `validate_select_clauses()`; see there for the split of
-     *  responsibilities between this and the clause factories.
-     */
-    template<class T>
-    constexpr void validate_delete_clauses() {
-        static_assert(count_tuple<T, is_where>::value <= 1, "a single statement cannot contain > 1 WHERE blocks");
-        static_assert(count_tuple<T, is_any_order_by>::value <= 1,
-                      "a single statement cannot contain > 1 ORDER BY blocks");
-        static_assert(count_tuple<T, is_limit>::value <= 1, "a single statement cannot contain > 1 LIMIT blocks");
-        static_assert(std::tuple_size<T>::value == count_tuple<T, is_delete_clause>::value,
-                      "a DELETE argument must be a WHERE, ORDER BY or LIMIT clause");
-        static_assert(check_delete_clause_order_v<T>,
-                      "SQL clauses must be listed in the canonical order: WHERE, ORDER BY, LIMIT");
-    }
-
-    /**
-     *  The update statement counterpart of `validate_select_clauses()`; see there for the split of
-     *  responsibilities between this and the clause factories.
-     */
-    template<class T>
-    constexpr void validate_update_clauses() {
-        static_assert(count_tuple<T, is_any_from>::value <= 1, "a single statement cannot contain > 1 FROM blocks");
-        static_assert(count_tuple<T, is_where>::value <= 1, "a single statement cannot contain > 1 WHERE blocks");
-        static_assert(count_tuple<T, is_any_order_by>::value <= 1,
-                      "a single statement cannot contain > 1 ORDER BY blocks");
-        static_assert(count_tuple<T, is_limit>::value <= 1, "a single statement cannot contain > 1 LIMIT blocks");
-        static_assert(std::tuple_size<T>::value == count_tuple<T, is_update_clause>::value,
-                      "an UPDATE argument must be a FROM, JOIN, WHERE, ORDER BY or LIMIT clause");
-        static_assert(check_update_clause_order_v<T>,
-                      "SQL clauses must be listed in the canonical order: FROM, JOINs, WHERE, ORDER BY, LIMIT");
-    }
-
     template<class T, class Tpl>
     constexpr void validate_get_all_conditions() {
         using from2_index_sequence = filter_tuple_sequence_t<Tpl, is_from2>;
@@ -17071,332 +16725,6 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-    inline internal::insert_constraint or_rollback() {
-        return {internal::conflict_action::rollback};
-    }
-
-    inline internal::insert_constraint or_replace() {
-        return {internal::conflict_action::replace};
-    }
-
-    inline internal::insert_constraint or_ignore() {
-        return {internal::conflict_action::ignore};
-    }
-
-    inline internal::insert_constraint or_fail() {
-        return {internal::conflict_action::fail};
-    }
-
-    inline internal::insert_constraint or_abort() {
-        return {internal::conflict_action::abort};
-    }
-
-    /**
-     *  Use this function to add `DEFAULT VALUES` modifier to raw `INSERT`.
-     *  
-     *  @example
-     *  ```
-     *  storage.insert(into<Singer>(), default_values());
-     *  ```
-     */
-    inline internal::default_values_t default_values() {
-        return {};
-    }
-
-    /**
-     *  Raw insert statement creation routine. Use this if `insert` with object does not fit you. This insert is designed to be able
-     *  to call any type of `INSERT` query with no limitations.
-     *  @example
-     *  ```sql
-     *  INSERT INTO users (id, name) VALUES(5, 'Little Mix')
-     *  ```
-     *  will be
-     *  ```c++
-     *  auto statement = storage.prepare(insert(into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix"))));
-     *  storage.execute(statement));
-     *  ```
-     *  One more example:
-     *  ```sql
-     *  INSERT INTO singers (name) VALUES ('Sofia Reyes')('Kungs')
-     *  ```
-     *  will be
-     *  ```c++
-     *  auto statement = storage.prepare(insert(into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs"))));
-     *  storage.execute(statement));
-     *  ```
-     *  One can use `default_values` to add `DEFAULT VALUES` modifier:
-     *  ```sql
-     *  INSERT INTO users DEFAULT VALUES
-     *  ```
-     *  will be
-     *  ```c++
-     *  auto statement = storage.prepare(insert(into<Singer>(), default_values()));
-     *  storage.execute(statement));
-     *  ```
-     *  Also one can use `INSERT OR ABORT`/`INSERT OR FAIL`/`INSERT OR IGNORE`/`INSERT OR REPLACE`/`INSERT ROLLBACK`:
-     *  ```c++
-     *  auto statement = storage.prepare(insert(or_ignore(), into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs"))));
-     *  auto statement2 = storage.prepare(insert(or_rollback(), into<Singer>(), default_values()));
-     *  auto statement3 = storage.prepare(insert(or_abort(), into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix"))));
-     *  ```
-     */
-    template<class... Args>
-    internal::insert_raw_t<Args...> insert(Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        using internal::count_tuple;
-        using internal::is_columns;
-        using internal::is_insert_constraint;
-        using internal::is_into;
-        using internal::is_select;
-        using internal::is_upsert_clause;
-        using internal::is_values;
-
-        constexpr int orArgsCount = count_tuple<args_tuple, is_insert_constraint>::value;
-        static_assert(orArgsCount < 2, "Raw insert must have only one OR... argument");
-
-        constexpr int intoArgsCount = count_tuple<args_tuple, is_into>::value;
-        static_assert(intoArgsCount != 0, "Raw insert must have into<T> argument");
-        static_assert(intoArgsCount < 2, "Raw insert must have only one into<T> argument");
-
-        constexpr int columnsArgsCount = count_tuple<args_tuple, is_columns>::value;
-        static_assert(columnsArgsCount < 2, "Raw insert must have only one columns(...) argument");
-
-        constexpr int valuesArgsCount = count_tuple<args_tuple, is_values>::value;
-        static_assert(valuesArgsCount < 2, "Raw insert must have only one values(...) argument");
-
-        constexpr int defaultValuesCount = count_tuple<args_tuple, internal::is_default_values>::value;
-        static_assert(defaultValuesCount < 2, "Raw insert must have only one default_values() argument");
-
-        constexpr int selectsArgsCount = count_tuple<args_tuple, is_select>::value;
-        static_assert(selectsArgsCount < 2, "Raw insert must have only one select(...) argument");
-
-        constexpr int upsertClausesCount = count_tuple<args_tuple, is_upsert_clause>::value;
-        static_assert(upsertClausesCount <= 2, "Raw insert can contain 2 instances of upsert clause maximum");
-
-        constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
-        static_assert(argsCount == intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount +
-                                       selectsArgsCount + orArgsCount + upsertClausesCount,
-                      "Raw insert has invalid arguments");
-
-        return {{std::forward<Args>(args)...}};
-    }
-
-    /**
-     *  Raw replace statement creation routine. Use this if `replace` with object does not fit you. This replace is designed to be able
-     *  to call any type of `REPLACE` query with no limitations. Actually this is the same query as raw insert except `OR...` option existance.
-     *  @example
-     *  ```sql
-     *  REPLACE INTO users (id, name) VALUES(5, 'Little Mix')
-     *  ```
-     *  will be
-     *  ```c++
-     *  auto statement = storage.prepare(replace(into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix"))));
-     *  storage.execute(statement));
-     *  ```
-     *  One more example:
-     *  ```sql
-     *  REPLACE INTO singers (name) VALUES ('Sofia Reyes')('Kungs')
-     *  ```
-     *  will be
-     *  ```c++
-     *  auto statement = storage.prepare(replace(into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs"))));
-     *  storage.execute(statement));
-     *  ```
-     *  One can use `default_values` to add `DEFAULT VALUES` modifier:
-     *  ```sql
-     *  REPLACE INTO users DEFAULT VALUES
-     *  ```
-     *  will be
-     *  ```c++
-     *  auto statement = storage.prepare(replace(into<Singer>(), default_values()));
-     *  storage.execute(statement));
-     *  ```
-     */
-    template<class... Args>
-    internal::replace_raw_t<Args...> replace(Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        using internal::count_tuple;
-        using internal::is_columns;
-        using internal::is_into;
-        using internal::is_values;
-
-        constexpr int intoArgsCount = count_tuple<args_tuple, is_into>::value;
-        static_assert(intoArgsCount != 0, "Raw replace must have into<T> argument");
-        static_assert(intoArgsCount < 2, "Raw replace must have only one into<T> argument");
-
-        constexpr int columnsArgsCount = count_tuple<args_tuple, is_columns>::value;
-        static_assert(columnsArgsCount < 2, "Raw replace must have only one columns(...) argument");
-
-        constexpr int valuesArgsCount = count_tuple<args_tuple, is_values>::value;
-        static_assert(valuesArgsCount < 2, "Raw replace must have only one values(...) argument");
-
-        constexpr int defaultValuesCount = count_tuple<args_tuple, internal::is_default_values>::value;
-        static_assert(defaultValuesCount < 2, "Raw replace must have only one default_values() argument");
-
-        constexpr int selectsArgsCount = count_tuple<args_tuple, internal::is_select>::value;
-        static_assert(selectsArgsCount < 2, "Raw replace must have only one select(...) argument");
-
-        constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
-        static_assert(argsCount ==
-                          intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount + selectsArgsCount,
-                      "Raw replace has invalid arguments");
-
-        return {{std::forward<Args>(args)...}};
-    }
-
-    /**
-     *  Create a replace range statement.
-     *  The objects in the range are transformed using the specified projection, which defaults to identity projection.
-     *  
-     *  @example
-     *  ```
-     *  std::vector<User> users;
-     *  users.push_back(User{1, "Leony"});
-     *  auto statement = storage.prepare(replace_range(users.begin(), users.end()));
-     *  storage.execute(statement);
-     *  ```
-     *  @example
-     *  ```
-     *  std::vector<std::unique_ptr<User>> userPointers;
-     *  userPointers.push_back(std::make_unique<User>(1, "Eneli"));
-     *  auto statement = storage.prepare(replace_range(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*));
-     *  storage.execute(statement);
-     *  ```
-     */
-    template<class It, class Projection = polyfill::identity>
-    auto replace_range(It from, It to, Projection project = {}) {
-        using O = std::decay_t<decltype(std::invoke(std::declval<Projection>(), *std::declval<It>()))>;
-        return internal::replace_range_t<It, Projection, O>{{std::move(from), std::move(to)}, std::move(project)};
-    }
-
-    /*
-     *  Create a replace range statement.
-     *  Overload of `replace_range(It, It, Projection)` with explicit object type template parameter.
-     */
-    template<class O, class It, class Projection = polyfill::identity>
-    internal::replace_range_t<It, Projection, O> replace_range(It from, It to, Projection project = {}) {
-        // validate up front that projected type is convertible to mapped object type, avoiding hard to read error messages later;
-        // note: we use `is_convertible` instead of `is_invocable_r` because we do not create dangling references in `storage_t<>::execute()`
-        using projected_type = decltype(std::invoke(std::declval<Projection>(), *std::declval<It>()));
-        static_assert(std::is_convertible<projected_type, const O&>::value,
-                      "Projected type must be convertible to mapped object type");
-
-        return {{std::move(from), std::move(to)}, std::move(project)};
-    }
-
-    /**
-     *  Create an insert range statement.
-     *  The objects in the range are transformed using the specified projection, which defaults to identity projection.
-     *  
-     *  @example
-     *  ```
-     *  std::vector<User> users;
-     *  users.push_back(User{1, "Leony"});
-     *  auto statement = storage.prepare(insert_range(users.begin(), users.end()));
-     *  storage.execute(statement);
-     *  ```
-     *  @example
-     *  ```
-     *  std::vector<std::unique_ptr<User>> userPointers;
-     *  userPointers.push_back(std::make_unique<User>(1, "Eneli"));
-     *  auto statement = storage.prepare(insert_range(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*));
-     *  storage.execute(statement);
-     *  ```
-     */
-    template<class It, class Projection = polyfill::identity>
-    auto insert_range(It from, It to, Projection project = {}) {
-        using O = std::decay_t<decltype(std::invoke(std::declval<Projection>(), *std::declval<It>()))>;
-        return internal::insert_range_t<It, Projection, O>{{std::move(from), std::move(to)}, std::move(project)};
-    }
-
-    /*
-     *  Create an insert range statement.
-     *  Overload of `insert_range(It, It, Projection)` with explicit object type template parameter.
-     */
-    template<class O, class It, class Projection = polyfill::identity>
-    internal::insert_range_t<It, Projection, O> insert_range(It from, It to, Projection project = {}) {
-        // validate up front that projected type is convertible to mapped object type, avoiding hard to read error messages later;
-        // note: we use `is_convertible` instead of `is_invocable_r` because we do not create dangling references in `storage_t<>::execute()`
-        using projected_type = decltype(std::invoke(std::declval<Projection>(), *std::declval<It>()));
-        static_assert(std::is_convertible<projected_type, const O&>::value,
-                      "Projected type must be convertible to mapped object type");
-
-        return {{std::move(from), std::move(to)}, std::move(project)};
-    }
-
-    /**
-     *  Create a replace statement.
-     *  T is an object type mapped to a storage.
-     *  Usage: storage.replace(myUserInstance);
-     *  Parameter obj is accepted by value. If you want to accept it by ref
-     *  please use std::ref function: storage.replace(std::ref(myUserInstance));
-     */
-    template<class T>
-    internal::replace_t<T> replace(T obj) {
-        return {std::move(obj)};
-    }
-
-    /**
-     *  Create an insert statement.
-     *  T is an object type mapped to a storage.
-     *  Usage: storage.insert(myUserInstance);
-     *  Parameter obj is accepted by value. If you want to accept it by ref
-     *  please use std::ref function: storage.insert(std::ref(myUserInstance));
-     */
-    template<class T>
-    internal::insert_t<T> insert(T obj) {
-        return {std::move(obj)};
-    }
-
-    /**
-     *  Create an explicit insert statement.
-     *  T is an object type mapped to a storage.
-     *  Cols is columns types aparameter pack. Must contain member pointers
-     *  Usage: storage.insert(myUserInstance, columns(&User::id, &User::name));
-     *  Parameter obj is accepted by value. If you want to accept it by ref
-     *  please use std::ref function: storage.insert(std::ref(myUserInstance), columns(&User::id, &User::name));
-     */
-    template<class T, class... Cols>
-    internal::insert_explicit<T, Cols...> insert(T obj, internal::columns_t<Cols...> cols) {
-        return {std::move(obj), std::move(cols)};
-    }
-
-    /**
-     *  Create a remove statement
-     *  T is an object type mapped to a storage.
-     *  Usage: remove<User>(5);
-     */
-    template<class T, class... Ids>
-    internal::remove_t<T, Ids...> remove(Ids... ids) {
-        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
-                      "Only primary key values are accepted as Ids");
-        return {{std::forward<Ids>(ids)...}};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Create a remove statement
-     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
-     *  Usage: remove<user_table>(5);
-     */
-    template<orm_table_reference auto table, class... Ids>
-    auto remove(Ids... ids) {
-        return remove<internal::auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
-    }
-#endif
-
-    /**
-     *  Create an update statement.
-     *  T is an object type mapped to a storage.
-     *  Usage: storage.update(myUserInstance);
-     *  Parameter obj is accepted by value. If you want to accept it by ref
-     *  please use std::ref function: storage.update(std::ref(myUserInstance));
-     */
-    template<class T>
-    internal::update_t<T> update(T obj) {
-        return {std::move(obj)};
-    }
-
     /**
      *  Create a get statement.
      *  T is an object type mapped to a storage.
@@ -17470,30 +16798,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
     /**
-     *  Create a remove all statement.
-     *  T is an object type mapped to a storage.
-     *  Usage: storage.remove_all<User>(...);
-     */
-    template<class T, class... Args>
-    internal::remove_all_t<T, Args...> remove_all(Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        internal::validate_delete_clauses<args_tuple>();
-        return {{std::forward<Args>(args)...}};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Create a remove all statement.
-     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
-     *  Usage: storage.remove_all<user_table>(...);
-     */
-    template<orm_table_reference auto table, class... Args>
-    auto remove_all(Args... args) {
-        return remove_all<internal::auto_decay_table_ref_t<table>>(std::forward<Args>(args)...);
-    }
-#endif
-
-    /**
      *  Create a get all statement.
      *  T is an explicitly specified object mapped to a storage or a table alias.
      *  R is a container type. std::vector<T> is default
@@ -17521,18 +16825,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return get_all<internal::auto_decay_table_ref_t<mapped>, R>(std::forward<Args>(conditions)...);
     }
 #endif
-
-    /**
-     *  Create an update all statement.
-     *  Usage: storage.update_all(set(...), ...);
-     */
-    template<class S, class... Wargs>
-    internal::update_all_t<S, Wargs...> update_all(S set, Wargs... wh) {
-        static_assert(internal::is_set<S>::value, "first argument in update_all can be either set or dynamic_set");
-        using args_tuple = std::tuple<Wargs...>;
-        internal::validate_update_clauses<args_tuple>();
-        return {std::move(set), {std::forward<Wargs>(wh)...}};
-    }
 
     /**
      *  Create a get all pointer statement.
@@ -17593,8 +16885,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-// #include "values.h"
-
 // #include "function.h"
 
 // #include "ast/excluded.h"
@@ -17627,10 +16917,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(expression)};
     }
 }
-
-// #include "ast/upsert_clause.h"
-
-// #include "ast/into.h"
 
 // #include "ast/exists.h"
 
@@ -17671,8 +16957,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(expression)};
     }
 }
-
-// #include "ast/set.h"
 
 // #include "ast/match.h"
 
@@ -18008,8 +17292,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct ast_iterator<into_t<T>, void> {
-        using node_type = into_t<T>;
+    struct ast_iterator<T, match_if<is_into, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& /*node*/, L& /*lambda*/) SQLITE_ORM_OR_CONST_CALLOP {
@@ -18017,19 +17301,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct ast_iterator<insert_raw_t<Args...>, void> {
-        using node_type = insert_raw_t<Args...>;
-
-        template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(node.args, lambda);
-        }
-    };
-
-    template<class... Args>
-    struct ast_iterator<replace_raw_t<Args...>, void> {
-        using node_type = replace_raw_t<Args...>;
+    template<class T>
+    struct ast_iterator<T, std::enable_if_t<is_insert_raw_v<T> || is_replace_raw_v<T>>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -18078,30 +17352,30 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class S, class... Wargs>
-    struct ast_iterator<update_all_t<S, Wargs...>, void> {
-        using node_type = update_all_t<S, Wargs...>;
+    template<class T>
+    struct ast_iterator<T, std::enable_if_t<is_update_all_v<T>>> {
+        using node_type = T;
 
         template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& u, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(u.set, lambda);
-            iterate_ast(u.conditions, lambda);
+        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+            iterate_ast(node.set, lambda);
+            iterate_ast(node.conditions, lambda);
         }
     };
 
-    template<class T, class... Args>
-    struct ast_iterator<remove_all_t<T, Args...>, void> {
-        using node_type = remove_all_t<T, Args...>;
+    template<class T>
+    struct ast_iterator<T, std::enable_if_t<is_remove_all_v<T>>> {
+        using node_type = T;
 
         template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& r, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(r.conditions, lambda);
+        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+            iterate_ast(node.conditions, lambda);
         }
     };
 
-    template<class... Args>
-    struct ast_iterator<set_t<Args...>, void> {
-        using node_type = set_t<Args...>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_set, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -18109,9 +17383,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class S>
-    struct ast_iterator<dynamic_set_t<S>, void> {
-        using node_type = dynamic_set_t<S>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_dynamic_set, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -18367,9 +17641,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct ast_iterator<values_t<Args...>, void> {
-        using node_type = values_t<Args...>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_values, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -18378,8 +17652,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct ast_iterator<dynamic_values_t<T>, void> {
-        using node_type = dynamic_values_t<T>;
+    struct ast_iterator<T, match_if<is_dynamic_values, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -21819,62 +21093,704 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "prepared_statement.h"
+// #include "ast/dml/insert.h"
 
-// #include "expression_object_type.h"
+/** @file The INSERT statement, in each of the DSL spellings sqlite_orm offers for it - against a
+ *        mapped object, against a range of them, against an explicit column list, or raw -, plus
+ *        the OR conflict-resolution modifier only a raw INSERT takes.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::remove_reference
+#include <type_traits>  //  std::enable_if, std::conjunction, std::is_same, std::is_convertible, std::declval
+#include <utility>  //  std::move, std::forward, std::pair
+#include <tuple>  //  std::tuple, std::tuple_size
+#include <functional>  //  std::invoke
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/type_traits.h"
+// #include "../../functional/cxx_functional_polyfill.h"
+//  polyfill::identity
+// #include "../../tuple_helper/tuple_traits.h"
 
-// #include "vocabulary/node_traits.h"
+// #include "../../vocabulary/node_traits.h"
 
-// #include "prepared_statement.h"
+// #include "../../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../../vocabulary/traits/semantic_traits_fwd.h"
+// Included to specialize traits
+// #include "../result_columns.h"
+// columns_t
 
 namespace sqlite_orm::internal {
-    template<class T, class SFINAE = void>
-    struct expression_object_type;
-
     template<class T>
-    using expression_object_type_t = typename expression_object_type<T>::type;
+    struct insert_t {
+        using object_type = T;
 
-    template<typename S>
-    using statement_object_type_t = expression_object_type_t<expression_type_t<std::remove_reference_t<S>>>;
-
-    template<class T>
-    struct expression_object_type<update_t<T>, void> : value_unref_type<T> {};
-
-    template<class T>
-    struct expression_object_type<replace_t<T>, void> : value_unref_type<T> {};
-
-    template<class T>
-    struct expression_object_type<T, match_if<is_replace_range, T>> {
-        using type = object_type_t<T>;
+        object_type object;
     };
 
-    template<class T, class... Ids>
-    struct expression_object_type<remove_t<T, Ids...>, void> : value_unref_type<T> {};
+    template<class T>
+    constexpr bool is_insert_v = polyfill::is_specialization_of<T, insert_t>::value;
 
     template<class T>
-    struct expression_object_type<insert_t<T>, void> : value_unref_type<T> {};
-
-    template<class T>
-    struct expression_object_type<T, match_if<is_insert_range, T>> {
-        using type = object_type_t<T>;
-    };
+    constexpr bool is_object_dml_expression_v<T, std::enable_if_t<is_insert_v<T>>> = true;
 
     template<class T, class... Cols>
-    struct expression_object_type<insert_explicit<T, Cols...>, void> : value_unref_type<T> {};
+    struct insert_explicit {
+        using object_type = T;
+        using columns_type = columns_t<Cols...>;
 
-    template<class DML>
-    decltype(auto) access_dml_object(DML& statement) {
-        return forward_lvalue_ref(statement.expression.object);
+        object_type object;
+        columns_type columns;
+    };
+
+    template<class T>
+    constexpr bool is_insert_explicit_v = polyfill::is_specialization_of<T, insert_explicit>::value;
+
+    template<class T>
+    constexpr bool is_object_dml_expression_v<T, std::enable_if_t<is_insert_explicit_v<T>>> = true;
+
+    template<class It, class Projection, class O>
+    struct insert_range_t {
+        using iterator_type = It;
+        using transformer_type = Projection;
+        using object_type = O;
+
+        std::pair<iterator_type, iterator_type> range;
+        transformer_type transformer;
+    };
+
+    template<class T>
+    constexpr bool is_insert_range_v = polyfill::is_specialization_of<T, insert_range_t>::value;
+
+    template<class... Args>
+    struct insert_raw_t {
+        using args_tuple = std::tuple<Args...>;
+
+        args_tuple args;
+    };
+
+    template<class T>
+    constexpr bool is_insert_raw_v = polyfill::is_specialization_of<T, insert_raw_t>::value;
+
+    template<class T>
+    constexpr bool is_raw_dml_expression_v<T, std::enable_if_t<is_insert_raw_v<T>>> = true;
+
+    template<class With>
+    constexpr bool is_raw_dml_expression_v<
+        With,
+        std::enable_if_t<std::conjunction_v<is_with_clause<With>, is_insert_raw<expression_type_t<With>>>>> = true;
+
+    enum class conflict_action {
+        abort,
+        fail,
+        ignore,
+        replace,
+        rollback,
+    };
+
+    struct insert_constraint {
+        conflict_action action = conflict_action::abort;
+    };
+
+    template<class T>
+    constexpr bool is_insert_constraint_v = std::is_same<T, insert_constraint>::value;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    inline internal::insert_constraint or_rollback() {
+        return {internal::conflict_action::rollback};
+    }
+
+    inline internal::insert_constraint or_replace() {
+        return {internal::conflict_action::replace};
+    }
+
+    inline internal::insert_constraint or_ignore() {
+        return {internal::conflict_action::ignore};
+    }
+
+    inline internal::insert_constraint or_fail() {
+        return {internal::conflict_action::fail};
+    }
+
+    inline internal::insert_constraint or_abort() {
+        return {internal::conflict_action::abort};
+    }
+
+    /**
+     *  Raw insert statement creation routine. Use this if `insert` with object does not fit you. This insert is designed to be able
+     *  to call any type of `INSERT` query with no limitations.
+     *  @example
+     *  ```sql
+     *  INSERT INTO users (id, name) VALUES(5, 'Little Mix')
+     *  ```
+     *  will be
+     *  ```c++
+     *  auto statement = storage.prepare(insert(into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix"))));
+     *  storage.execute(statement));
+     *  ```
+     *  One more example:
+     *  ```sql
+     *  INSERT INTO singers (name) VALUES ('Sofia Reyes')('Kungs')
+     *  ```
+     *  will be
+     *  ```c++
+     *  auto statement = storage.prepare(insert(into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs"))));
+     *  storage.execute(statement));
+     *  ```
+     *  One can use `default_values` to add `DEFAULT VALUES` modifier:
+     *  ```sql
+     *  INSERT INTO users DEFAULT VALUES
+     *  ```
+     *  will be
+     *  ```c++
+     *  auto statement = storage.prepare(insert(into<Singer>(), default_values()));
+     *  storage.execute(statement));
+     *  ```
+     *  Also one can use `INSERT OR ABORT`/`INSERT OR FAIL`/`INSERT OR IGNORE`/`INSERT OR REPLACE`/`INSERT ROLLBACK`:
+     *  ```c++
+     *  auto statement = storage.prepare(insert(or_ignore(), into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs"))));
+     *  auto statement2 = storage.prepare(insert(or_rollback(), into<Singer>(), default_values()));
+     *  auto statement3 = storage.prepare(insert(or_abort(), into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix"))));
+     *  ```
+     */
+    template<class... Args>
+    internal::insert_raw_t<Args...> insert(Args... args) {
+        using args_tuple = std::tuple<Args...>;
+        using internal::count_tuple;
+        using internal::is_columns;
+        using internal::is_default_values;
+        using internal::is_insert_constraint;
+        using internal::is_into;
+        using internal::is_select;
+        using internal::is_upsert_clause;
+        using internal::is_values;
+
+        constexpr int orArgsCount = count_tuple<args_tuple, is_insert_constraint>::value;
+        static_assert(orArgsCount < 2, "Raw insert must have only one OR... argument");
+
+        constexpr int intoArgsCount = count_tuple<args_tuple, is_into>::value;
+        static_assert(intoArgsCount != 0, "Raw insert must have into<T> argument");
+        static_assert(intoArgsCount < 2, "Raw insert must have only one into<T> argument");
+
+        constexpr int columnsArgsCount = count_tuple<args_tuple, is_columns>::value;
+        static_assert(columnsArgsCount < 2, "Raw insert must have only one columns(...) argument");
+
+        constexpr int valuesArgsCount = count_tuple<args_tuple, is_values>::value;
+        static_assert(valuesArgsCount < 2, "Raw insert must have only one values(...) argument");
+
+        constexpr int defaultValuesCount = count_tuple<args_tuple, is_default_values>::value;
+        static_assert(defaultValuesCount < 2, "Raw insert must have only one default_values() argument");
+
+        constexpr int selectsArgsCount = count_tuple<args_tuple, is_select>::value;
+        static_assert(selectsArgsCount < 2, "Raw insert must have only one select(...) argument");
+
+        constexpr int upsertClausesCount = count_tuple<args_tuple, is_upsert_clause>::value;
+        static_assert(upsertClausesCount <= 2, "Raw insert can contain 2 instances of upsert clause maximum");
+
+        constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
+        static_assert(argsCount == intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount +
+                                       selectsArgsCount + orArgsCount + upsertClausesCount,
+                      "Raw insert has invalid arguments");
+
+        return {{std::forward<Args>(args)...}};
+    }
+
+    /**
+     *  Create an insert range statement.
+     *  The objects in the range are transformed using the specified projection, which defaults to identity projection.
+     *
+     *  @example
+     *  ```
+     *  std::vector<User> users;
+     *  users.push_back(User{1, "Leony"});
+     *  auto statement = storage.prepare(insert_range(users.begin(), users.end()));
+     *  storage.execute(statement);
+     *  ```
+     *  @example
+     *  ```
+     *  std::vector<std::unique_ptr<User>> userPointers;
+     *  userPointers.push_back(std::make_unique<User>(1, "Eneli"));
+     *  auto statement = storage.prepare(insert_range(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*));
+     *  storage.execute(statement);
+     *  ```
+     */
+    template<class It, class Projection = polyfill::identity>
+    auto insert_range(It from, It to, Projection project = {}) {
+        using O = std::decay_t<decltype(std::invoke(std::declval<Projection>(), *std::declval<It>()))>;
+        return internal::insert_range_t<It, Projection, O>{{std::move(from), std::move(to)}, std::move(project)};
+    }
+
+    /*
+     *  Create an insert range statement.
+     *  Overload of `insert_range(It, It, Projection)` with explicit object type template parameter.
+     */
+    template<class O, class It, class Projection = polyfill::identity>
+    internal::insert_range_t<It, Projection, O> insert_range(It from, It to, Projection project = {}) {
+        // validate up front that projected type is convertible to mapped object type, avoiding hard to read error messages later;
+        // note: we use `is_convertible` instead of `is_invocable_r` because we do not create dangling references in `storage_t<>::execute()`
+        using projected_type = decltype(std::invoke(std::declval<Projection>(), *std::declval<It>()));
+        static_assert(std::is_convertible<projected_type, const O&>::value,
+                      "Projected type must be convertible to mapped object type");
+
+        return {{std::move(from), std::move(to)}, std::move(project)};
+    }
+
+    /**
+     *  Create an insert statement.
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.insert(myUserInstance);
+     *  Parameter obj is accepted by value. If you want to accept it by ref
+     *  please use std::ref function: storage.insert(std::ref(myUserInstance));
+     */
+    template<class T>
+    internal::insert_t<T> insert(T obj) {
+        return {std::move(obj)};
+    }
+
+    /**
+     *  Create an explicit insert statement.
+     *  T is an object type mapped to a storage.
+     *  Cols is columns types aparameter pack. Must contain member pointers
+     *  Usage: storage.insert(myUserInstance, columns(&User::id, &User::name));
+     *  Parameter obj is accepted by value. If you want to accept it by ref
+     *  please use std::ref function: storage.insert(std::ref(myUserInstance), columns(&User::id, &User::name));
+     */
+    template<class T, class... Cols>
+    internal::insert_explicit<T, Cols...> insert(T obj, internal::columns_t<Cols...> cols) {
+        return {std::move(obj), std::move(cols)};
     }
 }
+
+// #include "ast/dml/replace.h"
+
+/** @file The REPLACE statement, in each of the DSL spellings sqlite_orm offers for it - against a
+ *        mapped object, against a range of them, or raw.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::conjunction, std::is_convertible, std::declval
+#include <utility>  //  std::move, std::forward, std::pair
+#include <tuple>  //  std::tuple, std::tuple_size
+#include <functional>  //  std::invoke
+#endif
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
+// #include "../../functional/cxx_functional_polyfill.h"
+//  polyfill::identity
+// #include "../../tuple_helper/tuple_traits.h"
+
+// #include "../../vocabulary/node_traits.h"
+
+// #include "../../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../../vocabulary/traits/semantic_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    template<class T>
+    struct replace_t {
+        using object_type = T;
+
+        object_type object;
+    };
+
+    template<class T>
+    constexpr bool is_replace_v = polyfill::is_specialization_of<T, replace_t>::value;
+
+    template<class T>
+    constexpr bool is_object_dml_expression_v<T, std::enable_if_t<is_replace_v<T>>> = true;
+
+    template<class It, class Projection, class O>
+    struct replace_range_t {
+        using iterator_type = It;
+        using transformer_type = Projection;
+        using object_type = O;
+
+        std::pair<iterator_type, iterator_type> range;
+        transformer_type transformer;
+    };
+
+    template<class T>
+    constexpr bool is_replace_range_v = polyfill::is_specialization_of<T, replace_range_t>::value;
+
+    template<class... Args>
+    struct replace_raw_t {
+        using args_tuple = std::tuple<Args...>;
+
+        args_tuple args;
+    };
+
+    template<class T>
+    constexpr bool is_replace_raw_v = polyfill::is_specialization_of<T, replace_raw_t>::value;
+
+    template<class T>
+    constexpr bool is_raw_dml_expression_v<T, std::enable_if_t<is_replace_raw_v<T>>> = true;
+
+    template<class With>
+    constexpr bool is_raw_dml_expression_v<
+        With,
+        std::enable_if_t<std::conjunction_v<is_with_clause<With>, is_replace_raw<expression_type_t<With>>>>> = true;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Raw replace statement creation routine. Use this if `replace` with object does not fit you. This replace is designed to be able
+     *  to call any type of `REPLACE` query with no limitations. Actually this is the same query as raw insert except `OR...` option existance.
+     *  @example
+     *  ```sql
+     *  REPLACE INTO users (id, name) VALUES(5, 'Little Mix')
+     *  ```
+     *  will be
+     *  ```c++
+     *  auto statement = storage.prepare(replace(into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix"))));
+     *  storage.execute(statement));
+     *  ```
+     *  One more example:
+     *  ```sql
+     *  REPLACE INTO singers (name) VALUES ('Sofia Reyes')('Kungs')
+     *  ```
+     *  will be
+     *  ```c++
+     *  auto statement = storage.prepare(replace(into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs"))));
+     *  storage.execute(statement));
+     *  ```
+     *  One can use `default_values` to add `DEFAULT VALUES` modifier:
+     *  ```sql
+     *  REPLACE INTO users DEFAULT VALUES
+     *  ```
+     *  will be
+     *  ```c++
+     *  auto statement = storage.prepare(replace(into<Singer>(), default_values()));
+     *  storage.execute(statement));
+     *  ```
+     */
+    template<class... Args>
+    internal::replace_raw_t<Args...> replace(Args... args) {
+        using args_tuple = std::tuple<Args...>;
+        using internal::count_tuple;
+        using internal::is_columns;
+        using internal::is_default_values;
+        using internal::is_into;
+        using internal::is_select;
+        using internal::is_values;
+
+        constexpr int intoArgsCount = count_tuple<args_tuple, is_into>::value;
+        static_assert(intoArgsCount != 0, "Raw replace must have into<T> argument");
+        static_assert(intoArgsCount < 2, "Raw replace must have only one into<T> argument");
+
+        constexpr int columnsArgsCount = count_tuple<args_tuple, is_columns>::value;
+        static_assert(columnsArgsCount < 2, "Raw replace must have only one columns(...) argument");
+
+        constexpr int valuesArgsCount = count_tuple<args_tuple, is_values>::value;
+        static_assert(valuesArgsCount < 2, "Raw replace must have only one values(...) argument");
+
+        constexpr int defaultValuesCount = count_tuple<args_tuple, is_default_values>::value;
+        static_assert(defaultValuesCount < 2, "Raw replace must have only one default_values() argument");
+
+        constexpr int selectsArgsCount = count_tuple<args_tuple, is_select>::value;
+        static_assert(selectsArgsCount < 2, "Raw replace must have only one select(...) argument");
+
+        constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
+        static_assert(argsCount ==
+                          intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount + selectsArgsCount,
+                      "Raw replace has invalid arguments");
+
+        return {{std::forward<Args>(args)...}};
+    }
+
+    /**
+     *  Create a replace range statement.
+     *  The objects in the range are transformed using the specified projection, which defaults to identity projection.
+     *
+     *  @example
+     *  ```
+     *  std::vector<User> users;
+     *  users.push_back(User{1, "Leony"});
+     *  auto statement = storage.prepare(replace_range(users.begin(), users.end()));
+     *  storage.execute(statement);
+     *  ```
+     *  @example
+     *  ```
+     *  std::vector<std::unique_ptr<User>> userPointers;
+     *  userPointers.push_back(std::make_unique<User>(1, "Eneli"));
+     *  auto statement = storage.prepare(replace_range(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*));
+     *  storage.execute(statement);
+     *  ```
+     */
+    template<class It, class Projection = polyfill::identity>
+    auto replace_range(It from, It to, Projection project = {}) {
+        using O = std::decay_t<decltype(std::invoke(std::declval<Projection>(), *std::declval<It>()))>;
+        return internal::replace_range_t<It, Projection, O>{{std::move(from), std::move(to)}, std::move(project)};
+    }
+
+    /*
+     *  Create a replace range statement.
+     *  Overload of `replace_range(It, It, Projection)` with explicit object type template parameter.
+     */
+    template<class O, class It, class Projection = polyfill::identity>
+    internal::replace_range_t<It, Projection, O> replace_range(It from, It to, Projection project = {}) {
+        // validate up front that projected type is convertible to mapped object type, avoiding hard to read error messages later;
+        // note: we use `is_convertible` instead of `is_invocable_r` because we do not create dangling references in `storage_t<>::execute()`
+        using projected_type = decltype(std::invoke(std::declval<Projection>(), *std::declval<It>()));
+        static_assert(std::is_convertible<projected_type, const O&>::value,
+                      "Projected type must be convertible to mapped object type");
+
+        return {{std::move(from), std::move(to)}, std::move(project)};
+    }
+
+    /**
+     *  Create a replace statement.
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.replace(myUserInstance);
+     *  Parameter obj is accepted by value. If you want to accept it by ref
+     *  please use std::ref function: storage.replace(std::ref(myUserInstance));
+     */
+    template<class T>
+    internal::replace_t<T> replace(T obj) {
+        return {std::move(obj)};
+    }
+}
+
+// #include "ast/dml/update.h"
+
+/** @file The UPDATE statement, in both of the DSL spellings sqlite_orm offers for it - against a
+ *        mapped object, or raw against a SET clause and conditions.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::conjunction
+#include <utility>  //  std::move, std::forward
+#include <tuple>  //  std::tuple, std::tuple_size
+#endif
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
+// #include "../../tuple_helper/tuple_traits.h"
+
+// #include "../../vocabulary/node_traits.h"
+
+// #include "../../vocabulary/node_algorithms.h"
+// clause predicates
+// #include "../../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../../vocabulary/traits/semantic_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    template<class T>
+    struct update_t {
+        using object_type = T;
+
+        object_type object;
+    };
+
+    template<class T>
+    constexpr bool is_update_v = polyfill::is_specialization_of<T, update_t>::value;
+
+    template<class T>
+    constexpr bool is_object_dml_expression_v<T, std::enable_if_t<is_update_v<T>>> = true;
+
+    template<class S, class... Wargs>
+    struct update_all_t {
+        using set_type = S;
+        using conditions_type = std::tuple<Wargs...>;
+
+        static_assert(is_any_set<S>::value, "update_all_t must have set or dynamic set as the first argument");
+
+        set_type set;
+        conditions_type conditions;
+    };
+
+    template<class T>
+    constexpr bool is_update_all_v = polyfill::is_specialization_of<T, update_all_t>::value;
+
+    template<class T>
+    constexpr bool is_raw_dml_expression_v<T, std::enable_if_t<is_update_all_v<T>>> = true;
+
+    template<class With>
+    constexpr bool is_raw_dml_expression_v<
+        With,
+        std::enable_if_t<std::conjunction_v<is_with_clause<With>, is_update_all<expression_type_t<With>>>>> = true;
+
+    /**
+     *  The update statement counterpart of `validate_select_clauses()`; see there for the split of
+     *  responsibilities between this and the clause factories.
+     */
+    template<class T>
+    constexpr void validate_update_clauses() {
+        static_assert(count_tuple<T, is_any_from>::value <= 1, "a single statement cannot contain > 1 FROM blocks");
+        static_assert(count_tuple<T, is_where>::value <= 1, "a single statement cannot contain > 1 WHERE blocks");
+        static_assert(count_tuple<T, is_any_order_by>::value <= 1,
+                      "a single statement cannot contain > 1 ORDER BY blocks");
+        static_assert(count_tuple<T, is_limit>::value <= 1, "a single statement cannot contain > 1 LIMIT blocks");
+        static_assert(std::tuple_size<T>::value == count_tuple<T, is_update_clause>::value,
+                      "an UPDATE argument must be a FROM, JOIN, WHERE, ORDER BY or LIMIT clause");
+        static_assert(check_update_clause_order_v<T>,
+                      "SQL clauses must be listed in the canonical order: FROM, JOINs, WHERE, ORDER BY, LIMIT");
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Create an update statement.
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.update(myUserInstance);
+     *  Parameter obj is accepted by value. If you want to accept it by ref
+     *  please use std::ref function: storage.update(std::ref(myUserInstance));
+     */
+    template<class T>
+    internal::update_t<T> update(T obj) {
+        return {std::move(obj)};
+    }
+
+    /**
+     *  Create an update all statement.
+     *  Usage: storage.update_all(set(...), ...);
+     */
+    template<class S, class... Wargs>
+    internal::update_all_t<S, Wargs...> update_all(S set, Wargs... wh) {
+        static_assert(internal::is_any_set<S>::value, "first argument in update_all can be either set or dynamic_set");
+        using args_tuple = std::tuple<Wargs...>;
+        internal::validate_update_clauses<args_tuple>();
+        return {std::move(set), {std::forward<Wargs>(wh)...}};
+    }
+}
+
+// #include "ast/dml/remove.h"
+
+/** @file The DELETE statement, in both of the DSL spellings sqlite_orm offers for it - `remove`
+ *        against the primary key of a mapped object, or `remove_all` raw against conditions.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::conjunction
+#include <utility>  //  std::move, std::forward
+#include <tuple>  //  std::tuple, std::tuple_size
+#endif
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
+// #include "../../functional/type_traits.h"
+//  value_unref_type_t
+// #include "../../tuple_helper/tuple_traits.h"
+
+// #include "../../alias_traits.h"
+
+// #include "../../vocabulary/node_traits.h"
+
+// #include "../../vocabulary/node_algorithms.h"
+// clause predicates, is_bindable_v
+// #include "../../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../../vocabulary/traits/semantic_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    template<class T, class... Ids>
+    struct remove_t {
+        using object_type = T;
+        using ids_type = std::tuple<Ids...>;
+
+        ids_type ids;
+    };
+
+    template<class T>
+    constexpr bool is_remove_v = polyfill::is_specialization_of<T, remove_t>::value;
+
+    template<class T>
+    constexpr bool is_object_dml_expression_v<T, std::enable_if_t<is_remove_v<T>>> = true;
+
+    template<class T, class... Args>
+    struct remove_all_t {
+        using object_type = T;
+        using conditions_type = std::tuple<Args...>;
+
+        conditions_type conditions;
+    };
+
+    template<class T>
+    constexpr bool is_remove_all_v = polyfill::is_specialization_of<T, remove_all_t>::value;
+
+    template<class T>
+    constexpr bool is_raw_dml_expression_v<T, std::enable_if_t<is_remove_all_v<T>>> = true;
+
+    template<class With>
+    constexpr bool is_raw_dml_expression_v<
+        With,
+        std::enable_if_t<std::conjunction_v<is_with_clause<With>, is_remove_all<expression_type_t<With>>>>> = true;
+
+    /**
+     *  The delete statement counterpart of `validate_select_clauses()`; see there for the split of
+     *  responsibilities between this and the clause factories.
+     */
+    template<class T>
+    constexpr void validate_delete_clauses() {
+        static_assert(count_tuple<T, is_where>::value <= 1, "a single statement cannot contain > 1 WHERE blocks");
+        static_assert(count_tuple<T, is_any_order_by>::value <= 1,
+                      "a single statement cannot contain > 1 ORDER BY blocks");
+        static_assert(count_tuple<T, is_limit>::value <= 1, "a single statement cannot contain > 1 LIMIT blocks");
+        static_assert(std::tuple_size<T>::value == count_tuple<T, is_delete_clause>::value,
+                      "a DELETE argument must be a WHERE, ORDER BY or LIMIT clause");
+        static_assert(check_delete_clause_order_v<T>,
+                      "SQL clauses must be listed in the canonical order: WHERE, ORDER BY, LIMIT");
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Create a remove statement
+     *  T is an object type mapped to a storage.
+     *  Usage: remove<User>(5);
+     */
+    template<class T, class... Ids>
+    internal::remove_t<T, Ids...> remove(Ids... ids) {
+        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
+                      "Only primary key values are accepted as Ids");
+        return {{std::forward<Ids>(ids)...}};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a remove statement
+     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
+     *  Usage: remove<user_table>(5);
+     */
+    template<orm_table_reference auto table, class... Ids>
+    auto remove(Ids... ids) {
+        return remove<internal::auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
+    }
+#endif
+
+    /**
+     *  Create a remove all statement.
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.remove_all<User>(...);
+     */
+    template<class T, class... Args>
+    internal::remove_all_t<T, Args...> remove_all(Args... args) {
+        using args_tuple = std::tuple<Args...>;
+        internal::validate_delete_clauses<args_tuple>();
+        return {{std::forward<Args>(args)...}};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a remove all statement.
+     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
+     *  Usage: storage.remove_all<user_table>(...);
+     */
+    template<orm_table_reference auto table, class... Args>
+    auto remove_all(Args... args) {
+        return remove_all<internal::auto_decay_table_ref_t<table>>(std::forward<Args>(args)...);
+    }
+#endif
+}
+
+// #include "prepared_statement.h"
 
 // #include "statement_serializer.h"
 
@@ -21929,11 +21845,224 @@ namespace sqlite_orm::internal {
 
 // #include "tuple_helper/tuple_filter.h"
 
-// #include "ast/upsert_clause.h"
+// #include "ast/dml/insert.h"
+// conflict_action
+// #include "ast/result_columns.h"
+
+// #include "ast/dml/set.h"
+
+/** @file The SET clause of an UPDATE, in both of the DSL spellings sqlite_orm offers for it -
+ *        spelled out statically, or assembled at runtime.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>  //  std::tuple, std::tuple_size
+#include <string>  //  std::string
+#include <vector>  //  std::vector
+#include <sstream>  //  std::stringstream
+#endif
+
+// #include "../../functional/type_traits.h"
+
+// #include "../../tuple_helper/tuple_traits.h"
+
+// #include "../../table_name_collector.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <set>  //  std::set
+#include <string>  //  std::string
+#include <utility>  //  std::pair, std::move
+#endif
+
+// #include "mapped_type_proxy.h"
+
+// #include "vocabulary/node_traits.h"
+
+// #include "rowid.h"
+
+// #include "alias.h"
+
+// #include "core_functions.h"
+
+// #include "schema/algorithms/table_lookup.h"
+// lookup_table_name
+
+namespace sqlite_orm::internal {
+    struct table_name_collector_base {
+        using table_name_set = std::set<std::pair<std::string, std::string>>;
+
+        table_name_set table_names;
+    };
+
+    template<class DBOs>
+    struct table_name_collector : table_name_collector_base {
+        using db_objects_type = DBOs;
+
+        const db_objects_type& db_objects;
+
+        table_name_collector(const db_objects_type& dbObjects) : db_objects{dbObjects} {}
+
+        template<class ColRef>
+        void operator()(const ColRef&) {
+            if constexpr (std::is_member_pointer<ColRef>::value) {
+                using table_type = table_type_of_t<ColRef>;
+                auto tableName = lookup_table_name<mapped_type_proxy_t<table_type>>(this->db_objects);
+                this->table_names.emplace(std::move(tableName), "");
+            }
+            // ...
+            else if constexpr (is_column_pointer_v<ColRef>) {
+                using table_type = table_type_of_t<ColRef>;
+                auto tableName = lookup_table_name<mapped_type_proxy_t<table_type>>(this->db_objects);
+                this->table_names.emplace(std::move(tableName), alias_extractor<table_type>::as_alias());
+            }
+            // ...
+            else if constexpr (polyfill::is_specialization_of_v<ColRef, alias_column_t>) {
+                // note: instead of accessing the column, we are interested in the type the column is aliased into
+                using A = alias_type_t<ColRef>;
+                auto tableName = lookup_table_name<mapped_type_proxy_t<A>>(this->db_objects);
+                this->table_names.emplace(std::move(tableName), alias_extractor<A>::as_alias());
+            }
+            // ...
+            else if constexpr (polyfill::is_specialization_of_v<ColRef, count_asterisk_t>) {
+                using table_type = type_t<ColRef>;
+                auto tableName = lookup_table_name<table_type>(this->db_objects);
+                if (!tableName.empty()) {
+                    this->table_names.emplace(std::move(tableName), "");
+                }
+            }
+            // ...
+            else if constexpr (is_asterisk_v<ColRef>) {
+                using recordset_type = type_t<ColRef>;
+                auto tableName = lookup_table_name<mapped_type_proxy_t<recordset_type>>(this->db_objects);
+                this->table_names.emplace(std::move(tableName), alias_extractor<recordset_type>::as_alias());
+            }
+            // ...
+            else if constexpr (is_object_node_v<ColRef> || polyfill::is_specialization_of_v<ColRef, table_rowid_t> ||
+                               polyfill::is_specialization_of_v<ColRef, table_oid_t> ||
+                               polyfill::is_specialization_of_v<ColRef, table__rowid_t>) {
+                using table_type = type_t<ColRef>;
+                this->table_names.emplace(lookup_table_name<table_type>(this->db_objects), "");
+            }
+            // ...
+            else {
+                // Do nothing for other types of expressions
+            }
+        }
+
+        /*  
+         *  Invoked by the AST iterator for the node itself
+         */
+        template<class ColRef>
+        void operator()(std::true_type, const ColRef&) {
+            // ...
+            if constexpr (polyfill::is_specialization_of_v<ColRef, highlight_t>) {
+                using table_type = typename ColRef::table_type;
+                this->table_names.emplace(lookup_table_name<table_type>(this->db_objects), "");
+            }
+            // ...
+            else {
+                // Do nothing for other types of expressions
+            }
+        }
+    };
+}
+
+// #include "../../vocabulary/node_traits.h"
+
+// #include "../../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    template<class T, class L>
+    void iterate_ast(const T& t, L&& lambda);
+
+    template<class... Args>
+    struct set_t {
+        using assigns_type = std::tuple<Args...>;
+
+        assigns_type assigns;
+    };
+
+    template<class T>
+    constexpr bool is_set_v = polyfill::is_specialization_of<T, set_t>::value;
+
+    struct dynamic_set_entry {
+        std::string serialized_value;
+    };
+
+    template<class C>
+    struct dynamic_set_t {
+        using context_t = C;
+        using entry_t = dynamic_set_entry;
+        using const_iterator = typename std::vector<entry_t>::const_iterator;
+
+        dynamic_set_t(const context_t& context_) : context(context_), collector(this->context.db_objects) {}
+
+        dynamic_set_t(const dynamic_set_t& other) = default;
+        dynamic_set_t(dynamic_set_t&& other) = default;
+        dynamic_set_t& operator=(const dynamic_set_t& other) = default;
+        dynamic_set_t& operator=(dynamic_set_t&& other) = default;
+
+        template<class T, satisfies<is_assign, T> = true>
+        void push_back(T assign) {
+            auto newContext = this->context;
+            newContext.omit_table_name = true;
+            // note: we are only interested in the table name on the left-hand side of the assignment operator expression
+            iterate_ast(assign.lhs, this->collector);
+            std::stringstream ss;
+            ss << serialize(assign.lhs, newContext) << ' ' << assign.serialize() << ' '
+               << serialize(assign.rhs, context);
+            this->entries.push_back({ss.str()});
+        }
+
+        const_iterator begin() const {
+            return this->entries.begin();
+        }
+
+        const_iterator end() const {
+            return this->entries.end();
+        }
+
+        void clear() {
+            this->entries.clear();
+            this->collector.table_names.clear();
+        }
+
+        std::vector<entry_t> entries;
+        context_t context;
+        table_name_collector<typename context_t::db_objects_type> collector;
+    };
+
+    template<class T>
+    constexpr bool is_dynamic_set_v = polyfill::is_specialization_of<T, dynamic_set_t>::value;
+
+    template<class T>
+    constexpr bool is_any_set_v = std::disjunction<is_set<T>, is_dynamic_set<T>>::value;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  SET keyword used in UPDATE ... SET queries.
+     *  Args must have `assign_t` type. E.g. set(assign(&User::id, 5)) or set(c(&User::id) = 5)
+     */
+    template<class... Args>
+    internal::set_t<Args...> set(Args... args) {
+        using arg_tuple = std::tuple<Args...>;
+        static_assert(std::tuple_size<arg_tuple>::value == internal::count_tuple<arg_tuple, internal::is_assign>::value,
+                      "set function accepts assign operators only");
+        return {std::make_tuple(std::forward<Args>(args)...)};
+    }
+
+    /**
+     *  SET keyword used in UPDATE ... SET queries. It is dynamic version. It means use can add amount of arguments now known at compilation time but known at runtime.
+     */
+    template<class S>
+    internal::dynamic_set_t<internal::serializer_context<typename S::db_objects_type>> dynamic_set(const S& storage) {
+        return {obtain_db_objects(storage)};
+    }
+}
 
 // #include "ast/excluded.h"
-
-// #include "ast/into.h"
 
 // #include "ast/match.h"
 
@@ -22437,8 +22566,6 @@ namespace sqlite_orm::internal {
 // #include "serializing_util.h"
 
 // #include "statement_binder.h"
-
-// #include "values.h"
 
 // #include "util.h"
 
@@ -24269,14 +24396,14 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class... Args>
-    struct statement_serializer<remove_all_t<T, Args...>, void> {
-        using statement_type = remove_all_t<T, Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_remove_all, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& rem,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            auto& table = pick_table<T>(context.db_objects);
+            auto& table = pick_table<object_type_t<statement_type>>(context.db_objects);
 
             std::stringstream ss;
             ss << "DELETE FROM " << streaming_identifier(table.name)
@@ -24286,8 +24413,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<replace_t<T>, void> {
-        using statement_type = replace_t<T>;
+    struct statement_serializer<T, match_if<is_replace, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
@@ -24307,15 +24434,14 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class... Cols>
-    struct statement_serializer<insert_explicit<T, Cols...>, void> {
-        using statement_type = insert_explicit<T, Cols...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_insert_explicit, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            constexpr size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
-            static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
+            static_assert(columns_type_t<statement_type>::count > 0, "Use insert or replace with 1 argument instead");
             using object_type = expression_object_type_t<statement_type>;
             auto& table = pick_table<object_type>(context.db_objects);
             std::stringstream ss;
@@ -24338,8 +24464,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<update_t<T>, void> {
-        using statement_type = update_t<T>;
+    struct statement_serializer<T, match_if<is_update, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
@@ -24376,9 +24502,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class C>
-    struct statement_serializer<dynamic_set_t<C>, void> {
-        using statement_type = dynamic_set_t<C>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_dynamic_set, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -24401,9 +24527,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct statement_serializer<set_t<Args...>, void> {
-        using statement_type = set_t<Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_set, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -24421,8 +24547,8 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class Ctx, class... Args>
-    std::set<std::pair<std::string, std::string>> collect_table_names(const set_t<Args...>& set, const Ctx& ctx) {
+    template<class Ctx, class T, satisfies<is_set, T> = true>
+    std::set<std::pair<std::string, std::string>> collect_table_names(const T& set, const Ctx& ctx) {
         table_name_collector collector{ctx.db_objects};
         // note: we are only interested in the table name on the left-hand side of the assignment operator expression
         iterate_tuple(set.assigns, [&collector](const auto& assignmentOperator) {
@@ -24431,8 +24557,8 @@ namespace sqlite_orm::internal {
         return std::move(collector.table_names);
     }
 
-    template<class Ctx, class C>
-    const std::set<std::pair<std::string, std::string>>& collect_table_names(const dynamic_set_t<C>& set, const Ctx&) {
+    template<class Ctx, class T, satisfies<is_dynamic_set, T> = true>
+    const std::set<std::pair<std::string, std::string>>& collect_table_names(const T& set, const Ctx&) {
         return set.collector.table_names;
     }
 
@@ -24443,9 +24569,9 @@ namespace sqlite_orm::internal {
         return std::move(collector.table_names);
     }
 
-    template<class S, class... Wargs>
-    struct statement_serializer<update_all_t<S, Wargs...>, void> {
-        using statement_type = update_all_t<S, Wargs...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_update_all, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
@@ -24464,8 +24590,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<insert_t<T>, void> {
-        using statement_type = insert_t<T>;
+    struct statement_serializer<T, match_if<is_insert, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
@@ -24525,13 +24651,13 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<into_t<T>, void> {
-        using statement_type = into_t<T>;
+    struct statement_serializer<T, match_if<is_into, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type&,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            auto& table = pick_table<T>(context.db_objects);
+            auto& table = pick_table<type_t<statement_type>>(context.db_objects);
 
             std::stringstream ss;
             ss << "INTO " << streaming_identifier(table.name);
@@ -24563,7 +24689,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<T, std::enable_if_t<std::disjunction<is_insert_raw<T>, is_replace_raw<T>>::value>> {
+    struct statement_serializer<T, std::enable_if_t<is_insert_raw_v<T> || is_replace_raw_v<T>>> {
         using statement_type = T;
 
         template<class Ctx>
@@ -24595,19 +24721,19 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class... Ids>
-    struct statement_serializer<remove_t<T, Ids...>, void> {
-        using statement_type = remove_t<T, Ids...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_remove, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            auto& table = pick_table<T>(context.db_objects);
+            auto& table = pick_table<object_type_t<statement_type>>(context.db_objects);
             std::stringstream ss;
             ss << "DELETE FROM " << streaming_identifier(table.name) << " "
                << "WHERE ";
             std::vector<std::string> idsStrings;
-            idsStrings.reserve(std::tuple_size<typename statement_type::ids_type>::value);
+            idsStrings.reserve(std::tuple_size<ids_type_t<statement_type>>::value);
             iterate_tuple(statement.ids, [&idsStrings, &context](auto& idValue) {
                 idsStrings.push_back(serialize(idValue, context));
             });
@@ -24625,9 +24751,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class It, class L, class O>
-    struct statement_serializer<replace_range_t<It, L, O>, void> {
-        using statement_type = replace_range_t<It, L, O>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_replace_range, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& rep,
@@ -24645,9 +24771,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class It, class L, class O>
-    struct statement_serializer<insert_range_t<It, L, O>, void> {
-        using statement_type = insert_range_t<It, L, O>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_insert_range, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -24790,39 +24916,25 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<conflict_action, void> {
-        using statement_type = conflict_action;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
-                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            switch (statement) {
-                case conflict_action::replace:
-                    return "REPLACE";
-                case conflict_action::abort:
-                    return "ABORT";
-                case conflict_action::fail:
-                    return "FAIL";
-                case conflict_action::ignore:
-                    return "IGNORE";
-                case conflict_action::rollback:
-                    return "ROLLBACK";
-            }
-            return {};
-        }
-    };
-
-    template<>
-    struct statement_serializer<insert_constraint, void> {
-        using statement_type = insert_constraint;
+    template<class T>
+    struct statement_serializer<T, match_if<is_insert_constraint, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+                                                        const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+            //  indexed by `conflict_action`, hence in its declaration order
+            static constexpr std::array<std::string_view, 5> idx2str = {
+                "ABORT",
+                "FAIL",
+                "IGNORE",
+                "REPLACE",
+                "ROLLBACK",
+            };
+
             std::stringstream ss;
 
-            ss << "OR " << serialize(statement.action, context);
+            ss << "OR " << idx2str.at(static_cast<int>(statement.action));
             return ss.str();
         }
     };
@@ -25342,9 +25454,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<default_values_t, void> {
-        using statement_type = default_values_t;
+    template<class T>
+    struct statement_serializer<T, match_if<is_default_values, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
@@ -25385,9 +25497,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct statement_serializer<values_t<Args...>, void> {
-        using statement_type = values_t<Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_values, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -25410,8 +25522,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<dynamic_values_t<T>, void> {
-        using statement_type = dynamic_values_t<T>;
+    struct statement_serializer<T, match_if<is_dynamic_values, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -26749,7 +26861,8 @@ namespace sqlite_orm::internal {
 
         template<class S, class... Wargs>
         void update_all(S set, Wargs... wh) {
-            static_assert(internal::is_set<S>::value, "first argument in update_all can be either set or dynamic_set");
+            static_assert(internal::is_any_set<S>::value,
+                          "first argument in update_all can be either set or dynamic_set");
             auto statement = this->prepare(sqlite_orm::update_all(std::move(set), std::forward<Wargs>(wh)...));
             this->execute(statement);
         }
@@ -27845,31 +27958,31 @@ namespace sqlite_orm::internal {
             return this->prepare_impl(std::move(statement));
         }
 
-        template<class T>
-        prepared_statement_t<update_t<T>> prepare(update_t<T> statement) {
+        template<class E, satisfies<is_update, E> = true>
+        prepared_statement_t<E> prepare(E statement) {
             using object_type = expression_object_type_t<decltype(statement)>;
             this->assert_mapped_type<object_type>();
             this->assert_updatable_type<object_type>();
             return this->prepare_impl(std::move(statement));
         }
 
-        template<class T, class... Ids>
-        prepared_statement_t<remove_t<T, Ids...>> prepare(remove_t<T, Ids...> statement) {
+        template<class E, satisfies<is_remove, E> = true>
+        prepared_statement_t<E> prepare(E statement) {
             using object_type = expression_object_type_t<decltype(statement)>;
             this->assert_mapped_type<object_type>();
             return this->prepare_impl(std::move(statement));
         }
 
-        template<class T>
-        prepared_statement_t<insert_t<T>> prepare(insert_t<T> statement) {
+        template<class E, satisfies<is_insert, E> = true>
+        prepared_statement_t<E> prepare(E statement) {
             using object_type = expression_object_type_t<decltype(statement)>;
             this->assert_mapped_type<object_type>();
             this->assert_insertable_type<object_type>();
             return this->prepare_impl(std::move(statement));
         }
 
-        template<class T>
-        prepared_statement_t<replace_t<T>> prepare(replace_t<T> statement) {
+        template<class E, satisfies<is_replace, E> = true>
+        prepared_statement_t<E> prepare(E statement) {
             using object_type = expression_object_type_t<decltype(statement)>;
             this->assert_mapped_type<object_type>();
             return this->prepare_impl(std::move(statement));
@@ -27896,8 +28009,8 @@ namespace sqlite_orm::internal {
             return this->prepare_impl(std::move(statement));
         }
 
-        template<class T, class... Cols>
-        prepared_statement_t<insert_explicit<T, Cols...>> prepare(insert_explicit<T, Cols...> statement) {
+        template<class E, satisfies<is_insert_explicit, E> = true>
+        prepared_statement_t<E> prepare(E statement) {
             using object_type = expression_object_type_t<decltype(statement)>;
             this->assert_mapped_type<object_type>();
             return this->prepare_impl(std::move(statement));
@@ -27914,8 +28027,8 @@ namespace sqlite_orm::internal {
          *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
          *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
          */
-        template<class T, class... Cols>
-        int64 execute(const prepared_statement_t<insert_explicit<T, Cols...>>& statement) {
+        template<class E, satisfies<is_insert_explicit, E> = true>
+        int64 execute(const prepared_statement_t<E>& statement) {
             using object_type = statement_object_type_t<decltype(statement)>;
 
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
@@ -28027,15 +28140,15 @@ namespace sqlite_orm::internal {
             return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
         }
 
-        template<class T, class... Ids>
-        void execute(const prepared_statement_t<remove_t<T, Ids...>>& statement) {
+        template<class E, satisfies<is_remove, E> = true>
+        void execute(const prepared_statement_t<E>& statement) {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
             iterate_ast(statement.expression.ids, conditional_binder{stmt});
             this->executor.perform_single_step(stmt);
         }
 
-        template<class T>
-        void execute(const prepared_statement_t<update_t<T>>& statement) {
+        template<class E, satisfies<is_update, E> = true>
+        void execute(const prepared_statement_t<E>& statement) {
             using object_type = statement_object_type_t<decltype(statement)>;
 
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
@@ -30155,6 +30268,165 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/cte.h"
 
+// #include "ast/dml/default_values.h"
+
+/** @file The DEFAULT VALUES modifier a raw INSERT or REPLACE takes in place of a row list.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_same
+#endif
+
+// #include "../../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    struct default_values_t {};
+
+    template<class T>
+    constexpr bool is_default_values_v = std::is_same<T, default_values_t>::value;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Use this function to add `DEFAULT VALUES` modifier to raw `INSERT`.
+     *
+     *  @example
+     *  ```
+     *  storage.insert(into<Singer>(), default_values());
+     *  ```
+     */
+    inline internal::default_values_t default_values() {
+        return {};
+    }
+}
+
+// #include "ast/dml/insert.h"
+
+// #include "ast/dml/into.h"
+
+/** @file The INTO clause naming the table a raw INSERT or REPLACE targets.
+ */
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
+// #include "../../table_reference.h"
+
+// #include "../../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    template<class T>
+    struct into_t {
+        using type = T;
+    };
+
+    template<class T>
+    constexpr bool is_into_v = polyfill::is_specialization_of<T, into_t>::value;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    template<class T>
+    internal::into_t<T> into() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_table_reference auto table>
+    auto into() {
+        return into<internal::auto_decay_table_ref_t<table>>();
+    }
+#endif
+}
+
+// #include "ast/dml/replace.h"
+
+// #include "ast/dml/set.h"
+
+// #include "ast/dml/update.h"
+
+// #include "ast/dml/remove.h"
+
+// #include "ast/dml/upsert_clause.h"
+
+/** @file The ON CONFLICT upsert clause of an INSERT: its conflict target, and the DO NOTHING /
+ *        DO UPDATE SET action it resolves the conflict with.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#if SQLITE_VERSION_NUMBER >= 3024000
+#include <tuple>  //  std::tuple
+#include <utility>  //  std::forward, std::move
+#endif
+#endif
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
+// #include "../../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+#if SQLITE_VERSION_NUMBER >= 3024000
+    template<class T, class A>
+    struct upsert_clause;
+
+    template<class... Args>
+    struct conflict_target {
+        using args_tuple = std::tuple<Args...>;
+
+        args_tuple args;
+
+        upsert_clause<args_tuple, std::tuple<>> do_nothing() {
+            return {std::move(this->args), {}};
+        }
+
+        template<class... ActionsArgs>
+        upsert_clause<args_tuple, std::tuple<ActionsArgs...>> do_update(ActionsArgs... actions) {
+            return {std::move(this->args), {std::forward<ActionsArgs>(actions)...}};
+        }
+    };
+
+    template<class... TargetArgs, class... ActionsArgs>
+    struct upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>> {
+        using target_args_tuple = std::tuple<TargetArgs...>;
+        using actions_tuple = std::tuple<ActionsArgs...>;
+
+        target_args_tuple target_args;
+
+        actions_tuple actions;
+    };
+#endif
+
+    template<class T>
+    constexpr bool is_upsert_clause_v =
+#if SQLITE_VERSION_NUMBER >= 3024000
+        polyfill::is_specialization_of<T, upsert_clause>::value;
+#else
+        false;
+#endif
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#if SQLITE_VERSION_NUMBER >= 3024000
+    /**
+     *  ON CONFLICT upsert clause builder function.
+     *  @example
+     *  storage.insert(into<Employee>(),
+     *            columns(&Employee::id, &Employee::name, &Employee::age, &Employee::address, &Employee::salary),
+     *            values(std::make_tuple(3, "Sofia", 26, "Madrid", 15000.0),
+     *                 std::make_tuple(4, "Doja", 26, "LA", 25000.0)),
+     *            on_conflict(&Employee::id).do_update(set(c(&Employee::name) = excluded(&Employee::name),
+     *                                           c(&Employee::age) = excluded(&Employee::age),
+     *                                           c(&Employee::address) = excluded(&Employee::address),
+     *                                           c(&Employee::salary) = excluded(&Employee::salary))));
+     */
+    template<class... Args>
+    internal::conflict_target<Args...> on_conflict(Args... args) {
+        return {{std::forward<Args>(args)...}};
+    }
+#endif
+}
+
 // #include "ast/excluded.h"
 
 // #include "ast/exists.h"
@@ -30220,8 +30492,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "ast/in.h"
-
-// #include "ast/into.h"
 
 // #include "ast/is_not_null.h"
 
@@ -30422,11 +30692,52 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/select.h"
 
-// #include "ast/set.h"
-
 // #include "ast/special_keywords.h"
 
-// #include "ast/upsert_clause.h"
+// #include "ast/values.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <vector>  //  std::vector
+#include <tuple>  //  std::tuple
+#include <utility>  //  std::forward, std::move
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    template<class... Args>
+    struct values_t {
+        using args_tuple = std::tuple<Args...>;
+
+        args_tuple tuple;
+    };
+
+    template<class T>
+    constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
+
+    template<class T>
+    struct dynamic_values_t {
+        std::vector<T> vector;
+    };
+
+    template<class T>
+    constexpr bool is_dynamic_values_v = polyfill::is_specialization_of<T, dynamic_values_t>::value;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    template<class... Args>
+    internal::values_t<Args...> values(Args... args) {
+        return {{std::forward<Args>(args)...}};
+    }
+
+    template<class T>
+    internal::dynamic_values_t<T> values(std::vector<T> vector) {
+        return {{std::move(vector)}};
+    }
+}
 
 // #include "ast/where.h"
 
@@ -30923,6 +31234,16 @@ namespace sqlite_orm::internal {
 
 // #include "vocabulary/node_traits.h"
 // projections
+// #include "vocabulary/node_algorithms.h"
+// access_dml_object
+// #include "ast/dml/insert.h"
+
+// #include "ast/dml/replace.h"
+
+// #include "ast/dml/update.h"
+
+// #include "ast/dml/remove.h"
+
 // #include "prepared_statement.h"
 
 // #include "ast_iterator.h"
@@ -30953,10 +31274,6 @@ namespace sqlite_orm::internal {
 // #include "function.h"
 
 // #include "ast/excluded.h"
-
-// #include "ast/upsert_clause.h"
-
-// #include "ast/into.h"
 
 // #include "ast/match.h"
 
@@ -31009,13 +31326,11 @@ namespace sqlite_orm::internal {
     struct node_tuple<T, match_if<is_any_group_by, T>>
         : node_tuple_for<args_type_t<T>, polyfill::detected_or_t<void, expression_type_t, T>> {};
 
-#if SQLITE_VERSION_NUMBER >= 3024000
-    template<class Targets, class Actions>
-    struct node_tuple<upsert_clause<Targets, Actions>, void> : node_tuple<Actions> {};
-#endif
+    template<class T>
+    struct node_tuple<T, match_if<is_upsert_clause, T>> : node_tuple<actions_tuple_t<T>> {};
 
-    template<class... Args>
-    struct node_tuple<set_t<Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_set, T>> : node_tuple<assigns_type_t<T>> {};
 
     template<class T, class X, class Y, class Z>
     struct node_tuple<highlight_t<T, X, Y, Z>, void> : node_tuple_for<X, Y, Z> {};
@@ -31086,17 +31401,17 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<T, match_if<is_select, T>> : node_tuple_for<return_type_t<T>, conditions_type_t<T>> {};
 
-    template<class... Args>
-    struct node_tuple<insert_raw_t<Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class... Args>
-    struct node_tuple<replace_raw_t<Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_insert_raw, T>> : node_tuple<args_tuple_t<T>> {};
 
     template<class T>
-    struct node_tuple<into_t<T>, void> : node_tuple<void> {};
+    struct node_tuple<T, match_if<is_replace_raw, T>> : node_tuple<args_tuple_t<T>> {};
 
-    template<class... Args>
-    struct node_tuple<values_t<Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_into, T>> : node_tuple<void> {};
+
+    template<class T>
+    struct node_tuple<T, match_if<is_values, T>> : node_tuple<args_tuple_t<T>> {};
 
     template<class T, class R, class... Args>
     struct node_tuple<get_all_t<T, R, Args...>, void> : node_tuple_for<Args...> {};
@@ -31107,11 +31422,11 @@ namespace sqlite_orm::internal {
     template<class T, class... Args>
     struct node_tuple<get_all_optional_t<T, Args...>, void> : node_tuple_for<Args...> {};
 
-    template<class... Args, class... Wargs>
-    struct node_tuple<update_all_t<set_t<Args...>, Wargs...>, void> : node_tuple_for<Args..., Wargs...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_update_all, T>> : node_tuple_for<set_type_t<T>, conditions_type_t<T>> {};
 
-    template<class T, class... Args>
-    struct node_tuple<remove_all_t<T, Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_remove_all, T>> : node_tuple<conditions_type_t<T>> {};
 
     template<class T, class E>
     struct node_tuple<cast_t<T, E>, void> : node_tuple<E> {};
@@ -31286,8 +31601,6 @@ namespace sqlite_orm::internal {
     template<class... Args>
     struct node_tuple<nth_value_t<Args...>, void> : node_tuple_for<Args...> {};
 }
-
-// #include "expression_object_type.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 

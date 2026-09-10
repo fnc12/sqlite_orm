@@ -16,8 +16,6 @@
 #include "core_functions.h"
 #include "function.h"
 #include "ast/excluded.h"
-#include "ast/upsert_clause.h"
-#include "ast/into.h"
 #include "ast/match.h"
 #include "ast/cast.h"
 #include "ast/in.h"
@@ -63,13 +61,11 @@ namespace sqlite_orm::internal {
     struct node_tuple<T, match_if<is_any_group_by, T>>
         : node_tuple_for<args_type_t<T>, polyfill::detected_or_t<void, expression_type_t, T>> {};
 
-#if SQLITE_VERSION_NUMBER >= 3024000
-    template<class Targets, class Actions>
-    struct node_tuple<upsert_clause<Targets, Actions>, void> : node_tuple<Actions> {};
-#endif
+    template<class T>
+    struct node_tuple<T, match_if<is_upsert_clause, T>> : node_tuple<actions_tuple_t<T>> {};
 
-    template<class... Args>
-    struct node_tuple<set_t<Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_set, T>> : node_tuple<assigns_type_t<T>> {};
 
     template<class T, class X, class Y, class Z>
     struct node_tuple<highlight_t<T, X, Y, Z>, void> : node_tuple_for<X, Y, Z> {};
@@ -140,17 +136,17 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<T, match_if<is_select, T>> : node_tuple_for<return_type_t<T>, conditions_type_t<T>> {};
 
-    template<class... Args>
-    struct node_tuple<insert_raw_t<Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class... Args>
-    struct node_tuple<replace_raw_t<Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_insert_raw, T>> : node_tuple<args_tuple_t<T>> {};
 
     template<class T>
-    struct node_tuple<into_t<T>, void> : node_tuple<void> {};
+    struct node_tuple<T, match_if<is_replace_raw, T>> : node_tuple<args_tuple_t<T>> {};
 
-    template<class... Args>
-    struct node_tuple<values_t<Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_into, T>> : node_tuple<void> {};
+
+    template<class T>
+    struct node_tuple<T, match_if<is_values, T>> : node_tuple<args_tuple_t<T>> {};
 
     template<class T, class R, class... Args>
     struct node_tuple<get_all_t<T, R, Args...>, void> : node_tuple_for<Args...> {};
@@ -161,11 +157,11 @@ namespace sqlite_orm::internal {
     template<class T, class... Args>
     struct node_tuple<get_all_optional_t<T, Args...>, void> : node_tuple_for<Args...> {};
 
-    template<class... Args, class... Wargs>
-    struct node_tuple<update_all_t<set_t<Args...>, Wargs...>, void> : node_tuple_for<Args..., Wargs...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_update_all, T>> : node_tuple_for<set_type_t<T>, conditions_type_t<T>> {};
 
-    template<class T, class... Args>
-    struct node_tuple<remove_all_t<T, Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_remove_all, T>> : node_tuple<conditions_type_t<T>> {};
 
     template<class T, class E>
     struct node_tuple<cast_t<T, E>, void> : node_tuple<E> {};

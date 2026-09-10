@@ -169,6 +169,173 @@ namespace sqlite_orm::internal {
     using is_tokenize = std::bool_constant<is_tokenize_v<T>>;
 }
 
+// DML classifier traits
+namespace sqlite_orm::internal {
+    /**
+     *  Nodes representing a DML statement - INSERT, REPLACE, UPDATE, DELETE -, one trait per DSL spelling.
+     *
+     *  SQLite knows four DML productions, but sqlite_orm spells several of them more than once: an INSERT
+     *  is written against a mapped object, against a range of them, against an explicit column list, or
+     *  raw; a DELETE is written as `remove` against a primary key or as `remove_all` against conditions.
+     *  Which spellings share a role across those productions is the subject of the semantic traits
+     *  `is_object_dml_expression_v` and `is_raw_dml_expression_v`.
+     */
+    template<class T>
+    extern const bool is_insert_v;
+
+    template<class T>
+    using is_insert = std::bool_constant<is_insert_v<T>>;
+
+    template<class T>
+    extern const bool is_insert_explicit_v;
+
+    template<class T>
+    using is_insert_explicit = std::bool_constant<is_insert_explicit_v<T>>;
+
+    template<class T>
+    extern const bool is_insert_range_v;
+
+    template<class T>
+    using is_insert_range = std::bool_constant<is_insert_range_v<T>>;
+
+    template<class T>
+    extern const bool is_insert_raw_v;
+
+    template<class T>
+    using is_insert_raw = std::bool_constant<is_insert_raw_v<T>>;
+
+    template<class T>
+    extern const bool is_replace_v;
+
+    template<class T>
+    using is_replace = std::bool_constant<is_replace_v<T>>;
+
+    template<class T>
+    extern const bool is_replace_range_v;
+
+    template<class T>
+    using is_replace_range = std::bool_constant<is_replace_range_v<T>>;
+
+    template<class T>
+    extern const bool is_replace_raw_v;
+
+    template<class T>
+    using is_replace_raw = std::bool_constant<is_replace_raw_v<T>>;
+
+    template<class T>
+    extern const bool is_update_v;
+
+    template<class T>
+    using is_update = std::bool_constant<is_update_v<T>>;
+
+    template<class T>
+    extern const bool is_update_all_v;
+
+    template<class T>
+    using is_update_all = std::bool_constant<is_update_all_v<T>>;
+
+    template<class T>
+    extern const bool is_remove_v;
+
+    template<class T>
+    using is_remove = std::bool_constant<is_remove_v<T>>;
+
+    template<class T>
+    extern const bool is_remove_all_v;
+
+    template<class T>
+    using is_remove_all = std::bool_constant<is_remove_all_v<T>>;
+
+    /**
+     *  Nodes naming the table a raw INSERT or REPLACE targets: INTO table.
+     */
+    template<class T>
+    extern const bool is_into_v;
+
+    template<class T>
+    using is_into = std::bool_constant<is_into_v<T>>;
+
+    /**
+     *  Nodes carrying the rows a raw INSERT or REPLACE supplies: VALUES (...), (...).
+     */
+    template<class T>
+    extern const bool is_values_v;
+
+    template<class T>
+    using is_values = std::bool_constant<is_values_v<T>>;
+
+    /**
+     *  Nodes carrying a VALUES row list assembled at runtime.
+     *
+     *  Note: no trait groups this with `is_values_v` the way `is_any_set_v` groups the two SET
+     *  spellings, and there is no principled reason for the asymmetry - the two are spellings of
+     *  the one VALUES production and are written in the same positions. The one place they are
+     *  not interchangeable is the argument check of a raw `insert()`/`replace()`, which counts
+     *  `is_values` and so admits the static spelling only; a grouping trait is what that check
+     *  would need to accept both.
+     */
+    template<class T>
+    extern const bool is_dynamic_values_v;
+
+    template<class T>
+    using is_dynamic_values = std::bool_constant<is_dynamic_values_v<T>>;
+
+    /**
+     *  Nodes carrying the assignments of an UPDATE: SET column = expression, ...
+     */
+    template<class T>
+    extern const bool is_set_v;
+
+    template<class T>
+    using is_set = std::bool_constant<is_set_v<T>>;
+
+    /**
+     *  Nodes carrying a SET assembled at runtime.
+     */
+    template<class T>
+    extern const bool is_dynamic_set_v;
+
+    template<class T>
+    using is_dynamic_set = std::bool_constant<is_dynamic_set_v<T>>;
+
+    //  the two above are DSL spellings of the one SET clause production,
+    //  hence grouping them is what corresponds to the SQL grammar
+    template<class T>
+    extern const bool is_any_set_v;
+
+    template<class T>
+    using is_any_set = std::bool_constant<is_any_set_v<T>>;
+
+    /**
+     *  Nodes carrying the upsert clause of a raw INSERT:
+     *  ON CONFLICT (...) DO NOTHING, ON CONFLICT (...) DO UPDATE SET ...
+     */
+    template<class T>
+    extern const bool is_upsert_clause_v;
+
+    template<class T>
+    using is_upsert_clause = std::bool_constant<is_upsert_clause_v<T>>;
+
+    /**
+     *  Nodes carrying the conflict resolution modifier of a raw INSERT:
+     *  OR ABORT, OR FAIL, OR IGNORE, OR REPLACE, OR ROLLBACK.
+     */
+    template<class T>
+    extern const bool is_insert_constraint_v;
+
+    template<class T>
+    using is_insert_constraint = std::bool_constant<is_insert_constraint_v<T>>;
+
+    /**
+     *  Nodes representing the DEFAULT VALUES modifier of a raw INSERT or REPLACE.
+     */
+    template<class T>
+    extern const bool is_default_values_v;
+
+    template<class T>
+    using is_default_values = std::bool_constant<is_default_values_v<T>>;
+}
+
 // Classifier traits
 namespace sqlite_orm::internal {
     template<class T>

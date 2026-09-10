@@ -1,7 +1,11 @@
 #pragma once
 
-#include "../functional/cxx_type_traits_polyfill.h"
-#include "../table_reference.h"
+/** @file The INTO clause naming the table a raw INSERT or REPLACE targets.
+ */
+
+#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../table_reference.h"
+#include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     template<class T>
@@ -10,7 +14,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    using is_into = polyfill::is_specialization_of<T, into_t>;
+    constexpr bool is_into_v = polyfill::is_specialization_of<T, into_t>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

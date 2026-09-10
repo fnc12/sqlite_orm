@@ -6,7 +6,8 @@
 #include <utility>  //  std::forward, std::move
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     template<class... Args>
@@ -17,15 +18,15 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
-
-    template<class T>
-    using is_values = std::bool_constant<is_values_v<T>>;
+    constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
 
     template<class T>
     struct dynamic_values_t {
         std::vector<T> vector;
     };
+
+    template<class T>
+    constexpr bool is_dynamic_values_v = polyfill::is_specialization_of<T, dynamic_values_t>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
