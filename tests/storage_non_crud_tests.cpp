@@ -936,6 +936,44 @@ TEST_CASE("small C API wrappers") {
 #endif
 }
 
+#ifdef SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
+TEST_CASE("load extension") {
+    //  a file-based storage without `open_forever()` opens a connection per call,
+    //  so the load below also exercises the re-application of the remembered setting
+    auto storagePath = "load_extension.sqlite";
+    std::remove(storagePath);
+    auto storage = make_storage(storagePath);
+    SECTION("loading is off by default") {}
+    SECTION("loading an inexistent file fails cleanly") {
+        REQUIRE(storage.enable_load_extension(true) == SQLITE_OK);
+    }
+    //  either way the load must fail with a translated error: not authorized
+    //  (unless the SQLite build enables the C API by default, as Debian's does) or file not found
+    REQUIRE_THROWS_AS(storage.load_extension("inexistent_extension_file"), std::system_error);
+    std::remove(storagePath);
+}
+
+#ifdef SQLITE_ORM_SERIES_EXTENSION_FILE
+TEST_CASE("load extension - a real extension") {
+    //  the build provides `ext/misc/series.c` compiled as a run-time loadable extension
+    //  in the working directory of the test executable
+    auto storage = make_storage("", make_generate_series_table());
+    REQUIRE(storage.enable_load_extension(true) == SQLITE_OK);
+    //  the leading "./" points the operating system's library loader
+    //  at the working directory instead of the standard library locations
+    SECTION("entry point derived from the file name") {
+        storage.load_extension("./" SQLITE_ORM_SERIES_EXTENSION_FILE);
+    }
+    SECTION("explicit entry point") {
+        storage.load_extension("./" SQLITE_ORM_SERIES_EXTENSION_FILE, "sqlite3_series_init");
+    }
+    auto rows = storage.select(&generate_series::value, from(generate_series_table(3, 9, 3)));
+    decltype(rows) expected{3, 6, 9};
+    REQUIRE(rows == expected);
+}
+#endif
+#endif
+
 TEST_CASE("prepared statement introspection") {
     struct User {
         int id = 0;

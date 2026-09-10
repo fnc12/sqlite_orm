@@ -14,3 +14,14 @@
 #if defined(SQLITE_ENABLE_JSON1) || (SQLITE_VERSION_NUMBER >= 3038000 && !defined(SQLITE_OMIT_JSON))
 #define SQLITE_ORM_JSON_SUPPORTED
 #endif
+
+/*
+ *  The extension loading API is compiled in unless SQLite was built with `SQLITE_OMIT_LOAD_EXTENSION`.
+ *  Apple's system SQLite is such a build, and it also strips `sqlite3_load_extension` from its header
+ *  without defining the omit macro, leaving nothing for the preprocessor to test for. Hence extension
+ *  loading is off on Apple platforms by default; when building against an unrestricted SQLite there
+ *  (e.g. from Homebrew or vcpkg), request it by defining `SQLITE_ORM_ENABLE_LOAD_EXTENSION`.
+ */
+#if !defined(SQLITE_OMIT_LOAD_EXTENSION) && (!defined(__APPLE__) || defined(SQLITE_ORM_ENABLE_LOAD_EXTENSION))
+#define SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
+#endif

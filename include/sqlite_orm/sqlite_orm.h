@@ -318,6 +318,17 @@ using std::nullptr_t;
 #define SQLITE_ORM_JSON_SUPPORTED
 #endif
 
+/*
+ *  The extension loading API is compiled in unless SQLite was built with `SQLITE_OMIT_LOAD_EXTENSION`.
+ *  Apple's system SQLite is such a build, and it also strips `sqlite3_load_extension` from its header
+ *  without defining the omit macro, leaving nothing for the preprocessor to test for. Hence extension
+ *  loading is off on Apple platforms by default; when building against an unrestricted SQLite there
+ *  (e.g. from Homebrew or vcpkg), request it by defining `SQLITE_ORM_ENABLE_LOAD_EXTENSION`.
+ */
+#if !defined(SQLITE_OMIT_LOAD_EXTENSION) && (!defined(__APPLE__) || defined(SQLITE_ORM_ENABLE_LOAD_EXTENSION))
+#define SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
+#endif
+
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
 #else
@@ -19726,6 +19737,9 @@ namespace sqlite_orm::internal {
         std::map<std::string, collating_function> collatingFunctions;
         const int cachedForeignKeysCount;
         std::function<int(int)> _busy_handler;
+#ifdef SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
+        std::optional<bool> _loadExtensionEnabled;
+#endif
         std::list<udf_proxy> scalarFunctions;
         std::list<udf_proxy> aggregateFunctions;
         const sqlite_executor executor;
@@ -20143,6 +20157,49 @@ namespace sqlite_orm::internal {
             auto connection = this->get_connection();
             return sqlite3_busy_timeout(connection.get(), ms);
         }
+
+#ifdef SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
+        /**
+         *  sqlite3_db_config function with the SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION option:
+         *  turns extension loading via `load_extension()` below on or off. Extension loading is off by default.
+         *  Deliberately leaves the `load_extension()` SQL function disabled, as recommended for security reasons.
+         *  Like the journal mode, the setting is remembered and applied anew to every connection the storage opens.
+         *  More info: https://www.sqlite.org/c3ref/c_dbconfig_defensive.html#sqlitedbconfigenableloadextension
+         */
+        int enable_load_extension(bool onoff) {
+            auto connection = this->get_connection();
+            const int rc = sqlite3_db_config(connection.get(),
+                                             SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION,
+                                             int(onoff),
+                                             static_cast<int*>(nullptr));
+            if (rc == SQLITE_OK) {
+                _loadExtensionEnabled = onoff;
+            }
+            return rc;
+        }
+
+        /**
+         *  sqlite3_load_extension function: loads a run-time loadable extension from a shared library file.
+         *  `entryPoint` names the extension's initialization function;
+         *  if empty, SQLite derives the name from the file name.
+         *  Extension loading must have been turned on with `enable_load_extension()` beforehand.
+         *  More info: https://www.sqlite.org/c3ref/load_extension.html
+         */
+        void load_extension(const std::string& file, const std::string& entryPoint = {}) {
+            auto connection = this->get_connection();
+            orm_gsl::zstring errorMessage = nullptr;
+            const int rc = sqlite3_load_extension(connection.get(),
+                                                  file.c_str(),
+                                                  entryPoint.empty() ? nullptr : entryPoint.c_str(),
+                                                  &errorMessage);
+            if (rc != SQLITE_OK) {
+                const scope_guard freeErrorMessageGuard{[errorMessage] {
+                    sqlite3_free(errorMessage);
+                }};
+                throw std::system_error{sqlite_errc(rc), errorMessage ? errorMessage : ""};
+            }
+        }
+#endif
 
         /**
          *  Returns libsqlite3 version, not sqlite_orm
@@ -20822,6 +20879,15 @@ namespace sqlite_orm::internal {
             for (auto [id, value]: this->limit.limits) {
                 sqlite3_limit(db, id, value);
             }
+
+#ifdef SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
+            if (_loadExtensionEnabled.has_value()) {
+                sqlite3_db_config(db,
+                                  SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION,
+                                  int(*_loadExtensionEnabled),
+                                  static_cast<int*>(nullptr));
+            }
+#endif
 
             if (_busy_handler) {
                 sqlite3_busy_handler(db, busy_handler_callback, this);
