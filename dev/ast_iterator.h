@@ -143,6 +143,18 @@ namespace sqlite_orm::internal {
         }
     };
 
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+    template<class R, class S, class T, class... Args>
+    struct ast_iterator<fts5_auxiliary_function_t<R, S, T, Args...>, void> {
+        using node_type = fts5_auxiliary_function_t<R, S, T, Args...>;
+
+        template<class L>
+        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+            iterate_ast(expression.args, lambda);
+        }
+    };
+#endif
+
     template<class T>
     struct ast_iterator<excluded_t<T>, void> {
         using node_type = excluded_t<T>;

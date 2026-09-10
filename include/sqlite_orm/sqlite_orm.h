@@ -8917,15 +8917,23 @@ namespace sqlite_orm::internal {
     };
 
     /*
-     *  An FTS5 auxiliary function: a built-in function whose first argument in SQL is the FTS5 table itself,
+     *  An FTS5 auxiliary function: a function whose first argument in SQL is the FTS5 table itself,
      *  which is identified by the mapped object type `T` and serialized as the looked-up table name.
+     *  Deliberately not a `built_in_function_t`, so that the general built-in function machinery,
+     *  which knows nothing about the table argument, never matches it.
      */
     template<class R, class S, class T, class... Args>
-    struct fts5_auxiliary_function_t : built_in_function_t<R, S, Args...> {
+    struct fts5_auxiliary_function_t : S {
+        using return_type = R;
+        using string_type = S;
         using table_type = T;
-        using super = built_in_function_t<R, S, Args...>;
+        using args_type = std::tuple<Args...>;
 
-        using super::super;
+        static constexpr size_t args_size = std::tuple_size<args_type>::value;
+
+        args_type args;
+
+        constexpr fts5_auxiliary_function_t(args_type args) : args(std::move(args)) {}
     };
 #endif
 }
@@ -14407,6 +14415,13 @@ namespace sqlite_orm::internal {
         using type = std::string;
     };
 
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+    template<class DBOs, class R, class S, class T, class... Args>
+    struct column_result_t<DBOs, fts5_auxiliary_function_t<R, S, T, Args...>, void> {
+        using type = R;
+    };
+#endif
+
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_as_node, T>> : column_result_t<DBOs, expression_type_t<T>> {};
 
@@ -18034,6 +18049,18 @@ namespace sqlite_orm::internal {
             iterate_ast(expression.argument2, lambda);
         }
     };
+
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+    template<class R, class S, class T, class... Args>
+    struct ast_iterator<fts5_auxiliary_function_t<R, S, T, Args...>, void> {
+        using node_type = fts5_auxiliary_function_t<R, S, T, Args...>;
+
+        template<class L>
+        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+            iterate_ast(expression.args, lambda);
+        }
+    };
+#endif
 
     template<class T>
     struct ast_iterator<excluded_t<T>, void> {
@@ -31280,6 +31307,11 @@ namespace sqlite_orm::internal {
 
     template<class T, class X, class Y, class Z>
     struct node_tuple<highlight_t<T, X, Y, Z>, void> : node_tuple_for<X, Y, Z> {};
+
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+    template<class R, class S, class T, class... Args>
+    struct node_tuple<fts5_auxiliary_function_t<R, S, T, Args...>, void> : node_tuple_for<Args...> {};
+#endif
 
     template<class T>
     struct node_tuple<excluded_t<T>, void> : node_tuple<T> {};

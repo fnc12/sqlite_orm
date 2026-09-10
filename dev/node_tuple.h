@@ -74,6 +74,11 @@ namespace sqlite_orm::internal {
     template<class T, class X, class Y, class Z>
     struct node_tuple<highlight_t<T, X, Y, Z>, void> : node_tuple_for<X, Y, Z> {};
 
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+    template<class R, class S, class T, class... Args>
+    struct node_tuple<fts5_auxiliary_function_t<R, S, T, Args...>, void> : node_tuple_for<Args...> {};
+#endif
+
     template<class T>
     struct node_tuple<excluded_t<T>, void> : node_tuple<T> {};
 

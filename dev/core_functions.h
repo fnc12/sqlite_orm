@@ -854,15 +854,23 @@ namespace sqlite_orm::internal {
     };
 
     /*
-     *  An FTS5 auxiliary function: a built-in function whose first argument in SQL is the FTS5 table itself,
+     *  An FTS5 auxiliary function: a function whose first argument in SQL is the FTS5 table itself,
      *  which is identified by the mapped object type `T` and serialized as the looked-up table name.
+     *  Deliberately not a `built_in_function_t`, so that the general built-in function machinery,
+     *  which knows nothing about the table argument, never matches it.
      */
     template<class R, class S, class T, class... Args>
-    struct fts5_auxiliary_function_t : built_in_function_t<R, S, Args...> {
+    struct fts5_auxiliary_function_t : S {
+        using return_type = R;
+        using string_type = S;
         using table_type = T;
-        using super = built_in_function_t<R, S, Args...>;
+        using args_type = std::tuple<Args...>;
 
-        using super::super;
+        static constexpr size_t args_size = std::tuple_size<args_type>::value;
+
+        args_type args;
+
+        constexpr fts5_auxiliary_function_t(args_type args) : args(std::move(args)) {}
     };
 #endif
 }
