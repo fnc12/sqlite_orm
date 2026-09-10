@@ -8,7 +8,7 @@
 #endif
 
 #include "../../functional/cxx_type_traits_polyfill.h"
-#include "../../type_traits.h"
+#include "../../functional/type_traits.h"
 #include "../../member_traits/member_traits.h"
 
 // Plain accessors

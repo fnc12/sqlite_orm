@@ -13,7 +13,7 @@
 #include <tuple>  //  std::tuple
 #endif
 
-#include "../type_traits.h"
+#include "../functional/type_traits.h"
 
 namespace sqlite_orm::internal {
     template<class... DBO>

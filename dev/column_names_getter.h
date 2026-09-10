@@ -9,7 +9,7 @@
 #include <utility>  //  std::move
 #endif
 
-#include "type_traits.h"
+#include "functional/type_traits.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "error_code.h"

@@ -17,10 +17,10 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_bindable_v
-#include "type_traits.h"
-#include "is_std_ptr.h"
+#include "functional/type_traits.h"
 #include "tuple_helper/tuple_filter.h"
+#include "is_std_ptr.h"
+#include "vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_bindable_v
 #include "error_code.h"
 #include "arithmetic_tag.h"
 #include "xdestroy_handling.h"
@@ -62,13 +62,13 @@ namespace sqlite_orm {
         using V = pointer_binding<P, T, D>;
 
         // ownership of pointed-to-object is left untouched and remains at prepared statement's AST expression
-        int bind(sqlite3_stmt* stmt, int index, const V& value) const {
+        SQLITE_ORM_STATIC_CALLOP int bind(sqlite3_stmt* stmt, int index, const V& value) SQLITE_ORM_OR_CONST_CALLOP {
             // note: C-casting `P* -> void*`, internal::xdestroy_proxy() does the inverse
             return sqlite3_bind_pointer(stmt, index, (void*)value.ptr(), T::value, null_xdestroy_f);
         }
 
         // ownership of pointed-to-object is transferred to sqlite
-        void result(sqlite3_context* context, V& value) const {
+        SQLITE_ORM_STATIC_CALLOP void result(sqlite3_context* context, V& value) SQLITE_ORM_OR_CONST_CALLOP {
             // note: C-casting `P* -> void*`,
             // row_extractor<pointer_arg<P, T>>::extract() and internal::xdestroy_proxy() do the inverse
             sqlite3_result_pointer(context, (void*)value.take_ptr(), T::value, value.get_xdestroy());
@@ -127,22 +127,17 @@ namespace sqlite_orm {
                                                               std::is_same<V, orm_gsl::czstring>,
                                                               std::is_same<V, std::string_view>>::value>> {
 
-        int bind(sqlite3_stmt* stmt, int index, const V& value) const {
-            auto stringData = this->string_data(value);
-            return sqlite3_bind_text(stmt, index, stringData.first, stringData.second, SQLITE_TRANSIENT);
+        SQLITE_ORM_STATIC_CALLOP int bind(sqlite3_stmt* stmt, int index, const V& value) SQLITE_ORM_OR_CONST_CALLOP {
+            const std::string_view stringData = value;
+            return sqlite3_bind_text(stmt, index, stringData.data(), int(stringData.size()), SQLITE_TRANSIENT);
         }
 
-        void result(sqlite3_context* context, const V& value) const {
-            auto stringData = this->string_data(value);
-            auto dataCopy = new char[stringData.second + 1];
+        SQLITE_ORM_STATIC_CALLOP void result(sqlite3_context* context, const V& value) SQLITE_ORM_OR_CONST_CALLOP {
+            const std::string_view stringData = value;
+            auto dataCopy = new char[stringData.size() + 1];
             constexpr auto deleter = std::default_delete<char[]>{};
-            strncpy(dataCopy, stringData.first, stringData.second + 1);
-            sqlite3_result_text(context, dataCopy, stringData.second, obtain_xdestroy_for(deleter, dataCopy));
-        }
-
-      private:
-        std::pair<const char*, int> string_data(std::string_view s) const {
-            return {s.data(), int(s.size())};
+            strncpy(dataCopy, stringData.data(), stringData.size() + 1);
+            sqlite3_result_text(context, dataCopy, int(stringData.size()), obtain_xdestroy_for(deleter, dataCopy));
         }
     };
 
@@ -150,24 +145,19 @@ namespace sqlite_orm {
     template<class V>
     struct statement_binder<V,
                             std::enable_if_t<std::disjunction<std::is_base_of<std::wstring, V>,
-                                                              std::is_same<V, const wchar_t*>,
+                                                              std::is_same<V, orm_gsl::cwzstring>,
                                                               std::is_same<V, std::wstring_view>>::value>> {
 
-        int bind(sqlite3_stmt* stmt, int index, const V& value) const {
-            auto stringData = this->string_data(value);
+        SQLITE_ORM_STATIC_CALLOP int bind(sqlite3_stmt* stmt, int index, const V& value) SQLITE_ORM_OR_CONST_CALLOP {
+            const std::wstring_view stringData = value;
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-            std::string utf8Str = converter.to_bytes(stringData.first, stringData.first + stringData.second);
+            std::string utf8Str = converter.to_bytes(stringData.data(), stringData.data() + stringData.size());
             return statement_binder<decltype(utf8Str)>().bind(stmt, index, utf8Str);
         }
 
-        void result(sqlite3_context* context, const V& value) const {
-            auto stringData = this->string_data(value);
-            sqlite3_result_text16(context, stringData.first, stringData.second, nullptr);
-        }
-
-      private:
-        std::pair<const wchar_t*, int> string_data(std::wstring_view s) const {
-            return {s.data(), int(s.size())};
+        SQLITE_ORM_STATIC_CALLOP void result(sqlite3_context* context, const V& value) SQLITE_ORM_OR_CONST_CALLOP {
+            const std::wstring_view stringData = value;
+            sqlite3_result_text16(context, stringData.data(), int(stringData.size()), nullptr);
         }
     };
 #endif
@@ -177,11 +167,13 @@ namespace sqlite_orm {
      */
     template<>
     struct statement_binder<std::nullptr_t, void> {
-        int bind(sqlite3_stmt* stmt, int index, const std::nullptr_t&) const {
+        SQLITE_ORM_STATIC_CALLOP int
+        bind(sqlite3_stmt* stmt, int index, const std::nullptr_t&) SQLITE_ORM_OR_CONST_CALLOP {
             return sqlite3_bind_null(stmt, index);
         }
 
-        void result(sqlite3_context* context, const std::nullptr_t&) const {
+        SQLITE_ORM_STATIC_CALLOP void result(sqlite3_context* context,
+                                             const std::nullptr_t&) SQLITE_ORM_OR_CONST_CALLOP {
             sqlite3_result_null(context);
         }
     };
@@ -191,11 +183,13 @@ namespace sqlite_orm {
      */
     template<>
     struct statement_binder<std::nullopt_t, void> {
-        int bind(sqlite3_stmt* stmt, int index, const std::nullopt_t&) const {
+        SQLITE_ORM_STATIC_CALLOP int
+        bind(sqlite3_stmt* stmt, int index, const std::nullopt_t&) SQLITE_ORM_OR_CONST_CALLOP {
             return sqlite3_bind_null(stmt, index);
         }
 
-        void result(sqlite3_context* context, const std::nullopt_t&) const {
+        SQLITE_ORM_STATIC_CALLOP void result(sqlite3_context* context,
+                                             const std::nullopt_t&) SQLITE_ORM_OR_CONST_CALLOP {
             sqlite3_result_null(context);
         }
     };
@@ -207,13 +201,15 @@ namespace sqlite_orm {
                          internal::is_bindable<std::remove_cv_t<typename V::element_type>>::value>> {
         using unqualified_type = std::remove_cv_t<typename V::element_type>;
 
-        int bind(sqlite3_stmt* stmt, int index, const V& value) const {
+        SQLITE_ORM_STATIC_CALLOP int bind(sqlite3_stmt* stmt, int index, const V& value) SQLITE_ORM_OR_CONST_CALLOP {
             if (value) {
                 return statement_binder<unqualified_type>().bind(stmt, index, *value);
             } else {
                 return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
             }
         }
+
+        SQLITE_ORM_STATIC_CALLOP void result(sqlite3_context*, const V&) SQLITE_ORM_OR_CONST_CALLOP = delete;
     };
 
     /**
@@ -221,7 +217,8 @@ namespace sqlite_orm {
      */
     template<>
     struct statement_binder<std::vector<char>, void> {
-        int bind(sqlite3_stmt* stmt, int index, const std::vector<char>& value) const {
+        SQLITE_ORM_STATIC_CALLOP int
+        bind(sqlite3_stmt* stmt, int index, const std::vector<char>& value) SQLITE_ORM_OR_CONST_CALLOP {
             if (!value.empty()) {
                 return sqlite3_bind_blob(stmt, index, value.data(), int(value.size()), SQLITE_TRANSIENT);
             } else {
@@ -229,7 +226,8 @@ namespace sqlite_orm {
             }
         }
 
-        void result(sqlite3_context* context, const std::vector<char>& value) const {
+        SQLITE_ORM_STATIC_CALLOP void result(sqlite3_context* context,
+                                             const std::vector<char>& value) SQLITE_ORM_OR_CONST_CALLOP {
             if (!value.empty()) {
                 sqlite3_result_blob(context, value.data(), int(value.size()), nullptr);
             } else {
@@ -244,13 +242,15 @@ namespace sqlite_orm {
                                              internal::is_bindable_v<std::remove_cv_t<typename V::value_type>>>> {
         using unqualified_type = std::remove_cv_t<typename V::value_type>;
 
-        int bind(sqlite3_stmt* stmt, int index, const V& value) const {
+        SQLITE_ORM_STATIC_CALLOP int bind(sqlite3_stmt* stmt, int index, const V& value) SQLITE_ORM_OR_CONST_CALLOP {
             if (value) {
                 return statement_binder<unqualified_type>().bind(stmt, index, *value);
             } else {
                 return statement_binder<std::nullopt_t>().bind(stmt, index, std::nullopt);
             }
         }
+
+        SQLITE_ORM_STATIC_CALLOP void result(sqlite3_context*, const V&) SQLITE_ORM_OR_CONST_CALLOP = delete;
     };
 }
 

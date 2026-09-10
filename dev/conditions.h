@@ -13,7 +13,7 @@
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/is_base_template_of.h"
-#include "type_traits.h"
+#include "functional/type_traits.h"
 #include "collate_argument.h"
 #include "schema/constraints/collate.h"  // string_from_collate_argument
 #include "optional_container.h"

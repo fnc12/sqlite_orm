@@ -8,7 +8,7 @@
 #include <type_traits>  //  std::false_type, std::true_type
 #endif
 
-#include "../type_traits.h"
+#include "../functional/type_traits.h"
 #include "../tuple_helper/tuple_traits.h"
 #include "../table_name_collector.h"
 #include "../vocabulary/node_traits.h"

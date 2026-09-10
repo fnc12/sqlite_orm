@@ -15,7 +15,7 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"  //  polyfill::identity
 #include "functional/gsl.h"
-#include "type_traits.h"
+#include "functional/type_traits.h"
 #include "tuple_helper/tuple_traits.h"
 #include "connection_holder.h"
 #include "ast/result_columns.h"
@@ -182,7 +182,7 @@ namespace sqlite_orm::internal {
 
     template<class T, class... Args>
     struct remove_all_t {
-        using type = T;
+        using object_type = T;
         using conditions_type = std::tuple<Args...>;
 
         conditions_type conditions;
@@ -220,14 +220,14 @@ namespace sqlite_orm::internal {
 
     template<class T>
     struct update_t {
-        using type = T;
+        using object_type = T;
 
-        type object;
+        object_type object;
     };
 
     template<class T, class... Ids>
     struct remove_t {
-        using type = T;
+        using object_type = T;
         using ids_type = std::tuple<Ids...>;
 
         ids_type ids;
@@ -235,9 +235,9 @@ namespace sqlite_orm::internal {
 
     template<class T>
     struct insert_t {
-        using type = T;
+        using object_type = T;
 
-        type object;
+        object_type object;
     };
 
     template<class T>
@@ -248,18 +248,18 @@ namespace sqlite_orm::internal {
 
     template<class T, class... Cols>
     struct insert_explicit {
-        using type = T;
+        using object_type = T;
         using columns_type = columns_t<Cols...>;
 
-        type obj;
+        object_type object;
         columns_type columns;
     };
 
     template<class T>
     struct replace_t {
-        using type = T;
+        using object_type = T;
 
-        type object;
+        object_type object;
     };
 
     template<class T>

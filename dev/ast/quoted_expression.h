@@ -2,10 +2,11 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if
-#include <utility>  //  std::move, std::forward, std::declval, std::forward_like
+#include <utility>  //  std::move, std::forward, std::declval
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_utility_polyfill.h"  //  polyfill::forward_like
 #include "in.h"
 #include "../conditions.h"
 #include "../operators.h"
@@ -20,30 +21,30 @@ namespace sqlite_orm::internal {
     struct quoted_expression_t {
         T _value;
 
-#if defined(SQLITE_ORM_DEDUCING_THIS_SUPPORTED) && __cpp_lib_forward_like >= 202207L
+#ifdef SQLITE_ORM_DEDUCING_THIS_SUPPORTED
         template<class Self, class R>
         assign_t<T, R> operator=(this Self&& self, R right) {
-            return {std::forward_like<Self>(self._value), std::move(right)};
+            return {polyfill::forward_like<Self>(self._value), std::move(right)};
         }
 
         template<class Self, class... Args>
         in_t<T, Args...> in(this Self&& self, Args... args) {
-            return {std::forward_like<Self>(self._value), {std::forward<Args>(args)...}, false};
+            return {polyfill::forward_like<Self>(self._value), {std::forward<Args>(args)...}, false};
         }
 
         template<class Self, class... Args>
         in_t<T, Args...> not_in(this Self&& self, Args... args) {
-            return {std::forward_like<Self>(self._value), {std::forward<Args>(args)...}, true};
+            return {polyfill::forward_like<Self>(self._value), {std::forward<Args>(args)...}, true};
         }
 
         template<class Self, class R>
         and_condition_t<T, R> and_(this Self&& self, R right) {
-            return {std::forward_like<Self>(self._value), std::move(right)};
+            return {polyfill::forward_like<Self>(self._value), std::move(right)};
         }
 
         template<class Self, class R>
         or_condition_t<T, R> or_(this Self&& self, R right) {
-            return {std::forward_like<Self>(self._value), std::move(right)};
+            return {polyfill::forward_like<Self>(self._value), std::move(right)};
         }
 #else
         template<class R>

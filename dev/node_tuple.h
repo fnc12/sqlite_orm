@@ -7,7 +7,7 @@
 #include <functional>  //  std::reference_wrapper
 #endif
 
-#include "type_traits.h"
+#include "functional/type_traits.h"
 #include "tuple_helper/tuple_filter.h"
 #include "conditions.h"
 #include "operators.h"
