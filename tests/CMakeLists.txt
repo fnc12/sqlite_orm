@@ -59,6 +59,16 @@ set_source_files_properties(.sqlite3/ext/misc/series.c PROPERTIES
 
 add_executable(unit_tests ${UNIT_TEST_SOURCES} .sqlite3/ext/misc/series.c)
 
+# Build series.c a second time as a run-time loadable extension for the `load extension` tests.
+# Not on Apple platforms, whose system SQLite has the extension loading API omitted
+# [see `SQLITE_ORM_LOAD_EXTENSION_SUPPORTED` in functional/sqlite3_config.h].
+if(NOT APPLE)
+    add_subdirectory(loadable_extension)
+    add_dependencies(unit_tests series_extension)
+    target_compile_definitions(unit_tests PRIVATE
+        SQLITE_ORM_SERIES_EXTENSION_FILE="$<TARGET_FILE_NAME:series_extension>")
+endif()
+
 if(SQLITE_ORM_OMITS_CODECVT)
     message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
     target_compile_definitions(unit_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
