@@ -9132,27 +9132,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  ACOS(X) function https://www.sqlite.org/lang_mathfunc.html#acos
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::acos(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::acos_string, X> acos(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  ACOS(X) function https://www.sqlite.org/lang_mathfunc.html#acos
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::acos<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::acos_string, X> acos(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9160,27 +9148,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  ACOSH(X) function https://www.sqlite.org/lang_mathfunc.html#acosh
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::acosh(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::acosh_string, X> acosh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  ACOSH(X) function https://www.sqlite.org/lang_mathfunc.html#acosh
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::acosh<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::acosh_string, X> acosh(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9188,27 +9164,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  ASIN(X) function https://www.sqlite.org/lang_mathfunc.html#asin
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::asin(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::asin_string, X> asin(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  ASIN(X) function https://www.sqlite.org/lang_mathfunc.html#asin
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::asin<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::asin_string, X> asin(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9216,27 +9180,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  ASINH(X) function https://www.sqlite.org/lang_mathfunc.html#asinh
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::asinh(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::asinh_string, X> asinh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  ASINH(X) function https://www.sqlite.org/lang_mathfunc.html#asinh
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::asinh<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::asinh_string, X> asinh(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9244,27 +9196,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  ATAN(X) function https://www.sqlite.org/lang_mathfunc.html#atan
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::atan(1));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::atan_string, X> atan(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  ATAN(X) function https://www.sqlite.org/lang_mathfunc.html#atan
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::atan<std::optional<double>>(1));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::atan_string, X> atan(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9272,27 +9212,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  ATAN2(X, Y) function https://www.sqlite.org/lang_mathfunc.html#atan2
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::atan2(1, 3));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X, class Y>
-    constexpr internal::built_in_function_t<double, internal::atan2_string, X, Y> atan2(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
-    }
-
-    /**
-     *  ATAN2(X, Y) function https://www.sqlite.org/lang_mathfunc.html#atan2
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::atan2<std::optional<double>>(1, 3));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X, class Y>
+    template<class R = double, class X, class Y>
     constexpr internal::built_in_function_t<R, internal::atan2_string, X, Y> atan2(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
@@ -9300,27 +9228,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  ATANH(X) function https://www.sqlite.org/lang_mathfunc.html#atanh
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::atanh(1));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::atanh_string, X> atanh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  ATANH(X) function https://www.sqlite.org/lang_mathfunc.html#atanh
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::atanh<std::optional<double>>(1));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::atanh_string, X> atanh(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9328,27 +9244,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  CEIL(X) function https://www.sqlite.org/lang_mathfunc.html#ceil
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::ceil(&User::rating));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::ceil_string, X> ceil(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  CEIL(X) function https://www.sqlite.org/lang_mathfunc.html#ceil
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::ceil<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::ceil_string, X> ceil(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9356,27 +9260,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  CEILING(X) function https://www.sqlite.org/lang_mathfunc.html#ceil
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::ceiling(&User::rating));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::ceiling_string, X> ceiling(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  CEILING(X) function https://www.sqlite.org/lang_mathfunc.html#ceil
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::ceiling<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::ceiling_string, X> ceiling(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9384,55 +9276,31 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  COS(X) function https://www.sqlite.org/lang_mathfunc.html#cos
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::cos(&Triangle::cornerB));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::cos_string, X> cos(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  COS(X) function https://www.sqlite.org/lang_mathfunc.html#cos
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::cos<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::cos_string, X> cos(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  COSH(X) function https://www.sqlite.org/lang_mathfunc.html#cosh
-     *
-     *  Example:
-     *
-     *  auto rows = storage.select(sqlite_orm::cosh(&Triangle::cornerB));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::cosh_string, X> cosh(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
      *  COSH(X)  function https://www.sqlite.org/lang_mathfunc.html#cosh
      *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
      *
-     *  Example:
+     *  Examples:
      *
+     *  auto rows = storage.select(sqlite_orm::cosh(&Triangle::cornerB));   //  decltype(rows) is std::vector<double>
      *  auto rows = storage.select(sqlite_orm::cosh<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::cosh_string, X> cosh(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9440,27 +9308,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  DEGREES(X) function https://www.sqlite.org/lang_mathfunc.html#degrees
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::degrees(&Triangle::cornerB));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::degrees_string, X> degrees(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  DEGREES(X) function https://www.sqlite.org/lang_mathfunc.html#degrees
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::degrees<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::degrees_string, X> degrees(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9468,27 +9324,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  EXP(X) function https://www.sqlite.org/lang_mathfunc.html#exp
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::exp(&Triangle::cornerB));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::exp_string, X> exp(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  EXP(X) function https://www.sqlite.org/lang_mathfunc.html#exp
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::exp<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::exp_string, X> exp(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9496,27 +9340,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  FLOOR(X) function https://www.sqlite.org/lang_mathfunc.html#floor
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::floor(&User::rating));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::floor_string, X> floor(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  FLOOR(X) function https://www.sqlite.org/lang_mathfunc.html#floor
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::floor<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::floor_string, X> floor(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9524,27 +9356,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  LN(X) function https://www.sqlite.org/lang_mathfunc.html#ln
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::ln(200));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::ln_string, X> ln(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  LN(X) function https://www.sqlite.org/lang_mathfunc.html#ln
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::ln<std::optional<double>>(200));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::ln_string, X> ln(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9552,27 +9372,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  LOG(X) function https://www.sqlite.org/lang_mathfunc.html#log
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::log(100));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::log_string, X> log(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  LOG(X) function https://www.sqlite.org/lang_mathfunc.html#log
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::log<std::optional<double>>(100));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::log_string, X> log(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9580,27 +9388,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  LOG10(X) function https://www.sqlite.org/lang_mathfunc.html#log
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::log10(100));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::log10_string, X> log10(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  LOG10(X) function https://www.sqlite.org/lang_mathfunc.html#log
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::log10<std::optional<double>>(100));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::log10_string, X> log10(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9608,27 +9404,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  LOG(B, X) function https://www.sqlite.org/lang_mathfunc.html#log
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::log(10, 100));   //  decltype(rows) is std::vector<double>
-     */
-    template<class B, class X>
-    constexpr internal::built_in_function_t<double, internal::log_string, B, X> log(B b, X x) {
-        return {std::tuple<B, X>{std::forward<B>(b), std::forward<X>(x)}};
-    }
-
-    /**
-     *  LOG(B, X) function https://www.sqlite.org/lang_mathfunc.html#log
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::log<std::optional<double>>(10, 100));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class B, class X>
+    template<class R = double, class B, class X>
     constexpr internal::built_in_function_t<R, internal::log_string, B, X> log(B b, X x) {
         return {std::tuple<B, X>{std::forward<B>(b), std::forward<X>(x)}};
     }
@@ -9636,27 +9420,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  LOG2(X) function https://www.sqlite.org/lang_mathfunc.html#log2
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::log2(64));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::log2_string, X> log2(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  LOG2(X) function https://www.sqlite.org/lang_mathfunc.html#log2
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::log2<std::optional<double>>(64));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::log2_string, X> log2(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9664,27 +9436,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  MOD(X, Y) function https://www.sqlite.org/lang_mathfunc.html#mod
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::mod_f(6, 5));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X, class Y>
-    constexpr internal::built_in_function_t<double, internal::mod_string, X, Y> mod_f(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
-    }
-
-    /**
-     *  MOD(X, Y) function https://www.sqlite.org/lang_mathfunc.html#mod
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::mod_f<std::optional<double>>(6, 5));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X, class Y>
+    template<class R = double, class X, class Y>
     constexpr internal::built_in_function_t<R, internal::mod_string, X, Y> mod_f(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
@@ -9692,26 +9452,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  PI() function https://www.sqlite.org/lang_mathfunc.html#pi
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` can be specified
+     *  explicitly as a template argument.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::pi());   //  decltype(rows) is std::vector<double>
-     */
-    constexpr internal::built_in_function_t<double, internal::pi_string> pi() {
-        return {{}};
-    }
-
-    /**
-     *  PI() function https://www.sqlite.org/lang_mathfunc.html#pi
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, etc.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::pi<float>());   //  decltype(rows) is std::vector<float>
      */
-    template<class R>
+    template<class R = double>
     constexpr internal::built_in_function_t<R, internal::pi_string> pi() {
         return {{}};
     }
@@ -9719,27 +9468,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  POW(X, Y) function https://www.sqlite.org/lang_mathfunc.html#pow
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::pow(2, 5));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X, class Y>
-    constexpr internal::built_in_function_t<double, internal::pow_string, X, Y> pow(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
-    }
-
-    /**
-     *  POW(X, Y) function https://www.sqlite.org/lang_mathfunc.html#pow
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::pow<std::optional<double>>(2, 5));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X, class Y>
+    template<class R = double, class X, class Y>
     constexpr internal::built_in_function_t<R, internal::pow_string, X, Y> pow(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
@@ -9747,27 +9484,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  POWER(X, Y) function https://www.sqlite.org/lang_mathfunc.html#pow
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::power(2, 5));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X, class Y>
-    constexpr internal::built_in_function_t<double, internal::power_string, X, Y> power(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
-    }
-
-    /**
-     *  POWER(X, Y) function https://www.sqlite.org/lang_mathfunc.html#pow
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::power<std::optional<double>>(2, 5));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X, class Y>
+    template<class R = double, class X, class Y>
     constexpr internal::built_in_function_t<R, internal::power_string, X, Y> power(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
@@ -9775,27 +9500,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  RADIANS(X) function https://www.sqlite.org/lang_mathfunc.html#radians
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::radians(&Triangle::cornerAInDegrees));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::radians_string, X> radians(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  RADIANS(X) function https://www.sqlite.org/lang_mathfunc.html#radians
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::radians<std::optional<double>>(&Triangle::cornerAInDegrees));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::radians_string, X> radians(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9803,27 +9516,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  SIN(X) function https://www.sqlite.org/lang_mathfunc.html#sin
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::sin(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::sin_string, X> sin(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  SIN(X) function https://www.sqlite.org/lang_mathfunc.html#sin
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::sin<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::sin_string, X> sin(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9831,27 +9532,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  SINH(X) function https://www.sqlite.org/lang_mathfunc.html#sinh
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::sinh(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::sinh_string, X> sinh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  SINH(X) function https://www.sqlite.org/lang_mathfunc.html#sinh
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::sinh<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::sinh_string, X> sinh(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9859,27 +9548,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  SQRT(X) function https://www.sqlite.org/lang_mathfunc.html#sqrt
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::sqrt(25));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::sqrt_string, X> sqrt(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  SQRT(X) function https://www.sqlite.org/lang_mathfunc.html#sqrt
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::sqrt<int>(25));   //  decltype(rows) is std::vector<int>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::sqrt_string, X> sqrt(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9887,27 +9564,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  TAN(X) function https://www.sqlite.org/lang_mathfunc.html#tan
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::tan(&Triangle::cornerC));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::tan_string, X> tan(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  TAN(X) function https://www.sqlite.org/lang_mathfunc.html#tan
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::tan<float>(&Triangle::cornerC));   //  decltype(rows) is std::vector<float>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::tan_string, X> tan(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9915,27 +9580,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  TANH(X) function https://www.sqlite.org/lang_mathfunc.html#tanh
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::tanh(&Triangle::cornerC));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::tanh_string, X> tanh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  TANH(X) function https://www.sqlite.org/lang_mathfunc.html#tanh
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::tanh<float>(&Triangle::cornerC));   //  decltype(rows) is std::vector<float>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::tanh_string, X> tanh(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -9943,27 +9596,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  TRUNC(X) function https://www.sqlite.org/lang_mathfunc.html#trunc
      *
-     *  Example:
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
      *
      *  auto rows = storage.select(sqlite_orm::trunc(5.5));   //  decltype(rows) is std::vector<double>
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<double, internal::trunc_string, X> trunc(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  TRUNC(X) function https://www.sqlite.org/lang_mathfunc.html#trunc
-     *
-     *  Difference with the previous function is that previous override has `double` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
-     *
-     *  Example:
-     *
      *  auto rows = storage.select(sqlite_orm::trunc<float>(5.5));   //  decltype(rows) is std::vector<float>
      */
-    template<class R, class X>
+    template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::trunc_string, X> trunc(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -10018,7 +9659,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  LAST_INSERT_ROWID(x) function https://www.sqlite.org/lang_corefunc.html#last_insert_rowid
+     *  LAST_INSERT_ROWID() function https://www.sqlite.org/lang_corefunc.html#last_insert_rowid
      */
     constexpr internal::built_in_function_t<int64, internal::last_insert_rowid_string> last_insert_rowid() {
         return {{}};
@@ -10571,20 +10212,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3035000
     /**
      *  SIGN(X) function https://www.sqlite.org/lang_corefunc.html#sign
-     */
-    template<class X>
-    constexpr internal::built_in_function_t<int, internal::sign_string, X> sign(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    /**
-     *  SIGN(X) function https://www.sqlite.org/lang_corefunc.html#sign
      *
-     *  Difference with the previous function is that previous override has `int` as return type but this
-     *  override accepts return type from you as a template argument. You can use any bindable type:
-     *  `std::optional<int>` etc. This override is handy when you expect `null` as result for a non-numeric argument.
+     *  The return type defaults to `int`; any other bindable type such as `std::optional<int>` can be specified
+     *  explicitly as a template argument, which is handy when NULL is a possible result (e.g. for a non-numeric argument).
      */
-    template<class R, class X>
+    template<class R = int, class X>
     constexpr internal::built_in_function_t<R, internal::sign_string, X> sign(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -10782,23 +10414,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
-    template<class X>
-    constexpr internal::built_in_function_t<int, internal::json_array_length_string, X> json_array_length(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    template<class R, class X>
+    template<class R = int, class X>
     constexpr internal::built_in_function_t<R, internal::json_array_length_string, X> json_array_length(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
-    template<class X, class Y>
-    constexpr internal::built_in_function_t<int, internal::json_array_length_string, X, Y> json_array_length(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
-    }
-
-    template<class R, class X, class Y>
-    internal::built_in_function_t<R, internal::json_array_length_string, X, Y> json_array_length(X x, Y y) {
+    template<class R = int, class X, class Y>
+    constexpr internal::built_in_function_t<R, internal::json_array_length_string, X, Y> json_array_length(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
@@ -10845,34 +10467,18 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
-    template<class X, class... Args>
-    constexpr internal::built_in_function_t<std::string, internal::json_remove_string, X, Args...>
-    json_remove(X x, Args... args) {
-        return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
-    }
-
-    template<class R, class X, class... Args>
+    template<class R = std::string, class X, class... Args>
     constexpr internal::built_in_function_t<R, internal::json_remove_string, X, Args...> json_remove(X x,
                                                                                                      Args... args) {
         return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
-    template<class X>
-    constexpr internal::built_in_function_t<std::string, internal::json_type_string, X> json_type(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
-    }
-
-    template<class R, class X>
+    template<class R = std::string, class X>
     constexpr internal::built_in_function_t<R, internal::json_type_string, X> json_type(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
-    template<class X, class Y>
-    constexpr internal::built_in_function_t<std::string, internal::json_type_string, X, Y> json_type(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
-    }
-
-    template<class R, class X, class Y>
+    template<class R = std::string, class X, class Y>
     constexpr internal::built_in_function_t<R, internal::json_type_string, X, Y> json_type(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
