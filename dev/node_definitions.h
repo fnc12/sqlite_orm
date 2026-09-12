@@ -35,6 +35,7 @@
 #include "ast/cte.h"
 #include "ast/excluded.h"
 #include "ast/exists.h"
+#include "ast/fts5_functions.h"
 #include "ast/group_by.h"
 #include "ast/in.h"
 #include "ast/into.h"

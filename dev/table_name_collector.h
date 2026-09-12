@@ -11,6 +11,7 @@
 #include "rowid.h"
 #include "alias.h"
 #include "core_functions.h"
+#include "ast/fts5_functions.h"
 #include "schema/algorithms/table_lookup.h"  // lookup_table_name
 
 namespace sqlite_orm::internal {
@@ -81,17 +82,10 @@ namespace sqlite_orm::internal {
         template<class ColRef>
         void operator()(std::true_type, const ColRef&) {
             // ...
-            if constexpr (polyfill::is_specialization_of_v<ColRef, highlight_t>) {
+            if constexpr (is_fts_auxiliary_function_v<ColRef>) {
                 using table_type = typename ColRef::table_type;
                 this->table_names.emplace(lookup_table_name<table_type>(this->db_objects), "");
             }
-            // ...
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
-            else if constexpr (polyfill::is_specialization_of_v<ColRef, fts5_auxiliary_function_t>) {
-                using table_type = typename ColRef::table_type;
-                this->table_names.emplace(lookup_table_name<table_type>(this->db_objects), "");
-            }
-#endif
             // ...
             else {
                 // Do nothing for other types of expressions

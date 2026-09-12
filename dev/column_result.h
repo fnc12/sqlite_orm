@@ -19,6 +19,7 @@
 #include "vocabulary/node_traits.h"
 #include "mapped_type_proxy.h"
 #include "core_functions.h"
+#include "ast/fts5_functions.h"
 #include "operators.h"
 #include "rowid.h"
 #include "column_result_proxy.h"
@@ -416,17 +417,10 @@ namespace sqlite_orm::internal {
         using type = result_type_t<T>;
     };
 
-    template<class DBOs, class T, class X, class Y, class Z>
-    struct column_result_t<DBOs, highlight_t<T, X, Y, Z>, void> {
-        using type = std::string;
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_fts_auxiliary_function, T>> {
+        using type = return_type_t<T>;
     };
-
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
-    template<class DBOs, class R, class S, class T, class... Args>
-    struct column_result_t<DBOs, fts5_auxiliary_function_t<R, S, T, Args...>, void> {
-        using type = R;
-    };
-#endif
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_as_node, T>> : column_result_t<DBOs, expression_type_t<T>> {};

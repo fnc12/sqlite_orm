@@ -530,4 +530,10 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_built_in_function = std::bool_constant<is_built_in_function_v<T>>;
+
+    template<class T>
+    extern const bool is_fts_auxiliary_function_v;
+
+    template<class T>
+    using is_fts_auxiliary_function = std::bool_constant<is_fts_auxiliary_function_v<T>>;
 }
