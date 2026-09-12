@@ -266,19 +266,20 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class X, class Y, class Z>
-    struct statement_serializer<highlight_t<T, X, Y, Z>, void> {
-        using statement_type = highlight_t<T, X, Y, Z>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_fts_auxiliary_function, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            auto& tableName = lookup_table_name<T>(context.db_objects);
-            ss << "HIGHLIGHT (" << streaming_identifier(tableName);
-            ss << ", " << serialize(statement.argument0, context);
-            ss << ", " << serialize(statement.argument1, context);
-            ss << ", " << serialize(statement.argument2, context) << ")";
+            auto& tableName = lookup_table_name<typename statement_type::table_type>(context.db_objects);
+            ss << statement.serialize() << "(" << streaming_identifier(tableName);
+            if constexpr (statement_type::args_size > 0) {
+                ss << ", " << streaming_expressions_tuple(statement.args, context);
+            }
+            ss << ")";
             return ss.str();
         }
     };

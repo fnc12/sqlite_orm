@@ -118,6 +118,29 @@ TEST_CASE("fts5 virtual table schema") {
                                                   highlight(Post::hidden::any_field, 1, "<b>", "</b>")),
                                           where(match(Post::hidden::any_field, "SQLite")),
                                           order_by(Post::hidden::rank_field));
+
+        ///    SELECT snippet(posts, 0, '[', ']', '...', 10)
+        ///    FROM posts
+        ///    WHERE posts MATCH 'fts5';
+        ///
+        ///    the title of the only matching post is short enough to come back whole,
+        ///    which keeps the expectation independent of the snippet-picking algorithm
+        auto snippets = storage.select(snippet(Post::hidden::any_field, 0, "[", "]", "...", 10),
+                                       where(match(Post::hidden::any_field, "fts5")));
+        decltype(snippets) expectedSnippets{"Learn SQlite [FTS5]"};
+        REQUIRE(snippets == expectedSnippets);
+
+        ///    SELECT bm25(posts), bm25(posts, 10.0, 5.0)
+        ///    FROM posts
+        ///    WHERE posts MATCH 'fts5'
+        ///    ORDER BY bm25(posts);
+        auto ranks = storage.select(columns(bm25(Post::hidden::any_field), bm25(Post::hidden::any_field, 10.0, 5.0)),
+                                    where(match(Post::hidden::any_field, "fts5")),
+                                    order_by(bm25(Post::hidden::any_field)));
+        REQUIRE(ranks.size() == 1);
+        //  the exact scores depend on the SQLite version; better matches make them more negative
+        REQUIRE(std::get<0>(ranks[0]) < 0.0);
+        REQUIRE(std::get<1>(ranks[0]) < 0.0);
     }
 }
 

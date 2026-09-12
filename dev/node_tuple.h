@@ -67,8 +67,8 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<T, match_if<is_set, T>> : node_tuple<assigns_type_t<T>> {};
 
-    template<class T, class X, class Y, class Z>
-    struct node_tuple<highlight_t<T, X, Y, Z>, void> : node_tuple_for<X, Y, Z> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_fts_auxiliary_function, T>> : node_tuple<args_type_t<T>> {};
 
     template<class T>
     struct node_tuple<excluded_t<T>, void> : node_tuple<T> {};

@@ -81,7 +81,7 @@ namespace sqlite_orm::internal {
         template<class ColRef>
         void operator()(std::true_type, const ColRef&) {
             // ...
-            if constexpr (polyfill::is_specialization_of_v<ColRef, highlight_t>) {
+            if constexpr (is_fts_auxiliary_function_v<ColRef>) {
                 using table_type = typename ColRef::table_type;
                 this->table_names.emplace(lookup_table_name<table_type>(this->db_objects), "");
             }
