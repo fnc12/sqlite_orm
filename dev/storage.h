@@ -51,8 +51,11 @@
 #include "result_set_view.h"
 #include "ast_iterator.h"
 #include "storage_base.h"
+#include "ast/dml/insert.h"
+#include "ast/dml/replace.h"
+#include "ast/dml/update.h"
+#include "ast/dml/remove.h"
 #include "prepared_statement.h"
-#include "expression_object_type.h"
 #include "statement_serializer.h"
 #include "serializer_context.h"
 #include "object_from_column_builder.h"
@@ -439,7 +442,8 @@ namespace sqlite_orm::internal {
 
         template<class S, class... Wargs>
         void update_all(S set, Wargs... wh) {
-            static_assert(internal::is_set<S>::value, "first argument in update_all can be either set or dynamic_set");
+            static_assert(internal::is_any_set<S>::value,
+                          "first argument in update_all can be either set or dynamic_set");
             auto statement = this->prepare(sqlite_orm::update_all(std::move(set), std::forward<Wargs>(wh)...));
             this->execute(statement);
         }
@@ -1535,31 +1539,31 @@ namespace sqlite_orm::internal {
             return this->prepare_impl(std::move(statement));
         }
 
-        template<class T>
-        prepared_statement_t<update_t<T>> prepare(update_t<T> statement) {
+        template<class E, satisfies<is_update, E> = true>
+        prepared_statement_t<E> prepare(E statement) {
             using object_type = expression_object_type_t<decltype(statement)>;
             this->assert_mapped_type<object_type>();
             this->assert_updatable_type<object_type>();
             return this->prepare_impl(std::move(statement));
         }
 
-        template<class T, class... Ids>
-        prepared_statement_t<remove_t<T, Ids...>> prepare(remove_t<T, Ids...> statement) {
+        template<class E, satisfies<is_remove, E> = true>
+        prepared_statement_t<E> prepare(E statement) {
             using object_type = expression_object_type_t<decltype(statement)>;
             this->assert_mapped_type<object_type>();
             return this->prepare_impl(std::move(statement));
         }
 
-        template<class T>
-        prepared_statement_t<insert_t<T>> prepare(insert_t<T> statement) {
+        template<class E, satisfies<is_insert, E> = true>
+        prepared_statement_t<E> prepare(E statement) {
             using object_type = expression_object_type_t<decltype(statement)>;
             this->assert_mapped_type<object_type>();
             this->assert_insertable_type<object_type>();
             return this->prepare_impl(std::move(statement));
         }
 
-        template<class T>
-        prepared_statement_t<replace_t<T>> prepare(replace_t<T> statement) {
+        template<class E, satisfies<is_replace, E> = true>
+        prepared_statement_t<E> prepare(E statement) {
             using object_type = expression_object_type_t<decltype(statement)>;
             this->assert_mapped_type<object_type>();
             return this->prepare_impl(std::move(statement));
@@ -1586,8 +1590,8 @@ namespace sqlite_orm::internal {
             return this->prepare_impl(std::move(statement));
         }
 
-        template<class T, class... Cols>
-        prepared_statement_t<insert_explicit<T, Cols...>> prepare(insert_explicit<T, Cols...> statement) {
+        template<class E, satisfies<is_insert_explicit, E> = true>
+        prepared_statement_t<E> prepare(E statement) {
             using object_type = expression_object_type_t<decltype(statement)>;
             this->assert_mapped_type<object_type>();
             return this->prepare_impl(std::move(statement));
@@ -1604,8 +1608,8 @@ namespace sqlite_orm::internal {
          *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
          *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
          */
-        template<class T, class... Cols>
-        int64 execute(const prepared_statement_t<insert_explicit<T, Cols...>>& statement) {
+        template<class E, satisfies<is_insert_explicit, E> = true>
+        int64 execute(const prepared_statement_t<E>& statement) {
             using object_type = statement_object_type_t<decltype(statement)>;
 
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
@@ -1717,15 +1721,15 @@ namespace sqlite_orm::internal {
             return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
         }
 
-        template<class T, class... Ids>
-        void execute(const prepared_statement_t<remove_t<T, Ids...>>& statement) {
+        template<class E, satisfies<is_remove, E> = true>
+        void execute(const prepared_statement_t<E>& statement) {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
             iterate_ast(statement.expression.ids, conditional_binder{stmt});
             this->executor.perform_single_step(stmt);
         }
 
-        template<class T>
-        void execute(const prepared_statement_t<update_t<T>>& statement) {
+        template<class E, satisfies<is_update, E> = true>
+        void execute(const prepared_statement_t<E>& statement) {
             using object_type = statement_object_type_t<decltype(statement)>;
 
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);

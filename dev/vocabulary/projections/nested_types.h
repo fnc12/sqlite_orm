@@ -84,6 +84,13 @@ namespace sqlite_orm::internal {
     using args_type_t = typename T::args_type;
 
     /**
+     *  The tuple of arguments a node assembled from a variadic argument list carries,
+     *  e.g. a VALUES row or the parts of a raw INSERT.
+     */
+    template<typename T>
+    using args_tuple_t = typename T::args_tuple;
+
+    /**
      *  The tuple of table expressions a FROM clause names.
      */
     template<typename T>
@@ -103,6 +110,30 @@ namespace sqlite_orm::internal {
 
     template<typename T>
     using conditions_type_t = typename T::conditions_type;
+
+    /**
+     *  The SET clause of an UPDATE statement, in either its static or its dynamic spelling.
+     */
+    template<typename T>
+    using set_type_t = typename T::set_type;
+
+    /**
+     *  The tuple of assignments a SET clause spells out.
+     */
+    template<typename T>
+    using assigns_type_t = typename T::assigns_type;
+
+    /**
+     *  The tuple of actions an upsert clause resolves a conflict with.
+     */
+    template<typename T>
+    using actions_tuple_t = typename T::actions_tuple;
+
+    /**
+     *  The tuple of primary key values a statement addresses a single record by.
+     */
+    template<typename T>
+    using ids_type_t = typename T::ids_type;
 
     template<typename T>
     using return_type_t = typename T::return_type;

@@ -122,6 +122,15 @@ TEST_CASE("statement_serializer insert/replace") {
                     value = serialize(statement, context);
                     expected = R"(REPLACE INTO "users" ("id", "name") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue'))";
                 }
+                SECTION("dynamic") {
+                    auto statement =
+                        replace(into<User>(),
+                                columns(&User::id, &User::name),
+                                values(std::vector<std::tuple<int, const char*>>{std::make_tuple(1, "The Weeknd"),
+                                                                                 std::make_tuple(4, "Jonas Blue")}));
+                    value = serialize(statement, context);
+                    expected = R"(REPLACE INTO "users" ("id", "name") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue'))";
+                }
             }
             SECTION("default values") {
                 auto statement = replace(into<User>(), default_values());
@@ -353,6 +362,15 @@ TEST_CASE("statement_serializer insert/replace") {
                             insert(into<User>(),
                                    columns(&User::id, &User::name),
                                    values(std::make_tuple(1, "The Weeknd"), std::make_tuple(4, "Jonas Blue")));
+                        value = serialize(statement, context);
+                        expected = R"(INSERT INTO "users" ("id", "name") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue'))";
+                    }
+                    SECTION("dynamic") {
+                        auto statement =
+                            insert(into<User>(),
+                                   columns(&User::id, &User::name),
+                                   values(std::vector<std::tuple<int, const char*>>{std::make_tuple(1, "The Weeknd"),
+                                                                                    std::make_tuple(4, "Jonas Blue")}));
                         value = serialize(statement, context);
                         expected = R"(INSERT INTO "users" ("id", "name") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue'))";
                     }

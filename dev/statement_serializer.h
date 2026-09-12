@@ -26,9 +26,10 @@
 #include "functional/mpl.h"
 #include "functional/type_traits.h"
 #include "tuple_helper/tuple_filter.h"
-#include "ast/upsert_clause.h"
+#include "ast/dml/insert.h"  // conflict_action
+#include "ast/result_columns.h"
+#include "ast/dml/set.h"
 #include "ast/excluded.h"
-#include "ast/into.h"
 #include "ast/match.h"
 #include "ast/rank.h"
 #include "ast/special_keywords.h"
@@ -50,7 +51,6 @@
 #include "order_by_serializer.h"
 #include "serializing_util.h"
 #include "statement_binder.h"
-#include "values.h"
 #include "util.h"
 #include "error_code.h"
 #include "schema/constraints/primary_key.h"  // conflict_clause_t
@@ -1650,14 +1650,14 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class... Args>
-    struct statement_serializer<remove_all_t<T, Args...>, void> {
-        using statement_type = remove_all_t<T, Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_remove_all, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& rem,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            auto& table = pick_table<T>(context.db_objects);
+            auto& table = pick_table<object_type_t<statement_type>>(context.db_objects);
 
             std::stringstream ss;
             ss << "DELETE FROM " << streaming_identifier(table.name)
@@ -1667,8 +1667,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<replace_t<T>, void> {
-        using statement_type = replace_t<T>;
+    struct statement_serializer<T, match_if<is_replace, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
@@ -1688,15 +1688,14 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class... Cols>
-    struct statement_serializer<insert_explicit<T, Cols...>, void> {
-        using statement_type = insert_explicit<T, Cols...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_insert_explicit, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            constexpr size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
-            static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
+            static_assert(columns_type_t<statement_type>::count > 0, "Use insert or replace with 1 argument instead");
             using object_type = expression_object_type_t<statement_type>;
             auto& table = pick_table<object_type>(context.db_objects);
             std::stringstream ss;
@@ -1719,8 +1718,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<update_t<T>, void> {
-        using statement_type = update_t<T>;
+    struct statement_serializer<T, match_if<is_update, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
@@ -1757,9 +1756,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class C>
-    struct statement_serializer<dynamic_set_t<C>, void> {
-        using statement_type = dynamic_set_t<C>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_dynamic_set, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -1782,9 +1781,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct statement_serializer<set_t<Args...>, void> {
-        using statement_type = set_t<Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_set, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -1802,8 +1801,8 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class Ctx, class... Args>
-    std::set<std::pair<std::string, std::string>> collect_table_names(const set_t<Args...>& set, const Ctx& ctx) {
+    template<class Ctx, class T, satisfies<is_set, T> = true>
+    std::set<std::pair<std::string, std::string>> collect_table_names(const T& set, const Ctx& ctx) {
         table_name_collector collector{ctx.db_objects};
         // note: we are only interested in the table name on the left-hand side of the assignment operator expression
         iterate_tuple(set.assigns, [&collector](const auto& assignmentOperator) {
@@ -1812,8 +1811,8 @@ namespace sqlite_orm::internal {
         return std::move(collector.table_names);
     }
 
-    template<class Ctx, class C>
-    const std::set<std::pair<std::string, std::string>>& collect_table_names(const dynamic_set_t<C>& set, const Ctx&) {
+    template<class Ctx, class T, satisfies<is_dynamic_set, T> = true>
+    const std::set<std::pair<std::string, std::string>>& collect_table_names(const T& set, const Ctx&) {
         return set.collector.table_names;
     }
 
@@ -1824,9 +1823,9 @@ namespace sqlite_orm::internal {
         return std::move(collector.table_names);
     }
 
-    template<class S, class... Wargs>
-    struct statement_serializer<update_all_t<S, Wargs...>, void> {
-        using statement_type = update_all_t<S, Wargs...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_update_all, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
@@ -1845,8 +1844,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<insert_t<T>, void> {
-        using statement_type = insert_t<T>;
+    struct statement_serializer<T, match_if<is_insert, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
@@ -1906,13 +1905,13 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<into_t<T>, void> {
-        using statement_type = into_t<T>;
+    struct statement_serializer<T, match_if<is_into, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type&,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            auto& table = pick_table<T>(context.db_objects);
+            auto& table = pick_table<type_t<statement_type>>(context.db_objects);
 
             std::stringstream ss;
             ss << "INTO " << streaming_identifier(table.name);
@@ -1944,7 +1943,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<T, std::enable_if_t<std::disjunction<is_insert_raw<T>, is_replace_raw<T>>::value>> {
+    struct statement_serializer<T, std::enable_if_t<is_insert_raw_v<T> || is_replace_raw_v<T>>> {
         using statement_type = T;
 
         template<class Ctx>
@@ -1964,7 +1963,7 @@ namespace sqlite_orm::internal {
                     newContext.omit_table_name = true;
                     newContext.use_parentheses = true;
                     ss << serialize(value, newContext);
-                } else if constexpr (is_values_v<value_type> || is_select_v<value_type>) {
+                } else if constexpr (is_any_values_v<value_type> || is_select_v<value_type>) {
                     auto newContext = context;
                     newContext.use_parentheses = false;
                     ss << serialize(value, newContext);
@@ -1976,19 +1975,19 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class... Ids>
-    struct statement_serializer<remove_t<T, Ids...>, void> {
-        using statement_type = remove_t<T, Ids...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_remove, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            auto& table = pick_table<T>(context.db_objects);
+            auto& table = pick_table<object_type_t<statement_type>>(context.db_objects);
             std::stringstream ss;
             ss << "DELETE FROM " << streaming_identifier(table.name) << " "
                << "WHERE ";
             std::vector<std::string> idsStrings;
-            idsStrings.reserve(std::tuple_size<typename statement_type::ids_type>::value);
+            idsStrings.reserve(std::tuple_size<ids_type_t<statement_type>>::value);
             iterate_tuple(statement.ids, [&idsStrings, &context](auto& idValue) {
                 idsStrings.push_back(serialize(idValue, context));
             });
@@ -2006,9 +2005,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class It, class L, class O>
-    struct statement_serializer<replace_range_t<It, L, O>, void> {
-        using statement_type = replace_range_t<It, L, O>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_replace_range, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& rep,
@@ -2026,9 +2025,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class It, class L, class O>
-    struct statement_serializer<insert_range_t<It, L, O>, void> {
-        using statement_type = insert_range_t<It, L, O>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_insert_range, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -2171,39 +2170,25 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<conflict_action, void> {
-        using statement_type = conflict_action;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& statement,
-                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            switch (statement) {
-                case conflict_action::replace:
-                    return "REPLACE";
-                case conflict_action::abort:
-                    return "ABORT";
-                case conflict_action::fail:
-                    return "FAIL";
-                case conflict_action::ignore:
-                    return "IGNORE";
-                case conflict_action::rollback:
-                    return "ROLLBACK";
-            }
-            return {};
-        }
-    };
-
-    template<>
-    struct statement_serializer<insert_constraint, void> {
-        using statement_type = insert_constraint;
+    template<class T>
+    struct statement_serializer<T, match_if<is_insert_constraint, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+                                                        const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+            //  indexed by `conflict_action`, hence in its declaration order
+            static constexpr std::array<std::string_view, 5> idx2str = {
+                "ABORT",
+                "FAIL",
+                "IGNORE",
+                "REPLACE",
+                "ROLLBACK",
+            };
+
             std::stringstream ss;
 
-            ss << "OR " << serialize(statement.action, context);
+            ss << "OR " << idx2str.at(static_cast<int>(statement.action));
             return ss.str();
         }
     };
@@ -2723,9 +2708,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<default_values_t, void> {
-        using statement_type = default_values_t;
+    template<class T>
+    struct statement_serializer<T, match_if<is_default_values, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
@@ -2766,9 +2751,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct statement_serializer<values_t<Args...>, void> {
-        using statement_type = values_t<Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_values, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -2791,8 +2776,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<dynamic_values_t<T>, void> {
-        using statement_type = dynamic_values_t<T>;
+    struct statement_serializer<T, match_if<is_dynamic_values, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -2801,7 +2786,14 @@ namespace sqlite_orm::internal {
             if (context.use_parentheses) {
                 ss << '(';
             }
-            ss << "VALUES " << streaming_dynamic_expressions(statement.vector, context);
+            ss << "VALUES ";
+            {
+                //  every row is parenthesized in its own right, independently of whether the
+                //  row list as a whole is - just as in the static spelling above
+                Ctx rowContext = context;
+                rowContext.use_parentheses = true;
+                ss << streaming_dynamic_expressions(statement.vector, rowContext);
+            }
             if (context.use_parentheses) {
                 ss << ')';
             }

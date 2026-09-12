@@ -1,5 +1,9 @@
 #pragma once
 
+/** @file The ON CONFLICT upsert clause of an INSERT: its conflict target, and the DO NOTHING /
+ *        DO UPDATE SET action it resolves the conflict with.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3024000
 #include <tuple>  //  std::tuple
@@ -7,7 +11,8 @@
 #endif
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
 #if SQLITE_VERSION_NUMBER >= 3024000
@@ -42,15 +47,12 @@ namespace sqlite_orm::internal {
 #endif
 
     template<class T>
-    inline constexpr bool is_upsert_clause_v =
+    constexpr bool is_upsert_clause_v =
 #if SQLITE_VERSION_NUMBER >= 3024000
         polyfill::is_specialization_of<T, upsert_clause>::value;
 #else
         false;
 #endif
-
-    template<class T>
-    using is_upsert_clause = std::bool_constant<is_upsert_clause_v<T>>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

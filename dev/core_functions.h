@@ -23,7 +23,6 @@
 #include "alias_traits.h"
 #include "vocabulary/node_traits.h"
 #include "vocabulary/node_algorithms.h"
-#include "ast/into.h"
 #include "ast/window.h"
 #include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
