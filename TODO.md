@@ -29,7 +29,7 @@
 * planner-hint functions: `likely()`, `unlikely()`, `likelihood()`
 * introspection functions: `sqlite_version()`, `sqlite_source_id()`, `sqlite_compileoption_used()`, `sqlite_compileoption_get()`, `sqlite_offset()`
 * `substring()` alias for `substr()` (3.34)
-* FTS5 auxiliary functions `bm25()` and `snippet()` (only `highlight()` is wrapped); the `fts5vocab` virtual table
+* the `fts5vocab` virtual table
 
 ## Schema synchronisation
 

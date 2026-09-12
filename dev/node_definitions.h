@@ -43,6 +43,7 @@
 #include "ast/dml/upsert_clause.h"
 #include "ast/excluded.h"
 #include "ast/exists.h"
+#include "ast/fts5_functions.h"
 #include "ast/group_by.h"
 #include "ast/in.h"
 #include "ast/is_not_null.h"

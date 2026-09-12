@@ -416,9 +416,9 @@ namespace sqlite_orm::internal {
         using type = result_type_t<T>;
     };
 
-    template<class DBOs, class T, class X, class Y, class Z>
-    struct column_result_t<DBOs, highlight_t<T, X, Y, Z>, void> {
-        using type = std::string;
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_fts_auxiliary_function, T>> {
+        using type = return_type_t<T>;
     };
 
     template<class DBOs, class T>
