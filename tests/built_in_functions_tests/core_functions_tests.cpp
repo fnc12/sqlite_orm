@@ -134,6 +134,16 @@ TEST_CASE("lower") {
     auto rows = storage.select(lower("OTOTO"));
     REQUIRE(rows.size() == 1);
     REQUIRE(rows.front() == "ototo");
+    // built-in function call node as an operator operand
+    auto flags = storage.select(lower("OTOTO") == "ototo");
+    REQUIRE(flags.size() == 1);
+    REQUIRE(flags.front());
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    // the new call node is a general operator argument, hence chainable
+    auto concatenated = storage.select(lower("OTO") || "TO");
+    REQUIRE(concatenated.size() == 1);
+    REQUIRE(concatenated.front() == "otoTO");
+#endif
 }
 
 TEST_CASE("length") {

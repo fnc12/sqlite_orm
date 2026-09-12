@@ -24,6 +24,7 @@
 #include "vocabulary/node_traits.h"
 #include "vocabulary/node_algorithms.h"
 #include "ast/window.h"
+#include "ast/built_in_function.h"
 #include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
@@ -112,11 +113,13 @@ namespace sqlite_orm::internal {
         }
     };
 
+#ifndef SQLITE_ORM_WITH_CPP20_ALIASES
     struct lower_string {
         std::string_view serialize() const {
             return "LOWER";
         }
     };
+#endif
 
     struct upper_string {
         std::string_view serialize() const {
@@ -299,11 +302,13 @@ namespace sqlite_orm::internal {
         }
     };
 
+#ifndef SQLITE_ORM_WITH_CPP20_ALIASES
     struct substr_string {
         std::string_view serialize() const {
             return "SUBSTR";
         }
     };
+#endif
 #ifdef SQLITE_SOUNDEX
     struct soundex_string {
         std::string_view serialize() const {
@@ -440,7 +445,7 @@ namespace sqlite_orm::internal {
     };
 #endif
 
-#if SQLITE_VERSION_NUMBER >= 3034000
+#if SQLITE_VERSION_NUMBER >= 3034000 && !defined(SQLITE_ORM_WITH_CPP20_ALIASES)
     struct substring_string {
         std::string_view serialize() const {
             return "SUBSTRING";
@@ -826,6 +831,22 @@ namespace sqlite_orm::internal {
         }
     };
 #endif  //  SQLITE_ORM_JSON_SUPPORTED
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /*
+     *  Built-in function definitions.
+     *
+     *  Defined here, where the internal `""_builtin` literal is found by unqualified lookup,
+     *  and published below as copies in the `sqlite_orm` namespace.
+     */
+    inline constexpr auto lower = "LOWER"_builtin.scalar<std::string(std::string_view)>();
+    inline constexpr auto substr =
+        "SUBSTR"_builtin.scalar<std::string(std::string_view, int), std::string(std::string_view, int, int)>();
+#if SQLITE_VERSION_NUMBER >= 3034000
+    inline constexpr auto substring =
+        "SUBSTRING"_builtin.scalar<std::string(std::string_view, int), std::string(std::string_view, int, int)>();
+#endif
+#endif
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -1347,6 +1368,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<T>{std::forward<T>(t)}};
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  LOWER(x) function https://sqlite.org/lang_corefunc.html#lower
+     */
+    inline constexpr orm_built_in_function auto lower = internal::lower;
+#else
     /**
      *  LOWER(x) function https://sqlite.org/lang_corefunc.html#lower
      */
@@ -1354,6 +1381,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     constexpr internal::built_in_function_t<std::string, internal::lower_string, T> lower(T t) {
         return {std::tuple<T>{std::forward<T>(t)}};
     }
+#endif
 
     /**
      *  UPPER(x) function https://sqlite.org/lang_corefunc.html#upper
@@ -1664,6 +1692,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<N>{std::forward<N>(n)}};
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  SUBSTR(X,Y) and SUBSTR(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#substr
+     */
+    inline constexpr orm_built_in_function auto substr = internal::substr;
+#else
     /**
      *  SUBSTR(X,Y) function https://www.sqlite.org/lang_corefunc.html#substr
      */
@@ -1679,8 +1713,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     constexpr internal::built_in_function_t<std::string, internal::substr_string, X, Y, Z> substr(X x, Y y, Z z) {
         return {std::tuple<X, Y, Z>{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
     }
+#endif
 
 #if SQLITE_VERSION_NUMBER >= 3034000
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  SUBSTRING(X,Y) and SUBSTRING(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#substr
+     */
+    inline constexpr orm_built_in_function auto substring = internal::substring;
+#else
     /**
      *  SUBSTRING(X,Y) function https://www.sqlite.org/lang_corefunc.html#substr
      */
@@ -1696,6 +1737,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     constexpr internal::built_in_function_t<std::string, internal::substring_string, X, Y, Z> substring(X x, Y y, Z z) {
         return {std::tuple<X, Y, Z>{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
     }
+#endif
 #endif
 
 #ifdef SQLITE_SOUNDEX

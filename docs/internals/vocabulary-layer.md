@@ -404,6 +404,16 @@ Decided, not yet done. The destination is settled in each case; only the work re
   the same shape as the field traits, but still in its current public, pre-existing
   location. Real work, not urgent.
 
+- **Port the built-in functions to `ast/built_in_function.h`.** In C++20 builds a
+  built-in is one `inline constexpr` definition of name plus overload set
+  (`"LOWER"_builtin.scalar<std::string(std::string_view)>()`), and the resulting
+  `built_in_function_call` node plugs into `is_built_in_function` — the consumers of that
+  trait need no change. Only `lower`, `substr` and `substring` are ported; the rest of
+  `core_functions.h` still uses the per-function `*_string` tag + `built_in_function_t`
+  factory. Design, decisions and
+  the open follow-ups (aggregates, caller-chosen and argument-dependent return types) are
+  in [`docs/plans/2026-09-12-built-in-function-vocabulary-design.md`](../plans/2026-09-12-built-in-function-vocabulary-design.md).
+
 ## Open questions
 
 Deliberately unresolved — the destination itself is undecided. Revisit when there is a
