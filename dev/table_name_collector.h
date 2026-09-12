@@ -11,7 +11,6 @@
 #include "rowid.h"
 #include "alias.h"
 #include "core_functions.h"
-#include "ast/fts5_functions.h"
 #include "schema/algorithms/table_lookup.h"  // lookup_table_name
 
 namespace sqlite_orm::internal {

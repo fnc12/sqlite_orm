@@ -19,7 +19,6 @@
 #include "vocabulary/node_traits.h"
 #include "mapped_type_proxy.h"
 #include "core_functions.h"
-#include "ast/fts5_functions.h"
 #include "operators.h"
 #include "rowid.h"
 #include "column_result_proxy.h"

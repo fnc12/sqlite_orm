@@ -14,7 +14,6 @@
 #include "alias.h"
 #include "operators.h"
 #include "core_functions.h"
-#include "ast/fts5_functions.h"
 #include "prepared_statement.h"
 #include "values.h"
 #include "function.h"

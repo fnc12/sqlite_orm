@@ -35,7 +35,6 @@
 #include "ast/is_null.h"
 #include "ast/is_not_null.h"
 #include "core_functions.h"
-#include "ast/fts5_functions.h"
 #include "window_functions.h"
 #include "conditions.h"
 #include "function.h"

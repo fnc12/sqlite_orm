@@ -14,7 +14,6 @@
 #include "prepared_statement.h"
 #include "optional_container.h"
 #include "core_functions.h"
-#include "ast/fts5_functions.h"
 #include "function.h"
 #include "ast/excluded.h"
 #include "ast/upsert_clause.h"
