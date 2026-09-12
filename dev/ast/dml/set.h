@@ -1,17 +1,21 @@
 #pragma once
 
+/** @file The SET clause of an UPDATE, in both of the DSL spellings sqlite_orm offers for it -
+ *        spelled out statically, or assembled at runtime.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::tuple_size
 #include <string>  //  std::string
 #include <vector>  //  std::vector
 #include <sstream>  //  std::stringstream
-#include <type_traits>  //  std::false_type, std::true_type
 #endif
 
-#include "../functional/type_traits.h"
-#include "../tuple_helper/tuple_traits.h"
-#include "../table_name_collector.h"
-#include "../vocabulary/node_traits.h"
+#include "../../functional/type_traits.h"
+#include "../../tuple_helper/tuple_traits.h"
+#include "../../table_name_collector.h"
+#include "../../vocabulary/node_traits.h"
+#include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     template<class T, class L>
@@ -25,10 +29,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct is_set : std::false_type {};
-
-    template<class... Args>
-    struct is_set<set_t<Args...>> : std::true_type {};
+    constexpr bool is_set_v = polyfill::is_specialization_of<T, set_t>::value;
 
     struct dynamic_set_entry {
         std::string serialized_value;
@@ -77,14 +78,11 @@ namespace sqlite_orm::internal {
         table_name_collector<typename context_t::db_objects_type> collector;
     };
 
-    template<class C>
-    struct is_set<dynamic_set_t<C>> : std::true_type {};
+    template<class T>
+    constexpr bool is_dynamic_set_v = polyfill::is_specialization_of<T, dynamic_set_t>::value;
 
-    template<class C>
-    struct is_dynamic_set : std::false_type {};
-
-    template<class C>
-    struct is_dynamic_set<dynamic_set_t<C>> : std::true_type {};
+    template<class T>
+    constexpr bool is_any_set_v = std::disjunction<is_set<T>, is_dynamic_set<T>>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

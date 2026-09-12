@@ -240,7 +240,7 @@ Nothing is being composed into a judgment; it is still extraction.
 | `algorithms/expression_element_predicates.h` | Closed checks of whether a node is an admissible element of a compound expression construct, sectioned by construct. Today, both sections are the window productions: `is_window_defn_element_v`, gating `window()`, and the `are_valid_over_arguments_v` pack check gating every `over()`, and `is_frame_start_bound_v` / `is_frame_end_bound_v` for which end of a frame a boundary node may occupy, since every boundary node is a boundary but not at both ends. Whether an element holds an expression rather than a clause is not checked here — the element factories enforce that on the argument they are handed. |
 | `algorithms/operand_predicates.h` | Closed checks of whether a type may appear as an operand of a named expression factory (`eq()`, `and_()`, `add()`, `assign()`, …): `is_referencable_operand`, `is_operand_or_bindable`, `are_valid_operands`. Composes the operand traits with grammar traits and the field-level `is_bindable` — which is why it takes `field_predicates_fwd.h` rather than the definition file. |
 | `algorithms/index_filters.h` | Closed alias templates that scan a node's `Elements` tuple and yield an `index_sequence` of matching positions — **not** a filtered tuple. E.g. `col_index_sequence_of`, `col_index_sequence_with_field_type`. Built on `filter_tuple_sequence_t` + grammar traits + projections. |
-| `algorithms/accessors.h` | Closed runtime and compile-time accessors that retrieve a node's relevant sub-part, or the node itself, uniformly across dissimilar grammar families: `access_main_select`/`main_select_t`, `access_main_dml`/`main_dml_t`, `access_column_expression`. This is the concrete payoff of the semantic traits. |
+| `algorithms/accessors.h` | Closed runtime and compile-time accessors that retrieve a node's relevant sub-part, or the node itself, uniformly across dissimilar grammar families: `access_main_select`/`main_select_t`, `access_main_dml`/`main_dml_t`, `access_column_expression`, `expression_object_type`/`statement_object_type_t` and `access_dml_object`. This is the concrete payoff of the semantic traits. |
 | `algorithms/field_predicates_fwd.h` | Declarations of the closed field-level predicates, split off for dependency weight: `is_rowid_alias_capable_v`, `is_bindable_v`, `is_printable_v`, and (C++17 only) `is_hidden_column_of_vtab_v`. |
 | — where their definitions live | `is_rowid_alias_capable_v` is a capability *derived from* the field type, so it is defined in `field_predicates.h` with the other computed predicates. `is_bindable_v` and `is_printable_v` instead test whether a customization point is instantiable for the type, so each stays with the point it tests — `statement_binder.h` and `field_printer.h` respectively, which include the `_fwd` header to define them. |
 | `algorithms/field_predicates.h` | The definitions of the *derived* field predicates — `is_rowid_alias_capable_v`, and (C++17 only) `is_hidden_column_of_vtab_v` — which need `type_printer.h` and `member_traits/`. Reached only through the `node_algorithm_definitions.h` manifest. |
@@ -382,9 +382,7 @@ Decided, not yet done. The destination is settled in each case; only the work re
   headers, having never been lifted into the vocabulary layer by forward-declaring a
   primary template in the appropriate `traits/*_fwd.h`. Examples:
   `is_alias_v` / `is_column_alias_v` / `is_recordset_alias_v` / `is_table_alias_v`,
-  `is_cte_moniker_v`, `is_insert_v` / `is_insert_range_v` / `is_insert_raw_v` and the
-  `is_replace_*` family, `is_update_all_v`, `is_remove_all_v`, `is_upsert_clause_v`,
-  `is_values_v`, `is_table_valued_expression_v`, `is_literal_v`.
+  `is_cte_moniker_v`, `is_table_valued_expression_v`, `is_literal_v`.
 
   Each needs triage before being moved — not every `is_*_v` in a node header is DSL node
   classification. Several are language- or binding-level mechanics
