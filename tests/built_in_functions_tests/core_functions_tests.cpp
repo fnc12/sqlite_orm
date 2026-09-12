@@ -80,6 +80,13 @@ TEST_CASE("char") {
     REQUIRE(rows.size() == 1);
     REQUIRE(rows.front() == "CHAR");
 }
+
+TEST_CASE("random") {
+    auto storage = make_storage({});
+    auto rows = storage.select(sqlite_orm::random());
+    STATIC_REQUIRE(std::is_same<decltype(rows), std::vector<int>>::value);
+    REQUIRE(rows.size() == 1);
+}
 #endif
 
 TEST_CASE("rtrim") {
@@ -1471,6 +1478,153 @@ TEST_CASE("substring") {
 }
 #endif
 
+TEST_CASE("typeof") {
+    auto storage = make_storage({});
+    SECTION("integer") {
+        auto rows = storage.select(typeof_(1));
+        decltype(rows) expected{"integer"};
+        REQUIRE(rows == expected);
+    }
+    SECTION("real") {
+        auto rows = storage.select(typeof_(1.5));
+        decltype(rows) expected{"real"};
+        REQUIRE(rows == expected);
+    }
+    SECTION("text") {
+        auto rows = storage.select(typeof_("abc"));
+        decltype(rows) expected{"text"};
+        REQUIRE(rows == expected);
+    }
+    SECTION("null") {
+        auto rows = storage.select(typeof_(nullptr));
+        decltype(rows) expected{"null"};
+        REQUIRE(rows == expected);
+    }
+}
+
+TEST_CASE("unicode") {
+    auto storage = make_storage({});
+    auto rows = storage.select(unicode("A"));
+    decltype(rows) expected{65};
+    REQUIRE(rows == expected);
+}
+
+TEST_CASE("last_insert_rowid, changes and total_changes") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    auto storage = make_storage(
+        {},
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
+    storage.sync_schema();
+    storage.insert(User{0, "Alex"});
+    storage.insert(User{0, "Michael"});
+    storage.insert(User{0, "John"});
+    storage.remove_all<User>(where(c(&User::id) > 1));
+    SECTION("last_insert_rowid") {
+        auto rows = storage.select(last_insert_rowid());
+        decltype(rows) expected{3};
+        REQUIRE(rows == expected);
+    }
+    SECTION("changes") {
+        auto rows = storage.select(changes());
+        decltype(rows) expected{2};
+        REQUIRE(rows == expected);
+    }
+    SECTION("total_changes") {
+        auto rows = storage.select(total_changes());
+        decltype(rows) expected{5};
+        REQUIRE(rows == expected);
+    }
+}
+
+TEST_CASE("aggregate functions") {
+    struct Score {
+        int id = 0;
+        int value = 0;
+    };
+    auto storage = make_storage(
+        {},
+        make_table("scores", make_column("id", &Score::id, primary_key()), make_column("value", &Score::value)));
+    storage.sync_schema();
+    storage.replace(Score{1, 1});
+    storage.replace(Score{2, 2});
+    storage.replace(Score{3, 3});
+    SECTION("count(*)") {
+        auto rows = storage.select(count<Score>());
+        decltype(rows) expected{3};
+        REQUIRE(rows == expected);
+    }
+    SECTION("count(X)") {
+        auto rows = storage.select(count(&Score::value));
+        decltype(rows) expected{3};
+        REQUIRE(rows == expected);
+    }
+    SECTION("avg") {
+        auto rows = storage.select(avg(&Score::value));
+        decltype(rows) expected{2.0};
+        REQUIRE(rows == expected);
+    }
+    SECTION("sum") {
+        auto rows = storage.select(sqlite_orm::sum(&Score::value));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front());
+        REQUIRE(*rows.front() == 6.0);
+    }
+    SECTION("sum of an empty group is null") {
+        auto rows = storage.select(sqlite_orm::sum(&Score::value), where(c(&Score::id) > 3));
+        REQUIRE(rows.size() == 1);
+        REQUIRE_FALSE(rows.front());
+    }
+    SECTION("total") {
+        auto rows = storage.select(total(&Score::value));
+        decltype(rows) expected{6.0};
+        REQUIRE(rows == expected);
+    }
+    SECTION("total of an empty group is 0") {
+        auto rows = storage.select(total(&Score::value), where(c(&Score::id) > 3));
+        decltype(rows) expected{0.0};
+        REQUIRE(rows == expected);
+    }
+    SECTION("max") {
+        auto rows = storage.select(sqlite_orm::max(&Score::value));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front());
+        REQUIRE(*rows.front() == 3);
+    }
+    SECTION("max of an empty group is null") {
+        auto rows = storage.select(sqlite_orm::max(&Score::value), where(c(&Score::id) > 3));
+        REQUIRE(rows.size() == 1);
+        REQUIRE_FALSE(rows.front());
+    }
+    SECTION("min") {
+        auto rows = storage.select(sqlite_orm::min(&Score::value));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front());
+        REQUIRE(*rows.front() == 1);
+    }
+    SECTION("group_concat") {
+        auto rows = storage.select(group_concat(&Score::value), order_by(&Score::id));
+        decltype(rows) expected{"1,2,3"};
+        REQUIRE(rows == expected);
+    }
+    SECTION("group_concat with separator") {
+        auto rows = storage.select(group_concat(&Score::value, "-"), order_by(&Score::id));
+        decltype(rows) expected{"1-2-3"};
+        REQUIRE(rows == expected);
+    }
+}
+
+#ifdef SQLITE_SOUNDEX
+TEST_CASE("soundex") {
+    auto storage = make_storage({});
+    auto rows = storage.select(soundex("Robert"));
+    decltype(rows) expected{"R163"};
+    REQUIRE(rows == expected);
+}
+#endif
+
 #if SQLITE_VERSION_NUMBER >= 3035000
 TEST_CASE("sign") {
     auto storage = make_storage({});
@@ -1579,6 +1733,13 @@ TEST_CASE("unistr") {
     auto storage = make_storage({});
     auto rows = storage.select(unistr("a\\u0062c"));
     decltype(rows) expected{"abc"};
+    REQUIRE(rows == expected);
+}
+
+TEST_CASE("unistr_quote") {
+    auto storage = make_storage({});
+    auto rows = storage.select(unistr_quote("abc"));
+    decltype(rows) expected{"'abc'"};
     REQUIRE(rows == expected);
 }
 #endif
