@@ -1480,26 +1480,25 @@ TEST_CASE("substring") {
 
 TEST_CASE("typeof") {
     auto storage = make_storage({});
+    std::vector<std::string> rows;
+    decltype(rows) expected;
     SECTION("integer") {
-        auto rows = storage.select(typeof_(1));
-        decltype(rows) expected{"integer"};
-        REQUIRE(rows == expected);
+        rows = storage.select(typeof_(1));
+        expected = {"integer"};
     }
     SECTION("real") {
-        auto rows = storage.select(typeof_(1.5));
-        decltype(rows) expected{"real"};
-        REQUIRE(rows == expected);
+        rows = storage.select(typeof_(1.5));
+        expected = {"real"};
     }
     SECTION("text") {
-        auto rows = storage.select(typeof_("abc"));
-        decltype(rows) expected{"text"};
-        REQUIRE(rows == expected);
+        rows = storage.select(typeof_("abc"));
+        expected = {"text"};
     }
     SECTION("null") {
-        auto rows = storage.select(typeof_(nullptr));
-        decltype(rows) expected{"null"};
-        REQUIRE(rows == expected);
+        rows = storage.select(typeof_(nullptr));
+        expected = {"null"};
     }
+    REQUIRE(rows == expected);
 }
 
 TEST_CASE("unicode") {
