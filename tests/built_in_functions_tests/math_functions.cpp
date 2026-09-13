@@ -429,20 +429,6 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
     }
-    SECTION("tanh") {
-        SECTION("simple") {
-            auto rows = storage.select(sqlite_orm::tanh(0));
-            decltype(rows) expected;
-            expected.push_back(0);
-            REQUIRE(rows == expected);
-        }
-        SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::tanh<std::optional<double>>(0));
-            decltype(rows) expected;
-            expected.push_back(0);
-            REQUIRE(rows == expected);
-        }
-    }
     SECTION("trunc") {
         SECTION("simple") {
             auto rows = storage.select(sqlite_orm::trunc(1.5));

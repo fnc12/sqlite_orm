@@ -14,6 +14,13 @@ name: Experimental - VS 2017 (v141)
 # both of the doubtful parts hold up -- vcpkg does discover a standalone Build Tools instance, and Catch2
 # builds under v141.
 #
+# v141 must be compiled without `/permissive-`. With it, the 14.16 front end instantiates but never emits
+# the `std::forward_as_tuple` specializations behind `streaming_serialized(std::vector<std::string>)` and
+# `streaming_identifiers(std::vector<std::reference_wrapper<const std::string>>)`, and the link fails with
+# two unresolved externals from every translation unit that serializes a statement. This job passes only
+# because CMake never adds the switch (see the MSVC block in the top-level CMakeLists.txt); a local build
+# that turns on conformance mode for the v141 toolset, as Visual Studio projects do by default, breaks.
+#
 # TODO(release): decide what to do with this file before the release goes out.
 #   a. Keep it as its own workflow, or promote it into ci.yaml as a job of its own. It does not fit the
 #      Windows matrix, because the install, toolset assertion and overlay triplet steps are needed for this

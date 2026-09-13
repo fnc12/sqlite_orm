@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include "catch_matchers.h"
 
 using namespace sqlite_orm;
 
@@ -70,39 +71,33 @@ TEST_CASE("json_array_length") {
 TEST_CASE("json_array_length nullable") {
     auto storage = make_storage("");
     using Type = std::unique_ptr<int>;
-    Type expected;
-    Type value;
     std::vector<Type> rows;
+    std::vector<std::optional<int>> expected;
     SECTION("1") {
         rows = storage.select(json_array_length<Type>("[1,2,3,4]"));
-        expected = std::make_unique<int>(4);
+        expected = {4};
     }
     SECTION("2") {
         rows = storage.select(json_array_length<Type>("[1,2,3,4]", "$"));
-        expected = std::make_unique<int>(4);
+        expected = {4};
     }
     SECTION("3") {
         rows = storage.select(json_array_length<Type>("[1,2,3,4]", "$[2]"));
-        expected = std::make_unique<int>(0);
+        expected = {0};
     }
     SECTION("4") {
         rows = storage.select(json_array_length<Type>("{\"one\":[1,2,3]}"));
-        expected = std::make_unique<int>(0);
+        expected = {0};
     }
     SECTION("5") {
         rows = storage.select(json_array_length<Type>("{\"one\":[1,2,3]}", "$.one"));
-        expected = std::make_unique<int>(3);
+        expected = {3};
     }
     SECTION("6") {
         rows = storage.select(json_array_length<Type>("{\"one\":[1,2,3]}", "$.two"));
-        expected = nullptr;
+        expected = {std::nullopt};
     }
-    value = std::move(rows[0]);
-    REQUIRE(rows.size() == 1);
-    REQUIRE(bool(expected) == bool(value));
-    if (expected) {
-        REQUIRE(*expected == *value);
-    }
+    REQUIRE_THAT(rows, PointeesEqual(expected));
 }
 
 TEST_CASE("json_extract") {
@@ -145,8 +140,7 @@ TEST_CASE("json_extract") {
     }
     SECTION("7") {
         auto rows = storage.select(json_extract<std::unique_ptr<std::string>>(R"({"a":2,"c":[4,5,{"f":7}]})", "$.x"));
-        REQUIRE(rows.size() == 1);
-        REQUIRE_FALSE(rows[0]);
+        REQUIRE_THAT(rows, PointeesEqual<std::string>({std::nullopt}));
     }
     SECTION("8") {
         auto rows = storage.select(json_extract<std::string>(R"({"a":2,"c":[4,5,{"f":7}]})", "$.x", "$.a"));
@@ -336,8 +330,7 @@ TEST_CASE("json_remove") {
     }
     SECTION("8") {
         auto rows = storage.select(json_remove<std::unique_ptr<std::string>>(R"({"x":25,"y":42})", "$"));
-        REQUIRE(rows.size() == 1);
-        REQUIRE_FALSE(bool(rows[0]));
+        REQUIRE_THAT(rows, PointeesEqual<std::string>({std::nullopt}));
     }
 }
 
@@ -354,9 +347,7 @@ TEST_CASE("json_type") {
         }
         SECTION("null") {
             auto rows = storage.select(json_type<std::unique_ptr<std::string>>(argument));
-            REQUIRE(rows.size() == 1);
-            REQUIRE(rows[0]);
-            REQUIRE(*rows[0] == result);
+            REQUIRE_THAT(rows, PointeesEqual<std::string>({result}));
         }
     }
     SECTION("2") {
@@ -385,13 +376,9 @@ TEST_CASE("json_type") {
             {
                 auto rows =
                     storage.select(json_type<std::unique_ptr<std::string>>(testCase.argument, testCase.secondArgument));
-                REQUIRE(rows.size() == 1);
-                if (!testCase.result.empty()) {
-                    REQUIRE(rows[0]);
-                    REQUIRE(*rows[0] == testCase.result);
-                } else {
-                    REQUIRE_FALSE(rows[0]);
-                }
+                REQUIRE_THAT(rows,
+                             PointeesEqual<std::string>(
+                                 {testCase.result.empty() ? std::nullopt : std::optional(testCase.result)}));
             }
         }
     }
