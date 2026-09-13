@@ -9055,6 +9055,14 @@ namespace sqlite_orm::internal {
         }
     };
 
+#if SQLITE_VERSION_NUMBER >= 3053000
+    struct json_array_insert_string {
+        std::string_view serialize() const {
+            return "JSON_ARRAY_INSERT";
+        }
+    };
+#endif
+
     struct json_replace_string {
         std::string_view serialize() const {
             return "JSON_REPLACE";
@@ -9097,11 +9105,27 @@ namespace sqlite_orm::internal {
         }
     };
 
+#if SQLITE_VERSION_NUMBER >= 3042000
+    struct json_error_position_string {
+        std::string_view serialize() const {
+            return "JSON_ERROR_POSITION";
+        }
+    };
+#endif
+
     struct json_quote_string {
         std::string_view serialize() const {
             return "JSON_QUOTE";
         }
     };
+
+#if SQLITE_VERSION_NUMBER >= 3046000
+    struct json_pretty_string {
+        std::string_view serialize() const {
+            return "JSON_PRETTY";
+        }
+    };
+#endif
 
     struct json_group_array_string {
         std::string_view serialize() const {
@@ -10810,6 +10834,20 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
+#if SQLITE_VERSION_NUMBER >= 3053000
+    /**
+     *  JSON_ARRAY_INSERT(X,P,V,...) function: inserts values into the arrays of X at the paths P,
+     *  shifting the existing elements to the right. https://www.sqlite.org/json1.html#jarrins
+     */
+    template<class X, class... Args>
+    constexpr internal::built_in_function_t<std::string, internal::json_array_insert_string, X, Args...>
+    json_array_insert(X x, Args... args) {
+        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
+                      "number of arguments in json_array_insert must be odd");
+        return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
+    }
+#endif
+
     template<class X, class... Args>
     constexpr internal::built_in_function_t<std::string, internal::json_replace_string, X, Args...>
     json_replace(X x, Args... args) {
@@ -10876,10 +10914,52 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
+#if SQLITE_VERSION_NUMBER >= 3045000
+    /**
+     *  JSON_VALID(X,Y) function: validates X against the conformance flags Y.
+     *  https://www.sqlite.org/json1.html#jvalid
+     */
+    template<class X, class Y>
+    constexpr internal::built_in_function_t<bool, internal::json_valid_string, X, Y> json_valid(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3042000
+    /**
+     *  JSON_ERROR_POSITION(X) function: the character offset of the first syntax error in X,
+     *  or 0 if X is well-formed. https://www.sqlite.org/json1.html#jerr
+     */
+    template<class X>
+    constexpr internal::built_in_function_t<int, internal::json_error_position_string, X> json_error_position(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+#endif
+
     template<class R, class X>
     constexpr internal::built_in_function_t<R, internal::json_quote_string, X> json_quote(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
+
+#if SQLITE_VERSION_NUMBER >= 3046000
+    /**
+     *  JSON_PRETTY(X) function: pretty-prints X with four-space indentation.
+     *  https://www.sqlite.org/json1.html#jpretty
+     */
+    template<class X>
+    constexpr internal::built_in_function_t<std::string, internal::json_pretty_string, X> json_pretty(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  JSON_PRETTY(X,Y) function: pretty-prints X, indenting with the string Y.
+     *  https://www.sqlite.org/json1.html#jpretty
+     */
+    template<class X, class Y>
+    constexpr internal::built_in_function_t<std::string, internal::json_pretty_string, X, Y> json_pretty(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+#endif
 
     template<class X>
     constexpr internal::built_in_function_t<std::string, internal::json_group_array_string, X> json_group_array(X x) {
