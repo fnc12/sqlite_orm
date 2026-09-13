@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include "../catch_matchers.h"
 
 using namespace sqlite_orm;
 
@@ -1490,26 +1491,25 @@ TEST_CASE("substring") {
 
 TEST_CASE("typeof") {
     auto storage = make_storage({});
+    std::vector<std::string> rows;
+    decltype(rows) expected;
     SECTION("integer") {
-        auto rows = storage.select(typeof_(1));
-        decltype(rows) expected{"integer"};
-        REQUIRE(rows == expected);
+        rows = storage.select(typeof_(1));
+        expected = {"integer"};
     }
     SECTION("real") {
-        auto rows = storage.select(typeof_(1.5));
-        decltype(rows) expected{"real"};
-        REQUIRE(rows == expected);
+        rows = storage.select(typeof_(1.5));
+        expected = {"real"};
     }
     SECTION("text") {
-        auto rows = storage.select(typeof_("abc"));
-        decltype(rows) expected{"text"};
-        REQUIRE(rows == expected);
+        rows = storage.select(typeof_("abc"));
+        expected = {"text"};
     }
     SECTION("null") {
-        auto rows = storage.select(typeof_(nullptr));
-        decltype(rows) expected{"null"};
-        REQUIRE(rows == expected);
+        rows = storage.select(typeof_(nullptr));
+        expected = {"null"};
     }
+    REQUIRE(rows == expected);
 }
 
 TEST_CASE("unicode") {
@@ -1578,14 +1578,11 @@ TEST_CASE("aggregate functions") {
     }
     SECTION("sum") {
         auto rows = storage.select(sqlite_orm::sum(&Score::value));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front());
-        REQUIRE(*rows.front() == 6.0);
+        REQUIRE_THAT(rows, PointeesEqual<double>({6.0}));
     }
     SECTION("sum of an empty group is null") {
         auto rows = storage.select(sqlite_orm::sum(&Score::value), where(c(&Score::id) > 3));
-        REQUIRE(rows.size() == 1);
-        REQUIRE_FALSE(rows.front());
+        REQUIRE_THAT(rows, PointeesEqual<double>({std::nullopt}));
     }
     SECTION("total") {
         auto rows = storage.select(total(&Score::value));
@@ -1599,20 +1596,15 @@ TEST_CASE("aggregate functions") {
     }
     SECTION("max") {
         auto rows = storage.select(sqlite_orm::max(&Score::value));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front());
-        REQUIRE(*rows.front() == 3);
+        REQUIRE_THAT(rows, PointeesEqual<int>({3}));
     }
     SECTION("max of an empty group is null") {
         auto rows = storage.select(sqlite_orm::max(&Score::value), where(c(&Score::id) > 3));
-        REQUIRE(rows.size() == 1);
-        REQUIRE_FALSE(rows.front());
+        REQUIRE_THAT(rows, PointeesEqual<int>({std::nullopt}));
     }
     SECTION("min") {
         auto rows = storage.select(sqlite_orm::min(&Score::value));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front());
-        REQUIRE(*rows.front() == 1);
+        REQUIRE_THAT(rows, PointeesEqual<int>({1}));
     }
     SECTION("group_concat") {
         auto rows = storage.select(group_concat(&Score::value), order_by(&Score::id));
