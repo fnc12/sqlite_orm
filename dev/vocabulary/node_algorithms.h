@@ -11,3 +11,4 @@
 #include "algorithms/expression_element_predicates.h"
 #include "algorithms/operand_predicates.h"
 #include "algorithms/accessors.h"
+#include "algorithms/argument_placeholders.h"

@@ -17,6 +17,7 @@
 #include "tuple_helper/same_or_void.h"
 #include "member_traits/member_traits.h"
 #include "vocabulary/node_traits.h"
+#include "vocabulary/node_algorithms.h"  // substitute_arguments_t
 #include "mapped_type_proxy.h"
 #include "core_functions.h"
 #include "operators.h"
@@ -185,6 +186,9 @@ namespace sqlite_orm::internal {
         using type = std::unique_ptr<column_result_of_t<DBOs, expression_type>>;
     };
 
+    /**
+     *  The declared return type, with any `argument<I>` placeholder replaced by the result of the I-th argument.
+     */
     template<class DBOs, class T>
     struct column_result_t<
         DBOs,
@@ -192,7 +196,8 @@ namespace sqlite_orm::internal {
         std::enable_if_t<std::conjunction<
             is_built_in_function<T>,
             std::negation<polyfill::is_specialization_of<return_type_t<T>, nullable_result_proxy>>>::value>> {
-        using type = return_type_t<T>;
+        using type =
+            substitute_arguments_t<return_type_t<T>, args_type_t<T>, mpl::bind_front_fn<column_result_of_t, DBOs>>;
     };
 
     template<class DBOs, class F, class... Args>

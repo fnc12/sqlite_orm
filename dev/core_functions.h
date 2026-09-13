@@ -389,6 +389,7 @@ namespace sqlite_orm::internal {
         }
     };
 
+#ifndef SQLITE_ORM_WITH_CPP20_ALIASES
     struct max_string {
         std::string_view serialize() const {
             return "MAX";
@@ -400,6 +401,7 @@ namespace sqlite_orm::internal {
             return "MIN";
         }
     };
+#endif
 
     struct group_concat_string {
         std::string_view serialize() const {
@@ -846,6 +848,13 @@ namespace sqlite_orm::internal {
     inline constexpr auto substring =
         "SUBSTRING"_builtin.scalar<std::string(std::string_view, int), std::string(std::string_view, int, int)>();
 #endif
+    // MAX(X) aggregate and MAX(X, Y, ...) scalar: nullable, typed like the first argument
+    inline constexpr auto max =
+        "MAX"_builtin.function<aggregate_sig<std::unique_ptr<argument<0>>(anything)>,
+                               scalar_sig<std::unique_ptr<argument<0>>(anything, anything, variadic<anything>)>>();
+    inline constexpr auto min =
+        "MIN"_builtin.function<aggregate_sig<std::unique_ptr<argument<0>>(anything)>,
+                               scalar_sig<std::unique_ptr<argument<0>>(anything, anything, variadic<anything>)>>();
 #endif
 }
 
@@ -1809,6 +1818,19 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  MAX(X) aggregate function and MAX(X, Y, ...) scalar function.
+     *  The result is nullable and typed like the first argument.
+     */
+    inline constexpr orm_built_in_function auto max = internal::max;
+
+    /**
+     *  MIN(X) aggregate function and MIN(X, Y, ...) scalar function.
+     *  The result is nullable and typed like the first argument.
+     */
+    inline constexpr orm_built_in_function auto min = internal::min;
+#else
     /**
      *  MAX(X) aggregate function.
      */
@@ -1846,6 +1868,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     min(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
+#endif
 
     /**
      *  GROUP_CONCAT(X) aggregate function.

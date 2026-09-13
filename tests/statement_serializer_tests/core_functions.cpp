@@ -56,16 +56,12 @@ TEST_CASE("statement_serializer core functions") {
         }
         value = serialize(expression, context);
     }
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    SECTION("built-in open-ended arity") {
-        using internal::operator""_builtin;
-        constexpr auto max_f = "MAX"_builtin.scalar<double(double, double, variadic<double>)>();
-        constexpr auto expression = max_f(1, 2, 3, 4);
+    SECTION("MAX(X,Y,...)") {
+        constexpr auto expression = max(1, 2, 3, 4);
         context.use_parentheses = false;
         expected = "MAX(1, 2, 3, 4)";
         value = serialize(expression, context);
     }
-#endif
     SECTION("UPPER") {
         constexpr auto expression = upper("call");
         SECTION("use_parentheses") {

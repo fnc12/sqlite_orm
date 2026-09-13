@@ -5,6 +5,9 @@
  */
 
 namespace sqlite_orm::internal {
+    template<size_t I>
+    struct argument;
+
     template<class... Cs>
     struct primary_key_t;
 

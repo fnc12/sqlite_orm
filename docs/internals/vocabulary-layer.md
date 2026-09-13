@@ -408,11 +408,13 @@ Decided, not yet done. The destination is settled in each case; only the work re
   built-in is one `inline constexpr` definition of name plus overload set
   (`"LOWER"_builtin.scalar<std::string(std::string_view)>()`), and the resulting
   `built_in_function_call` node plugs into `is_built_in_function` — the consumers of that
-  trait need no change. Only `lower`, `substr` and `substring` are ported; the rest of
+  trait need no change. Aggregates (`aggregate_sig`, a call node with `.filter()`/`.over()`)
+  and argument-dependent return types (`argument<I>` in the return type, substituted by
+  `vocabulary/algorithms/argument_placeholders.h` from `column_result_t`) are in place.
+  Only `lower`, `substr`, `substring`, `max` and `min` are ported; the rest of
   `core_functions.h` still uses the per-function `*_string` tag + `built_in_function_t`
-  factory. Design, decisions and
-  the open follow-ups (aggregates, caller-chosen and argument-dependent return types) are
-  in [`docs/plans/2026-09-12-built-in-function-vocabulary-design.md`](../plans/2026-09-12-built-in-function-vocabulary-design.md).
+  factory. Design, decisions and the open follow-ups (caller-chosen return types) are in
+  [`docs/plans/2026-09-12-built-in-function-vocabulary-design.md`](../plans/2026-09-12-built-in-function-vocabulary-design.md).
 
 ## Open questions
 

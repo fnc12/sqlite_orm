@@ -1606,6 +1606,16 @@ TEST_CASE("aggregate functions") {
         auto rows = storage.select(sqlite_orm::min(&Score::value));
         REQUIRE_THAT(rows, PointeesEqual<int>({1}));
     }
+    SECTION("max/min scalar") {
+        auto rows = storage.select(sqlite_orm::max(&Score::value, 2, 0), order_by(&Score::id));
+        REQUIRE_THAT(rows, PointeesEqual<int>({2, 2, 3}));
+        rows = storage.select(sqlite_orm::min(&Score::value, 2), order_by(&Score::id));
+        REQUIRE_THAT(rows, PointeesEqual<int>({1, 2, 2}));
+    }
+    SECTION("max over") {
+        auto rows = storage.select(sqlite_orm::max(&Score::value).over(), order_by(&Score::id));
+        REQUIRE_THAT(rows, PointeesEqual<int>({3, 3, 3}));
+    }
     SECTION("group_concat") {
         auto rows = storage.select(group_concat(&Score::value), order_by(&Score::id));
         decltype(rows) expected{"1,2,3"};
