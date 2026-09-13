@@ -9117,11 +9117,11 @@ namespace sqlite_orm::internal {
     }
 
     /*
-     *  The first kinded signature of a built-in function's overload set accepting a call with `Argc` arguments,
-     *  or `void`.
+     *  The first kinded signature of a built-in function's overload set accepting a call with `Argc` arguments.
+     *  Has no nested `type` if none does.
      */
     template<size_t Argc, class... KindedSigs>
-    struct matched_built_in_signature : std::type_identity<void> {};
+    struct matched_built_in_signature {};
 
     template<size_t Argc, class KindedSig, class... KindedSigs>
     struct matched_built_in_signature<Argc, KindedSig, KindedSigs...>
@@ -9133,6 +9133,29 @@ namespace sqlite_orm::internal {
     using matched_built_in_signature_t = typename matched_built_in_signature<Argc, KindedSigs...>::type;
 
     /*
+     *  Whether a built-in function's overload set has a signature accepting a call with `Argc` arguments.
+     */
+    template<size_t Argc, class... KindedSigs>
+    concept has_matching_built_in_signature = requires { typename matched_built_in_signature_t<Argc, KindedSigs...>; };
+
+    /*
+     *  A kinded signature with its return type replaced by `R`, or as is if `R` is `void`.
+     */
+    template<class R, class KindedSig>
+    struct with_return_type;
+
+    template<class R, class R0, class... Params>
+    struct with_return_type<R, scalar_sig<R0(Params...)>>
+        : std::type_identity<scalar_sig<std::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+
+    template<class R, class R0, class... Params>
+    struct with_return_type<R, aggregate_sig<R0(Params...)>>
+        : std::type_identity<aggregate_sig<std::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+
+    template<class R, class KindedSig>
+    using with_return_type_t = typename with_return_type<R, KindedSig>::type;
+
+    /*
      *  Represents a call of a built-in scalar function.
      *
      *  `F` is the definition type of the built-in function, `Sig` the matched overload.
@@ -9142,12 +9165,12 @@ namespace sqlite_orm::internal {
         using function_type = F;
         using signature_type = Sig;
         using return_type = function_return_type_t<Sig>;
-        using args_type = std::tuple<CallArgs...>;
+        using args_tuple = std::tuple<CallArgs...>;
 
         SQLITE_ORM_NOUNIQUEADDRESS function_type function;
-        args_type args;
+        args_tuple args;
 
-        constexpr built_in_function_call(function_type function_, args_type args_) :
+        constexpr built_in_function_call(function_type function_, args_tuple args_) :
             function{std::move(function_)}, args{std::move(args_)} {}
 
         constexpr std::string_view serialize() const {
@@ -9223,12 +9246,18 @@ namespace sqlite_orm::internal {
 
         /*
          *  Generates the SQL function call expression.
+         *
+         *  An explicitly specified `R` replaces the matched overload's return type:
+         *  `f.template operator()<std::optional<double>>(x)`. This is what the function template facades
+         *  of the built-in functions taking the return type as a template argument (`acos<std::optional<double>>(x)`)
+         *  are implemented with.
          */
-        template<class... CallArgs>
-            requires (!std::is_void_v<matched_built_in_signature_t<sizeof...(CallArgs), KindedSigs...>>)
-        constexpr built_in_function_call_for_t<matched_built_in_signature_t<sizeof...(CallArgs), KindedSigs...>,
-                                               built_in_function,
-                                               CallArgs...>
+        template<class R = void, class... CallArgs>
+            requires (has_matching_built_in_signature<sizeof...(CallArgs), KindedSigs...>)
+        constexpr built_in_function_call_for_t<
+            with_return_type_t<R, matched_built_in_signature_t<sizeof...(CallArgs), KindedSigs...>>,
+            built_in_function,
+            CallArgs...>
         operator()(CallArgs... callArgs) const {
             return {*this, {std::forward<CallArgs>(callArgs)...}};
         }
@@ -9324,13 +9353,13 @@ namespace sqlite_orm::internal {
     struct built_in_function_t : S, arithmetic_t {
         using return_type = R;
         using string_type = S;
-        using args_type = std::tuple<Args...>;
+        using args_tuple = std::tuple<Args...>;
 
-        static constexpr size_t args_size = std::tuple_size<args_type>::value;
+        static constexpr size_t args_size = std::tuple_size<args_tuple>::value;
 
-        args_type args;
+        args_tuple args;
 
-        constexpr built_in_function_t(args_type&& args_) : args(std::move(args_)) {}
+        constexpr built_in_function_t(args_tuple&& args_) : args(std::move(args_)) {}
     };
 
     template<class T>
@@ -9847,11 +9876,13 @@ namespace sqlite_orm::internal {
     };
 #endif
 #ifdef SQLITE_ENABLE_MATH_FUNCTIONS
+#ifndef SQLITE_ORM_WITH_CPP20_ALIASES
     struct acos_string {
         std::string_view serialize() const {
             return "ACOS";
         }
     };
+#endif
 
     struct acosh_string {
         std::string_view serialize() const {
@@ -10135,6 +10166,10 @@ namespace sqlite_orm::internal {
     inline constexpr auto min =
         "MIN"_builtin.function<aggregate_sig<std::unique_ptr<argument<0>>(anything)>,
                                scalar_sig<std::unique_ptr<argument<0>>(anything, anything, variadic<anything>)>>();
+#ifdef SQLITE_ENABLE_MATH_FUNCTIONS
+    // The math functions are published as function template facades taking the return type as a template argument
+    inline constexpr auto acos = "ACOS"_builtin.scalar<double(double)>();
+#endif
 #endif
 }
 
@@ -10155,10 +10190,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::acos(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
      *  auto rows = storage.select(sqlite_orm::acos<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
      */
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<class R = double, class X>
+    constexpr auto acos(X x) {
+        return internal::acos.template operator()<R>(std::move(x));
+    }
+#else
     template<class R = double, class X>
     constexpr internal::built_in_function_t<R, internal::acos_string, X> acos(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
+#endif
 
     /**
      *  ACOSH(X) function https://www.sqlite.org/lang_mathfunc.html#acosh
@@ -14171,7 +14213,7 @@ namespace sqlite_orm::internal {
             is_built_in_function<T>,
             std::negation<polyfill::is_specialization_of<return_type_t<T>, nullable_result_proxy>>>::value>> {
         using type =
-            substitute_arguments_t<return_type_t<T>, args_type_t<T>, mpl::bind_front_fn<column_result_of_t, DBOs>>;
+            substitute_arguments_t<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<column_result_of_t, DBOs>>;
     };
 
     template<class DBOs, class F, class... Args>
@@ -31788,7 +31830,7 @@ namespace sqlite_orm::internal {
     struct node_tuple<bitwise_not_t<T>, void> : node_tuple<T> {};
 
     template<class T>
-    struct node_tuple<T, match_if<is_built_in_function, T>> : node_tuple<args_type_t<T>> {};
+    struct node_tuple<T, match_if<is_built_in_function, T>> : node_tuple<args_tuple_t<T>> {};
 
     template<class F, class W>
     struct node_tuple<filtered_aggregate_function<F, W>, void> : node_tuple_for<F, W> {};

@@ -62,6 +62,21 @@ TEST_CASE("statement_serializer core functions") {
         expected = "MAX(1, 2, 3, 4)";
         value = serialize(expression, context);
     }
+#ifdef SQLITE_ENABLE_MATH_FUNCTIONS
+    SECTION("ACOS") {
+        context.use_parentheses = false;
+        SECTION("default return type") {
+            constexpr auto expression = sqlite_orm::acos(1);
+            expected = "ACOS(1)";
+            value = serialize(expression, context);
+        }
+        SECTION("explicit return type") {
+            constexpr auto expression = sqlite_orm::acos<std::optional<double>>(1);
+            expected = "ACOS(1)";
+            value = serialize(expression, context);
+        }
+    }
+#endif
     SECTION("UPPER") {
         constexpr auto expression = upper("call");
         SECTION("use_parentheses") {

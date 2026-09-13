@@ -33,6 +33,9 @@ concept filterable = requires(Node node, Where wh) { node.filter(std::move(wh));
 template<class Node>
 concept overable = requires(Node node) { node.over(); };
 
+template<class F, class R, class... Args>
+concept callable_as = requires(const F& f, Args... args) { f.template operator()<R>(args...); };
+
 TEST_CASE("built-in function static") {
     struct User {
         int id = 0;
@@ -60,7 +63,7 @@ TEST_CASE("built-in function static") {
                                                              std::string(std::string_view),
                                                              std::string User::*>>);
         STATIC_REQUIRE(std::is_same_v<node_type::return_type, std::string>);
-        STATIC_REQUIRE(std::is_same_v<node_type::args_type, std::tuple<std::string User::*>>);
+        STATIC_REQUIRE(std::is_same_v<node_type::args_tuple, std::tuple<std::string User::*>>);
         STATIC_REQUIRE(is_built_in_function_v<node_type>);
         STATIC_REQUIRE(is_operator_argument_v<node_type>);
         STATIC_REQUIRE(internal::is_arithmetic_operand_v<node_type>);
@@ -183,6 +186,38 @@ TEST_CASE("built-in function static") {
 
         // no placeholder: the declared type as is
         STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(lower(&User::name))>, std::string>);
+    }
+    SECTION("return type override") {
+        // an explicit `R` replaces the declared return type
+        using node_type = decltype(lower.template operator()<std::optional<std::string>>(&User::name));
+        STATIC_REQUIRE(std::is_same_v<node_type,
+                                      built_in_function_call<std::remove_const_t<decltype(lower)>,
+                                                             std::optional<std::string>(std::string_view),
+                                                             std::string User::*>>);
+        STATIC_REQUIRE(std::is_same_v<node_type::return_type, std::optional<std::string>>);
+        STATIC_REQUIRE(std::is_same_v<column_result_of_t<db_objects_tuple<>, node_type>, std::optional<std::string>>);
+        // the overload is still picked by arity
+        STATIC_REQUIRE(
+            std::is_same_v<decltype(substr.template operator()<std::string_view>(&User::name, 1, 2))::signature_type,
+                           std::string_view(std::string_view, int, int)>);
+        STATIC_REQUIRE(callable_as<decltype(lower), int, std::string User::*>);
+        STATIC_REQUIRE(!callable_as<decltype(lower), int>);
+        // and a placeholder in the override is substituted like a declared one
+        STATIC_REQUIRE(std::is_same_v<
+                       column_result_of_t<db_objects_tuple<>,
+                                          decltype(lower.template operator()<std::optional<argument<0>>>(&User::id))>,
+                       std::optional<int>>);
+#ifdef SQLITE_ENABLE_MATH_FUNCTIONS
+        // function template facade over a definition object, keeping the `<R>` spelling
+        STATIC_REQUIRE(orm_built_in_function<decltype(internal::acos)>);
+        STATIC_REQUIRE(
+            std::is_same_v<decltype(sqlite_orm::acos(1)),
+                           built_in_function_call<std::remove_const_t<decltype(internal::acos)>, double(double), int>>);
+        STATIC_REQUIRE(
+            std::is_same_v<decltype(sqlite_orm::acos<std::optional<double>>(1))::return_type, std::optional<double>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(sqlite_orm::acos<float>(&User::id))::signature_type, float(double)>);
+        STATIC_REQUIRE(is_built_in_function_v<decltype(sqlite_orm::acos(1))>);
+#endif
     }
     SECTION("first match in declaration order") {
         constexpr auto f = "F"_builtin.scalar<int(int, variadic<int>), double(int, int)>();

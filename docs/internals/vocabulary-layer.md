@@ -411,9 +411,10 @@ Decided, not yet done. The destination is settled in each case; only the work re
   trait need no change. Aggregates (`aggregate_sig`, a call node with `.filter()`/`.over()`)
   and argument-dependent return types (`argument<I>` in the return type, substituted by
   `vocabulary/algorithms/argument_placeholders.h` from `column_result_t`) are in place.
-  Only `lower`, `substr`, `substring`, `max` and `min` are ported; the rest of
-  `core_functions.h` still uses the per-function `*_string` tag + `built_in_function_t`
-  factory. Design, decisions and the open follow-ups (caller-chosen return types) are in
+  Functions taking the return type as a template argument keep their function template as
+  a facade over an internal definition object (`acos`). Only `lower`, `substr`, `substring`,
+  `max`, `min` and `acos` are ported; the rest of `core_functions.h` still uses the
+  per-function `*_string` tag + `built_in_function_t` factory. Design and decisions are in
   [`docs/plans/2026-09-12-built-in-function-vocabulary-design.md`](../plans/2026-09-12-built-in-function-vocabulary-design.md).
 
 ## Open questions

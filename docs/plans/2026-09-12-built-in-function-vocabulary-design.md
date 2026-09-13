@@ -156,10 +156,12 @@ namespace sqlite_orm::internal {
 
 Overload matching runs once in `operator()`: first `Sig` whose parameter
 count equals the call arity, or — when the last parameter is `variadic<T>` —
-whose fixed parameter count is `<=` the arity. `operator()` is constrained
-by a `requires` clause on a match existing, so a wrong arity is a
-"no matching call" error and `std::is_invocable_v` can observe the rejection
-in tests; the return type of the match becomes the node's `return_type`.
+whose fixed parameter count is `<=` the arity. On no match the
+`matched_built_in_signature_t` alias is ill-formed (no sentinel type), and
+`operator()` is constrained by a type requirement on it, so a wrong arity is
+a "no matching call" error and `std::is_invocable_v` can observe the
+rejection in tests; the return type of the match becomes the node's
+`return_type`.
 
 ## Files
 
@@ -253,16 +255,62 @@ first argument.
   `max`/`min` runtime, serializer, `ast_iterator` and
   `aggregate_function_return_types` tests are the regression suite.
 
+## Phase 3 — caller-chosen return types (2026-09-13)
+
+49 factories take the return type as a defaulted template argument
+(`acos<std::optional<double>>(x)`). That spelling is syntax only functions
+have: an explicit template argument on a type is a functional cast with CTAD
+off, and "explicit `R`, deduce the call arguments" (partial CTAD) is not in
+the language, so no object — variable, CPO, alias template — can be both
+`acos<R>(x)` and `acos(x)` while carrying the argument types. Reflection does
+not help either: an alias is transparent to the type it names, and P2996
+cannot synthesize functions or alias templates. Any object-based spelling
+(`acos.as<R>(x)`, `as_result<R>(acos(x))`) is therefore a breaking change
+needing agreement and a transition path.
+
+### Decision
+
+12. **Function template facade over a definition object.** For these
+    functions the definition object is internal and the public name stays
+    the function template it is today, so `acos(x)` and `acos<R>(x)` are
+    unchanged in every standard mode:
+
+    ```cpp
+    namespace sqlite_orm::internal {
+        inline constexpr auto acos = "ACOS"_builtin.scalar<double(double)>();
+    }
+    SQLITE_ORM_EXPORT namespace sqlite_orm {
+        template<class R = double, class X>
+        constexpr auto acos(X x) {
+            return internal::acos.template operator()<R>(std::move(x));
+        }
+    }
+    ```
+
+    `built_in_function::operator()` takes the return type as a leading,
+    defaulted template parameter (`R = void` keeps the declared one), so an
+    explicit `operator()<R>(args...)` yields the ordinary call node with
+    signature `R(Params...)` (`with_return_type_t`); a placeholder in `R` is
+    substituted like a declared one. A single template rather than a second
+    overload, so an explicit `<R>` can never be taken for the first call
+    argument's type by pack extension.
+
+    Three lines per function instead of a tag struct and a factory; the
+    "C++20 way" is the implementation for these, not the surface. A generic
+    `as_result<R>(expr)` node — the natural successor, working on any
+    expression — is additive and can be introduced whenever wanted; retiring
+    the `<R>` parameters afterwards is a separate decision for the maintainers.
+
+`acos` is ported as the proof; the other 48 follow the same three lines.
+
 ## Follow-ups
 
 - Port the remaining scalar and aggregate built-ins; delete their `*_string`
   tags and factories from the C++20 branch as they go, and
-  `nullable_result_proxy` with the last of them.
-- Caller-chosen return types. The math and some json factories take the
-  return type as a defaulted template argument
-  (`acos<std::optional<double>>(x)`); a variable cannot take explicit template
-  arguments, so porting them needs a spelling such as `acos.as<R>(x)` or a
-  separate hook — decide before touching them.
+  `nullable_result_proxy` with the last of them. Those taking `R` get the
+  facade of decision 12.
+- Optional: `as_result<R>(expr)` as the general, callee-independent result
+  type override (generalizing `as_optional`).
 - Name clashes inside `sqlite_orm::internal` as more built-ins are defined
   there (`max`, `min`, `count`, ...). Class members shadow them, but a
   namespace-scope internal helper of the same name would not; a nested

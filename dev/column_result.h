@@ -197,7 +197,7 @@ namespace sqlite_orm::internal {
             is_built_in_function<T>,
             std::negation<polyfill::is_specialization_of<return_type_t<T>, nullable_result_proxy>>>::value>> {
         using type =
-            substitute_arguments_t<return_type_t<T>, args_type_t<T>, mpl::bind_front_fn<column_result_of_t, DBOs>>;
+            substitute_arguments_t<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<column_result_of_t, DBOs>>;
     };
 
     template<class DBOs, class F, class... Args>

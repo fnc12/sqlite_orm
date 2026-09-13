@@ -200,7 +200,7 @@ namespace sqlite_orm::internal {
     struct node_tuple<bitwise_not_t<T>, void> : node_tuple<T> {};
 
     template<class T>
-    struct node_tuple<T, match_if<is_built_in_function, T>> : node_tuple<args_type_t<T>> {};
+    struct node_tuple<T, match_if<is_built_in_function, T>> : node_tuple<args_tuple_t<T>> {};
 
     template<class F, class W>
     struct node_tuple<filtered_aggregate_function<F, W>, void> : node_tuple_for<F, W> {};
