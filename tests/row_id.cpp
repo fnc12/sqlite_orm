@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include "catch_matchers.h"
 
 using namespace sqlite_orm;
 
@@ -49,8 +50,6 @@ TEST_CASE("Row id") {
         SECTION("_rowid_") {
             rows = storage.select(max(_rowid_<SimpleTable>()));
         }
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows[0]);
-        REQUIRE(*rows[0] == 3);
+        REQUIRE_THAT(rows, PointeesEqual<int64>({3}));
     }
 }
