@@ -4,7 +4,7 @@
 #include <string>  //  std::string
 #include <stdexcept>  //  std::domain_error
 #include <tuple>  //  std::make_tuple, std::tuple_size
-#include <type_traits>  //  std::forward, std::is_base_of, std::enable_if, std::is_constant_evaluated
+#include <type_traits>  //  std::forward, std::is_base_of, std::enable_if, std::conditional, std::is_void, std::is_constant_evaluated
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
 #include <optional>  //  std::optional
@@ -12,7 +12,6 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "functional/mpl/conditional.h"
 #include "functional/is_base_template_of.h"
 #include "functional/type_traits.h"
 #include "tuple_helper/tuple_traits.h"
@@ -28,11 +27,6 @@
 #include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
-    template<class T>
-    struct nullable_result_proxy {
-        using expression_type = T;
-    };
-
     /**
      *  Base class for operator overloading
      *  R - return type
@@ -1561,13 +1555,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  COALESCE(X,Y,...) function https://www.sqlite.org/lang_corefunc.html#coalesce
      */
     template<class R = void, class... Args>
-    constexpr auto coalesce(Args... args)
-        -> internal::built_in_function_t<typename mpl::conditional_t<  //  choose R or common type
-                                             std::is_void_v<R>,
-                                             std::common_type<internal::field_type_or_type_t<Args>...>,
-                                             polyfill::type_identity<R>>::type,
-                                         internal::coalesce_string,
-                                         Args...> {
+    constexpr internal::built_in_function_t<std::conditional_t<std::is_void_v<R>, internal::common_argument_type<>, R>,
+                                            internal::coalesce_string,
+                                            Args...>
+    coalesce(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -1575,14 +1566,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  IFNULL(X,Y) function https://www.sqlite.org/lang_corefunc.html#ifnull
      */
     template<class R = void, class X, class Y>
-    constexpr auto ifnull(X x, Y y) -> internal::built_in_function_t<
-        typename mpl::conditional_t<  //  choose R or common type
-            std::is_void_v<R>,
-            std::common_type<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
-            polyfill::type_identity<R>>::type,
+    constexpr internal::built_in_function_t<
+        std::conditional_t<std::is_void_v<R>, internal::common_argument_type<0, 1>, R>,
         internal::ifnull_string,
         X,
-        Y> {
+        Y>
+    ifnull(X x, Y y) {
         return {std::make_tuple(std::move(x), std::move(y))};
     }
 
@@ -1592,28 +1581,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  NULLIF(X,Y) using common return type of X and Y
      */
-    template<class R = void,
-             class X,
-             class Y,
-             std::enable_if_t<std::disjunction_v<std::negation<std::is_void<R>>,
-                                                 polyfill::is_detected<std::common_type_t,
-                                                                       internal::field_type_or_type_t<X>,
-                                                                       internal::field_type_or_type_t<Y>>>,
-                              bool> = true>
-    constexpr auto nullif(X x, Y y) {
-        if constexpr (std::is_void_v<R>) {
-            using F = internal::built_in_function_t<
-                std::optional<std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>>,
-                internal::nullif_string,
-                X,
-                Y>;
-
-            return F{std::make_tuple(std::move(x), std::move(y))};
-        } else {
-            using F = internal::built_in_function_t<R, internal::nullif_string, X, Y>;
-
-            return F{std::make_tuple(std::move(x), std::move(y))};
-        }
+    template<class R = void, class X, class Y>
+    constexpr internal::built_in_function_t<
+        std::conditional_t<std::is_void_v<R>, std::optional<internal::common_argument_type<0, 1>>, R>,
+        internal::nullif_string,
+        X,
+        Y>
+    nullif(X x, Y y) {
+        return {std::make_tuple(std::move(x), std::move(y))};
     }
 
     /**
@@ -1771,7 +1746,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  MAX(X) aggregate function.
      */
     template<class X>
-    constexpr internal::built_in_aggregate_function_t<internal::nullable_result_proxy<X>, internal::max_string, X>
+    constexpr internal::built_in_aggregate_function_t<std::unique_ptr<internal::argument<0>>, internal::max_string, X>
     max(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -1780,7 +1755,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  MIN(X) aggregate function.
      */
     template<class X>
-    constexpr internal::built_in_aggregate_function_t<internal::nullable_result_proxy<X>, internal::min_string, X>
+    constexpr internal::built_in_aggregate_function_t<std::unique_ptr<internal::argument<0>>, internal::min_string, X>
     min(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -1790,7 +1765,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    constexpr internal::built_in_function_t<internal::nullable_result_proxy<X>, internal::max_string, X, Y, Rest...>
+    constexpr internal::built_in_function_t<std::unique_ptr<internal::argument<0>>, internal::max_string, X, Y, Rest...>
     max(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
@@ -1800,7 +1775,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    constexpr internal::built_in_function_t<internal::nullable_result_proxy<X>, internal::min_string, X, Y, Rest...>
+    constexpr internal::built_in_function_t<std::unique_ptr<internal::argument<0>>, internal::min_string, X, Y, Rest...>
     min(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
@@ -1831,11 +1806,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  and rejects a statement that binds it.
      */
     template<class X>
-    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>,
-                                            internal::likelihood_string,
-                                            X,
-                                            internal::literal_holder<double>>
-    likelihood(X x, double probability) {
+    constexpr internal::
+        built_in_function_t<internal::argument<0>, internal::likelihood_string, X, internal::literal_holder<double>>
+        likelihood(X x, double probability) {
 #ifdef SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
         //  a probability outside [0.0, 1.0] makes SQLite reject the statement at prepare time;
         //  when the call is constant-evaluated the error surfaces right here, at compile time
@@ -1850,8 +1823,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  UNLIKELY(X) function https://www.sqlite.org/lang_corefunc.html#unlikely
      */
     template<class X>
-    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>, internal::unlikely_string, X>
-    unlikely(X x) {
+    constexpr internal::built_in_function_t<internal::argument<0>, internal::unlikely_string, X> unlikely(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
@@ -1871,7 +1843,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  LIKELY(X) function https://www.sqlite.org/lang_corefunc.html#likely
      */
     template<class X>
-    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>, internal::likely_string, X> likely(X x) {
+    constexpr internal::built_in_function_t<internal::argument<0>, internal::likely_string, X> likely(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
@@ -1887,30 +1859,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  auto rows = storage.select(iif<std::string>(c(&User::age) > 18, "adult", "minor"));
      */
-    template<class R = void,
-             class X,
-             class Y,
-             class Z,
-             std::enable_if_t<std::disjunction_v<std::negation<std::is_void<R>>,
-                                                 polyfill::is_detected<std::common_type_t,
-                                                                       internal::field_type_or_type_t<Y>,
-                                                                       internal::field_type_or_type_t<Z>>>,
-                              bool> = true>
-    constexpr auto iif(X x, Y y, Z z) {
-        if constexpr (std::is_void_v<R>) {
-            using F = internal::built_in_function_t<
-                std::common_type_t<internal::field_type_or_type_t<Y>, internal::field_type_or_type_t<Z>>,
-                internal::iif_string,
-                X,
-                Y,
-                Z>;
-
-            return F{std::make_tuple(std::move(x), std::move(y), std::move(z))};
-        } else {
-            using F = internal::built_in_function_t<R, internal::iif_string, X, Y, Z>;
-
-            return F{std::make_tuple(std::move(x), std::move(y), std::move(z))};
-        }
+    template<class R = void, class X, class Y, class Z>
+    constexpr internal::built_in_function_t<
+        std::conditional_t<std::is_void_v<R>, internal::common_argument_type<1, 2>, R>,
+        internal::iif_string,
+        X,
+        Y,
+        Z>
+    iif(X x, Y y, Z z) {
+        return {std::make_tuple(std::move(x), std::move(y), std::move(z))};
     }
 #endif
 
@@ -2015,30 +1972,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The return type is the common type of Y and Z, unless it is explicitly specified as a template argument.
      *  The function is only enabled if a common type of Y and Z can be determined or the return type is explicit.
      */
-    template<class R = void,
-             class X,
-             class Y,
-             class Z,
-             std::enable_if_t<std::disjunction_v<std::negation<std::is_void<R>>,
-                                                 polyfill::is_detected<std::common_type_t,
-                                                                       internal::field_type_or_type_t<Y>,
-                                                                       internal::field_type_or_type_t<Z>>>,
-                              bool> = true>
-    constexpr auto if_(X x, Y y, Z z) {
-        if constexpr (std::is_void_v<R>) {
-            using F = internal::built_in_function_t<
-                std::common_type_t<internal::field_type_or_type_t<Y>, internal::field_type_or_type_t<Z>>,
-                internal::if_string,
-                X,
-                Y,
-                Z>;
-
-            return F{std::make_tuple(std::move(x), std::move(y), std::move(z))};
-        } else {
-            using F = internal::built_in_function_t<R, internal::if_string, X, Y, Z>;
-
-            return F{std::make_tuple(std::move(x), std::move(y), std::move(z))};
-        }
+    template<class R = void, class X, class Y, class Z>
+    constexpr internal::built_in_function_t<
+        std::conditional_t<std::is_void_v<R>, internal::common_argument_type<1, 2>, R>,
+        internal::if_string,
+        X,
+        Y,
+        Z>
+    if_(X x, Y y, Z z) {
+        return {std::make_tuple(std::move(x), std::move(y), std::move(z))};
     }
 #endif
 

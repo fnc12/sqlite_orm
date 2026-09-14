@@ -152,8 +152,8 @@ Two rules that repeatedly prevent mistakes:
 - **Complexity never determines tier.** How many other traits a condition composes, or how
   involved its SFINAE is, has no bearing on where it belongs. `is_raw_dml_expression_v`
   internally composes other grammar traits and the `expression_type_t` projection, and is
-  still an open semantic trait. `field_type_or_type_t` uses the detected idiom with a
-  fallback, and is still a plain projection. The test is *whether it composes
+  still an open semantic trait. `alias_holder_type_or_none_t` uses the detected idiom with
+  a fallback, and is still a plain projection. The test is *whether it composes
   classification traits into a judgment*, not whether the logic is hard.
 - **Openness is about who writes specializations**, not about how complex they are. See
   [Open vs. closed](#open-vs-closed).
@@ -226,8 +226,7 @@ specialize. Direct single-node accessors, in three shapes across two files.
 
 - plain nested-typedef access — `constraints_type_t`, `field_type_t`, `elements_type_t`,
   `object_type_t`, `expression_type_t`, `left_type_t`/`right_type_t`, …
-- detected-idiom accessors with a fallback — `field_type_or_type_t`,
-  `alias_holder_type_or_none_t`.
+- detected-idiom accessors with a fallback — `alias_holder_type_or_none_t`.
 
 `projections/mapped_types.h` instead destructures a node to a type it captured, and therefore
 names the concrete nodes it matches: `table_type_of` yields the enclosing class of a
@@ -251,6 +250,7 @@ Nothing is being composed into a judgment; it is still extraction.
 | `algorithms/operand_predicates.h` | Closed checks of whether a type may appear as an operand of a named expression factory (`eq()`, `and_()`, `add()`, `assign()`, …): `is_referencable_operand`, `is_operand_or_bindable`, `are_valid_operands`. Composes the operand traits with grammar traits and the field-level `is_bindable` — which is why it takes `field_predicates_fwd.h` rather than the definition file. |
 | `algorithms/index_filters.h` | Closed alias templates that scan a node's `Elements` tuple and yield an `index_sequence` of matching positions — **not** a filtered tuple. E.g. `col_index_sequence_of`, `col_index_sequence_with_field_type`. Built on `filter_tuple_sequence_t` + grammar traits + projections. |
 | `algorithms/accessors.h` | Closed runtime and compile-time accessors that retrieve a node's relevant sub-part, or the node itself, uniformly across dissimilar grammar families: `access_main_select`/`main_select_t`, `access_main_dml`/`main_dml_t`, `access_column_expression`, `expression_object_type`/`statement_object_type_t` and `access_dml_object`. This is the concrete payoff of the semantic traits. |
+| `algorithms/argument_placeholders.h` | The return type placeholders of the built-in functions — `argument<I>` for the result of the I-th call argument, `common_argument_type<I...>` for the common type of the given (or, with no index, all) arguments — and `substitute_arguments_t`, which replaces them structurally throughout a declared return type (`std::unique_ptr<argument<0>>`) given the call's argument tuple and a quoted metafunction that resolves one argument. Closed computation over a node's `args_tuple`; who resolves an argument and how — `column_result_t` with the schema at hand — is not its business. |
 | `algorithms/field_predicates_fwd.h` | Declarations of the closed field-level predicates, split off for dependency weight: `is_rowid_alias_capable_v`, `is_bindable_v`, `is_printable_v`, and (C++17 only) `is_hidden_column_of_vtab_v`. |
 | — where their definitions live | `is_rowid_alias_capable_v` is a capability *derived from* the field type, so it is defined in `field_predicates.h` with the other computed predicates. `is_bindable_v` and `is_printable_v` instead test whether a customization point is instantiable for the type, so each stays with the point it tests — `statement_binder.h` and `field_printer.h` respectively, which include the `_fwd` header to define them. |
 | `algorithms/field_predicates.h` | The definitions of the *derived* field predicates — `is_rowid_alias_capable_v`, and (C++17 only) `is_hidden_column_of_vtab_v` — which need `type_printer.h` and `member_traits/`. Reached only through the `node_algorithm_definitions.h` manifest. |

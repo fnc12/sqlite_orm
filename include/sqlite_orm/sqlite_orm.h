@@ -2811,111 +2811,6 @@ namespace sqlite_orm::internal {
 
 // #include "../../functional/type_traits.h"
 
-// #include "../../member_traits/member_traits.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_function, std::true_type, std::false_type
-#endif
-
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-namespace sqlite_orm::internal {
-    // SFINAE friendly trait to get a member object pointer's field type
-    template<class T>
-    struct object_field_type {};
-
-    template<class T>
-    using object_field_type_t = typename object_field_type<T>::type;
-
-    template<class F, class O>
-    struct object_field_type<F O::*> : std::enable_if<!std::is_function<F>::value, F> {};
-
-    // SFINAE friendly trait to get a member function pointer's field type (i.e. unqualified return type)
-    template<class T>
-    struct getter_field_type {};
-
-    template<class T>
-    using getter_field_type_t = typename getter_field_type<T>::type;
-
-    template<class T, class O>
-    struct getter_field_type<T O::*> : getter_field_type<T> {};
-
-    template<class F>
-    struct getter_field_type<F(void) const> : polyfill::remove_cvref<F> {};
-
-    template<class F>
-    struct getter_field_type<F(void)> : polyfill::remove_cvref<F> {};
-
-    template<class F>
-    struct getter_field_type<F(void) const noexcept> : polyfill::remove_cvref<F> {};
-
-    template<class F>
-    struct getter_field_type<F(void) noexcept> : polyfill::remove_cvref<F> {};
-
-    // SFINAE friendly trait to get a member function pointer's field type (i.e. unqualified parameter type)
-    template<class T>
-    struct setter_field_type {};
-
-    template<class T>
-    using setter_field_type_t = typename setter_field_type<T>::type;
-
-    template<class T, class O>
-    struct setter_field_type<T O::*> : setter_field_type<T> {};
-
-    template<class F>
-    struct setter_field_type<void(F)> : polyfill::remove_cvref<F> {};
-
-    template<class F>
-    struct setter_field_type<void(F) noexcept> : polyfill::remove_cvref<F> {};
-
-    template<class T, class SFINAE = void>
-    struct is_getter : std::false_type {};
-    template<class T>
-    struct is_getter<T, std::void_t<getter_field_type_t<T>>> : std::true_type {};
-
-    template<class T>
-    inline constexpr bool is_getter_v = is_getter<T>::value;
-
-    template<class T, class SFINAE = void>
-    struct is_setter : std::false_type {};
-    template<class T>
-    struct is_setter<T, std::void_t<setter_field_type_t<T>>> : std::true_type {};
-
-    template<class T>
-    inline constexpr bool is_setter_v = is_setter<T>::value;
-
-    template<class T>
-    struct member_field_type : object_field_type<T>, getter_field_type<T>, setter_field_type<T> {};
-
-    template<class T>
-    using member_field_type_t = typename member_field_type<T>::type;
-
-    template<class T>
-    struct member_object_type {};
-
-    template<class F, class O>
-    struct member_object_type<F O::*> : polyfill::type_identity<O> {};
-
-    template<class T>
-    using member_object_type_t = typename member_object_type<T>::type;
-
-    /*
-     *  Casts the class type of a pointer-to-member from a base class to the specified derived class.
-     */
-    template<class O, class F, class Base>
-    constexpr F O::* as_field_of(F Base::* f) {
-        return f;
-    }
-
-    /*
-     *  Metafunction that casts the class type of a pointer-to-member from a base class to the specified derived class.
-     *  note (implementation): go through `member_field_type_t<>` instead of `decltype(as_field_of())` because of
-     *  older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
-     */
-    template<class O, class F>
-    using as_field_of_t = member_field_type_t<F> O::*;
-}
-
 // Plain accessors
 namespace sqlite_orm::internal {
     template<typename T>
@@ -3089,9 +2984,6 @@ namespace sqlite_orm::internal {
 
 // Detected-or-fallback accessors
 namespace sqlite_orm::internal {
-    template<class T>
-    using field_type_or_type_t = polyfill::detected_or_t<T, type_t, member_field_type<T>>;
-
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     template<class T>
     using alias_holder_type_or_none_t = polyfill::detected_t<type_t, T>;
@@ -3254,6 +3146,109 @@ namespace sqlite_orm::internal {
 #endif
 
 // #include "../../member_traits/member_traits.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::is_function, std::true_type, std::false_type
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+namespace sqlite_orm::internal {
+    // SFINAE friendly trait to get a member object pointer's field type
+    template<class T>
+    struct object_field_type {};
+
+    template<class T>
+    using object_field_type_t = typename object_field_type<T>::type;
+
+    template<class F, class O>
+    struct object_field_type<F O::*> : std::enable_if<!std::is_function<F>::value, F> {};
+
+    // SFINAE friendly trait to get a member function pointer's field type (i.e. unqualified return type)
+    template<class T>
+    struct getter_field_type {};
+
+    template<class T>
+    using getter_field_type_t = typename getter_field_type<T>::type;
+
+    template<class T, class O>
+    struct getter_field_type<T O::*> : getter_field_type<T> {};
+
+    template<class F>
+    struct getter_field_type<F(void) const> : polyfill::remove_cvref<F> {};
+
+    template<class F>
+    struct getter_field_type<F(void)> : polyfill::remove_cvref<F> {};
+
+    template<class F>
+    struct getter_field_type<F(void) const noexcept> : polyfill::remove_cvref<F> {};
+
+    template<class F>
+    struct getter_field_type<F(void) noexcept> : polyfill::remove_cvref<F> {};
+
+    // SFINAE friendly trait to get a member function pointer's field type (i.e. unqualified parameter type)
+    template<class T>
+    struct setter_field_type {};
+
+    template<class T>
+    using setter_field_type_t = typename setter_field_type<T>::type;
+
+    template<class T, class O>
+    struct setter_field_type<T O::*> : setter_field_type<T> {};
+
+    template<class F>
+    struct setter_field_type<void(F)> : polyfill::remove_cvref<F> {};
+
+    template<class F>
+    struct setter_field_type<void(F) noexcept> : polyfill::remove_cvref<F> {};
+
+    template<class T, class SFINAE = void>
+    struct is_getter : std::false_type {};
+    template<class T>
+    struct is_getter<T, std::void_t<getter_field_type_t<T>>> : std::true_type {};
+
+    template<class T>
+    inline constexpr bool is_getter_v = is_getter<T>::value;
+
+    template<class T, class SFINAE = void>
+    struct is_setter : std::false_type {};
+    template<class T>
+    struct is_setter<T, std::void_t<setter_field_type_t<T>>> : std::true_type {};
+
+    template<class T>
+    inline constexpr bool is_setter_v = is_setter<T>::value;
+
+    template<class T>
+    struct member_field_type : object_field_type<T>, getter_field_type<T>, setter_field_type<T> {};
+
+    template<class T>
+    using member_field_type_t = typename member_field_type<T>::type;
+
+    template<class T>
+    struct member_object_type {};
+
+    template<class F, class O>
+    struct member_object_type<F O::*> : polyfill::type_identity<O> {};
+
+    template<class T>
+    using member_object_type_t = typename member_object_type<T>::type;
+
+    /*
+     *  Casts the class type of a pointer-to-member from a base class to the specified derived class.
+     */
+    template<class O, class F, class Base>
+    constexpr F O::* as_field_of(F Base::* f) {
+        return f;
+    }
+
+    /*
+     *  Metafunction that casts the class type of a pointer-to-member from a base class to the specified derived class.
+     *  note (implementation): go through `member_field_type_t<>` instead of `decltype(as_field_of())` because of
+     *  older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+     */
+    template<class O, class F>
+    using as_field_of_t = member_field_type_t<F> O::*;
+}
 
 // #include "../../member_traits/field_of.h"
 
@@ -3915,6 +3910,69 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using unwrap_expression_t = decltype(unwrap_expression(std::declval<T>()));
+}
+// #include "algorithms/argument_placeholders.h"
+
+/** @file Substitution of the `argument<I>` and `common_argument_type<I...>` placeholders
+ *        in a built-in function's declared return type.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>  //  std::tuple, std::tuple_element
+#endif
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
+// #include "../../functional/mpl.h"
+
+// #include "../../functional/type_traits.h"
+//  common_type_of
+
+namespace sqlite_orm::internal {
+    /*
+     *  Placeholder in the return type of a built-in function's signature,
+     *  standing for the result type of the I-th call argument.
+     *
+     *  It may appear anywhere inside the return type, e.g. `std::unique_ptr<argument<0>>`.
+     */
+    template<size_t I>
+    struct argument {};
+
+    /*
+     *  Placeholder in the return type of a built-in function's signature,
+     *  standing for the common type of the result types of the call arguments with the given indexes,
+     *  e.g. `common_argument_type<1, 2>`, or of all call arguments if no index is given: `common_argument_type<>`.
+     */
+    template<size_t... I>
+    struct common_argument_type {};
+
+    /*
+     *  `R` with every `argument<I>` replaced by the result of invoking the quoted metafunction `ResolveQ`
+     *  on the I-th element of `ArgsTuple`, and every `common_argument_type<I...>` by the common type of those.
+     *  The substitution is structural: a placeholder is replaced wherever it appears inside a class template
+     *  specialization (`std::unique_ptr<argument<0>>`), anything else is left as is.
+     */
+    template<class R, class ArgsTuple, class ResolveQ>
+    struct substitute_arguments : polyfill::type_identity<R> {};
+
+    template<size_t I, class ArgsTuple, class ResolveQ>
+    struct substitute_arguments<argument<I>, ArgsTuple, ResolveQ>
+        : mpl::defer<ResolveQ, std::tuple_element_t<I, ArgsTuple>> {};
+
+    template<template<class...> class Tmpl, class... Ts, class ArgsTuple, class ResolveQ>
+    struct substitute_arguments<Tmpl<Ts...>, ArgsTuple, ResolveQ>
+        : polyfill::type_identity<Tmpl<typename substitute_arguments<Ts, ArgsTuple, ResolveQ>::type...>> {};
+
+    template<size_t... I, class ArgsTuple, class ResolveQ>
+    struct substitute_arguments<common_argument_type<I...>, ArgsTuple, ResolveQ>
+        : common_type_of<std::tuple<mpl::invoke_t<ResolveQ, std::tuple_element_t<I, ArgsTuple>>...>> {};
+
+    template<class... Args, class ResolveQ>
+    struct substitute_arguments<common_argument_type<>, std::tuple<Args...>, ResolveQ>
+        : common_type_of<std::tuple<mpl::invoke_t<ResolveQ, Args>...>> {};
+
+    template<class R, class ArgsTuple, class ResolveQ>
+    using substitute_arguments_t = typename substitute_arguments<R, ArgsTuple, ResolveQ>::type;
 }
 
 // #include "vocabulary/node_fwd.h"
@@ -6530,7 +6588,7 @@ namespace sqlite_orm::internal {
 #include <string>  //  std::string
 #include <stdexcept>  //  std::domain_error
 #include <tuple>  //  std::make_tuple, std::tuple_size
-#include <type_traits>  //  std::forward, std::is_base_of, std::enable_if, std::is_constant_evaluated
+#include <type_traits>  //  std::forward, std::is_base_of, std::enable_if, std::conditional, std::is_void, std::is_constant_evaluated
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
 #include <optional>  //  std::optional
@@ -6538,8 +6596,6 @@ namespace sqlite_orm::internal {
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
-
-// #include "functional/mpl/conditional.h"
 
 // #include "functional/is_base_template_of.h"
 
@@ -8348,11 +8404,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // Included to specialize traits
 
 namespace sqlite_orm::internal {
-    template<class T>
-    struct nullable_result_proxy {
-        using expression_type = T;
-    };
-
     /**
      *  Base class for operator overloading
      *  R - return type
@@ -9881,13 +9932,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  COALESCE(X,Y,...) function https://www.sqlite.org/lang_corefunc.html#coalesce
      */
     template<class R = void, class... Args>
-    constexpr auto coalesce(Args... args)
-        -> internal::built_in_function_t<typename mpl::conditional_t<  //  choose R or common type
-                                             std::is_void_v<R>,
-                                             std::common_type<internal::field_type_or_type_t<Args>...>,
-                                             polyfill::type_identity<R>>::type,
-                                         internal::coalesce_string,
-                                         Args...> {
+    constexpr internal::built_in_function_t<std::conditional_t<std::is_void_v<R>, internal::common_argument_type<>, R>,
+                                            internal::coalesce_string,
+                                            Args...>
+    coalesce(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -9895,14 +9943,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  IFNULL(X,Y) function https://www.sqlite.org/lang_corefunc.html#ifnull
      */
     template<class R = void, class X, class Y>
-    constexpr auto ifnull(X x, Y y) -> internal::built_in_function_t<
-        typename mpl::conditional_t<  //  choose R or common type
-            std::is_void_v<R>,
-            std::common_type<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
-            polyfill::type_identity<R>>::type,
+    constexpr internal::built_in_function_t<
+        std::conditional_t<std::is_void_v<R>, internal::common_argument_type<0, 1>, R>,
         internal::ifnull_string,
         X,
-        Y> {
+        Y>
+    ifnull(X x, Y y) {
         return {std::make_tuple(std::move(x), std::move(y))};
     }
 
@@ -9912,28 +9958,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  NULLIF(X,Y) using common return type of X and Y
      */
-    template<class R = void,
-             class X,
-             class Y,
-             std::enable_if_t<std::disjunction_v<std::negation<std::is_void<R>>,
-                                                 polyfill::is_detected<std::common_type_t,
-                                                                       internal::field_type_or_type_t<X>,
-                                                                       internal::field_type_or_type_t<Y>>>,
-                              bool> = true>
-    constexpr auto nullif(X x, Y y) {
-        if constexpr (std::is_void_v<R>) {
-            using F = internal::built_in_function_t<
-                std::optional<std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>>,
-                internal::nullif_string,
-                X,
-                Y>;
-
-            return F{std::make_tuple(std::move(x), std::move(y))};
-        } else {
-            using F = internal::built_in_function_t<R, internal::nullif_string, X, Y>;
-
-            return F{std::make_tuple(std::move(x), std::move(y))};
-        }
+    template<class R = void, class X, class Y>
+    constexpr internal::built_in_function_t<
+        std::conditional_t<std::is_void_v<R>, std::optional<internal::common_argument_type<0, 1>>, R>,
+        internal::nullif_string,
+        X,
+        Y>
+    nullif(X x, Y y) {
+        return {std::make_tuple(std::move(x), std::move(y))};
     }
 
     /**
@@ -10091,7 +10123,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  MAX(X) aggregate function.
      */
     template<class X>
-    constexpr internal::built_in_aggregate_function_t<internal::nullable_result_proxy<X>, internal::max_string, X>
+    constexpr internal::built_in_aggregate_function_t<std::unique_ptr<internal::argument<0>>, internal::max_string, X>
     max(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -10100,7 +10132,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  MIN(X) aggregate function.
      */
     template<class X>
-    constexpr internal::built_in_aggregate_function_t<internal::nullable_result_proxy<X>, internal::min_string, X>
+    constexpr internal::built_in_aggregate_function_t<std::unique_ptr<internal::argument<0>>, internal::min_string, X>
     min(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -10110,7 +10142,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    constexpr internal::built_in_function_t<internal::nullable_result_proxy<X>, internal::max_string, X, Y, Rest...>
+    constexpr internal::built_in_function_t<std::unique_ptr<internal::argument<0>>, internal::max_string, X, Y, Rest...>
     max(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
@@ -10120,7 +10152,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    constexpr internal::built_in_function_t<internal::nullable_result_proxy<X>, internal::min_string, X, Y, Rest...>
+    constexpr internal::built_in_function_t<std::unique_ptr<internal::argument<0>>, internal::min_string, X, Y, Rest...>
     min(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
@@ -10151,11 +10183,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  and rejects a statement that binds it.
      */
     template<class X>
-    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>,
-                                            internal::likelihood_string,
-                                            X,
-                                            internal::literal_holder<double>>
-    likelihood(X x, double probability) {
+    constexpr internal::
+        built_in_function_t<internal::argument<0>, internal::likelihood_string, X, internal::literal_holder<double>>
+        likelihood(X x, double probability) {
 #ifdef SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
         //  a probability outside [0.0, 1.0] makes SQLite reject the statement at prepare time;
         //  when the call is constant-evaluated the error surfaces right here, at compile time
@@ -10170,8 +10200,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  UNLIKELY(X) function https://www.sqlite.org/lang_corefunc.html#unlikely
      */
     template<class X>
-    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>, internal::unlikely_string, X>
-    unlikely(X x) {
+    constexpr internal::built_in_function_t<internal::argument<0>, internal::unlikely_string, X> unlikely(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
@@ -10191,7 +10220,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  LIKELY(X) function https://www.sqlite.org/lang_corefunc.html#likely
      */
     template<class X>
-    constexpr internal::built_in_function_t<internal::field_type_or_type_t<X>, internal::likely_string, X> likely(X x) {
+    constexpr internal::built_in_function_t<internal::argument<0>, internal::likely_string, X> likely(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
@@ -10207,30 +10236,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  auto rows = storage.select(iif<std::string>(c(&User::age) > 18, "adult", "minor"));
      */
-    template<class R = void,
-             class X,
-             class Y,
-             class Z,
-             std::enable_if_t<std::disjunction_v<std::negation<std::is_void<R>>,
-                                                 polyfill::is_detected<std::common_type_t,
-                                                                       internal::field_type_or_type_t<Y>,
-                                                                       internal::field_type_or_type_t<Z>>>,
-                              bool> = true>
-    constexpr auto iif(X x, Y y, Z z) {
-        if constexpr (std::is_void_v<R>) {
-            using F = internal::built_in_function_t<
-                std::common_type_t<internal::field_type_or_type_t<Y>, internal::field_type_or_type_t<Z>>,
-                internal::iif_string,
-                X,
-                Y,
-                Z>;
-
-            return F{std::make_tuple(std::move(x), std::move(y), std::move(z))};
-        } else {
-            using F = internal::built_in_function_t<R, internal::iif_string, X, Y, Z>;
-
-            return F{std::make_tuple(std::move(x), std::move(y), std::move(z))};
-        }
+    template<class R = void, class X, class Y, class Z>
+    constexpr internal::built_in_function_t<
+        std::conditional_t<std::is_void_v<R>, internal::common_argument_type<1, 2>, R>,
+        internal::iif_string,
+        X,
+        Y,
+        Z>
+    iif(X x, Y y, Z z) {
+        return {std::make_tuple(std::move(x), std::move(y), std::move(z))};
     }
 #endif
 
@@ -10335,30 +10349,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The return type is the common type of Y and Z, unless it is explicitly specified as a template argument.
      *  The function is only enabled if a common type of Y and Z can be determined or the return type is explicit.
      */
-    template<class R = void,
-             class X,
-             class Y,
-             class Z,
-             std::enable_if_t<std::disjunction_v<std::negation<std::is_void<R>>,
-                                                 polyfill::is_detected<std::common_type_t,
-                                                                       internal::field_type_or_type_t<Y>,
-                                                                       internal::field_type_or_type_t<Z>>>,
-                              bool> = true>
-    constexpr auto if_(X x, Y y, Z z) {
-        if constexpr (std::is_void_v<R>) {
-            using F = internal::built_in_function_t<
-                std::common_type_t<internal::field_type_or_type_t<Y>, internal::field_type_or_type_t<Z>>,
-                internal::if_string,
-                X,
-                Y,
-                Z>;
-
-            return F{std::make_tuple(std::move(x), std::move(y), std::move(z))};
-        } else {
-            using F = internal::built_in_function_t<R, internal::if_string, X, Y, Z>;
-
-            return F{std::make_tuple(std::move(x), std::move(y), std::move(z))};
-        }
+    template<class R = void, class X, class Y, class Z>
+    constexpr internal::built_in_function_t<
+        std::conditional_t<std::is_void_v<R>, internal::common_argument_type<1, 2>, R>,
+        internal::if_string,
+        X,
+        Y,
+        Z>
+    if_(X x, Y y, Z z) {
+        return {std::make_tuple(std::move(x), std::move(y), std::move(z))};
     }
 #endif
 
@@ -11616,7 +11615,7 @@ namespace sqlite_orm::internal {
 // #include "vocabulary/node_traits.h"
 
 // #include "vocabulary/node_algorithms.h"
-//  is_text_value
+//  substitute_arguments_t, is_bindable_v, is_text_value
 // #include "mapped_type_proxy.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -13683,28 +13682,25 @@ namespace sqlite_orm::internal {
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<std::is_member_pointer, T>> : member_field_type<T> {};
 
+    /*
+     *  The result type of a built-in function's call argument, as the return type placeholders see it:
+     *  a bindable value stands for itself - except a text value, which yields `std::string`
+     *  like a select of it does -, anything else (a member pointer, a column pointer, a nested expression)
+     *  for its column result.
+     */
+    template<class DBOs, class Arg>
+    using argument_result_of_t = typename std::conditional_t<is_bindable_v<Arg> && !is_text_value<Arg>::value,
+                                                             polyfill::type_identity<Arg>,
+                                                             column_result_t<DBOs, Arg>>::type;
+
     /**
-     *  The result of a built-in function is the return type it declares, except for the functions whose
-     *  result is a `unique_ptr` of their first argument's result - those declare `nullable_result_proxy<X>`.
+     *  The declared return type of a built-in function, with the `argument<I>` and `common_argument_type<I...>`
+     *  placeholders replaced by the results of the call arguments.
      */
     template<class DBOs, class T>
-    struct column_result_t<DBOs,
-                           T,
-                           std::enable_if_t<std::conjunction<
-                               is_built_in_function<T>,
-                               polyfill::is_specialization_of<return_type_t<T>, nullable_result_proxy>>::value>> {
-        using expression_type = expression_type_t<return_type_t<T>>;
-        using type = std::unique_ptr<column_result_of_t<DBOs, expression_type>>;
-    };
-
-    template<class DBOs, class T>
-    struct column_result_t<
-        DBOs,
-        T,
-        std::enable_if_t<std::conjunction<
-            is_built_in_function<T>,
-            std::negation<polyfill::is_specialization_of<return_type_t<T>, nullable_result_proxy>>>::value>> {
-        using type = return_type_t<T>;
+    struct column_result_t<DBOs, T, match_if<is_built_in_function, T>> {
+        using type =
+            substitute_arguments_t<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<argument_result_of_t, DBOs>>;
     };
 
     template<class DBOs, class F, class... Args>
