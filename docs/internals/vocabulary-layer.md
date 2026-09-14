@@ -82,6 +82,16 @@ vocabulary/
                             Deliberately does NOT include field_predicates.h.
 ```
 
+### Including the layer
+
+Consumers include the umbrellas — `node_traits.h`, `node_algorithms.h` — never a
+`traits/`, `projections/` or `algorithms/` file directly. The umbrellas are the layer's
+public surface; the files behind them are an implementation arrangement that is free to
+change. The only files included by name from outside the layer are the ones that exist
+*for* that purpose: a `traits/*_fwd.h` (or `algorithms/field_predicates_fwd.h`) from a
+node or customization-point header that specializes it, and the definitions manifest
+`node_algorithm_definitions.h`.
+
 ## The core distinction: classification vs. computation
 
 Every trait and algorithm here falls into exactly one of two categories, and almost every
@@ -158,7 +168,7 @@ Four axes are keyed on a DSL node; one is keyed on a raw C++ type.
 | **Semantic** | `traits/semantic_traits_fwd.h` | a DSL node | What cross-cutting role does this play, across *dissimilar* grammar families? |
 | **Structural** | `traits/structural_traits_fwd.h` | a DSL node | Is this a DSL-tree-only node with no SQL grammar counterpart? |
 | **Operand** | `traits/operand_traits_fwd.h` | a DSL node | Can this node appear as an operand in an expression context? |
-| **Field** | `algorithms/field_predicates_fwd.h` | a raw C++ type | Does this C++ type qualify for a SQL-level role — bindable, printable, rowid-alias capable? |
+| **Field** | `algorithms/field_predicates_fwd.h` | a raw C++ type | Does this C++ type qualify for a SQL-level role — bindable, printable, rowid-alias capable, a text value? |
 
 All four node axes are **open**: the primary template is declared in the `_fwd.h` file, and
 each node specializes it **in the node's own header**.

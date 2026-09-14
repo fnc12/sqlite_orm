@@ -7,16 +7,15 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "functional/gsl.h"
 #include "functional/mpl.h"
-#include "functional/type_traits.h"
+#include "functional/type_traits.h"  //  common_type_of_t
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_fy.h"
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_transformer.h"
-#include "tuple_helper/same_or_void.h"
 #include "member_traits/member_traits.h"
 #include "vocabulary/node_traits.h"
+#include "vocabulary/node_algorithms.h"  //  is_text_value
 #include "mapped_type_proxy.h"
 #include "core_functions.h"
 #include "operators.h"
@@ -87,36 +86,8 @@ namespace sqlite_orm::internal {
     /**
      *  Result for the most simple queries like `SELECT 'ototo'`
      */
-    template<class DBOs>
-    struct column_result_t<DBOs, orm_gsl::czstring, void> {
-        using type = std::string;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, std::string_view, void> {
-        using type = std::string;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, std::string, void> {
-        using type = std::string;
-    };
-
-    /**
-     *  Result for the most simple queries like `SELECT 'ototo'`
-     */
-    template<class DBOs>
-    struct column_result_t<DBOs, orm_gsl::cwzstring, void> {
-        using type = std::string;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, std::wstring_view, void> {
-        using type = std::string;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, std::wstring, void> {
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_text_value, T>> {
         using type = std::string;
     };
 

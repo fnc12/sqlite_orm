@@ -4,9 +4,12 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_base_of, std::is_integral, std::is_signed, std::enable_if
+#include <type_traits>  //  std::is_base_of, std::is_integral, std::is_signed, std::enable_if, std::is_same, std::disjunction
+#include <string>  //  std::string, std::wstring
+#include <string_view>  //  std::string_view, std::wstring_view
 #endif
 
+#include "../../functional/gsl.h"  // orm_gsl::czstring, orm_gsl::cwzstring
 #include "../../type_printer.h"
 #include "field_predicates_fwd.h"  // Included to specialize field predicates
 
@@ -36,4 +39,12 @@ namespace sqlite_orm::internal {
                                                   (sizeof(F) != sizeof(sqlite_int64) ||
                                                    std::is_signed<F>::value != std::is_signed<sqlite_int64>::value)>> =
             true;
+
+    template<class T>
+    constexpr bool is_text_value_v = std::disjunction<std::is_same<T, orm_gsl::czstring>,
+                                                      std::is_same<T, std::string_view>,
+                                                      std::is_same<T, std::string>,
+                                                      std::is_same<T, orm_gsl::cwzstring>,
+                                                      std::is_same<T, std::wstring_view>,
+                                                      std::is_same<T, std::wstring>>::value;
 }
