@@ -885,6 +885,10 @@ namespace sqlite_orm::internal {
     inline constexpr auto json_array = "JSON_ARRAY"_builtin.scalar<std::string(variadic<anything>)>();
     inline constexpr auto json_array_length =
         "JSON_ARRAY_LENGTH"_builtin.scalar<int(anything), int(anything, std::string_view)>();
+#if SQLITE_VERSION_NUMBER >= 3053000
+    inline constexpr auto json_array_insert =
+        "JSON_ARRAY_INSERT"_builtin.scalar<std::string(anything, std::string_view, anything, variadic<anything>)>();
+#endif
     inline constexpr auto json_extract =
         "JSON_EXTRACT"_builtin.scalar<std::string(anything, std::string_view, variadic<std::string_view>)>();
     inline constexpr auto json_insert =
@@ -899,7 +903,18 @@ namespace sqlite_orm::internal {
         "JSON_REMOVE"_builtin.scalar<std::string(anything, variadic<std::string_view>)>();
     inline constexpr auto json_type =
         "JSON_TYPE"_builtin.scalar<std::string(anything), std::string(anything, std::string_view)>();
+#if SQLITE_VERSION_NUMBER >= 3045000
+    inline constexpr auto json_valid = "JSON_VALID"_builtin.scalar<bool(anything), bool(anything, int)>();
+#else
     inline constexpr auto json_valid = "JSON_VALID"_builtin.scalar<bool(anything)>();
+#endif
+#if SQLITE_VERSION_NUMBER >= 3042000
+    inline constexpr auto json_error_position = "JSON_ERROR_POSITION"_builtin.scalar<int(anything)>();
+#endif
+#if SQLITE_VERSION_NUMBER >= 3046000
+    inline constexpr auto json_pretty =
+        "JSON_PRETTY"_builtin.scalar<std::string(anything), std::string(anything, std::string_view)>();
+#endif
     inline constexpr auto json_quote = "JSON_QUOTE"_builtin.scalar<std::string(anything)>();
     inline constexpr auto json_group_array = "JSON_GROUP_ARRAY"_builtin.aggregate<std::string(anything)>();
     inline constexpr auto json_group_object = "JSON_GROUP_OBJECT"_builtin.aggregate<std::string(anything, anything)>();
@@ -1887,6 +1902,18 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return internal::json_insert(std::move(x), std::move(args)...);
     }
 
+#if SQLITE_VERSION_NUMBER >= 3053000
+    /**
+     *  JSON_ARRAY_INSERT(X,P,V,...) function: inserts values into the arrays of X at the paths P,
+     *  shifting the existing elements to the right. https://www.sqlite.org/json1.html#jarrins
+     */
+    template<class X, class... Args>
+    constexpr auto json_array_insert(X x, Args... args) {
+        static_assert(sizeof...(Args) % 2 == 0, "number of arguments in json_array_insert must be odd");
+        return internal::json_array_insert(std::move(x), std::move(args)...);
+    }
+#endif
+
     template<class X, class... Args>
     constexpr auto json_replace(X x, Args... args) {
         static_assert(sizeof...(Args) % 2 == 0, "number of arguments in json_replace must be odd");
@@ -1913,7 +1940,27 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return internal::json_type.template operator()<R>(std::move(args)...);
     }
 
+    /**
+     *  JSON_VALID(X) and, as of SQLite 3.45.0, JSON_VALID(X,Y) function: validates X,
+     *  against the conformance flags Y. https://www.sqlite.org/json1.html#jvalid
+     */
     inline constexpr orm_built_in_function auto json_valid = internal::json_valid;
+
+#if SQLITE_VERSION_NUMBER >= 3042000
+    /**
+     *  JSON_ERROR_POSITION(X) function: the character offset of the first syntax error in X,
+     *  or 0 if X is well-formed. https://www.sqlite.org/json1.html#jerr
+     */
+    inline constexpr orm_built_in_function auto json_error_position = internal::json_error_position;
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3046000
+    /**
+     *  JSON_PRETTY(X) and JSON_PRETTY(X,Y) function: pretty-prints X with four-space indentation,
+     *  or indenting with the string Y. https://www.sqlite.org/json1.html#jpretty
+     */
+    inline constexpr orm_built_in_function auto json_pretty = internal::json_pretty;
+#endif
 
     template<class R, class X>
     constexpr auto json_quote(X x) {

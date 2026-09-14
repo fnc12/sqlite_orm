@@ -415,6 +415,10 @@ back. What that changed for this branch:
   than ill-formed.
 - The legacy node's argument tuple is spelled `args_tuple`, like the call
   node's.
+- The JSON functions that arrived on `dev` in the meantime -
+  `json_array_insert`, `json_valid(X,Y)`, `json_error_position`, `json_pretty` -
+  are defined by the mechanism as well, with the same version gates as their
+  legacy factories.
 
 ## Follow-ups
 
