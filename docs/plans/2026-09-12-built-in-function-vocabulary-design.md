@@ -239,14 +239,20 @@ first argument.
 
 ### Files
 
-- `dev/ast/built_in_function.h`: `anything`, `argument<I>`, `scalar_sig`,
-  `aggregate_sig`, `built_in_function` (renamed from
-  `built_in_scalar_function`), `built_in_aggregate_function_call`, builder
-  `.function<>()`. `filtered_aggregate_function` is forward-declared there;
-  its definition stays in `core_functions.h`.
-- `dev/vocabulary/algorithms/argument_placeholders.h`: the structural
-  substitution; registered in `vocabulary/node_algorithms.h`.
-- `dev/column_result.h`: the non-proxy built-in branch applies it.
+- `dev/ast/built_in_function.h`: `anything`, `scalar_sig`, `aggregate_sig`,
+  `built_in_function` (renamed from `built_in_scalar_function`),
+  `built_in_aggregate_function_call`, builder `.function<>()`.
+  `filtered_aggregate_function` is forward-declared there; its definition
+  stays in `core_functions.h`.
+- `dev/vocabulary/algorithms/argument_placeholders.h`: the placeholders
+  themselves (`argument<I>`, later `common_argument_type<I...>` —
+  they are the substitution's vocabulary, not nodes, so no `node_fwd.h`
+  entry) and the structural substitution; registered in
+  `vocabulary/node_algorithms.h`.
+- `dev/column_result.h`: the single built-in branch applies it (see phase 4
+  for the argument resolver). `built_in_function_t` and
+  `built_in_aggregate_function_t` are C++17-only and retire with the
+  baseline.
 - `dev/core_functions.h`: `max`/`min` per decision 7; `max_string`/`min_string`
   and the four legacy factories move into the C++17 branch.
 - Tests: kinded dispatch, placeholder substitution through `column_result_t`,
@@ -301,16 +307,86 @@ needing agreement and a transition path.
     expression — is additive and can be introduced whenever wanted; retiring
     the `<R>` parameters afterwards is a separate decision for the maintainers.
 
-`acos` is ported as the proof; the other 48 follow the same three lines.
+`acos` was ported as the proof; the rest followed in phase 4.
+
+## Phase 4 — the remaining port (2026-09-13)
+
+Every built-in in `core_functions.h` is now defined by the mechanism in
+C++20 builds; the `*_string` tags and legacy factories live only in the
+C++17 branch (`count_string` stays, `count(*)` is `count_asterisk_t` and
+untouched). Two additions were needed on the way:
+
+13. **`common_argument_type<I...>` placeholder.** `coalesce`, `ifnull`, `nullif`,
+    `iif` and `if_` compute `std::common_type` of (some of) their arguments.
+    `common_argument_type<1, 2>` and, for the open-ended
+    `coalesce`, `common_argument_type<>` express that in the return
+    position; `argument_placeholders.h` substitutes and then applies
+    `std::common_type`.
+
+    **Argument resolution (both standards).** The legacy factories resolved
+    arguments at the call site with `field_type_or_type_t` — a member
+    pointer's field type, anything else as itself — because no schema is
+    available there; `max`/`min`'s `nullable_result_proxy` resolved through
+    `column_result_t` instead. The placeholders resolve in `column_result_t`
+    with `argument_result_of_t`: a bindable value stands for itself (so enum
+    columns with custom binders, blob literals and other user types keep
+    working exactly as before), except a text value (`is_text_value`: narrow
+    or wide C string, string view or string), which yields `std::string` as a
+    select of it does (so `max("a", "b")` stays `unique_ptr<std::string>`);
+    everything else — member pointer, column
+    pointer, nested expression, sub-select — resolves through
+    `column_result_t`. That is a superset of both legacy behaviours: the
+    argument-typed built-ins now accept any expression, not only columns and
+    plain values. The C++17 factories declare the same placeholders, so the
+    widening and the single `column_result_t` branch apply to both standards,
+    and `field_type_or_type_t`/`nullable_result_proxy` are gone.
+
+    Two consequences: the legacy call-site SFINAE of `nullif`/`iif`/`if_`
+    (enabled only when a common type exists) is gone — the error now surfaces
+    where the result type is computed, i.e. at `select`; and the node's
+    nested `return_type` holds the placeholder rather than the resolved type,
+    which needs the schema — code that inspected
+    `decltype(coalesce(...))::return_type` must ask `column_result_t`.
+
+14. **Facades beyond the `R` case.** A public function template also stays
+    where the name is shared with other function templates (`count(X)` next
+    to `count()`/`count<T>()`, `replace(X, Y, Z)` next to the DML `replace`),
+    or where the call checks its arguments (`sqlite_offset`'s column check,
+    `likelihood`'s constant-evaluated probability range, the odd-argument
+    checks of `json_insert`/`json_replace`/`json_set`). `json_extract` and
+    `json_quote` keep requiring `R` explicitly.
+
+Arities are now enforced by the signatures rather than accepted blindly;
+they follow the SQLite documentation (`coalesce` needs two arguments,
+`concat_ws` a separator and one value, `strftime` a format, ...).
+`json_group_array`/`json_group_object` are declared as the aggregates they
+are and gain `.filter()`/`.over()`.
+
+### Known issue: name ambiguity with the C library in C++20 builds
+
+Some public built-ins are now *objects*, and a few of them share their name
+with C library functions that `<math.h>`/`<time.h>`/`<stdlib.h>` put into the
+global namespace — `abs`, `round`, `time`, `random`, `strftime`, `printf`.
+Under `using namespace sqlite_orm;` an unqualified use of such a name finds
+both the object and the C function, which is an ambiguous *lookup*, not an
+overload resolution — so it fails even for arguments only one of them could
+take. With the legacy function templates the same names merely competed in
+overload resolution and usually resolved; `sqlite_orm::abs` already had to be
+qualified in the tests for that reason, and the others are affected the same
+way now. Qualifying the call (`sqlite_orm::time("now")`) is the workaround.
+
+Not fixed in this branch. A likely fix is to stop pulling the C headers into
+the global namespace: import the std module (or include the `<c...>` headers
+only) so the C functions live in `std` alone. Left for a separate commit.
 
 ## Follow-ups
 
-- Port the remaining scalar and aggregate built-ins; delete their `*_string`
-  tags and factories from the C++20 branch as they go, and
-  `nullable_result_proxy` with the last of them. Those taking `R` get the
-  facade of decision 12.
+- The C library name ambiguity above.
 - Optional: `as_result<R>(expr)` as the general, callee-independent result
   type override (generalizing `as_optional`).
+- When C++17 support is dropped: delete the `#ifndef` branches —
+  `built_in_function_t`, `built_in_aggregate_function_t`, the tag structs
+  and the legacy factories; `count_asterisk_t` then needs its own name tag.
 - Name clashes inside `sqlite_orm::internal` as more built-ins are defined
   there (`max`, `min`, `count`, ...). Class members shadow them, but a
   namespace-scope internal helper of the same name would not; a nested

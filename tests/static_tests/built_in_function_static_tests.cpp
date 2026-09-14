@@ -6,6 +6,7 @@
 #include <tuple>  //  std::tuple
 #include <memory>  //  std::unique_ptr
 #include <optional>  //  std::optional
+#include <vector>  //  std::vector
 #include <utility>  //  std::move
 
 using namespace sqlite_orm;
@@ -18,6 +19,7 @@ using internal::built_in_aggregate_function_call;
 using internal::built_in_function;
 using internal::built_in_function_call;
 using internal::column_result_of_t;
+using internal::common_argument_type;
 using internal::db_objects_tuple;
 using internal::filtered_aggregate_function;
 using internal::is_built_in_function_v;
@@ -40,6 +42,7 @@ TEST_CASE("built-in function static") {
     struct User {
         int id = 0;
         std::string name;
+        std::vector<char> blob;
     };
 
     SECTION("definition") {
@@ -186,6 +189,29 @@ TEST_CASE("built-in function static") {
 
         // no placeholder: the declared type as is
         STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(lower(&User::name))>, std::string>);
+
+        // argument resolution: a bindable value stands for itself, a text literal for the owning string,
+        // anything else for its column result
+        STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(max(std::vector<char>{}, &User::blob))>,
+                                      std::unique_ptr<std::vector<char>>>);
+        STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(max("a", "b"))>, std::unique_ptr<std::string>>);
+        STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(max(lower(&User::name), "b"))>,
+                                      std::unique_ptr<std::string>>);
+        STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(max(std::optional<int>{}, 1))>,
+                                      std::unique_ptr<std::optional<int>>>);
+
+        // common type of selected or of all arguments
+        constexpr auto pick_f = "PICK"_builtin.scalar<common_argument_type<1, 2>(anything, anything, anything)>();
+        STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(pick_f(true, &User::id, 1.5))>, double>);
+        STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(pick_f(0, &User::name, "x"))>, std::string>);
+        constexpr auto first_f = "FIRST"_builtin.scalar<common_argument_type<>(anything, variadic<anything>)>();
+        STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(first_f(&User::id))>, int>);
+        STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(first_f(&User::id, 2.5, 'c'))>, double>);
+        STATIC_REQUIRE(
+            std::is_same_v<column_result_of_t<dbos,
+                                              decltype(first_f.template operator()<
+                                                       std::optional<common_argument_type<>>>(&User::id, 2))>,
+                           std::optional<int>>);
     }
     SECTION("return type override") {
         // an explicit `R` replaces the declared return type
@@ -217,6 +243,35 @@ TEST_CASE("built-in function static") {
             std::is_same_v<decltype(sqlite_orm::acos<std::optional<double>>(1))::return_type, std::optional<double>>);
         STATIC_REQUIRE(std::is_same_v<decltype(sqlite_orm::acos<float>(&User::id))::signature_type, float(double)>);
         STATIC_REQUIRE(is_built_in_function_v<decltype(sqlite_orm::acos(1))>);
+#endif
+    }
+    SECTION("ported functions") {
+        using dbos = db_objects_tuple<>;
+
+        // count(X) is the aggregate object behind a facade; count(*) is untouched
+        STATIC_REQUIRE(std::is_same_v<decltype(count(&User::id)),
+                                      built_in_aggregate_function_call<std::remove_const_t<decltype(internal::count)>,
+                                                                       int(anything),
+                                                                       int User::*>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(count<User>()), internal::count_asterisk_t<User>>);
+        STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(count(&User::id))>, int>);
+
+        // zero-argument and open-ended signatures
+        STATIC_REQUIRE(std::is_same_v<decltype(changes())::args_tuple, std::tuple<>>);
+        STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(changes())>, int>);
+        STATIC_REQUIRE(std::is_invocable_v<decltype(char_)>);
+        STATIC_REQUIRE(std::is_invocable_v<decltype(char_), int, int, int>);
+        STATIC_REQUIRE(!std::is_invocable_v<decltype(internal::coalesce), int>);
+        STATIC_REQUIRE(std::is_invocable_v<decltype(internal::coalesce), int, int>);
+
+        // argument-dependent return types
+        STATIC_REQUIRE(
+            std::is_same_v<column_result_of_t<dbos, decltype(sqlite_orm::abs(&User::id))>, std::unique_ptr<double>>);
+        STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(ifnull(&User::name, "n/a"))>, std::string>);
+        STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(nullif(&User::id, 0))>, std::optional<int>>);
+        STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(nullif<double>(&User::id, 0))>, double>);
+#if SQLITE_VERSION_NUMBER >= 3008006
+        STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(likely(&User::name))>, std::string>);
 #endif
     }
     SECTION("first match in declaration order") {

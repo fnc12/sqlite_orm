@@ -82,6 +82,16 @@ vocabulary/
                             Deliberately does NOT include field_predicates.h.
 ```
 
+### Including the layer
+
+Consumers include the umbrellas — `node_traits.h`, `node_algorithms.h` — never a
+`traits/`, `projections/` or `algorithms/` file directly. The umbrellas are the layer's
+public surface; the files behind them are an implementation arrangement that is free to
+change. The only files included by name from outside the layer are the ones that exist
+*for* that purpose: a `traits/*_fwd.h` (or `algorithms/field_predicates_fwd.h`) from a
+node or customization-point header that specializes it, and the definitions manifest
+`node_algorithm_definitions.h`.
+
 ## The core distinction: classification vs. computation
 
 Every trait and algorithm here falls into exactly one of two categories, and almost every
@@ -142,8 +152,8 @@ Two rules that repeatedly prevent mistakes:
 - **Complexity never determines tier.** How many other traits a condition composes, or how
   involved its SFINAE is, has no bearing on where it belongs. `is_raw_dml_expression_v`
   internally composes other grammar traits and the `expression_type_t` projection, and is
-  still an open semantic trait. `field_type_or_type_t` uses the detected idiom with a
-  fallback, and is still a plain projection. The test is *whether it composes
+  still an open semantic trait. `alias_holder_type_or_none_t` uses the detected idiom with
+  a fallback, and is still a plain projection. The test is *whether it composes
   classification traits into a judgment*, not whether the logic is hard.
 - **Openness is about who writes specializations**, not about how complex they are. See
   [Open vs. closed](#open-vs-closed).
@@ -158,7 +168,7 @@ Four axes are keyed on a DSL node; one is keyed on a raw C++ type.
 | **Semantic** | `traits/semantic_traits_fwd.h` | a DSL node | What cross-cutting role does this play, across *dissimilar* grammar families? |
 | **Structural** | `traits/structural_traits_fwd.h` | a DSL node | Is this a DSL-tree-only node with no SQL grammar counterpart? |
 | **Operand** | `traits/operand_traits_fwd.h` | a DSL node | Can this node appear as an operand in an expression context? |
-| **Field** | `algorithms/field_predicates_fwd.h` | a raw C++ type | Does this C++ type qualify for a SQL-level role — bindable, printable, rowid-alias capable? |
+| **Field** | `algorithms/field_predicates_fwd.h` | a raw C++ type | Does this C++ type qualify for a SQL-level role — bindable, printable, rowid-alias capable, a text value? |
 
 All four node axes are **open**: the primary template is declared in the `_fwd.h` file, and
 each node specializes it **in the node's own header**.
@@ -216,8 +226,7 @@ specialize. Direct single-node accessors, in three shapes across two files.
 
 - plain nested-typedef access — `constraints_type_t`, `field_type_t`, `elements_type_t`,
   `object_type_t`, `expression_type_t`, `left_type_t`/`right_type_t`, …
-- detected-idiom accessors with a fallback — `field_type_or_type_t`,
-  `alias_holder_type_or_none_t`.
+- detected-idiom accessors with a fallback — `alias_holder_type_or_none_t`.
 
 `projections/mapped_types.h` instead destructures a node to a type it captured, and therefore
 names the concrete nodes it matches: `table_type_of` yields the enclosing class of a
@@ -404,17 +413,14 @@ Decided, not yet done. The destination is settled in each case; only the work re
   the same shape as the field traits, but still in its current public, pre-existing
   location. Real work, not urgent.
 
-- **Port the built-in functions to `ast/built_in_function.h`.** In C++20 builds a
-  built-in is one `inline constexpr` definition of name plus overload set
-  (`"LOWER"_builtin.scalar<std::string(std::string_view)>()`), and the resulting
-  `built_in_function_call` node plugs into `is_built_in_function` — the consumers of that
-  trait need no change. Aggregates (`aggregate_sig`, a call node with `.filter()`/`.over()`)
-  and argument-dependent return types (`argument<I>` in the return type, substituted by
-  `vocabulary/algorithms/argument_placeholders.h` from `column_result_t`) are in place.
-  Functions taking the return type as a template argument keep their function template as
-  a facade over an internal definition object (`acos`). Only `lower`, `substr`, `substring`,
-  `max`, `min` and `acos` are ported; the rest of `core_functions.h` still uses the
-  per-function `*_string` tag + `built_in_function_t` factory. Design and decisions are in
+- **Retire the legacy built-in function nodes with C++17.** In C++20 builds every
+  built-in is one `inline constexpr` definition of name plus overload set in
+  `ast/built_in_function.h` (`"LOWER"_builtin.scalar<std::string(std::string_view)>()`);
+  the resulting call node plugs into `is_built_in_function`, and argument-dependent return
+  types are placeholders (`argument<I>`, `common_argument_type<I...>`) substituted by
+  `vocabulary/algorithms/argument_placeholders.h` from `column_result_t`. The per-function
+  `*_string` tag + `built_in_function_t` factory pairs in `core_functions.h` exist only for
+  C++17 and go when that baseline does. Design and decisions are in
   [`docs/plans/2026-09-12-built-in-function-vocabulary-design.md`](../plans/2026-09-12-built-in-function-vocabulary-design.md).
 
 ## Open questions

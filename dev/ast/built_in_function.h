@@ -17,21 +17,20 @@
 #include "../functional/function_traits.h"
 #include "../function.h"  // orm_function_sig
 #include "../tags.h"
-#include "../vocabulary/node_traits.h"  // is_where_v, expression_type_t
+#include "../vocabulary/node_algorithms.h"  // argument, common_argument_type
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 #include "window.h"  // over_t, validate_over_arguments
 #endif
 
 /*
- *  Signature vocabulary of built-in functions.
+ *  Signature vocabulary of built-in functions (see also the return type placeholders
+ *  `argument<I>` and `common_argument_type<I...>` in `vocabulary/algorithms/argument_placeholders.h`).
  *
  *  Parameter types are nominal: no callable receives them and call arguments are not checked against them;
  *  they state the SQL contract and fix the arity. The return type is not nominal - it is what a select yields.
- *
- *  The markers are declared unconditionally so that the vocabulary algorithms can name them;
- *  the definition mechanism itself requires C++20.
  */
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 namespace sqlite_orm::internal {
     /*
      *  Marker for the last parameter of a built-in function's signature: "zero or more further `T`".
@@ -49,18 +48,6 @@ namespace sqlite_orm::internal {
      */
     struct anything {};
 
-    /*
-     *  Placeholder in the return type of a built-in function's signature,
-     *  standing for the result type of the I-th call argument.
-     *
-     *  It may appear anywhere inside the return type, e.g. `std::unique_ptr<argument<0>>`.
-     */
-    template<size_t I>
-    struct argument {};
-}
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-namespace sqlite_orm::internal {
     template<class F, class W>
     struct filtered_aggregate_function;
 

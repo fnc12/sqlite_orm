@@ -13,6 +13,16 @@ namespace sqlite_orm::internal {
     using is_rowid_alias_capable = std::bool_constant<is_rowid_alias_capable_v<F>>;
 
     /*
+     *  Whether a type is a C++ text value - a narrow or wide C string, string view or string -,
+     *  which a select yields as `std::string`.
+     */
+    template<class T>
+    extern const bool is_text_value_v;
+
+    template<class T>
+    using is_text_value = std::bool_constant<is_text_value_v<T>>;
+
+    /*
      *  Whether a field type can be bound as a parameter of a prepared statement.
      *
      *  In contrast to `is_rowid_alias_capable`, which is a capability derived from the field type itself,

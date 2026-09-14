@@ -391,12 +391,12 @@ TEST_CASE("replace func") {
 TEST_CASE("round") {
     auto storage = make_storage({});
     auto test = [&storage](auto input, double expected) {
-        auto rows = storage.select(round(input));
+        auto rows = storage.select(sqlite_orm::round(input));
         REQUIRE(rows.size() == 1);
         REQUIRE(rows.front() == expected);
     };
     auto test2 = [&storage](auto inputA, auto inputB, double expected) {
-        auto rows = storage.select(round(inputA, inputB));
+        auto rows = storage.select(sqlite_orm::round(inputA, inputB));
         REQUIRE(rows.size() == 1);
         REQUIRE(rows.front() == expected);
     };

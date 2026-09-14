@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_same, std::is_empty, std::is_aggregate, std::declval
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_empty, std::is_aggregate, std::declval, std::common_type
 #if __cpp_lib_unwrap_ref >= 201811L
 #include <utility>  //  std::reference_wrapper
 #else
@@ -147,4 +147,20 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T>
     concept orm_names_type = requires { typename T::type; };
 #endif
+}
+
+namespace sqlite_orm::internal {
+    template<class Pack>
+    struct common_type_of;
+
+    template<template<class...> class Pack, class... Types>
+    struct common_type_of<Pack<Types...>> : std::common_type<Types...> {};
+
+    /**
+     *  Accepts a pack of types and defines a nested `type` typename to a common type if possible, otherwise nonexistent.
+     *
+     *  @note: SFINAE friendly like `std::common_type`.
+     */
+    template<class Pack>
+    using common_type_of_t = typename common_type_of<Pack>::type;
 }

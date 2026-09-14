@@ -15,11 +15,11 @@ TEST_CASE("Limits") {
     storage.sync_schema();
 
     SECTION("length") {
-        auto length = storage.limit.length();
-        auto newLength = length - 10;
+        auto lengthValue = storage.limit.length();
+        auto newLength = lengthValue - 10;
         storage.limit.length(newLength);
-        length = storage.limit.length();
-        REQUIRE(length == newLength);
+        lengthValue = storage.limit.length();
+        REQUIRE(lengthValue == newLength);
     }
     SECTION("sql_length") {
         auto sqlLength = storage.limit.sql_length();

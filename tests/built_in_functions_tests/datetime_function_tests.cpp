@@ -6,12 +6,12 @@ using namespace sqlite_orm;
 TEST_CASE("time") {
     auto storage = make_storage({});
     {
-        auto rows = storage.select(time("12:00", "localtime"));
+        auto rows = storage.select(sqlite_orm::time("12:00", "localtime"));
         REQUIRE(rows.size() == 1);
         REQUIRE_FALSE(rows.front().empty());
     }
     {
-        auto rows = storage.select(time("12:00", "utc"));
+        auto rows = storage.select(sqlite_orm::time("12:00", "utc"));
         REQUIRE(rows.size() == 1);
         REQUIRE_FALSE(rows.front().empty());
     }
@@ -59,7 +59,7 @@ TEST_CASE("date") {
 
 TEST_CASE("strftime") {
     auto storage = make_storage({});
-    auto rows = storage.select(strftime("%Y %m %d", "now"));
+    auto rows = storage.select(sqlite_orm::strftime("%Y %m %d", "now"));
     REQUIRE(rows.size() == 1);
     REQUIRE_FALSE(rows.front().empty());
 }

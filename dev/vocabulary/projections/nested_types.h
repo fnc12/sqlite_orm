@@ -184,9 +184,6 @@ namespace sqlite_orm::internal {
 
 // Detected-or-fallback accessors
 namespace sqlite_orm::internal {
-    template<class T>
-    using field_type_or_type_t = polyfill::detected_or_t<T, type_t, member_field_type<T>>;
-
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     template<class T>
     using alias_holder_type_or_none_t = polyfill::detected_t<type_t, T>;

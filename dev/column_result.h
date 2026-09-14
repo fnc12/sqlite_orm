@@ -17,7 +17,7 @@
 #include "tuple_helper/same_or_void.h"
 #include "member_traits/member_traits.h"
 #include "vocabulary/node_traits.h"
-#include "vocabulary/node_algorithms.h"  // substitute_arguments_t
+#include "vocabulary/node_algorithms.h"  // substitute_arguments_t, is_bindable_v, is_text_value
 #include "mapped_type_proxy.h"
 #include "core_functions.h"
 #include "operators.h"
@@ -88,36 +88,8 @@ namespace sqlite_orm::internal {
     /**
      *  Result for the most simple queries like `SELECT 'ototo'`
      */
-    template<class DBOs>
-    struct column_result_t<DBOs, orm_gsl::czstring, void> {
-        using type = std::string;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, std::string_view, void> {
-        using type = std::string;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, std::string, void> {
-        using type = std::string;
-    };
-
-    /**
-     *  Result for the most simple queries like `SELECT 'ototo'`
-     */
-    template<class DBOs>
-    struct column_result_t<DBOs, orm_gsl::cwzstring, void> {
-        using type = std::string;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, std::wstring_view, void> {
-        using type = std::string;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, std::wstring, void> {
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_text_value, T>> {
         using type = std::string;
     };
 
@@ -172,32 +144,25 @@ namespace sqlite_orm::internal {
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<std::is_member_pointer, T>> : member_field_type<T> {};
 
-    /**
-     *  The result of a built-in function is the return type it declares, except for the functions whose
-     *  result is a `unique_ptr` of their first argument's result - those declare `nullable_result_proxy<X>`.
+    /*
+     *  The result type of a built-in function's call argument, as the return type placeholders see it:
+     *  a bindable value stands for itself - except a text value, which yields `std::string`
+     *  like a select of it does -, anything else (a member pointer, a column pointer, a nested expression)
+     *  for its column result.
      */
-    template<class DBOs, class T>
-    struct column_result_t<DBOs,
-                           T,
-                           std::enable_if_t<std::conjunction<
-                               is_built_in_function<T>,
-                               polyfill::is_specialization_of<return_type_t<T>, nullable_result_proxy>>::value>> {
-        using expression_type = expression_type_t<return_type_t<T>>;
-        using type = std::unique_ptr<column_result_of_t<DBOs, expression_type>>;
-    };
+    template<class DBOs, class Arg>
+    using argument_result_of_t = typename std::conditional_t<is_bindable_v<Arg> && !is_text_value<Arg>::value,
+                                                             polyfill::type_identity<Arg>,
+                                                             column_result_t<DBOs, Arg>>::type;
 
     /**
-     *  The declared return type, with any `argument<I>` placeholder replaced by the result of the I-th argument.
+     *  The declared return type of a built-in function, with the `argument<I>` and `common_argument_type<I...>`
+     *  placeholders replaced by the results of the call arguments.
      */
     template<class DBOs, class T>
-    struct column_result_t<
-        DBOs,
-        T,
-        std::enable_if_t<std::conjunction<
-            is_built_in_function<T>,
-            std::negation<polyfill::is_specialization_of<return_type_t<T>, nullable_result_proxy>>>::value>> {
+    struct column_result_t<DBOs, T, match_if<is_built_in_function, T>> {
         using type =
-            substitute_arguments_t<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<column_result_of_t, DBOs>>;
+            substitute_arguments_t<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<argument_result_of_t, DBOs>>;
     };
 
     template<class DBOs, class F, class... Args>
