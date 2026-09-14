@@ -96,10 +96,17 @@ namespace sqlite_orm::internal {
     using tuple_type_t = typename T::tuple_type;
 
     /**
-     *  The function a window function application applies over a window.
+     *  The function a window function application applies over a window,
+     *  or an aggregate function call's FILTER clause is attached to.
      */
     template<typename T>
     using function_type_t = typename T::function_type;
+
+    /**
+     *  The expression of an aggregate function call's FILTER (WHERE ...) clause.
+     */
+    template<typename T>
+    using where_expression_t = typename T::where_expression;
 
     template<typename T>
     using offset_expression_type_t = typename T::offset_expression_type;

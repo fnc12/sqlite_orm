@@ -17,7 +17,6 @@
 #include "vocabulary/node_traits.h"
 #include "vocabulary/node_algorithms.h"  //  substitute_arguments_t, is_bindable_v, is_text_value
 #include "mapped_type_proxy.h"
-#include "core_functions.h"
 #include "operators.h"
 #include "rowid.h"
 #include "column_result_proxy.h"
@@ -169,12 +168,13 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, count_asterisk_t<T>, void> {
+    struct column_result_t<DBOs, T, match_if<is_count_asterisk, T>> {
         using type = int;
     };
 
-    template<class DBOs, class F, class W>
-    struct column_result_t<DBOs, filtered_aggregate_function<F, W>, void> : column_result_t<DBOs, F> {};
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_filtered_aggregate_function, T>>
+        : column_result_t<DBOs, function_type_t<T>> {};
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_over, T>> : column_result_t<DBOs, function_type_t<T>> {};
@@ -237,11 +237,6 @@ namespace sqlite_orm::internal {
     template<class DBOs>
     struct column_result_t<DBOs, std::nullptr_t, void> {
         using type = std::nullptr_t;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, count_asterisk_without_type, void> {
-        using type = int;
     };
 
     template<class DBOs, class T>

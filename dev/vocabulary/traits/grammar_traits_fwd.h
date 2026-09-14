@@ -699,6 +699,24 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_built_in_function = std::bool_constant<is_built_in_function_v<T>>;
 
+    /**
+     *  Node representing an aggregate function call with a FILTER clause.
+     */
+    template<class T>
+    extern const bool is_filtered_aggregate_function_v;
+
+    template<class T>
+    using is_filtered_aggregate_function = std::bool_constant<is_filtered_aggregate_function_v<T>>;
+
+    /**
+     *  Nodes representing COUNT(*), with or without a table to count the rows of.
+     */
+    template<class T>
+    extern const bool is_count_asterisk_v;
+
+    template<class T>
+    using is_count_asterisk = std::bool_constant<is_count_asterisk_v<T>>;
+
     template<class T>
     extern const bool is_fts_auxiliary_function_v;
 

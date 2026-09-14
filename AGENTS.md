@@ -99,7 +99,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 
 **Query building:**
 - `dev/conditions.h` - WHERE clause conditions
-- `dev/core_functions.h` - SQL functions
+- `dev/core_functions.h` - The built-in SQL functions; their call nodes are in `dev/ast/built_in_function.h`
 - `dev/ast/` - AST nodes for query, DML and operational constructs (`select_t`, `insert_t`, `where`, `window`, ...)
 - `dev/ast/dml/` - One header per DML statement kind (`insert`, `replace`, `update`, `remove`), plus the clause nodes only they take (`into`, `set`, `default_values`, `upsert_clause`)
 

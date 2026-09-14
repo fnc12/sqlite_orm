@@ -2627,6 +2627,24 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_built_in_function = std::bool_constant<is_built_in_function_v<T>>;
 
+    /**
+     *  Node representing an aggregate function call with a FILTER clause.
+     */
+    template<class T>
+    extern const bool is_filtered_aggregate_function_v;
+
+    template<class T>
+    using is_filtered_aggregate_function = std::bool_constant<is_filtered_aggregate_function_v<T>>;
+
+    /**
+     *  Nodes representing COUNT(*), with or without a table to count the rows of.
+     */
+    template<class T>
+    extern const bool is_count_asterisk_v;
+
+    template<class T>
+    using is_count_asterisk = std::bool_constant<is_count_asterisk_v<T>>;
+
     template<class T>
     extern const bool is_fts_auxiliary_function_v;
 
@@ -2897,10 +2915,17 @@ namespace sqlite_orm::internal {
     using tuple_type_t = typename T::tuple_type;
 
     /**
-     *  The function a window function application applies over a window.
+     *  The function a window function application applies over a window,
+     *  or an aggregate function call's FILTER clause is attached to.
      */
     template<typename T>
     using function_type_t = typename T::function_type;
+
+    /**
+     *  The expression of an aggregate function call's FILTER (WHERE ...) clause.
+     */
+    template<typename T>
+    using where_expression_t = typename T::where_expression;
 
     template<typename T>
     using offset_expression_type_t = typename T::offset_expression_type;
@@ -6588,7 +6613,7 @@ namespace sqlite_orm::internal {
 #include <string>  //  std::string
 #include <stdexcept>  //  std::domain_error
 #include <tuple>  //  std::make_tuple, std::tuple_size
-#include <type_traits>  //  std::forward, std::is_base_of, std::enable_if, std::conditional, std::is_void, std::is_constant_evaluated
+#include <type_traits>  //  std::forward, std::enable_if, std::conditional, std::is_void, std::is_constant_evaluated
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
 #include <optional>  //  std::optional
@@ -6596,8 +6621,6 @@ namespace sqlite_orm::internal {
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
-
-// #include "functional/is_base_template_of.h"
 
 // #include "functional/type_traits.h"
 
@@ -8388,20 +8411,42 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "literal.h"
 // literal_holder
-// #include "tags.h"
-
 // #include "alias_traits.h"
 
 // #include "vocabulary/node_traits.h"
 
 // #include "vocabulary/node_algorithms.h"
+//  argument, common_argument_type
+// #include "ast/built_in_function.h"
 
-// #include "ast/window.h"
+/** @file The nodes of a call of a built-in SQL function: scalar and aggregate function calls,
+ *        an aggregate call with a FILTER clause, and COUNT(*).
+ *        The functions themselves are in `core_functions.h`.
+ */
 
-// #include "vocabulary/traits/grammar_traits_fwd.h"
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::is_same
+#include <tuple>  //  std::tuple, std::tuple_size
+#include <string_view>  //  std::string_view
+#include <utility>  //  std::move, std::forward
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../functional/is_base_template_of.h"
+
+// #include "../functional/type_traits.h"
+//  satisfies
+// #include "../tags.h"
+//  arithmetic_t
+// #include "../vocabulary/node_traits.h"
+//  is_where, expression_type_t
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
-// #include "vocabulary/traits/operand_traits_fwd.h"
+// #include "../vocabulary/traits/operand_traits_fwd.h"
 // Included to specialize traits
+// #include "window.h"
+//  over_t, validate_over_arguments
 
 namespace sqlite_orm::internal {
     /**
@@ -8441,6 +8486,9 @@ namespace sqlite_orm::internal {
         }
     };
 
+    template<class T>
+    constexpr bool is_filtered_aggregate_function_v = polyfill::is_specialization_of_v<T, filtered_aggregate_function>;
+
     template<class R, class S, class... Args>
     struct built_in_aggregate_function_t : built_in_function_t<R, S, Args...> {
         using super = built_in_function_t<R, S, Args...>;
@@ -8459,6 +8507,66 @@ namespace sqlite_orm::internal {
         }
     };
 
+    struct count_string {
+        std::string_view serialize() const {
+            return "COUNT";
+        }
+    };
+
+    /**
+     *  T is use to specify type explicitly for queries like
+     *  SELECT COUNT(*) FROM table_name;
+     *  T can be omitted with void.
+     */
+    template<class T>
+    struct count_asterisk_t : count_string {
+        using type = T;
+
+        template<class Wh, satisfies<is_where, Wh> = true>
+        filtered_aggregate_function<count_asterisk_t<T>, expression_type_t<Wh>> filter(Wh wh) {
+            return {*this, std::move(wh.expression)};
+        }
+
+        template<class... OverArgs>
+        over_t<count_asterisk_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
+            return {*this, {std::forward<OverArgs>(overArgs)...}};
+        }
+    };
+
+    /**
+     *  The same thing as count<T>() but without T arg.
+     *  Is used in cases like this:
+     *    SELECT cust_code, cust_name, cust_city, grade
+     *    FROM customer
+     *    WHERE grade=2 AND EXISTS
+     *        (SELECT COUNT(*)
+     *        FROM customer
+     *        WHERE grade=2
+     *        GROUP BY grade
+     *        HAVING COUNT(*)>2);
+     *  `c++`
+     *  auto rows =
+     *      storage.select(columns(&Customer::code, &Customer::name, &Customer::city, &Customer::grade),
+     *          where(is_equal(&Customer::grade, 2)
+     *              and exists(select(count<Customer>(),
+     *                  where(is_equal(&Customer::grade, 2)),
+     *          group_by(&Customer::grade),
+     *          having(greater_than(count(), 2))))));
+     */
+    struct count_asterisk_without_type : count_string {
+        using type = void;
+    };
+
+    template<class T>
+    constexpr bool is_count_asterisk_v =
+        polyfill::is_specialization_of_v<T, count_asterisk_t> || std::is_same_v<T, count_asterisk_without_type>;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_count_asterisk_v<T>>> = true;
+}
+
+namespace sqlite_orm::internal {
     struct typeof_string {
         std::string_view serialize() const {
             return "TYPEOF";
@@ -8693,61 +8801,6 @@ namespace sqlite_orm::internal {
             return "SUM";
         }
     };
-
-    struct count_string {
-        std::string_view serialize() const {
-            return "COUNT";
-        }
-    };
-
-    /**
-     *  T is use to specify type explicitly for queries like
-     *  SELECT COUNT(*) FROM table_name;
-     *  T can be omitted with void.
-     */
-    template<class T>
-    struct count_asterisk_t : count_string {
-        using type = T;
-
-        template<class Wh, satisfies<is_where, Wh> = true>
-        filtered_aggregate_function<count_asterisk_t<T>, expression_type_t<Wh>> filter(Wh wh) {
-            return {*this, std::move(wh.expression)};
-        }
-
-        template<class... OverArgs>
-        over_t<count_asterisk_t, OverArgs...> over(OverArgs... overArgs) {
-            validate_over_arguments<OverArgs...>();
-            return {*this, {std::forward<OverArgs>(overArgs)...}};
-        }
-    };
-
-    /**
-     *  The same thing as count<T>() but without T arg.
-     *  Is used in cases like this:
-     *    SELECT cust_code, cust_name, cust_city, grade
-     *    FROM customer
-     *    WHERE grade=2 AND EXISTS
-     *        (SELECT COUNT(*)
-     *        FROM customer
-     *        WHERE grade=2
-     *        GROUP BY grade
-     *        HAVING COUNT(*)>2);
-     *  `c++`
-     *  auto rows =
-     *      storage.select(columns(&Customer::code, &Customer::name, &Customer::city, &Customer::grade),
-     *          where(is_equal(&Customer::grade, 2)
-     *              and exists(select(count<Customer>(),
-     *                  where(is_equal(&Customer::grade, 2)),
-     *          group_by(&Customer::grade),
-     *          having(greater_than(count(), 2))))));
-     */
-    struct count_asterisk_without_type : count_string {};
-
-    template<class T>
-    constexpr bool is_operator_argument_v<
-        T,
-        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<T, count_asterisk_t>,
-                                          std::is_same<T, count_asterisk_without_type>>::value>> = true;
 
     struct avg_string {
         std::string_view serialize() const {
@@ -11659,8 +11712,6 @@ namespace sqlite_orm::internal {
     using mapped_type_proxy_t = typename mapped_type_proxy<T>::type;
 }
 
-// #include "core_functions.h"
-
 // #include "operators.h"
 
 // #include "rowid.h"
@@ -13709,12 +13760,13 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, count_asterisk_t<T>, void> {
+    struct column_result_t<DBOs, T, match_if<is_count_asterisk, T>> {
         using type = int;
     };
 
-    template<class DBOs, class F, class W>
-    struct column_result_t<DBOs, filtered_aggregate_function<F, W>, void> : column_result_t<DBOs, F> {};
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_filtered_aggregate_function, T>>
+        : column_result_t<DBOs, function_type_t<T>> {};
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_over, T>> : column_result_t<DBOs, function_type_t<T>> {};
@@ -13777,11 +13829,6 @@ namespace sqlite_orm::internal {
     template<class DBOs>
     struct column_result_t<DBOs, std::nullptr_t, void> {
         using type = std::nullptr_t;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, count_asterisk_without_type, void> {
-        using type = int;
     };
 
     template<class DBOs, class T>
@@ -15552,8 +15599,6 @@ namespace sqlite_orm::internal {
 
 // #include "operators.h"
 
-// #include "core_functions.h"
-
 // #include "prepared_statement.h"
 
 #include <sqlite3.h>
@@ -17017,9 +17062,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class F, class W>
-    struct ast_iterator<filtered_aggregate_function<F, W>, void> {
-        using node_type = filtered_aggregate_function<F, W>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_filtered_aggregate_function, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -21432,8 +21477,6 @@ namespace sqlite_orm::internal {
 
 // #include "alias.h"
 
-// #include "core_functions.h"
-
 // #include "schema/algorithms/table_lookup.h"
 // lookup_table_name
 
@@ -21473,7 +21516,7 @@ namespace sqlite_orm::internal {
                 this->table_names.emplace(std::move(tableName), alias_extractor<A>::as_alias());
             }
             // ...
-            else if constexpr (polyfill::is_specialization_of_v<ColRef, count_asterisk_t>) {
+            else if constexpr (is_count_asterisk_v<ColRef>) {
                 using table_type = type_t<ColRef>;
                 auto tableName = lookup_table_name<table_type>(this->db_objects);
                 if (!tableName.empty()) {
@@ -21623,8 +21666,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/is_null.h"
 
 // #include "ast/is_not_null.h"
-
-// #include "core_functions.h"
 
 // #include "window_functions.h"
 
@@ -22599,9 +22640,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class F, class W>
-    struct statement_serializer<filtered_aggregate_function<F, W>, void> {
-        using statement_type = filtered_aggregate_function<F, W>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_filtered_aggregate_function, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -23210,19 +23251,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<count_asterisk_t<T>, void> {
-        using statement_type = count_asterisk_t<T>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type&,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize(count_asterisk_without_type{}, context);
-        }
-    };
-
-    template<>
-    struct statement_serializer<count_asterisk_without_type, void> {
-        using statement_type = count_asterisk_without_type;
+    struct statement_serializer<T, match_if<is_count_asterisk, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
@@ -29761,6 +29791,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/between.h"
 
+// #include "ast/built_in_function.h"
+
 // #include "ast/case_expression.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -31170,8 +31202,6 @@ namespace sqlite_orm::internal {
 
 // #include "optional_container.h"
 
-// #include "core_functions.h"
-
 // #include "function.h"
 
 // #include "ast/excluded.h"
@@ -31368,8 +31398,9 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<T, match_if<is_built_in_function, T>> : node_tuple<args_type_t<T>> {};
 
-    template<class F, class W>
-    struct node_tuple<filtered_aggregate_function<F, W>, void> : node_tuple_for<F, W> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_filtered_aggregate_function, T>>
+        : node_tuple_for<function_type_t<T>, where_expression_t<T>> {};
 
     template<class F, class... Args>
     struct node_tuple<function_call<F, Args...>, void> : node_tuple_for<Args...> {};
