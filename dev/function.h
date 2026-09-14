@@ -57,11 +57,6 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /** @short Specifies that a type is a function signature (i.e. a function in the C++ type system).
-     */
-    template<class Sig>
-    concept orm_function_sig = std::is_function_v<Sig>;
-
     /** @short Specifies that a type is a classic function object.
      *  
      *  A classic function object meets the following requirements:

@@ -15,7 +15,7 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/cstring_literal.h"
 #include "../functional/function_traits.h"
-#include "../function.h"  // orm_function_sig
+#include "../functional/type_traits.h"  // orm_function_sig
 #include "../tags.h"
 #include "../vocabulary/node_algorithms.h"  // argument, common_argument_type
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
