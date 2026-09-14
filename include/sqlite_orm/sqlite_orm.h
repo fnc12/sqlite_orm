@@ -8459,13 +8459,13 @@ namespace sqlite_orm::internal {
     struct built_in_function_t : S, arithmetic_t {
         using return_type = R;
         using string_type = S;
-        using args_type = std::tuple<Args...>;
+        using args_tuple = std::tuple<Args...>;
 
-        static constexpr size_t args_size = std::tuple_size<args_type>::value;
+        static constexpr size_t args_size = std::tuple_size<args_tuple>::value;
 
-        args_type args;
+        args_tuple args;
 
-        constexpr built_in_function_t(args_type&& args_) : args(std::move(args_)) {}
+        constexpr built_in_function_t(args_tuple&& args_) : args(std::move(args_)) {}
     };
 
     template<class T>
@@ -31476,7 +31476,7 @@ namespace sqlite_orm::internal {
     struct node_tuple<bitwise_not_t<T>, void> : node_tuple<T> {};
 
     template<class T>
-    struct node_tuple<T, match_if<is_built_in_function, T>> : node_tuple<args_type_t<T>> {};
+    struct node_tuple<T, match_if<is_built_in_function, T>> : node_tuple<args_tuple_t<T>> {};
 
     template<class T>
     struct node_tuple<T, match_if<is_filtered_aggregate_function, T>>
