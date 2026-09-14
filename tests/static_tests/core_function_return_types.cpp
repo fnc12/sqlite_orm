@@ -70,7 +70,9 @@ TEST_CASE("Builtin function return types") {
     STATIC_REQUIRE(is_same_v<result_of<decltype(coalesce(&User::id, add(&User::id, 1)))>, double>);
     STATIC_REQUIRE(is_same_v<result_of<decltype(ifnull(&User::flag, 1.5))>, double>);
     STATIC_REQUIRE(is_same_v<result_of<decltype(nullif(upper(&User::name), "x"))>, std::optional<std::string>>);
+#if SQLITE_VERSION_NUMBER >= 3032000
     STATIC_REQUIRE(is_same_v<result_of<decltype(iif(c(&User::id) > 1, &User::name, "x"))>, std::string>);
+#endif
     STATIC_REQUIRE(is_same_v<result_of<decltype(likely(&User::flag))>, bool>);
     STATIC_REQUIRE(is_same_v<result_of<decltype(unlikely(c(&User::id) > 1))>, bool>);
     STATIC_REQUIRE(is_same_v<result_of<decltype(likelihood(length(&User::name), 0.5))>, int>);
