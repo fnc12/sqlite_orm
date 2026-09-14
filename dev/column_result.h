@@ -9,12 +9,11 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/gsl.h"
 #include "functional/mpl.h"
-#include "functional/type_traits.h"
+#include "functional/type_traits.h"  //  common_type_of_t
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_fy.h"
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_transformer.h"
-#include "tuple_helper/same_or_void.h"
 #include "member_traits/member_traits.h"
 #include "vocabulary/node_traits.h"
 #include "mapped_type_proxy.h"
