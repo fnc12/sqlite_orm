@@ -1281,7 +1281,7 @@ namespace sqlite_orm::internal {
 // #include "functional/type_traits.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_same, std::is_empty, std::is_aggregate, std::declval
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_empty, std::is_aggregate, std::is_function, std::declval, std::common_type
 #if __cpp_lib_unwrap_ref >= 201811L
 #include <utility>  //  std::reference_wrapper
 #else
@@ -1426,7 +1426,28 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     template<class T>
     concept orm_names_type = requires { typename T::type; };
+
+    /** @short Specifies that a type is a function signature (i.e. a function in the C++ type system).
+     */
+    template<class Sig>
+    concept orm_function_sig = std::is_function_v<Sig>;
 #endif
+}
+
+namespace sqlite_orm::internal {
+    template<class Pack>
+    struct common_type_of;
+
+    template<template<class...> class Pack, class... Types>
+    struct common_type_of<Pack<Types...>> : std::common_type<Types...> {};
+
+    /**
+     *  Accepts a pack of types and defines a nested `type` typename to a common type if possible, otherwise nonexistent.
+     *
+     *  @note: SFINAE friendly like `std::common_type`.
+     */
+    template<class Pack>
+    using common_type_of_t = typename common_type_of<Pack>::type;
 }
 
 // #include "tuple_helper/tuple_traits.h"
@@ -3179,6 +3200,16 @@ namespace sqlite_orm::internal {
 
     template<class F>
     using is_rowid_alias_capable = std::bool_constant<is_rowid_alias_capable_v<F>>;
+
+    /*
+     *  Whether a type is a C++ text value - a narrow or wide C string, string view or string -,
+     *  which a select yields as `std::string`.
+     */
+    template<class T>
+    extern const bool is_text_value_v;
+
+    template<class T>
+    using is_text_value = std::bool_constant<is_text_value_v<T>>;
 
     /*
      *  Whether a field type can be bound as a parameter of a prepared statement.
@@ -11550,12 +11581,10 @@ namespace sqlite_orm::internal {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/gsl.h"
-
 // #include "functional/mpl.h"
 
 // #include "functional/type_traits.h"
-
+//  common_type_of_t
 // #include "tuple_helper/tuple_traits.h"
 
 // #include "tuple_helper/tuple_fy.h"
@@ -11582,66 +11611,12 @@ namespace sqlite_orm::internal {
 
 // #include "tuple_helper/tuple_transformer.h"
 
-// #include "tuple_helper/same_or_void.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::common_type
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-#include <concepts>  //  std::same_as
-#endif
-#endif
-
-namespace sqlite_orm::internal {
-    /**
-     *  Accepts any number of arguments and evaluates a nested `type` typename as `T` if all arguments are the same, otherwise `void`.
-     */
-    template<class... Args>
-    struct same_or_void {
-        using type = void;
-    };
-
-    template<class... Args>
-    using same_or_void_t = typename same_or_void<Args...>::type;
-
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    template<class A, std::same_as<A>... Rest>
-    struct same_or_void<A, Rest...> {
-        using type = A;
-    };
-#else
-    template<class A>
-    struct same_or_void<A> {
-        using type = A;
-    };
-
-    template<class A>
-    struct same_or_void<A, A> {
-        using type = A;
-    };
-
-    template<class A, class... Args>
-    struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
-#endif
-
-    template<class Pack>
-    struct common_type_of;
-
-    template<template<class...> class Pack, class... Types>
-    struct common_type_of<Pack<Types...>> : std::common_type<Types...> {};
-
-    /**
-     *  Accepts a pack of types and defines a nested `type` typename to a common type if possible, otherwise nonexistent.
-     *  
-     *  @note: SFINAE friendly like `std::common_type`.
-     */
-    template<class Pack>
-    using common_type_of_t = typename common_type_of<Pack>::type;
-}
-
 // #include "member_traits/member_traits.h"
 
 // #include "vocabulary/node_traits.h"
 
+// #include "vocabulary/node_algorithms.h"
+//  is_text_value
 // #include "mapped_type_proxy.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -12540,11 +12515,6 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /** @short Specifies that a type is a function signature (i.e. a function in the C++ type system).
-     */
-    template<class Sig>
-    concept orm_function_sig = std::is_function_v<Sig>;
-
     /** @short Specifies that a type is a classic function object.
      *  
      *  A classic function object meets the following requirements:
@@ -13657,36 +13627,8 @@ namespace sqlite_orm::internal {
     /**
      *  Result for the most simple queries like `SELECT 'ototo'`
      */
-    template<class DBOs>
-    struct column_result_t<DBOs, orm_gsl::czstring, void> {
-        using type = std::string;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, std::string_view, void> {
-        using type = std::string;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, std::string, void> {
-        using type = std::string;
-    };
-
-    /**
-     *  Result for the most simple queries like `SELECT 'ototo'`
-     */
-    template<class DBOs>
-    struct column_result_t<DBOs, orm_gsl::cwzstring, void> {
-        using type = std::string;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, std::wstring_view, void> {
-        using type = std::string;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, std::wstring, void> {
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_text_value, T>> {
         using type = std::string;
     };
 
@@ -29171,6 +29113,45 @@ namespace sqlite_orm::internal {
 
 // #include "../../tuple_helper/same_or_void.h"
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#include <concepts>  //  std::same_as
+#endif
+#endif
+
+namespace sqlite_orm::internal {
+    /**
+     *  Accepts any number of arguments and evaluates a nested `type` typename as `T` if all arguments are the same, otherwise `void`.
+     */
+    template<class... Args>
+    struct same_or_void {
+        using type = void;
+    };
+
+    template<class... Args>
+    using same_or_void_t = typename same_or_void<Args...>::type;
+
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    template<class A, std::same_as<A>... Rest>
+    struct same_or_void<A, Rest...> {
+        using type = A;
+    };
+#else
+    template<class A>
+    struct same_or_void<A> {
+        using type = A;
+    };
+
+    template<class A>
+    struct same_or_void<A, A> {
+        using type = A;
+    };
+
+    template<class A, class... Args>
+    struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
+#endif
+}
+
 // #include "../../member_traits/field_of.h"
 
 // #include "../../alias_traits.h"
@@ -30723,9 +30704,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_base_of, std::is_integral, std::is_signed, std::enable_if
+#include <type_traits>  //  std::is_base_of, std::is_integral, std::is_signed, std::enable_if, std::is_same, std::disjunction
+#include <string>  //  std::string, std::wstring
+#include <string_view>  //  std::string_view, std::wstring_view
 #endif
 
+// #include "../../functional/gsl.h"
+// orm_gsl::czstring, orm_gsl::cwzstring
 // #include "../../type_printer.h"
 
 // #include "field_predicates_fwd.h"
@@ -30757,6 +30742,14 @@ namespace sqlite_orm::internal {
                                                   (sizeof(F) != sizeof(sqlite_int64) ||
                                                    std::is_signed<F>::value != std::is_signed<sqlite_int64>::value)>> =
             true;
+
+    template<class T>
+    constexpr bool is_text_value_v = std::disjunction<std::is_same<T, orm_gsl::czstring>,
+                                                      std::is_same<T, std::string_view>,
+                                                      std::is_same<T, std::string>,
+                                                      std::is_same<T, orm_gsl::cwzstring>,
+                                                      std::is_same<T, std::wstring_view>,
+                                                      std::is_same<T, std::wstring>>::value;
 }
 
 #pragma once
