@@ -24,7 +24,7 @@
 
 ## Functions
 
-* JSON: `->` and `->>` operators (3.38), JSONB function family (3.45+: `jsonb`, `jsonb_extract`, `jsonb_set`, `jsonb_insert`, `jsonb_replace`, `jsonb_remove`, `jsonb_patch`, `jsonb_object`, `jsonb_array`, `jsonb_group_array`, `jsonb_group_object`), `json_pretty` (3.46), `json_error_position` (3.42), `json_valid` flags argument (3.45), `json_array_insert`/`jsonb_array_insert` (3.53)
+* JSON: `->` and `->>` operators (3.38), JSONB function family (3.45+: `jsonb`, `jsonb_extract`, `jsonb_set`, `jsonb_insert`, `jsonb_replace`, `jsonb_remove`, `jsonb_patch`, `jsonb_object`, `jsonb_array`, `jsonb_group_array`, `jsonb_group_object`, `jsonb_array_insert` 3.53)
 * `json_each` and `json_tree` (and `jsonb_each`/`jsonb_tree`, 3.51) table-valued functions
 * planner-hint functions: `likely()`, `unlikely()`, `likelihood()`
 * introspection functions: `sqlite_version()`, `sqlite_source_id()`, `sqlite_compileoption_used()`, `sqlite_compileoption_get()`, `sqlite_offset()`
