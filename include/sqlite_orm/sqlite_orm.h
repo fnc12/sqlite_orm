@@ -11748,7 +11748,7 @@ namespace sqlite_orm::internal {
 // #include "vocabulary/node_traits.h"
 
 // #include "vocabulary/node_algorithms.h"
-//  substitute_arguments_t, is_bindable_v, is_text_value
+//  substitute_arguments, is_bindable_v, is_text_value
 // #include "mapped_type_proxy.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -13829,10 +13829,8 @@ namespace sqlite_orm::internal {
      *  placeholders replaced by the results of the call arguments.
      */
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_built_in_function, T>> {
-        using type =
-            substitute_arguments_t<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<argument_result_of_t, DBOs>>;
-    };
+    struct column_result_t<DBOs, T, match_if<is_built_in_function, T>>
+        : substitute_arguments<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<argument_result_of_t, DBOs>> {};
 
     template<class DBOs, class F, class... Args>
     struct column_result_t<DBOs, function_call<F, Args...>, void> {
