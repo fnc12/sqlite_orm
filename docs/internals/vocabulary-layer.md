@@ -82,6 +82,16 @@ vocabulary/
                             Deliberately does NOT include field_predicates.h.
 ```
 
+### Including the layer
+
+Consumers include the umbrellas — `node_traits.h`, `node_algorithms.h` — never a
+`traits/`, `projections/` or `algorithms/` file directly. The umbrellas are the layer's
+public surface; the files behind them are an implementation arrangement that is free to
+change. The only files included by name from outside the layer are the ones that exist
+*for* that purpose: a `traits/*_fwd.h` (or `algorithms/field_predicates_fwd.h`) from a
+node or customization-point header that specializes it, and the definitions manifest
+`node_algorithm_definitions.h`.
+
 ## The core distinction: classification vs. computation
 
 Every trait and algorithm here falls into exactly one of two categories, and almost every
