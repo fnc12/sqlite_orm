@@ -10,7 +10,6 @@
 #include "vocabulary/node_traits.h"
 #include "rowid.h"
 #include "alias.h"
-#include "core_functions.h"
 #include "schema/algorithms/table_lookup.h"  // lookup_table_name
 
 namespace sqlite_orm::internal {
@@ -49,7 +48,7 @@ namespace sqlite_orm::internal {
                 this->table_names.emplace(std::move(tableName), alias_extractor<A>::as_alias());
             }
             // ...
-            else if constexpr (polyfill::is_specialization_of_v<ColRef, count_asterisk_t>) {
+            else if constexpr (is_count_asterisk_v<ColRef>) {
                 using table_type = type_t<ColRef>;
                 auto tableName = lookup_table_name<table_type>(this->db_objects);
                 if (!tableName.empty()) {

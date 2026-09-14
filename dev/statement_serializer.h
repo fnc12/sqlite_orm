@@ -35,7 +35,6 @@
 #include "ast/special_keywords.h"
 #include "ast/is_null.h"
 #include "ast/is_not_null.h"
-#include "core_functions.h"
 #include "window_functions.h"
 #include "conditions.h"
 #include "function.h"
@@ -302,9 +301,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class F, class W>
-    struct statement_serializer<filtered_aggregate_function<F, W>, void> {
-        using statement_type = filtered_aggregate_function<F, W>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_filtered_aggregate_function, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -913,19 +912,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<count_asterisk_t<T>, void> {
-        using statement_type = count_asterisk_t<T>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type&,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize(count_asterisk_without_type{}, context);
-        }
-    };
-
-    template<>
-    struct statement_serializer<count_asterisk_without_type, void> {
-        using statement_type = count_asterisk_without_type;
+    struct statement_serializer<T, match_if<is_count_asterisk, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,

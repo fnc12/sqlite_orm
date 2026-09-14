@@ -379,6 +379,31 @@ Not fixed in this branch. A likely fix is to stop pulling the C headers into
 the global namespace: import the std module (or include the `<c...>` headers
 only) so the C functions live in `std` alone. Left for a separate commit.
 
+## Merged: the widening and the node split (2026-09-14)
+
+The parts of phase 4 that hold in both standards went out on their own
+(`feature/generic-traits`, `feature/widen-built-in-factories`) and were merged
+back. What that changed for this branch:
+
+- `ast/built_in_function.h` is one header for both standards: the nodes shared
+  by both (`filtered_aggregate_function`, `count_asterisk_t`,
+  `count_asterisk_without_type`, with `count_string` as their name tag) sit
+  unconditionally at the top, the legacy `built_in_function_t` /
+  `built_in_aggregate_function_t` under `#ifndef SQLITE_ORM_WITH_CPP20_ALIASES`,
+  the definition mechanism under `#else`. `core_functions.h` holds only the
+  legacy name tags and the factories/definitions; `storage.h` is its one
+  consumer.
+- The consumers (`ast_iterator`, `column_result`, `node_tuple`,
+  `statement_serializer`, `table_name_collector`) match the nodes through the
+  vocabulary — grammar traits `is_filtered_aggregate_function`,
+  `is_count_asterisk`, projection `where_expression_t` — rather than by name.
+- `column_result_t` for a built-in function derives from `substitute_arguments`
+  instead of aliasing `substitute_arguments_t`, so an unresolvable placeholder
+  (no common type among the arguments) leaves the result type absent rather
+  than ill-formed.
+- The legacy node's argument tuple is spelled `args_tuple`, like the call
+  node's.
+
 ## Follow-ups
 
 - The C library name ambiguity above.
@@ -386,7 +411,7 @@ only) so the C functions live in `std` alone. Left for a separate commit.
   type override (generalizing `as_optional`).
 - When C++17 support is dropped: delete the `#ifndef` branches —
   `built_in_function_t`, `built_in_aggregate_function_t`, the tag structs
-  and the legacy factories; `count_asterisk_t` then needs its own name tag.
+  and the legacy factories.
 - Name clashes inside `sqlite_orm::internal` as more built-ins are defined
   there (`max`, `min`, `count`, ...). Class members shadow them, but a
   namespace-scope internal helper of the same name would not; a nested

@@ -7,19 +7,16 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "functional/gsl.h"
 #include "functional/mpl.h"
-#include "functional/type_traits.h"
+#include "functional/type_traits.h"  //  common_type_of_t
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_fy.h"
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_transformer.h"
-#include "tuple_helper/same_or_void.h"
 #include "member_traits/member_traits.h"
 #include "vocabulary/node_traits.h"
-#include "vocabulary/node_algorithms.h"  // substitute_arguments_t, is_bindable_v, is_text_value
+#include "vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value
 #include "mapped_type_proxy.h"
-#include "core_functions.h"
 #include "operators.h"
 #include "rowid.h"
 #include "column_result_proxy.h"
@@ -160,10 +157,8 @@ namespace sqlite_orm::internal {
      *  placeholders replaced by the results of the call arguments.
      */
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_built_in_function, T>> {
-        using type =
-            substitute_arguments_t<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<argument_result_of_t, DBOs>>;
-    };
+    struct column_result_t<DBOs, T, match_if<is_built_in_function, T>>
+        : substitute_arguments<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<argument_result_of_t, DBOs>> {};
 
     template<class DBOs, class F, class... Args>
     struct column_result_t<DBOs, function_call<F, Args...>, void> {
@@ -171,12 +166,13 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, count_asterisk_t<T>, void> {
+    struct column_result_t<DBOs, T, match_if<is_count_asterisk, T>> {
         using type = int;
     };
 
-    template<class DBOs, class F, class W>
-    struct column_result_t<DBOs, filtered_aggregate_function<F, W>, void> : column_result_t<DBOs, F> {};
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_filtered_aggregate_function, T>>
+        : column_result_t<DBOs, function_type_t<T>> {};
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_over, T>> : column_result_t<DBOs, function_type_t<T>> {};
@@ -239,11 +235,6 @@ namespace sqlite_orm::internal {
     template<class DBOs>
     struct column_result_t<DBOs, std::nullptr_t, void> {
         using type = std::nullptr_t;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, count_asterisk_without_type, void> {
-        using type = int;
     };
 
     template<class DBOs, class T>

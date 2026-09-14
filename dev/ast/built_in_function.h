@@ -1,28 +1,166 @@
 #pragma once
 
+/** @file The nodes of a call of a built-in SQL function: scalar and aggregate function calls,
+ *        an aggregate call with a FILTER clause, and COUNT(*).
+ *        In C++20 builds, also the definition of a built-in function by its name and its overload set,
+ *        which generates the call nodes. The functions themselves are in `core_functions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-#include <type_traits>  //  std::is_void, std::type_identity, std::conditional, std::remove_cvref
-#include <concepts>  //  std::convertible_to
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_void, std::type_identity, std::conditional, std::remove_cvref
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
 #include <string_view>  //  std::string_view
-#include <algorithm>  //  std::copy_n
 #include <utility>  //  std::move, std::forward
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <concepts>  //  std::convertible_to
+#include <algorithm>  //  std::copy_n
 #endif
 #endif
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include "../functional/cxx_type_traits_polyfill.h"
-#include "../functional/cstring_literal.h"
-#include "../functional/function_traits.h"
-#include "../functional/type_traits.h"  // orm_function_sig
-#include "../tags.h"
-#include "../vocabulary/node_algorithms.h"  // argument, common_argument_type
+#include "../functional/is_base_template_of.h"
+#include "../functional/type_traits.h"  //  satisfies, orm_function_sig
+#include "../tags.h"  //  arithmetic_t
+#include "../vocabulary/node_traits.h"  //  is_where, expression_type_t
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
-#include "window.h"  // over_t, validate_over_arguments
+#include "window.h"  //  over_t, validate_over_arguments
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include "../functional/cstring_literal.h"
+#include "../functional/function_traits.h"
+#include "../vocabulary/node_algorithms.h"  // argument, common_argument_type
 #endif
 
+namespace sqlite_orm::internal {
+    /*
+     *  Represents an aggregate function call with a FILTER clause,
+     *  which may be turned into a window function with an OVER clause.
+     */
+    template<class F, class W>
+    struct filtered_aggregate_function {
+        using function_type = F;
+        using where_expression = W;
+
+        function_type function;
+        where_expression where;
+
+        template<class... OverArgs>
+        over_t<filtered_aggregate_function, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
+            return {*this, {std::forward<OverArgs>(overArgs)...}};
+        }
+    };
+
+    template<class T>
+    constexpr bool is_filtered_aggregate_function_v = polyfill::is_specialization_of_v<T, filtered_aggregate_function>;
+
+    struct count_string {
+        std::string_view serialize() const {
+            return "COUNT";
+        }
+    };
+
+    /**
+     *  T is use to specify type explicitly for queries like
+     *  SELECT COUNT(*) FROM table_name;
+     *  T can be omitted with void.
+     */
+    template<class T>
+    struct count_asterisk_t : count_string {
+        using type = T;
+
+        template<class Wh, satisfies<is_where, Wh> = true>
+        filtered_aggregate_function<count_asterisk_t<T>, expression_type_t<Wh>> filter(Wh wh) {
+            return {*this, std::move(wh.expression)};
+        }
+
+        template<class... OverArgs>
+        over_t<count_asterisk_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
+            return {*this, {std::forward<OverArgs>(overArgs)...}};
+        }
+    };
+
+    /**
+     *  The same thing as count<T>() but without T arg.
+     *  Is used in cases like this:
+     *    SELECT cust_code, cust_name, cust_city, grade
+     *    FROM customer
+     *    WHERE grade=2 AND EXISTS
+     *        (SELECT COUNT(*)
+     *        FROM customer
+     *        WHERE grade=2
+     *        GROUP BY grade
+     *        HAVING COUNT(*)>2);
+     *  `c++`
+     *  auto rows =
+     *      storage.select(columns(&Customer::code, &Customer::name, &Customer::city, &Customer::grade),
+     *          where(is_equal(&Customer::grade, 2)
+     *              and exists(select(count<Customer>(),
+     *                  where(is_equal(&Customer::grade, 2)),
+     *          group_by(&Customer::grade),
+     *          having(greater_than(count(), 2))))));
+     */
+    struct count_asterisk_without_type : count_string {
+        using type = void;
+    };
+
+    template<class T>
+    constexpr bool is_count_asterisk_v =
+        polyfill::is_specialization_of_v<T, count_asterisk_t> || std::is_same_v<T, count_asterisk_without_type>;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_count_asterisk_v<T>>> = true;
+}
+
+#ifndef SQLITE_ORM_WITH_CPP20_ALIASES
+namespace sqlite_orm::internal {
+    /*
+     *  The legacy built-in function nodes, superseded by the definition mechanism below in C++20 builds.
+     *  Their return type may use the placeholders of `vocabulary/algorithms/argument_placeholders.h` all the same.
+     */
+
+    /**
+     *  Base class for operator overloading
+     *  R - return type
+     *  S - class with operator std::string
+     *  Args - function arguments types
+     */
+    template<class R, class S, class... Args>
+    struct built_in_function_t : S, arithmetic_t {
+        using return_type = R;
+        using string_type = S;
+        using args_tuple = std::tuple<Args...>;
+
+        static constexpr size_t args_size = std::tuple_size<args_tuple>::value;
+
+        args_tuple args;
+
+        constexpr built_in_function_t(args_tuple&& args_) : args(std::move(args_)) {}
+    };
+
+    template<class T>
+    constexpr bool is_built_in_function_v = is_base_template_of<built_in_function_t, T>::value;
+
+    template<class R, class S, class... Args>
+    struct built_in_aggregate_function_t : built_in_function_t<R, S, Args...> {
+        using super = built_in_function_t<R, S, Args...>;
+
+        using super::super;
+
+        template<class Wh, satisfies<is_where, Wh> = true>
+        filtered_aggregate_function<built_in_aggregate_function_t, expression_type_t<Wh>> filter(Wh wh) {
+            return {*this, std::move(wh.expression)};
+        }
+
+        template<class... OverArgs>
+        over_t<built_in_aggregate_function_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
+            return {*this, {std::forward<OverArgs>(overArgs)...}};
+        }
+    };
+}
+#else
 /*
  *  Signature vocabulary of built-in functions (see also the return type placeholders
  *  `argument<I>` and `common_argument_type<I...>` in `vocabulary/algorithms/argument_placeholders.h`).
@@ -30,8 +168,10 @@
  *  Parameter types are nominal: no callable receives them and call arguments are not checked against them;
  *  they state the SQL contract and fix the arity. The return type is not nominal - it is what a select yields.
  */
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 namespace sqlite_orm::internal {
+    template<class T>
+    constexpr bool is_built_in_function_v = false;
+
     /*
      *  Marker for the last parameter of a built-in function's signature: "zero or more further `T`".
      *
@@ -47,9 +187,6 @@ namespace sqlite_orm::internal {
      *  Parameter type of a built-in function that is polymorphic in SQL, e.g. compared by collation.
      */
     struct anything {};
-
-    template<class F, class W>
-    struct filtered_aggregate_function;
 
     /*
      *  A built-in function's signature, tagged with its kind.

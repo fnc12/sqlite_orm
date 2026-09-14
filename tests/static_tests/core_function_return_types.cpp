@@ -2,6 +2,10 @@
 #include <catch2/catch_all.hpp>
 #include <type_traits>  //  std::is_same
 #include <cstddef>  //  nullptr_t
+#include <memory>  //  std::unique_ptr
+#include <optional>  //  std::optional
+#include <string>  //  std::string
+#include <vector>  //  std::vector
 
 using namespace sqlite_orm;
 using std::is_same;
@@ -16,6 +20,8 @@ TEST_CASE("Builtin function return types") {
     struct User {
         int64 id;
         bool flag;
+        std::string name;
+        std::vector<char> blob;
 
         bool getFlag() const {
             return this->flag;
@@ -49,4 +55,23 @@ TEST_CASE("Builtin function return types") {
         STATIC_REQUIRE(is_same<result_of<decltype(nullif<nullptr_t>(&User::getFlag, false))>, nullptr_t>::value);
         STATIC_REQUIRE(is_same<result_of<decltype(nullif<nullptr_t>(&User::flag, 0))>, nullptr_t>::value);
     }
+
+    // the argument-typed functions see through any expression, not only a member pointer:
+    // a bindable value stands for itself, a text value for `std::string`, anything else for its column result
+    STATIC_REQUIRE(is_same_v<result_of<decltype(max(&User::id))>, std::unique_ptr<int64>>);
+    STATIC_REQUIRE(is_same_v<result_of<decltype(min(&User::id, 4))>, std::unique_ptr<int64>>);
+    STATIC_REQUIRE(is_same_v<result_of<decltype(max(4, &User::id))>, std::unique_ptr<int>>);
+    STATIC_REQUIRE(is_same_v<result_of<decltype(max("a", "b"))>, std::unique_ptr<std::string>>);
+    STATIC_REQUIRE(is_same_v<result_of<decltype(max(lower(&User::name), "b"))>, std::unique_ptr<std::string>>);
+    STATIC_REQUIRE(
+        is_same_v<result_of<decltype(max(std::vector<char>{}, &User::blob))>, std::unique_ptr<std::vector<char>>>);
+    STATIC_REQUIRE(is_same_v<result_of<decltype(max(std::optional<int>{}, 1))>, std::unique_ptr<std::optional<int>>>);
+    STATIC_REQUIRE(is_same_v<result_of<decltype(coalesce(lower(&User::name), "x"))>, std::string>);
+    STATIC_REQUIRE(is_same_v<result_of<decltype(coalesce(&User::id, add(&User::id, 1)))>, double>);
+    STATIC_REQUIRE(is_same_v<result_of<decltype(ifnull(&User::flag, 1.5))>, double>);
+    STATIC_REQUIRE(is_same_v<result_of<decltype(nullif(upper(&User::name), "x"))>, std::optional<std::string>>);
+    STATIC_REQUIRE(is_same_v<result_of<decltype(iif(c(&User::id) > 1, &User::name, "x"))>, std::string>);
+    STATIC_REQUIRE(is_same_v<result_of<decltype(likely(&User::flag))>, bool>);
+    STATIC_REQUIRE(is_same_v<result_of<decltype(unlikely(c(&User::id) > 1))>, bool>);
+    STATIC_REQUIRE(is_same_v<result_of<decltype(likelihood(length(&User::name), 0.5))>, int>);
 }

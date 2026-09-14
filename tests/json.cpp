@@ -178,6 +178,23 @@ TEST_CASE("json_insert") {
     }
 }
 
+#if SQLITE_VERSION_NUMBER >= 3053000
+TEST_CASE("json_array_insert") {
+    auto storage = make_storage("");
+    std::vector<std::string> rows;
+    decltype(rows) expected;
+    SECTION("a single insertion shifts the elements to the right") {
+        rows = storage.select(json_array_insert("[1,2,3]", "$[1]", 9));
+        expected.push_back("[1,9,2,3]");
+    }
+    SECTION("multiple insertions are applied left to right") {
+        rows = storage.select(json_array_insert("[1,2,3]", "$[0]", 9, "$[4]", 99));
+        expected.push_back("[9,1,2,3,99]");
+    }
+    REQUIRE(expected == rows);
+}
+#endif
+
 TEST_CASE("json_replace") {
     auto storage = make_storage("");
     SECTION("1") {
@@ -401,6 +418,41 @@ TEST_CASE("json_valid") {
     }
 }
 
+#if SQLITE_VERSION_NUMBER >= 3045000
+TEST_CASE("json_valid with flags") {
+    auto storage = make_storage("");
+    std::vector<bool> rows;
+    decltype(rows) expected;
+    //  the JSON5 object below is no strict JSON; flag 1 demands strict JSON, flag 2 admits JSON5
+    SECTION("JSON5 against the strict flag") {
+        rows = storage.select(json_valid("{a:1}", 1));
+        expected.push_back(false);
+    }
+    SECTION("JSON5 against the JSON5 flag") {
+        rows = storage.select(json_valid("{a:1}", 2));
+        expected.push_back(true);
+    }
+    REQUIRE(expected == rows);
+}
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3042000
+TEST_CASE("json_error_position") {
+    auto storage = make_storage("");
+    std::vector<int> rows;
+    decltype(rows) expected;
+    SECTION("well-formed") {
+        rows = storage.select(json_error_position(R"({"x":35})"));
+        expected.push_back(0);
+    }
+    SECTION("malformed") {
+        rows = storage.select(json_error_position(R"({"x":35)"));
+        expected.push_back(8);
+    }
+    REQUIRE(expected == rows);
+}
+#endif
+
 TEST_CASE("json_quote") {
     auto storage = make_storage("");
     {
@@ -416,6 +468,23 @@ TEST_CASE("json_quote") {
         REQUIRE(rows == expected);
     }
 }
+
+#if SQLITE_VERSION_NUMBER >= 3046000
+TEST_CASE("json_pretty") {
+    auto storage = make_storage("");
+    std::vector<std::string> rows;
+    decltype(rows) expected;
+    SECTION("four spaces by default") {
+        rows = storage.select(json_pretty("[1,2]"));
+        expected.push_back("[\n    1,\n    2\n]");
+    }
+    SECTION("a custom indentation string") {
+        rows = storage.select(json_pretty("[1,2]", "\t"));
+        expected.push_back("[\n\t1,\n\t2\n]");
+    }
+    REQUIRE(expected == rows);
+}
+#endif
 
 TEST_CASE("json_group_array && json_group_object") {
     struct User {
