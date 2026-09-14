@@ -8,6 +8,13 @@
 #include <optional>  //  std::optional
 #include <vector>  //  std::vector
 #include <utility>  //  std::move
+//  The C headers rather than their `<c...>` wrappers, deliberately: only the C headers guarantee the declarations
+//  in the global namespace, which is what the "names shared with the C library" section needs in scope.
+//  The wrappers guarantee them in `std` alone (with modules, the global names take `import std.compat;`).
+#include <stdlib.h>  //  abs
+#include <math.h>  //  round
+#include <time.h>  //  time, strftime
+#include <stdio.h>  //  printf
 
 using namespace sqlite_orm;
 
@@ -273,6 +280,21 @@ TEST_CASE("built-in function static") {
 #if SQLITE_VERSION_NUMBER >= 3008006
         STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(likely(&User::name))>, std::string>);
 #endif
+    }
+    SECTION("names shared with the C library") {
+        // a built-in whose name is also a global C function is a function template, not an object,
+        // so that under `using namespace sqlite_orm;` the two are an overload set rather than an ambiguous lookup
+        STATIC_REQUIRE(is_built_in_function_v<decltype(round(&User::id))>);
+        STATIC_REQUIRE(is_built_in_function_v<decltype(round(&User::id, 2))>);
+        STATIC_REQUIRE(is_built_in_function_v<decltype(time("now"))>);
+        STATIC_REQUIRE(is_built_in_function_v<decltype(strftime("%Y", "now"))>);
+        STATIC_REQUIRE(is_built_in_function_v<decltype(abs(&User::id))>);
+#if SQLITE_VERSION_NUMBER >= 3008003
+        STATIC_REQUIRE(is_built_in_function_v<decltype(printf("%d", &User::id))>);
+#endif
+        // the C functions keep winning for their own argument types, as they always did
+        STATIC_REQUIRE(std::is_same_v<decltype(abs(-1)), int>);
+        STATIC_REQUIRE(std::is_same_v<decltype(round(1.5)), double>);
     }
     SECTION("first match in declaration order") {
         constexpr auto f = "F"_builtin.scalar<int(int, variadic<int>), double(int, int)>();

@@ -946,6 +946,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  published here as a copy - or wrapped by a function template where the public function takes the return type
      *  as a template argument, shares its name with other function templates or checks its arguments.
      *  The C++17 branch keeps the legacy factories over `built_in_function_t`.
+     *
+     *  A built-in whose name is also that of a C library function in the global namespace - `abs`, `round`,
+     *  `time`, `random`, `strftime`, `printf` - is wrapped as well: under `using namespace sqlite_orm;` an object
+     *  and a function of the same name are an ambiguous lookup, whereas two functions are an overload set.
      */
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #ifdef SQLITE_ENABLE_MATH_FUNCTIONS
@@ -1432,7 +1436,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  ABS(x) function https://sqlite.org/lang_corefunc.html#abs
      */
-    inline constexpr orm_built_in_function auto abs = internal::abs;
+    template<class X>
+    constexpr auto abs(X x) {
+        return internal::abs(std::move(x));
+    }
 
     /**
      *  LOWER(x) function https://sqlite.org/lang_corefunc.html#lower
@@ -1506,7 +1513,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  ROUND(X) and ROUND(X,Y) function https://sqlite.org/lang_corefunc.html#round
      */
-    inline constexpr orm_built_in_function auto round = internal::round;
+    template<class... Args>
+        requires requires(Args... args) { internal::round(std::move(args)...); }
+    constexpr auto round(Args... args) {
+        return internal::round(std::move(args)...);
+    }
 
 #if SQLITE_VERSION_NUMBER >= 3007016
     /**
@@ -1517,7 +1528,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  RANDOM() function https://www.sqlite.org/lang_corefunc.html#random
      */
-    inline constexpr orm_built_in_function auto random = internal::random;
+    constexpr auto random() {
+        return internal::random();
+    }
 #endif
 
     /**
@@ -1587,7 +1600,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  TIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
-    inline constexpr orm_built_in_function auto time = internal::time;
+    template<class... Args>
+    constexpr auto time(Args... args) {
+        return internal::time(std::move(args)...);
+    }
 
     /**
      *  DATETIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
@@ -1602,7 +1618,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  STRFTIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
-    inline constexpr orm_built_in_function auto strftime = internal::strftime;
+    template<class... Args>
+        requires requires(Args... args) { internal::strftime(std::move(args)...); }
+    constexpr auto strftime(Args... args) {
+        return internal::strftime(std::move(args)...);
+    }
 
     /**
      *  ZEROBLOB(N) function https://www.sqlite.org/lang_corefunc.html#zeroblob
@@ -1694,7 +1714,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  PRINTF(FORMAT,...) function https://www.sqlite.org/lang_corefunc.html#printf
      */
-    inline constexpr orm_built_in_function auto printf = internal::printf;
+    template<class... Args>
+        requires requires(Args... args) { internal::printf(std::move(args)...); }
+    constexpr auto printf(Args... args) {
+        return internal::printf(std::move(args)...);
+    }
 #endif
 #if SQLITE_VERSION_NUMBER >= 3008006
     /**

@@ -375,9 +375,21 @@ overload resolution and usually resolved; `sqlite_orm::abs` already had to be
 qualified in the tests for that reason, and the others are affected the same
 way now. Qualifying the call (`sqlite_orm::time("now")`) is the workaround.
 
-Not fixed in this branch. A likely fix is to stop pulling the C headers into
-the global namespace: import the std module (or include the `<c...>` headers
-only) so the C functions live in `std` alone. Left for a separate commit.
+**Resolved (2026-09-14): those six are function template facades**, like the
+`R`-taking functions, `count` and `replace` — a function and a function are an
+overload set, so the C++17 behaviour is back exactly: `round(&User::id)` picks
+ours because the C overloads are not viable, `abs(-1)` picks `::abs(int)` as it
+always did. What the facade gives up is only that these six cannot be passed
+around as `orm_built_in_function` objects; the internal definition object is
+still there. Rule, recorded next to the other facade reasons in
+`core_functions.h`: a built-in whose name is also a global C library function
+is published as a function template.
+
+Modules were considered and rejected: with `import std;` the C functions live
+in `std` only, but the moment the user's TU includes `<cmath>`/`<ctime>` (which
+in practice declare the global names too) or imports `std.compat` the clash is
+back — what is in the global namespace is decided by the user's TU, not by the
+library.
 
 ## Merged: the widening and the node split (2026-09-14)
 
@@ -406,7 +418,6 @@ back. What that changed for this branch:
 
 ## Follow-ups
 
-- The C library name ambiguity above.
 - Optional: `as_result<R>(expr)` as the general, callee-independent result
   type override (generalizing `as_optional`).
 - When C++17 support is dropped: delete the `#ifndef` branches —
