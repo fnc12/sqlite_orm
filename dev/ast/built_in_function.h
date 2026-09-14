@@ -20,16 +20,14 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/is_base_template_of.h"
 #include "../functional/type_traits.h"  //  satisfies, orm_function_sig
+#include "../functional/cstring_literal.h"
+#include "../functional/function_traits.h"  //  function_arguments, function_return_type_t
 #include "../tags.h"  //  arithmetic_t
 #include "../vocabulary/node_traits.h"  //  is_where, expression_type_t
+#include "../vocabulary/node_algorithms.h"  //  argument, common_argument_type
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 #include "window.h"  //  over_t, validate_over_arguments
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-#include "../functional/cstring_literal.h"
-#include "../functional/function_traits.h"
-#include "../vocabulary/node_algorithms.h"  // argument, common_argument_type
-#endif
 
 namespace sqlite_orm::internal {
     /*
