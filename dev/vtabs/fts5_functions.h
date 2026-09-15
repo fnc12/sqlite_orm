@@ -22,7 +22,8 @@
 #include "../alias_traits.h"  //  is_recordset_alias_v
 #include "../column_pointer.h"  //  column
 #include "../vocabulary/node_algorithms.h"  //  hidden_column_of_vtab, hidden_field_of_vtab
-#include "builtin_function.h"
+#include "../ast/builtin_function.h"
+#include "fts5.h"
 
 namespace sqlite_orm::internal {
     struct highlight_string {
@@ -46,8 +47,6 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-    struct fts5;
-
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     /**
      *  The FTS5 highlight function.
@@ -235,17 +234,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
      */
-    template<class O,
-             class X,
-             class Y,
-             class Z,
-             class VTab = fts5,
-             std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
+    template<class O, class X, class Y, class Z, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
     [[deprecated("Use the `highlight` function accepting the hidden FTS5 'any' field instead")]]
     constexpr auto highlight(X x, Y y, Z z) {
-        //  the hidden column named like the table stands for the table;
-        //  spelled through `VTab` so that `fts5` need only be complete where the function is instantiated
-        return highlight(column<O>(&VTab::hidden::any), std::move(x), std::move(y), std::move(z));
+        //  the hidden column named like the table stands for the table
+        return highlight(column<O>(&fts5::hidden::any), std::move(x), std::move(y), std::move(z));
     }
 }
 #endif
