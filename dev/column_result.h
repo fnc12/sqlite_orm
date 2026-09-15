@@ -15,9 +15,8 @@
 #include "tuple_helper/tuple_transformer.h"
 #include "member_traits/member_traits.h"
 #include "vocabulary/node_traits.h"
-#include "vocabulary/node_algorithms.h"  //  is_text_value
+#include "vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value
 #include "mapped_type_proxy.h"
-#include "core_functions.h"
 #include "operators.h"
 #include "rowid.h"
 #include "column_result_proxy.h"
@@ -142,29 +141,24 @@ namespace sqlite_orm::internal {
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<std::is_member_pointer, T>> : member_field_type<T> {};
 
+    /*
+     *  The result type of a built-in function's call argument, as the return type placeholders see it:
+     *  a bindable value stands for itself - except a text value, which yields `std::string`
+     *  like a select of it does -, anything else (a member pointer, a column pointer, a nested expression)
+     *  for its column result.
+     */
+    template<class DBOs, class Arg>
+    using argument_result_of_t = typename std::conditional_t<is_bindable_v<Arg> && !is_text_value<Arg>::value,
+                                                             polyfill::type_identity<Arg>,
+                                                             column_result_t<DBOs, Arg>>::type;
+
     /**
-     *  The result of a built-in function is the return type it declares, except for the functions whose
-     *  result is a `unique_ptr` of their first argument's result - those declare `nullable_result_proxy<X>`.
+     *  The declared return type of a built-in function, with the `argument<I>` and `common_argument_type<I...>`
+     *  placeholders replaced by the results of the call arguments.
      */
     template<class DBOs, class T>
-    struct column_result_t<DBOs,
-                           T,
-                           std::enable_if_t<std::conjunction<
-                               is_built_in_function<T>,
-                               polyfill::is_specialization_of<return_type_t<T>, nullable_result_proxy>>::value>> {
-        using expression_type = expression_type_t<return_type_t<T>>;
-        using type = std::unique_ptr<column_result_of_t<DBOs, expression_type>>;
-    };
-
-    template<class DBOs, class T>
-    struct column_result_t<
-        DBOs,
-        T,
-        std::enable_if_t<std::conjunction<
-            is_built_in_function<T>,
-            std::negation<polyfill::is_specialization_of<return_type_t<T>, nullable_result_proxy>>>::value>> {
-        using type = return_type_t<T>;
-    };
+    struct column_result_t<DBOs, T, match_if<is_built_in_function, T>>
+        : substitute_arguments<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<argument_result_of_t, DBOs>> {};
 
     template<class DBOs, class F, class... Args>
     struct column_result_t<DBOs, function_call<F, Args...>, void> {
@@ -172,12 +166,13 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, count_asterisk_t<T>, void> {
+    struct column_result_t<DBOs, T, match_if<is_count_asterisk, T>> {
         using type = int;
     };
 
-    template<class DBOs, class F, class W>
-    struct column_result_t<DBOs, filtered_aggregate_function<F, W>, void> : column_result_t<DBOs, F> {};
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_filtered_aggregate_function, T>>
+        : column_result_t<DBOs, function_type_t<T>> {};
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_over, T>> : column_result_t<DBOs, function_type_t<T>> {};
@@ -240,11 +235,6 @@ namespace sqlite_orm::internal {
     template<class DBOs>
     struct column_result_t<DBOs, std::nullptr_t, void> {
         using type = std::nullptr_t;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, count_asterisk_without_type, void> {
-        using type = int;
     };
 
     template<class DBOs, class T>

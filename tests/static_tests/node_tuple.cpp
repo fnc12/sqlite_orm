@@ -751,7 +751,7 @@ TEST_CASE("Node tuple") {
             auto f = upper("hi");
             using Fun = decltype(f);
             using Tuple = node_tuple_t<Fun>;
-            using ArgType = std::tuple_element_t<0, Fun::args_type>;
+            using ArgType = std::tuple_element_t<0, Fun::args_tuple>;
             static_assert(is_same<ArgType, const char*>::value, "upper arg[0]");
             using Expected = tuple<const char*>;
             static_assert(is_same<Tuple, Expected>::value, "upper");

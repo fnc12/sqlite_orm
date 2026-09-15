@@ -9,7 +9,6 @@
 
 #include "../../functional/cxx_type_traits_polyfill.h"
 #include "../../functional/type_traits.h"
-#include "../../member_traits/member_traits.h"
 
 // Plain accessors
 namespace sqlite_orm::internal {
@@ -97,10 +96,17 @@ namespace sqlite_orm::internal {
     using tuple_type_t = typename T::tuple_type;
 
     /**
-     *  The function a window function application applies over a window.
+     *  The function a window function application applies over a window,
+     *  or an aggregate function call's FILTER clause is attached to.
      */
     template<typename T>
     using function_type_t = typename T::function_type;
+
+    /**
+     *  The expression of an aggregate function call's FILTER (WHERE ...) clause.
+     */
+    template<typename T>
+    using where_expression_t = typename T::where_expression;
 
     template<typename T>
     using offset_expression_type_t = typename T::offset_expression_type;
@@ -184,9 +190,6 @@ namespace sqlite_orm::internal {
 
 // Detected-or-fallback accessors
 namespace sqlite_orm::internal {
-    template<class T>
-    using field_type_or_type_t = polyfill::detected_or_t<T, type_t, member_field_type<T>>;
-
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     template<class T>
     using alias_holder_type_or_none_t = polyfill::detected_t<type_t, T>;

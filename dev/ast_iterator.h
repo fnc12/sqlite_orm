@@ -13,7 +13,6 @@
 #include "conditions.h"
 #include "alias.h"
 #include "operators.h"
-#include "core_functions.h"
 #include "prepared_statement.h"
 #include "function.h"
 #include "ast/excluded.h"
@@ -526,9 +525,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class F, class W>
-    struct ast_iterator<filtered_aggregate_function<F, W>, void> {
-        using node_type = filtered_aggregate_function<F, W>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_filtered_aggregate_function, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {

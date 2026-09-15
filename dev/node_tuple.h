@@ -13,7 +13,6 @@
 #include "operators.h"
 #include "prepared_statement.h"
 #include "optional_container.h"
-#include "core_functions.h"
 #include "function.h"
 #include "ast/excluded.h"
 #include "ast/match.h"
@@ -200,10 +199,11 @@ namespace sqlite_orm::internal {
     struct node_tuple<bitwise_not_t<T>, void> : node_tuple<T> {};
 
     template<class T>
-    struct node_tuple<T, match_if<is_built_in_function, T>> : node_tuple<args_type_t<T>> {};
+    struct node_tuple<T, match_if<is_built_in_function, T>> : node_tuple<args_tuple_t<T>> {};
 
-    template<class F, class W>
-    struct node_tuple<filtered_aggregate_function<F, W>, void> : node_tuple_for<F, W> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_filtered_aggregate_function, T>>
+        : node_tuple_for<function_type_t<T>, where_expression_t<T>> {};
 
     template<class F, class... Args>
     struct node_tuple<function_call<F, Args...>, void> : node_tuple_for<Args...> {};
