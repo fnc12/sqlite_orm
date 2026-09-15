@@ -125,7 +125,7 @@ namespace sqlite_orm::internal {
      *  Args - function arguments types
      */
     template<class R, class S, class... Args>
-    struct built_in_function_t : S, arithmetic_t {
+    struct builtin_function_t : S, arithmetic_t {
         using return_type = R;
         using string_type = S;
         using args_tuple = std::tuple<Args...>;
@@ -134,25 +134,25 @@ namespace sqlite_orm::internal {
 
         args_tuple args;
 
-        constexpr built_in_function_t(args_tuple&& args_) : args(std::move(args_)) {}
+        constexpr builtin_function_t(args_tuple&& args_) : args(std::move(args_)) {}
     };
 
     template<class T>
-    constexpr bool is_built_in_function_v = is_base_template_of<built_in_function_t, T>::value;
+    constexpr bool is_builtin_function_v = is_base_template_of<builtin_function_t, T>::value;
 
     template<class R, class S, class... Args>
-    struct built_in_aggregate_function_t : built_in_function_t<R, S, Args...> {
-        using super = built_in_function_t<R, S, Args...>;
+    struct builtin_aggregate_function_t : builtin_function_t<R, S, Args...> {
+        using super = builtin_function_t<R, S, Args...>;
 
         using super::super;
 
         template<class Wh, satisfies<is_where, Wh> = true>
-        filtered_aggregate_function<built_in_aggregate_function_t, expression_type_t<Wh>> filter(Wh wh) {
+        filtered_aggregate_function<builtin_aggregate_function_t, expression_type_t<Wh>> filter(Wh wh) {
             return {*this, std::move(wh.expression)};
         }
 
         template<class... OverArgs>
-        over_t<built_in_aggregate_function_t, OverArgs...> over(OverArgs... overArgs) {
+        over_t<builtin_aggregate_function_t, OverArgs...> over(OverArgs... overArgs) {
             validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
@@ -168,7 +168,7 @@ namespace sqlite_orm::internal {
  */
 namespace sqlite_orm::internal {
     template<class T>
-    constexpr bool is_built_in_function_v = false;
+    constexpr bool is_builtin_function_v = false;
 
     /*
      *  Marker for the last parameter of a built-in function's signature: "zero or more further `T`".
@@ -210,7 +210,7 @@ namespace sqlite_orm::internal {
      *  Whether a built-in function's signature accepts a call with `Argc` arguments.
      */
     template<orm_function_sig Sig, size_t Argc>
-    consteval bool built_in_signature_accepts() {
+    consteval bool builtin_signature_accepts() {
         using params_tuple = function_arguments<Sig, std::tuple>;
         constexpr size_t paramsCount = std::tuple_size_v<params_tuple>;
         if constexpr (paramsCount == 0) {
@@ -228,22 +228,22 @@ namespace sqlite_orm::internal {
      *  Has no nested `type` if none does.
      */
     template<size_t Argc, class... KindedSigs>
-    struct matched_built_in_signature {};
+    struct matched_builtin_signature {};
 
     template<size_t Argc, class KindedSig, class... KindedSigs>
-    struct matched_built_in_signature<Argc, KindedSig, KindedSigs...>
-        : std::conditional_t<built_in_signature_accepts<typename KindedSig::signature_type, Argc>(),
+    struct matched_builtin_signature<Argc, KindedSig, KindedSigs...>
+        : std::conditional_t<builtin_signature_accepts<typename KindedSig::signature_type, Argc>(),
                              std::type_identity<KindedSig>,
-                             matched_built_in_signature<Argc, KindedSigs...>> {};
+                             matched_builtin_signature<Argc, KindedSigs...>> {};
 
     template<size_t Argc, class... KindedSigs>
-    using matched_built_in_signature_t = typename matched_built_in_signature<Argc, KindedSigs...>::type;
+    using matched_builtin_signature_t = typename matched_builtin_signature<Argc, KindedSigs...>::type;
 
     /*
      *  Whether a built-in function's overload set has a signature accepting a call with `Argc` arguments.
      */
     template<size_t Argc, class... KindedSigs>
-    concept has_matching_built_in_signature = requires { typename matched_built_in_signature_t<Argc, KindedSigs...>; };
+    concept has_matching_builtin_signature = requires { typename matched_builtin_signature_t<Argc, KindedSigs...>; };
 
     /*
      *  A kinded signature with its return type replaced by `R`, or as is if `R` is `void`.
@@ -268,7 +268,7 @@ namespace sqlite_orm::internal {
      *  `F` is the definition type of the built-in function, `Sig` the matched overload.
      */
     template<class F, class Sig, class... CallArgs>
-    struct built_in_function_call : arithmetic_t {
+    struct builtin_function_call : arithmetic_t {
         using function_type = F;
         using signature_type = Sig;
         using return_type = function_return_type_t<Sig>;
@@ -277,7 +277,7 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_NOUNIQUEADDRESS function_type function;
         args_tuple args;
 
-        constexpr built_in_function_call(function_type function_, args_tuple args_) :
+        constexpr builtin_function_call(function_type function_, args_tuple args_) :
             function{std::move(function_)}, args{std::move(args_)} {}
 
         constexpr std::string_view serialize() const {
@@ -290,51 +290,51 @@ namespace sqlite_orm::internal {
      *  or be turned into a window function with an OVER clause.
      */
     template<class F, class Sig, class... CallArgs>
-    struct built_in_aggregate_function_call : built_in_function_call<F, Sig, CallArgs...> {
-        using super = built_in_function_call<F, Sig, CallArgs...>;
+    struct builtin_aggregate_function_call : builtin_function_call<F, Sig, CallArgs...> {
+        using super = builtin_function_call<F, Sig, CallArgs...>;
 
         using super::super;
 
         template<class Wh>
             requires (is_where_v<Wh>)
-        constexpr filtered_aggregate_function<built_in_aggregate_function_call, expression_type_t<Wh>>
+        constexpr filtered_aggregate_function<builtin_aggregate_function_call, expression_type_t<Wh>>
         filter(Wh wh) const {
             return {*this, std::move(wh.expression)};
         }
 
         template<class... OverArgs>
-        constexpr over_t<built_in_aggregate_function_call, OverArgs...> over(OverArgs... overArgs) const {
+        constexpr over_t<builtin_aggregate_function_call, OverArgs...> over(OverArgs... overArgs) const {
             validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
 
     template<class F, class Sig, class... CallArgs>
-    constexpr bool is_built_in_function_v<built_in_function_call<F, Sig, CallArgs...>> = true;
+    constexpr bool is_builtin_function_v<builtin_function_call<F, Sig, CallArgs...>> = true;
     template<class F, class Sig, class... CallArgs>
-    constexpr bool is_built_in_function_v<built_in_aggregate_function_call<F, Sig, CallArgs...>> = true;
+    constexpr bool is_builtin_function_v<builtin_aggregate_function_call<F, Sig, CallArgs...>> = true;
 
     template<class F, class Sig, class... CallArgs>
-    constexpr bool is_operator_argument_v<built_in_function_call<F, Sig, CallArgs...>, void> = true;
+    constexpr bool is_operator_argument_v<builtin_function_call<F, Sig, CallArgs...>, void> = true;
     template<class F, class Sig, class... CallArgs>
-    constexpr bool is_operator_argument_v<built_in_aggregate_function_call<F, Sig, CallArgs...>, void> = true;
+    constexpr bool is_operator_argument_v<builtin_aggregate_function_call<F, Sig, CallArgs...>, void> = true;
 
     /*
      *  The call node for a matched kinded signature.
      */
     template<class KindedSig, class F, class... CallArgs>
-    struct built_in_function_call_for;
+    struct builtin_function_call_for;
 
     template<class Sig, class F, class... CallArgs>
-    struct built_in_function_call_for<scalar_sig<Sig>, F, CallArgs...>
-        : std::type_identity<built_in_function_call<F, Sig, CallArgs...>> {};
+    struct builtin_function_call_for<scalar_sig<Sig>, F, CallArgs...>
+        : std::type_identity<builtin_function_call<F, Sig, CallArgs...>> {};
 
     template<class Sig, class F, class... CallArgs>
-    struct built_in_function_call_for<aggregate_sig<Sig>, F, CallArgs...>
-        : std::type_identity<built_in_aggregate_function_call<F, Sig, CallArgs...>> {};
+    struct builtin_function_call_for<aggregate_sig<Sig>, F, CallArgs...>
+        : std::type_identity<builtin_aggregate_function_call<F, Sig, CallArgs...>> {};
 
     template<class KindedSig, class F, class... CallArgs>
-    using built_in_function_call_for_t = typename built_in_function_call_for<KindedSig, F, CallArgs...>::type;
+    using builtin_function_call_for_t = typename builtin_function_call_for<KindedSig, F, CallArgs...>::type;
 
     /*
      *  Generator of a built-in function call in a sql query expression.
@@ -348,7 +348,7 @@ namespace sqlite_orm::internal {
      */
     template<size_t N, class... KindedSigs>
         requires (is_kinded_signature_v<KindedSigs> && ...)
-    struct built_in_function {
+    struct builtin_function {
         using signature_tuple = std::tuple<KindedSigs...>;
 
         /*
@@ -360,10 +360,10 @@ namespace sqlite_orm::internal {
          *  are implemented with.
          */
         template<class R = void, class... CallArgs>
-            requires (has_matching_built_in_signature<sizeof...(CallArgs), KindedSigs...>)
-        constexpr built_in_function_call_for_t<
-            with_return_type_t<R, matched_built_in_signature_t<sizeof...(CallArgs), KindedSigs...>>,
-            built_in_function,
+            requires (has_matching_builtin_signature<sizeof...(CallArgs), KindedSigs...>)
+        constexpr builtin_function_call_for_t<
+            with_return_type_t<R, matched_builtin_signature_t<sizeof...(CallArgs), KindedSigs...>>,
+            builtin_function,
             CallArgs...>
         operator()(CallArgs... callArgs) const {
             return {*this, {std::forward<CallArgs>(callArgs)...}};
@@ -373,7 +373,7 @@ namespace sqlite_orm::internal {
             return {_nme, N - 1};
         }
 
-        consteval built_in_function(const char (&name)[N]) {
+        consteval builtin_function(const char (&name)[N]) {
             std::copy_n(name, N, _nme);
         }
 
@@ -381,8 +381,8 @@ namespace sqlite_orm::internal {
     };
 
     template<size_t N>
-    struct built_in_function_builder : cstring_literal<N> {
-        constexpr built_in_function_builder(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
+    struct builtin_function_builder : cstring_literal<N> {
+        constexpr builtin_function_builder(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
 
         /*
          *  A function with the given overload set of kinded signatures, in any order.
@@ -390,7 +390,7 @@ namespace sqlite_orm::internal {
         template<class... KindedSigs>
             requires (sizeof...(KindedSigs) > 0) && (is_kinded_signature_v<KindedSigs> && ...)
         [[nodiscard]] consteval auto function() const {
-            return built_in_function<N, KindedSigs...>{this->cstr};
+            return builtin_function<N, KindedSigs...>{this->cstr};
         }
 
         /*
@@ -399,7 +399,7 @@ namespace sqlite_orm::internal {
         template<orm_function_sig... Sigs>
             requires (sizeof...(Sigs) > 0)
         [[nodiscard]] consteval auto scalar() const {
-            return built_in_function<N, scalar_sig<Sigs>...>{this->cstr};
+            return builtin_function<N, scalar_sig<Sigs>...>{this->cstr};
         }
 
         /*
@@ -408,7 +408,7 @@ namespace sqlite_orm::internal {
         template<orm_function_sig... Sigs>
             requires (sizeof...(Sigs) > 0)
         [[nodiscard]] consteval auto aggregate() const {
-            return built_in_function<N, aggregate_sig<Sigs>...>{this->cstr};
+            return builtin_function<N, aggregate_sig<Sigs>...>{this->cstr};
         }
     };
 
@@ -422,7 +422,7 @@ namespace sqlite_orm::internal {
      *  inline constexpr auto max = "MAX"_builtin.function<aggregate_sig<std::unique_ptr<argument<0>>(anything)>,
      *                                                     scalar_sig<std::unique_ptr<argument<0>>(anything, anything, variadic<anything>)>>();
      */
-    template<built_in_function_builder builder>
+    template<builtin_function_builder builder>
     [[nodiscard]] consteval auto operator""_builtin() {
         return builder;
     }
@@ -432,7 +432,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** @short Specifies that a type is a built-in function definition.
      */
     template<class F>
-    concept orm_built_in_function = requires(const F& f) {
+    concept orm_builtin_function = requires(const F& f) {
         { f.name() } -> std::convertible_to<std::string_view>;
         typename std::remove_cvref_t<F>::signature_tuple;
     };

@@ -178,7 +178,7 @@ each node specializes it **in the node's own header**.
 Classifier/leaf traits plus structural grouping by real SQL grammar production:
 compound-statement, DML-statement, CTE-binding, function-call, alias, and so on —
 `is_column`, `is_base_table`, `is_foreign_key`, `is_compound_operator`,
-`is_built_in_function`, `is_binary_condition`, and many more.
+`is_builtin_function`, `is_binary_condition`, and many more.
 
 ### Semantic
 
@@ -416,11 +416,11 @@ Decided, not yet done. The destination is settled in each case; only the work re
 
 - **Retire the legacy built-in function nodes with C++17.** In C++20 builds every
   built-in is one `inline constexpr` definition of name plus overload set in
-  `ast/built_in_function.h` (`"LOWER"_builtin.scalar<std::string(std::string_view)>()`);
-  the resulting call node plugs into `is_built_in_function`, and argument-dependent return
+  `ast/builtin_function.h` (`"LOWER"_builtin.scalar<std::string(std::string_view)>()`);
+  the resulting call node plugs into `is_builtin_function`, and argument-dependent return
   types are placeholders (`argument<I>`, `common_argument_type<I...>`) substituted by
   `vocabulary/algorithms/argument_placeholders.h` from `column_result_t`. The legacy
-  `built_in_function_t` node in `ast/built_in_function.h` and the per-function `*_string`
+  `builtin_function_t` node in `ast/builtin_function.h` and the per-function `*_string`
   tag + factory pairs in `core_functions.h` exist only for C++17 and go when that baseline
   does. Design and decisions are in
   [`docs/plans/2026-09-12-built-in-function-vocabulary-design.md`](../plans/2026-09-12-built-in-function-vocabulary-design.md).

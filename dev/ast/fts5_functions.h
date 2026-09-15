@@ -41,7 +41,7 @@ namespace sqlite_orm::internal {
     /*
      *  An FTS5 auxiliary function: a function whose first argument in SQL is the FTS5 table itself,
      *  which is identified by the mapped object type `T` and serialized as the looked-up table name.
-     *  Deliberately not a `built_in_function_t`, so that the general built-in function machinery,
+     *  Deliberately not a `builtin_function_t`, so that the general built-in function machinery,
      *  which knows nothing about the table argument, never matches it.
      */
     template<class R, class S, class T, class... Args>

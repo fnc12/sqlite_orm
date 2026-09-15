@@ -2622,10 +2622,10 @@ namespace sqlite_orm::internal {
     using is_binary_condition = std::bool_constant<is_binary_condition_v<T>>;
 
     template<class T>
-    extern const bool is_built_in_function_v;
+    extern const bool is_builtin_function_v;
 
     template<class T>
-    using is_built_in_function = std::bool_constant<is_built_in_function_v<T>>;
+    using is_builtin_function = std::bool_constant<is_builtin_function_v<T>>;
 
     /**
      *  Node representing an aggregate function call with a FILTER clause.
@@ -8417,7 +8417,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "vocabulary/node_algorithms.h"
 //  argument, common_argument_type
-// #include "ast/built_in_function.h"
+// #include "ast/builtin_function.h"
 
 /** @file The nodes of a call of a built-in SQL function: scalar and aggregate function calls,
  *        an aggregate call with a FILTER clause, and COUNT(*).
@@ -8633,7 +8633,7 @@ namespace sqlite_orm::internal {
      *  Args - function arguments types
      */
     template<class R, class S, class... Args>
-    struct built_in_function_t : S, arithmetic_t {
+    struct builtin_function_t : S, arithmetic_t {
         using return_type = R;
         using string_type = S;
         using args_tuple = std::tuple<Args...>;
@@ -8642,25 +8642,25 @@ namespace sqlite_orm::internal {
 
         args_tuple args;
 
-        constexpr built_in_function_t(args_tuple&& args_) : args(std::move(args_)) {}
+        constexpr builtin_function_t(args_tuple&& args_) : args(std::move(args_)) {}
     };
 
     template<class T>
-    constexpr bool is_built_in_function_v = is_base_template_of<built_in_function_t, T>::value;
+    constexpr bool is_builtin_function_v = is_base_template_of<builtin_function_t, T>::value;
 
     template<class R, class S, class... Args>
-    struct built_in_aggregate_function_t : built_in_function_t<R, S, Args...> {
-        using super = built_in_function_t<R, S, Args...>;
+    struct builtin_aggregate_function_t : builtin_function_t<R, S, Args...> {
+        using super = builtin_function_t<R, S, Args...>;
 
         using super::super;
 
         template<class Wh, satisfies<is_where, Wh> = true>
-        filtered_aggregate_function<built_in_aggregate_function_t, expression_type_t<Wh>> filter(Wh wh) {
+        filtered_aggregate_function<builtin_aggregate_function_t, expression_type_t<Wh>> filter(Wh wh) {
             return {*this, std::move(wh.expression)};
         }
 
         template<class... OverArgs>
-        over_t<built_in_aggregate_function_t, OverArgs...> over(OverArgs... overArgs) {
+        over_t<builtin_aggregate_function_t, OverArgs...> over(OverArgs... overArgs) {
             validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
@@ -8676,7 +8676,7 @@ namespace sqlite_orm::internal {
  */
 namespace sqlite_orm::internal {
     template<class T>
-    constexpr bool is_built_in_function_v = false;
+    constexpr bool is_builtin_function_v = false;
 
     /*
      *  Marker for the last parameter of a built-in function's signature: "zero or more further `T`".
@@ -8718,7 +8718,7 @@ namespace sqlite_orm::internal {
      *  Whether a built-in function's signature accepts a call with `Argc` arguments.
      */
     template<orm_function_sig Sig, size_t Argc>
-    consteval bool built_in_signature_accepts() {
+    consteval bool builtin_signature_accepts() {
         using params_tuple = function_arguments<Sig, std::tuple>;
         constexpr size_t paramsCount = std::tuple_size_v<params_tuple>;
         if constexpr (paramsCount == 0) {
@@ -8736,22 +8736,22 @@ namespace sqlite_orm::internal {
      *  Has no nested `type` if none does.
      */
     template<size_t Argc, class... KindedSigs>
-    struct matched_built_in_signature {};
+    struct matched_builtin_signature {};
 
     template<size_t Argc, class KindedSig, class... KindedSigs>
-    struct matched_built_in_signature<Argc, KindedSig, KindedSigs...>
-        : std::conditional_t<built_in_signature_accepts<typename KindedSig::signature_type, Argc>(),
+    struct matched_builtin_signature<Argc, KindedSig, KindedSigs...>
+        : std::conditional_t<builtin_signature_accepts<typename KindedSig::signature_type, Argc>(),
                              std::type_identity<KindedSig>,
-                             matched_built_in_signature<Argc, KindedSigs...>> {};
+                             matched_builtin_signature<Argc, KindedSigs...>> {};
 
     template<size_t Argc, class... KindedSigs>
-    using matched_built_in_signature_t = typename matched_built_in_signature<Argc, KindedSigs...>::type;
+    using matched_builtin_signature_t = typename matched_builtin_signature<Argc, KindedSigs...>::type;
 
     /*
      *  Whether a built-in function's overload set has a signature accepting a call with `Argc` arguments.
      */
     template<size_t Argc, class... KindedSigs>
-    concept has_matching_built_in_signature = requires { typename matched_built_in_signature_t<Argc, KindedSigs...>; };
+    concept has_matching_builtin_signature = requires { typename matched_builtin_signature_t<Argc, KindedSigs...>; };
 
     /*
      *  A kinded signature with its return type replaced by `R`, or as is if `R` is `void`.
@@ -8776,7 +8776,7 @@ namespace sqlite_orm::internal {
      *  `F` is the definition type of the built-in function, `Sig` the matched overload.
      */
     template<class F, class Sig, class... CallArgs>
-    struct built_in_function_call : arithmetic_t {
+    struct builtin_function_call : arithmetic_t {
         using function_type = F;
         using signature_type = Sig;
         using return_type = function_return_type_t<Sig>;
@@ -8785,7 +8785,7 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_NOUNIQUEADDRESS function_type function;
         args_tuple args;
 
-        constexpr built_in_function_call(function_type function_, args_tuple args_) :
+        constexpr builtin_function_call(function_type function_, args_tuple args_) :
             function{std::move(function_)}, args{std::move(args_)} {}
 
         constexpr std::string_view serialize() const {
@@ -8798,51 +8798,51 @@ namespace sqlite_orm::internal {
      *  or be turned into a window function with an OVER clause.
      */
     template<class F, class Sig, class... CallArgs>
-    struct built_in_aggregate_function_call : built_in_function_call<F, Sig, CallArgs...> {
-        using super = built_in_function_call<F, Sig, CallArgs...>;
+    struct builtin_aggregate_function_call : builtin_function_call<F, Sig, CallArgs...> {
+        using super = builtin_function_call<F, Sig, CallArgs...>;
 
         using super::super;
 
         template<class Wh>
             requires (is_where_v<Wh>)
-        constexpr filtered_aggregate_function<built_in_aggregate_function_call, expression_type_t<Wh>>
+        constexpr filtered_aggregate_function<builtin_aggregate_function_call, expression_type_t<Wh>>
         filter(Wh wh) const {
             return {*this, std::move(wh.expression)};
         }
 
         template<class... OverArgs>
-        constexpr over_t<built_in_aggregate_function_call, OverArgs...> over(OverArgs... overArgs) const {
+        constexpr over_t<builtin_aggregate_function_call, OverArgs...> over(OverArgs... overArgs) const {
             validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
 
     template<class F, class Sig, class... CallArgs>
-    constexpr bool is_built_in_function_v<built_in_function_call<F, Sig, CallArgs...>> = true;
+    constexpr bool is_builtin_function_v<builtin_function_call<F, Sig, CallArgs...>> = true;
     template<class F, class Sig, class... CallArgs>
-    constexpr bool is_built_in_function_v<built_in_aggregate_function_call<F, Sig, CallArgs...>> = true;
+    constexpr bool is_builtin_function_v<builtin_aggregate_function_call<F, Sig, CallArgs...>> = true;
 
     template<class F, class Sig, class... CallArgs>
-    constexpr bool is_operator_argument_v<built_in_function_call<F, Sig, CallArgs...>, void> = true;
+    constexpr bool is_operator_argument_v<builtin_function_call<F, Sig, CallArgs...>, void> = true;
     template<class F, class Sig, class... CallArgs>
-    constexpr bool is_operator_argument_v<built_in_aggregate_function_call<F, Sig, CallArgs...>, void> = true;
+    constexpr bool is_operator_argument_v<builtin_aggregate_function_call<F, Sig, CallArgs...>, void> = true;
 
     /*
      *  The call node for a matched kinded signature.
      */
     template<class KindedSig, class F, class... CallArgs>
-    struct built_in_function_call_for;
+    struct builtin_function_call_for;
 
     template<class Sig, class F, class... CallArgs>
-    struct built_in_function_call_for<scalar_sig<Sig>, F, CallArgs...>
-        : std::type_identity<built_in_function_call<F, Sig, CallArgs...>> {};
+    struct builtin_function_call_for<scalar_sig<Sig>, F, CallArgs...>
+        : std::type_identity<builtin_function_call<F, Sig, CallArgs...>> {};
 
     template<class Sig, class F, class... CallArgs>
-    struct built_in_function_call_for<aggregate_sig<Sig>, F, CallArgs...>
-        : std::type_identity<built_in_aggregate_function_call<F, Sig, CallArgs...>> {};
+    struct builtin_function_call_for<aggregate_sig<Sig>, F, CallArgs...>
+        : std::type_identity<builtin_aggregate_function_call<F, Sig, CallArgs...>> {};
 
     template<class KindedSig, class F, class... CallArgs>
-    using built_in_function_call_for_t = typename built_in_function_call_for<KindedSig, F, CallArgs...>::type;
+    using builtin_function_call_for_t = typename builtin_function_call_for<KindedSig, F, CallArgs...>::type;
 
     /*
      *  Generator of a built-in function call in a sql query expression.
@@ -8856,7 +8856,7 @@ namespace sqlite_orm::internal {
      */
     template<size_t N, class... KindedSigs>
         requires (is_kinded_signature_v<KindedSigs> && ...)
-    struct built_in_function {
+    struct builtin_function {
         using signature_tuple = std::tuple<KindedSigs...>;
 
         /*
@@ -8868,10 +8868,10 @@ namespace sqlite_orm::internal {
          *  are implemented with.
          */
         template<class R = void, class... CallArgs>
-            requires (has_matching_built_in_signature<sizeof...(CallArgs), KindedSigs...>)
-        constexpr built_in_function_call_for_t<
-            with_return_type_t<R, matched_built_in_signature_t<sizeof...(CallArgs), KindedSigs...>>,
-            built_in_function,
+            requires (has_matching_builtin_signature<sizeof...(CallArgs), KindedSigs...>)
+        constexpr builtin_function_call_for_t<
+            with_return_type_t<R, matched_builtin_signature_t<sizeof...(CallArgs), KindedSigs...>>,
+            builtin_function,
             CallArgs...>
         operator()(CallArgs... callArgs) const {
             return {*this, {std::forward<CallArgs>(callArgs)...}};
@@ -8881,7 +8881,7 @@ namespace sqlite_orm::internal {
             return {_nme, N - 1};
         }
 
-        consteval built_in_function(const char (&name)[N]) {
+        consteval builtin_function(const char (&name)[N]) {
             std::copy_n(name, N, _nme);
         }
 
@@ -8889,8 +8889,8 @@ namespace sqlite_orm::internal {
     };
 
     template<size_t N>
-    struct built_in_function_builder : cstring_literal<N> {
-        constexpr built_in_function_builder(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
+    struct builtin_function_builder : cstring_literal<N> {
+        constexpr builtin_function_builder(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
 
         /*
          *  A function with the given overload set of kinded signatures, in any order.
@@ -8898,7 +8898,7 @@ namespace sqlite_orm::internal {
         template<class... KindedSigs>
             requires (sizeof...(KindedSigs) > 0) && (is_kinded_signature_v<KindedSigs> && ...)
         [[nodiscard]] consteval auto function() const {
-            return built_in_function<N, KindedSigs...>{this->cstr};
+            return builtin_function<N, KindedSigs...>{this->cstr};
         }
 
         /*
@@ -8907,7 +8907,7 @@ namespace sqlite_orm::internal {
         template<orm_function_sig... Sigs>
             requires (sizeof...(Sigs) > 0)
         [[nodiscard]] consteval auto scalar() const {
-            return built_in_function<N, scalar_sig<Sigs>...>{this->cstr};
+            return builtin_function<N, scalar_sig<Sigs>...>{this->cstr};
         }
 
         /*
@@ -8916,7 +8916,7 @@ namespace sqlite_orm::internal {
         template<orm_function_sig... Sigs>
             requires (sizeof...(Sigs) > 0)
         [[nodiscard]] consteval auto aggregate() const {
-            return built_in_function<N, aggregate_sig<Sigs>...>{this->cstr};
+            return builtin_function<N, aggregate_sig<Sigs>...>{this->cstr};
         }
     };
 
@@ -8930,7 +8930,7 @@ namespace sqlite_orm::internal {
      *  inline constexpr auto max = "MAX"_builtin.function<aggregate_sig<std::unique_ptr<argument<0>>(anything)>,
      *                                                     scalar_sig<std::unique_ptr<argument<0>>(anything, anything, variadic<anything>)>>();
      */
-    template<built_in_function_builder builder>
+    template<builtin_function_builder builder>
     [[nodiscard]] consteval auto operator""_builtin() {
         return builder;
     }
@@ -8940,7 +8940,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** @short Specifies that a type is a built-in function definition.
      */
     template<class F>
-    concept orm_built_in_function = requires(const F& f) {
+    concept orm_builtin_function = requires(const F& f) {
         { f.name() } -> std::convertible_to<std::string_view>;
         typename std::remove_cvref_t<F>::signature_tuple;
     };
@@ -9896,10 +9896,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /*
      *  The built-in functions.
      *
-     *  In C++20 builds a built-in function is a definition object of `ast/built_in_function.h` (name + overload set),
+     *  In C++20 builds a built-in function is a definition object of `ast/builtin_function.h` (name + overload set),
      *  published here as a copy - or wrapped by a function template where the public function takes the return type
      *  as a template argument, shares its name with other function templates or checks its arguments.
-     *  The C++17 branch keeps the legacy factories over `built_in_function_t`.
+     *  The C++17 branch keeps the legacy factories over `builtin_function_t`.
      *
      *  A built-in whose name is also that of a C library function in the global namespace - `abs`, `round`,
      *  `time`, `random`, `strftime`, `printf` - is wrapped as well: under `using namespace sqlite_orm;` an object
@@ -10375,17 +10375,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  TYPEOF(x) function https://sqlite.org/lang_corefunc.html#typeof
      */
-    inline constexpr orm_built_in_function auto typeof_ = internal::typeof_;
+    inline constexpr orm_builtin_function auto typeof_ = internal::typeof_;
 
     /**
      *  UNICODE(x) function https://sqlite.org/lang_corefunc.html#unicode
      */
-    inline constexpr orm_built_in_function auto unicode = internal::unicode;
+    inline constexpr orm_builtin_function auto unicode = internal::unicode;
 
     /**
      *  LENGTH(x) function https://sqlite.org/lang_corefunc.html#length
      */
-    inline constexpr orm_built_in_function auto length = internal::length;
+    inline constexpr orm_builtin_function auto length = internal::length;
 
     /**
      *  ABS(x) function https://sqlite.org/lang_corefunc.html#abs
@@ -10398,62 +10398,62 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  LOWER(x) function https://sqlite.org/lang_corefunc.html#lower
      */
-    inline constexpr orm_built_in_function auto lower = internal::lower;
+    inline constexpr orm_builtin_function auto lower = internal::lower;
 
     /**
      *  UPPER(x) function https://sqlite.org/lang_corefunc.html#upper
      */
-    inline constexpr orm_built_in_function auto upper = internal::upper;
+    inline constexpr orm_builtin_function auto upper = internal::upper;
 
     /**
      *  LAST_INSERT_ROWID() function https://www.sqlite.org/lang_corefunc.html#last_insert_rowid
      */
-    inline constexpr orm_built_in_function auto last_insert_rowid = internal::last_insert_rowid;
+    inline constexpr orm_builtin_function auto last_insert_rowid = internal::last_insert_rowid;
 
     /**
      *  TOTAL_CHANGES() function https://sqlite.org/lang_corefunc.html#total_changes
      */
-    inline constexpr orm_built_in_function auto total_changes = internal::total_changes;
+    inline constexpr orm_builtin_function auto total_changes = internal::total_changes;
 
     /**
      *  CHANGES() function https://sqlite.org/lang_corefunc.html#changes
      */
-    inline constexpr orm_built_in_function auto changes = internal::changes;
+    inline constexpr orm_builtin_function auto changes = internal::changes;
 
     /**
      *  TRIM(X) and TRIM(X,Y) function https://sqlite.org/lang_corefunc.html#trim
      */
-    inline constexpr orm_built_in_function auto trim = internal::trim;
+    inline constexpr orm_builtin_function auto trim = internal::trim;
 
     /**
      *  LTRIM(X) and LTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#ltrim
      */
-    inline constexpr orm_built_in_function auto ltrim = internal::ltrim;
+    inline constexpr orm_builtin_function auto ltrim = internal::ltrim;
 
     /**
      *  RTRIM(X) and RTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#rtrim
      */
-    inline constexpr orm_built_in_function auto rtrim = internal::rtrim;
+    inline constexpr orm_builtin_function auto rtrim = internal::rtrim;
 
     /**
      *  HEX(X) function https://sqlite.org/lang_corefunc.html#hex
      */
-    inline constexpr orm_built_in_function auto hex = internal::hex;
+    inline constexpr orm_builtin_function auto hex = internal::hex;
 
     /**
      *  QUOTE(X) function https://sqlite.org/lang_corefunc.html#quote
      */
-    inline constexpr orm_built_in_function auto quote = internal::quote;
+    inline constexpr orm_builtin_function auto quote = internal::quote;
 
     /**
      *  RANDOMBLOB(X) function https://sqlite.org/lang_corefunc.html#randomblob
      */
-    inline constexpr orm_built_in_function auto randomblob = internal::randomblob;
+    inline constexpr orm_builtin_function auto randomblob = internal::randomblob;
 
     /**
      *  INSTR(X) function https://sqlite.org/lang_corefunc.html#instr
      */
-    inline constexpr orm_built_in_function auto instr = internal::instr;
+    inline constexpr orm_builtin_function auto instr = internal::instr;
 
     /**
      *  REPLACE(X) function https://sqlite.org/lang_corefunc.html#replace
@@ -10477,7 +10477,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  CHAR(X1,X2,...,XN) function https://sqlite.org/lang_corefunc.html#char
      */
-    inline constexpr orm_built_in_function auto char_ = internal::char_;
+    inline constexpr orm_builtin_function auto char_ = internal::char_;
 
     /**
      *  RANDOM() function https://www.sqlite.org/lang_corefunc.html#random
@@ -10490,23 +10490,23 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  SQLITE_VERSION() function https://www.sqlite.org/lang_corefunc.html#sqlite_version
      */
-    inline constexpr orm_built_in_function auto sqlite_version = internal::sqlite_version;
+    inline constexpr orm_builtin_function auto sqlite_version = internal::sqlite_version;
 
     /**
      *  SQLITE_SOURCE_ID() function https://www.sqlite.org/lang_corefunc.html#sqlite_source_id
      */
-    inline constexpr orm_built_in_function auto sqlite_source_id = internal::sqlite_source_id;
+    inline constexpr orm_builtin_function auto sqlite_source_id = internal::sqlite_source_id;
 
 #ifndef SQLITE_OMIT_COMPILEOPTION_DIAGS
     /**
      *  SQLITE_COMPILEOPTION_USED(X) function https://www.sqlite.org/lang_corefunc.html#sqlite_compileoption_used
      */
-    inline constexpr orm_built_in_function auto sqlite_compileoption_used = internal::sqlite_compileoption_used;
+    inline constexpr orm_builtin_function auto sqlite_compileoption_used = internal::sqlite_compileoption_used;
 
     /**
      *  SQLITE_COMPILEOPTION_GET(N) function https://www.sqlite.org/lang_corefunc.html#sqlite_compileoption_get
      */
-    inline constexpr orm_built_in_function auto sqlite_compileoption_get = internal::sqlite_compileoption_get;
+    inline constexpr orm_builtin_function auto sqlite_compileoption_get = internal::sqlite_compileoption_get;
 #endif
 #ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
     /**
@@ -10549,7 +10549,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  DATE(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
-    inline constexpr orm_built_in_function auto date = internal::date;
+    inline constexpr orm_builtin_function auto date = internal::date;
 
     /**
      *  TIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
@@ -10562,12 +10562,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  DATETIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
-    inline constexpr orm_built_in_function auto datetime = internal::datetime;
+    inline constexpr orm_builtin_function auto datetime = internal::datetime;
 
     /**
      *  JULIANDAY(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
-    inline constexpr orm_built_in_function auto julianday = internal::julianday;
+    inline constexpr orm_builtin_function auto julianday = internal::julianday;
 
     /**
      *  STRFTIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
@@ -10581,35 +10581,35 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  ZEROBLOB(N) function https://www.sqlite.org/lang_corefunc.html#zeroblob
      */
-    inline constexpr orm_built_in_function auto zeroblob = internal::zeroblob;
+    inline constexpr orm_builtin_function auto zeroblob = internal::zeroblob;
 
     /**
      *  SUBSTR(X,Y) and SUBSTR(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#substr
      */
-    inline constexpr orm_built_in_function auto substr = internal::substr;
+    inline constexpr orm_builtin_function auto substr = internal::substr;
 
 #if SQLITE_VERSION_NUMBER >= 3034000
     /**
      *  SUBSTRING(X,Y) and SUBSTRING(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#substr
      */
-    inline constexpr orm_built_in_function auto substring = internal::substring;
+    inline constexpr orm_builtin_function auto substring = internal::substring;
 #endif
 #ifdef SQLITE_SOUNDEX
     /**
      *  SOUNDEX(X) function https://www.sqlite.org/lang_corefunc.html#soundex
      */
-    inline constexpr orm_built_in_function auto soundex = internal::soundex;
+    inline constexpr orm_builtin_function auto soundex = internal::soundex;
 #endif
 
     /**
      *  TOTAL(X) aggregate function.
      */
-    inline constexpr orm_built_in_function auto total = internal::total;
+    inline constexpr orm_builtin_function auto total = internal::total;
 
     /**
      *  SUM(X) aggregate function.
      */
-    inline constexpr orm_built_in_function auto sum = internal::sum;
+    inline constexpr orm_builtin_function auto sum = internal::sum;
 
     /**
      *  COUNT(X) aggregate function.
@@ -10622,22 +10622,22 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  AVG(X) aggregate function.
      */
-    inline constexpr orm_built_in_function auto avg = internal::avg;
+    inline constexpr orm_builtin_function auto avg = internal::avg;
 
     /**
      *  MAX(X) aggregate function.
      */
-    inline constexpr orm_built_in_function auto max = internal::max;
+    inline constexpr orm_builtin_function auto max = internal::max;
 
     /**
      *  MIN(X) aggregate function.
      */
-    inline constexpr orm_built_in_function auto min = internal::min;
+    inline constexpr orm_builtin_function auto min = internal::min;
 
     /**
      *  GROUP_CONCAT(X) and GROUP_CONCAT(X,Y) aggregate function.
      */
-    inline constexpr orm_built_in_function auto group_concat = internal::group_concat;
+    inline constexpr orm_builtin_function auto group_concat = internal::group_concat;
 
 #if SQLITE_VERSION_NUMBER >= 3008001
     /**
@@ -10662,7 +10662,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  UNLIKELY(X) function https://www.sqlite.org/lang_corefunc.html#unlikely
      */
-    inline constexpr orm_built_in_function auto unlikely = internal::unlikely;
+    inline constexpr orm_builtin_function auto unlikely = internal::unlikely;
 #endif
 #if SQLITE_VERSION_NUMBER >= 3008003
     /**
@@ -10678,7 +10678,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  LIKELY(X) function https://www.sqlite.org/lang_corefunc.html#likely
      */
-    inline constexpr orm_built_in_function auto likely = internal::likely;
+    inline constexpr orm_builtin_function auto likely = internal::likely;
 #endif
 #if SQLITE_VERSION_NUMBER >= 3032000
     /**
@@ -10712,45 +10712,45 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  FORMAT(FORMAT,...) function https://www.sqlite.org/lang_corefunc.html#format
      */
-    inline constexpr orm_built_in_function auto format = internal::format;
+    inline constexpr orm_builtin_function auto format = internal::format;
 
     /**
      *  UNIXEPOCH(timestring, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
-    inline constexpr orm_built_in_function auto unixepoch = internal::unixepoch;
+    inline constexpr orm_builtin_function auto unixepoch = internal::unixepoch;
 #endif
 #if SQLITE_VERSION_NUMBER >= 3041000
     /**
      *  UNHEX(X) and UNHEX(X,Y) function https://www.sqlite.org/lang_corefunc.html#unhex
      */
-    inline constexpr orm_built_in_function auto unhex = internal::unhex;
+    inline constexpr orm_builtin_function auto unhex = internal::unhex;
 #endif
 #if SQLITE_VERSION_NUMBER >= 3043000
     /**
      *  OCTET_LENGTH(X) function https://www.sqlite.org/lang_corefunc.html#octet_length
      */
-    inline constexpr orm_built_in_function auto octet_length = internal::octet_length;
+    inline constexpr orm_builtin_function auto octet_length = internal::octet_length;
 
     /**
      *  TIMEDIFF(A,B) function https://www.sqlite.org/lang_datefunc.html#tmdiff
      */
-    inline constexpr orm_built_in_function auto timediff = internal::timediff;
+    inline constexpr orm_builtin_function auto timediff = internal::timediff;
 #endif
 #if SQLITE_VERSION_NUMBER >= 3044000
     /**
      *  CONCAT(X,...) function https://www.sqlite.org/lang_corefunc.html#concat
      */
-    inline constexpr orm_built_in_function auto concat = internal::concat;
+    inline constexpr orm_builtin_function auto concat = internal::concat;
 
     /**
      *  CONCAT_WS(SEP,X,...) function https://www.sqlite.org/lang_corefunc.html#concat_ws
      */
-    inline constexpr orm_built_in_function auto concat_ws = internal::concat_ws;
+    inline constexpr orm_builtin_function auto concat_ws = internal::concat_ws;
 
     /**
      *  STRING_AGG(X,SEP) aggregate function https://www.sqlite.org/lang_aggfunc.html#string_agg
      */
-    inline constexpr orm_built_in_function auto string_agg = internal::string_agg;
+    inline constexpr orm_builtin_function auto string_agg = internal::string_agg;
 #endif
 #if SQLITE_VERSION_NUMBER >= 3048000
     /**
@@ -10768,12 +10768,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  UNISTR(X) function https://www.sqlite.org/lang_corefunc.html#unistr
      */
-    inline constexpr orm_built_in_function auto unistr = internal::unistr;
+    inline constexpr orm_builtin_function auto unistr = internal::unistr;
 
     /**
      *  UNISTR_QUOTE(X) function https://www.sqlite.org/lang_corefunc.html#unistr_quote
      */
-    inline constexpr orm_built_in_function auto unistr_quote = internal::unistr_quote;
+    inline constexpr orm_builtin_function auto unistr_quote = internal::unistr_quote;
 #endif
 #ifdef SQLITE_ENABLE_PERCENTILE
     /**
@@ -10821,9 +10821,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #endif
 #ifdef SQLITE_ORM_JSON_SUPPORTED
-    inline constexpr orm_built_in_function auto json = internal::json;
+    inline constexpr orm_builtin_function auto json = internal::json;
 
-    inline constexpr orm_built_in_function auto json_array = internal::json_array;
+    inline constexpr orm_builtin_function auto json_array = internal::json_array;
 
     template<class R = int, class... Args>
     constexpr auto json_array_length(Args... args) {
@@ -10865,9 +10865,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return internal::json_set(std::move(x), std::move(args)...);
     }
 
-    inline constexpr orm_built_in_function auto json_object = internal::json_object;
+    inline constexpr orm_builtin_function auto json_object = internal::json_object;
 
-    inline constexpr orm_built_in_function auto json_patch = internal::json_patch;
+    inline constexpr orm_builtin_function auto json_patch = internal::json_patch;
 
     template<class R = std::string, class... Args>
     constexpr auto json_remove(Args... args) {
@@ -10883,14 +10883,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  JSON_VALID(X) and, as of SQLite 3.45.0, JSON_VALID(X,Y) function: validates X,
      *  against the conformance flags Y. https://www.sqlite.org/json1.html#jvalid
      */
-    inline constexpr orm_built_in_function auto json_valid = internal::json_valid;
+    inline constexpr orm_builtin_function auto json_valid = internal::json_valid;
 
 #if SQLITE_VERSION_NUMBER >= 3042000
     /**
      *  JSON_ERROR_POSITION(X) function: the character offset of the first syntax error in X,
      *  or 0 if X is well-formed. https://www.sqlite.org/json1.html#jerr
      */
-    inline constexpr orm_built_in_function auto json_error_position = internal::json_error_position;
+    inline constexpr orm_builtin_function auto json_error_position = internal::json_error_position;
 #endif
 
 #if SQLITE_VERSION_NUMBER >= 3046000
@@ -10898,7 +10898,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  JSON_PRETTY(X) and JSON_PRETTY(X,Y) function: pretty-prints X with four-space indentation,
      *  or indenting with the string Y. https://www.sqlite.org/json1.html#jpretty
      */
-    inline constexpr orm_built_in_function auto json_pretty = internal::json_pretty;
+    inline constexpr orm_builtin_function auto json_pretty = internal::json_pretty;
 #endif
 
     template<class R, class X>
@@ -10906,9 +10906,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return internal::json_quote.template operator()<R>(std::move(x));
     }
 
-    inline constexpr orm_built_in_function auto json_group_array = internal::json_group_array;
+    inline constexpr orm_builtin_function auto json_group_array = internal::json_group_array;
 
-    inline constexpr orm_built_in_function auto json_group_object = internal::json_group_object;
+    inline constexpr orm_builtin_function auto json_group_object = internal::json_group_object;
 #endif
 #else  //  the legacy built-in function factories
 #ifdef SQLITE_ENABLE_MATH_FUNCTIONS
@@ -10924,7 +10924,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::acos<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::acos_string, X> acos(X x) {
+    constexpr internal::builtin_function_t<R, internal::acos_string, X> acos(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -10940,7 +10940,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::acosh<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::acosh_string, X> acosh(X x) {
+    constexpr internal::builtin_function_t<R, internal::acosh_string, X> acosh(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -10956,7 +10956,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::asin<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::asin_string, X> asin(X x) {
+    constexpr internal::builtin_function_t<R, internal::asin_string, X> asin(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -10972,7 +10972,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::asinh<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::asinh_string, X> asinh(X x) {
+    constexpr internal::builtin_function_t<R, internal::asinh_string, X> asinh(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -10988,7 +10988,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::atan<std::optional<double>>(1));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::atan_string, X> atan(X x) {
+    constexpr internal::builtin_function_t<R, internal::atan_string, X> atan(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11004,7 +11004,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::atan2<std::optional<double>>(1, 3));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X, class Y>
-    constexpr internal::built_in_function_t<R, internal::atan2_string, X, Y> atan2(X x, Y y) {
+    constexpr internal::builtin_function_t<R, internal::atan2_string, X, Y> atan2(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
@@ -11020,7 +11020,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::atanh<std::optional<double>>(1));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::atanh_string, X> atanh(X x) {
+    constexpr internal::builtin_function_t<R, internal::atanh_string, X> atanh(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11036,7 +11036,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::ceil<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::ceil_string, X> ceil(X x) {
+    constexpr internal::builtin_function_t<R, internal::ceil_string, X> ceil(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11052,7 +11052,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::ceiling<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::ceiling_string, X> ceiling(X x) {
+    constexpr internal::builtin_function_t<R, internal::ceiling_string, X> ceiling(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11068,7 +11068,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::cos<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::cos_string, X> cos(X x) {
+    constexpr internal::builtin_function_t<R, internal::cos_string, X> cos(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11084,7 +11084,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::cosh<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::cosh_string, X> cosh(X x) {
+    constexpr internal::builtin_function_t<R, internal::cosh_string, X> cosh(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11100,7 +11100,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::degrees<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::degrees_string, X> degrees(X x) {
+    constexpr internal::builtin_function_t<R, internal::degrees_string, X> degrees(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11116,7 +11116,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::exp<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::exp_string, X> exp(X x) {
+    constexpr internal::builtin_function_t<R, internal::exp_string, X> exp(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11132,7 +11132,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::floor<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::floor_string, X> floor(X x) {
+    constexpr internal::builtin_function_t<R, internal::floor_string, X> floor(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11148,7 +11148,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::ln<std::optional<double>>(200));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::ln_string, X> ln(X x) {
+    constexpr internal::builtin_function_t<R, internal::ln_string, X> ln(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11164,7 +11164,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::log<std::optional<double>>(100));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::log_string, X> log(X x) {
+    constexpr internal::builtin_function_t<R, internal::log_string, X> log(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11180,7 +11180,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::log10<std::optional<double>>(100));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::log10_string, X> log10(X x) {
+    constexpr internal::builtin_function_t<R, internal::log10_string, X> log10(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11196,7 +11196,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::log<std::optional<double>>(10, 100));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class B, class X>
-    constexpr internal::built_in_function_t<R, internal::log_string, B, X> log(B b, X x) {
+    constexpr internal::builtin_function_t<R, internal::log_string, B, X> log(B b, X x) {
         return {std::tuple<B, X>{std::forward<B>(b), std::forward<X>(x)}};
     }
 
@@ -11212,7 +11212,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::log2<std::optional<double>>(64));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::log2_string, X> log2(X x) {
+    constexpr internal::builtin_function_t<R, internal::log2_string, X> log2(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11228,7 +11228,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::mod_f<std::optional<double>>(6, 5));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X, class Y>
-    constexpr internal::built_in_function_t<R, internal::mod_string, X, Y> mod_f(X x, Y y) {
+    constexpr internal::builtin_function_t<R, internal::mod_string, X, Y> mod_f(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
@@ -11244,7 +11244,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::pi<float>());   //  decltype(rows) is std::vector<float>
      */
     template<class R = double>
-    constexpr internal::built_in_function_t<R, internal::pi_string> pi() {
+    constexpr internal::builtin_function_t<R, internal::pi_string> pi() {
         return {{}};
     }
 
@@ -11260,7 +11260,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::pow<std::optional<double>>(2, 5));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X, class Y>
-    constexpr internal::built_in_function_t<R, internal::pow_string, X, Y> pow(X x, Y y) {
+    constexpr internal::builtin_function_t<R, internal::pow_string, X, Y> pow(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
@@ -11276,7 +11276,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::power<std::optional<double>>(2, 5));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X, class Y>
-    constexpr internal::built_in_function_t<R, internal::power_string, X, Y> power(X x, Y y) {
+    constexpr internal::builtin_function_t<R, internal::power_string, X, Y> power(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
@@ -11292,7 +11292,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::radians<std::optional<double>>(&Triangle::cornerAInDegrees));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::radians_string, X> radians(X x) {
+    constexpr internal::builtin_function_t<R, internal::radians_string, X> radians(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11308,7 +11308,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::sin<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::sin_string, X> sin(X x) {
+    constexpr internal::builtin_function_t<R, internal::sin_string, X> sin(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11324,7 +11324,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::sinh<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::sinh_string, X> sinh(X x) {
+    constexpr internal::builtin_function_t<R, internal::sinh_string, X> sinh(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11340,7 +11340,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::sqrt<int>(25));   //  decltype(rows) is std::vector<int>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::sqrt_string, X> sqrt(X x) {
+    constexpr internal::builtin_function_t<R, internal::sqrt_string, X> sqrt(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11356,7 +11356,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::tan<float>(&Triangle::cornerC));   //  decltype(rows) is std::vector<float>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::tan_string, X> tan(X x) {
+    constexpr internal::builtin_function_t<R, internal::tan_string, X> tan(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11372,7 +11372,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::tanh<float>(&Triangle::cornerC));   //  decltype(rows) is std::vector<float>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::tanh_string, X> tanh(X x) {
+    constexpr internal::builtin_function_t<R, internal::tanh_string, X> tanh(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11388,7 +11388,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(sqlite_orm::trunc<float>(5.5));   //  decltype(rows) is std::vector<float>
      */
     template<class R = double, class X>
-    constexpr internal::built_in_function_t<R, internal::trunc_string, X> trunc(X x) {
+    constexpr internal::builtin_function_t<R, internal::trunc_string, X> trunc(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
@@ -11397,7 +11397,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  TYPEOF(x) function https://sqlite.org/lang_corefunc.html#typeof
      */
     template<class T>
-    constexpr internal::built_in_function_t<std::string, internal::typeof_string, T> typeof_(T t) {
+    constexpr internal::builtin_function_t<std::string, internal::typeof_string, T> typeof_(T t) {
         return {std::tuple<T>{std::forward<T>(t)}};
     }
 
@@ -11405,7 +11405,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  UNICODE(x) function https://sqlite.org/lang_corefunc.html#unicode
      */
     template<class T>
-    constexpr internal::built_in_function_t<int, internal::unicode_string, T> unicode(T t) {
+    constexpr internal::builtin_function_t<int, internal::unicode_string, T> unicode(T t) {
         return {std::tuple<T>{std::forward<T>(t)}};
     }
 
@@ -11413,7 +11413,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  LENGTH(x) function https://sqlite.org/lang_corefunc.html#length
      */
     template<class T>
-    constexpr internal::built_in_function_t<int, internal::length_string, T> length(T t) {
+    constexpr internal::builtin_function_t<int, internal::length_string, T> length(T t) {
         return {std::tuple<T>{std::forward<T>(t)}};
     }
 
@@ -11421,7 +11421,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  ABS(x) function https://sqlite.org/lang_corefunc.html#abs
      */
     template<class T>
-    constexpr internal::built_in_function_t<std::unique_ptr<double>, internal::abs_string, T> abs(T t) {
+    constexpr internal::builtin_function_t<std::unique_ptr<double>, internal::abs_string, T> abs(T t) {
         return {std::tuple<T>{std::forward<T>(t)}};
     }
 
@@ -11429,7 +11429,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  LOWER(x) function https://sqlite.org/lang_corefunc.html#lower
      */
     template<class T>
-    constexpr internal::built_in_function_t<std::string, internal::lower_string, T> lower(T t) {
+    constexpr internal::builtin_function_t<std::string, internal::lower_string, T> lower(T t) {
         return {std::tuple<T>{std::forward<T>(t)}};
     }
 
@@ -11437,28 +11437,28 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  UPPER(x) function https://sqlite.org/lang_corefunc.html#upper
      */
     template<class T>
-    constexpr internal::built_in_function_t<std::string, internal::upper_string, T> upper(T t) {
+    constexpr internal::builtin_function_t<std::string, internal::upper_string, T> upper(T t) {
         return {std::tuple<T>{std::forward<T>(t)}};
     }
 
     /**
      *  LAST_INSERT_ROWID() function https://www.sqlite.org/lang_corefunc.html#last_insert_rowid
      */
-    constexpr internal::built_in_function_t<int64, internal::last_insert_rowid_string> last_insert_rowid() {
+    constexpr internal::builtin_function_t<int64, internal::last_insert_rowid_string> last_insert_rowid() {
         return {{}};
     }
 
     /**
      *  TOTAL_CHANGES() function https://sqlite.org/lang_corefunc.html#total_changes
      */
-    constexpr internal::built_in_function_t<int, internal::total_changes_string> total_changes() {
+    constexpr internal::builtin_function_t<int, internal::total_changes_string> total_changes() {
         return {{}};
     }
 
     /**
      *  CHANGES() function https://sqlite.org/lang_corefunc.html#changes
      */
-    constexpr internal::built_in_function_t<int, internal::changes_string> changes() {
+    constexpr internal::builtin_function_t<int, internal::changes_string> changes() {
         return {{}};
     }
 
@@ -11466,7 +11466,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  TRIM(X) function https://sqlite.org/lang_corefunc.html#trim
      */
     template<class T>
-    constexpr internal::built_in_function_t<std::string, internal::trim_string, T> trim(T t) {
+    constexpr internal::builtin_function_t<std::string, internal::trim_string, T> trim(T t) {
         return {std::tuple<T>{std::forward<T>(t)}};
     }
 
@@ -11474,7 +11474,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  TRIM(X,Y) function https://sqlite.org/lang_corefunc.html#trim
      */
     template<class X, class Y>
-    constexpr internal::built_in_function_t<std::string, internal::trim_string, X, Y> trim(X x, Y y) {
+    constexpr internal::builtin_function_t<std::string, internal::trim_string, X, Y> trim(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
@@ -11482,7 +11482,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  LTRIM(X) function https://sqlite.org/lang_corefunc.html#ltrim
      */
     template<class X>
-    constexpr internal::built_in_function_t<std::string, internal::ltrim_string, X> ltrim(X x) {
+    constexpr internal::builtin_function_t<std::string, internal::ltrim_string, X> ltrim(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11490,7 +11490,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  LTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#ltrim
      */
     template<class X, class Y>
-    constexpr internal::built_in_function_t<std::string, internal::ltrim_string, X, Y> ltrim(X x, Y y) {
+    constexpr internal::builtin_function_t<std::string, internal::ltrim_string, X, Y> ltrim(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
@@ -11498,7 +11498,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  RTRIM(X) function https://sqlite.org/lang_corefunc.html#rtrim
      */
     template<class X>
-    constexpr internal::built_in_function_t<std::string, internal::rtrim_string, X> rtrim(X x) {
+    constexpr internal::builtin_function_t<std::string, internal::rtrim_string, X> rtrim(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11506,7 +11506,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  RTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#rtrim
      */
     template<class X, class Y>
-    constexpr internal::built_in_function_t<std::string, internal::rtrim_string, X, Y> rtrim(X x, Y y) {
+    constexpr internal::builtin_function_t<std::string, internal::rtrim_string, X, Y> rtrim(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
@@ -11514,7 +11514,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  HEX(X) function https://sqlite.org/lang_corefunc.html#hex
      */
     template<class X>
-    constexpr internal::built_in_function_t<std::string, internal::hex_string, X> hex(X x) {
+    constexpr internal::builtin_function_t<std::string, internal::hex_string, X> hex(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11522,7 +11522,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  QUOTE(X) function https://sqlite.org/lang_corefunc.html#quote
      */
     template<class X>
-    constexpr internal::built_in_function_t<std::string, internal::quote_string, X> quote(X x) {
+    constexpr internal::builtin_function_t<std::string, internal::quote_string, X> quote(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11530,7 +11530,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  RANDOMBLOB(X) function https://sqlite.org/lang_corefunc.html#randomblob
      */
     template<class X>
-    constexpr internal::built_in_function_t<std::vector<char>, internal::randomblob_string, X> randomblob(X x) {
+    constexpr internal::builtin_function_t<std::vector<char>, internal::randomblob_string, X> randomblob(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11538,7 +11538,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  INSTR(X) function https://sqlite.org/lang_corefunc.html#instr
      */
     template<class X, class Y>
-    constexpr internal::built_in_function_t<int, internal::instr_string, X, Y> instr(X x, Y y) {
+    constexpr internal::builtin_function_t<int, internal::instr_string, X, Y> instr(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
@@ -11549,7 +11549,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class Y,
              class Z,
              std::enable_if_t<internal::count_tuple<std::tuple<X, Y, Z>, internal::is_into>::value == 0, bool> = true>
-    constexpr internal::built_in_function_t<std::string, internal::replace_string, X, Y, Z> replace(X x, Y y, Z z) {
+    constexpr internal::builtin_function_t<std::string, internal::replace_string, X, Y, Z> replace(X x, Y y, Z z) {
         return {std::tuple<X, Y, Z>{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
     }
 
@@ -11557,7 +11557,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  ROUND(X) function https://sqlite.org/lang_corefunc.html#round
      */
     template<class X>
-    constexpr internal::built_in_function_t<double, internal::round_string, X> round(X x) {
+    constexpr internal::builtin_function_t<double, internal::round_string, X> round(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11565,7 +11565,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  ROUND(X, Y) function https://sqlite.org/lang_corefunc.html#round
      */
     template<class X, class Y>
-    constexpr internal::built_in_function_t<double, internal::round_string, X, Y> round(X x, Y y) {
+    constexpr internal::builtin_function_t<double, internal::round_string, X, Y> round(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
@@ -11574,14 +11574,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  CHAR(X1,X2,...,XN) function https://sqlite.org/lang_corefunc.html#char
      */
     template<class... Args>
-    constexpr internal::built_in_function_t<std::string, internal::char_string, Args...> char_(Args... args) {
+    constexpr internal::builtin_function_t<std::string, internal::char_string, Args...> char_(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
     /**
      *  RANDOM() function https://www.sqlite.org/lang_corefunc.html#random
      */
-    constexpr internal::built_in_function_t<int, internal::random_string> random() {
+    constexpr internal::builtin_function_t<int, internal::random_string> random() {
         return {{}};
     }
 #endif
@@ -11589,14 +11589,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  SQLITE_VERSION() function https://www.sqlite.org/lang_corefunc.html#sqlite_version
      */
-    constexpr internal::built_in_function_t<std::string, internal::sqlite_version_string> sqlite_version() {
+    constexpr internal::builtin_function_t<std::string, internal::sqlite_version_string> sqlite_version() {
         return {{}};
     }
 
     /**
      *  SQLITE_SOURCE_ID() function https://www.sqlite.org/lang_corefunc.html#sqlite_source_id
      */
-    constexpr internal::built_in_function_t<std::string, internal::sqlite_source_id_string> sqlite_source_id() {
+    constexpr internal::builtin_function_t<std::string, internal::sqlite_source_id_string> sqlite_source_id() {
         return {{}};
     }
 
@@ -11605,7 +11605,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  SQLITE_COMPILEOPTION_USED(X) function https://www.sqlite.org/lang_corefunc.html#sqlite_compileoption_used
      */
     template<class X>
-    constexpr internal::built_in_function_t<int, internal::sqlite_compileoption_used_string, X>
+    constexpr internal::builtin_function_t<int, internal::sqlite_compileoption_used_string, X>
     sqlite_compileoption_used(X option) {
         return {std::tuple<X>{std::forward<X>(option)}};
     }
@@ -11614,7 +11614,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  SQLITE_COMPILEOPTION_GET(N) function https://www.sqlite.org/lang_corefunc.html#sqlite_compileoption_get
      */
     template<class N>
-    constexpr internal::built_in_function_t<std::unique_ptr<std::string>, internal::sqlite_compileoption_get_string, N>
+    constexpr internal::builtin_function_t<std::unique_ptr<std::string>, internal::sqlite_compileoption_get_string, N>
     sqlite_compileoption_get(N n) {
         return {std::tuple<N>{std::forward<N>(n)}};
     }
@@ -11627,7 +11627,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Only available if the linked SQLite is compiled with SQLITE_ENABLE_OFFSET_SQL_FUNC.
      */
     template<class C>
-    constexpr internal::built_in_function_t<std::unique_ptr<int64>, internal::sqlite_offset_string, C>
+    constexpr internal::builtin_function_t<std::unique_ptr<int64>, internal::sqlite_offset_string, C>
     sqlite_offset(C column) {
         static_assert(polyfill::disjunction<std::is_member_pointer<C>, internal::is_column_pointer<C>>::value,
                       "sqlite_offset() argument must be a column");
@@ -11639,9 +11639,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  COALESCE(X,Y,...) function https://www.sqlite.org/lang_corefunc.html#coalesce
      */
     template<class R = void, class... Args>
-    constexpr internal::built_in_function_t<std::conditional_t<std::is_void_v<R>, internal::common_argument_type<>, R>,
-                                            internal::coalesce_string,
-                                            Args...>
+    constexpr internal::builtin_function_t<std::conditional_t<std::is_void_v<R>, internal::common_argument_type<>, R>,
+                                           internal::coalesce_string,
+                                           Args...>
     coalesce(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
@@ -11650,7 +11650,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  IFNULL(X,Y) function https://www.sqlite.org/lang_corefunc.html#ifnull
      */
     template<class R = void, class X, class Y>
-    constexpr internal::built_in_function_t<
+    constexpr internal::builtin_function_t<
         std::conditional_t<std::is_void_v<R>, internal::common_argument_type<0, 1>, R>,
         internal::ifnull_string,
         X,
@@ -11663,7 +11663,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  NULLIF(X,Y) using common return type of X and Y
      */
     template<class R = void, class X, class Y>
-    constexpr internal::built_in_function_t<
+    constexpr internal::builtin_function_t<
         std::conditional_t<std::is_void_v<R>, std::optional<internal::common_argument_type<0, 1>>, R>,
         internal::nullif_string,
         X,
@@ -11676,7 +11676,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  DATE(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    constexpr internal::built_in_function_t<std::string, internal::date_string, Args...> date(Args... args) {
+    constexpr internal::builtin_function_t<std::string, internal::date_string, Args...> date(Args... args) {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
@@ -11684,7 +11684,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  TIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    constexpr internal::built_in_function_t<std::string, internal::time_string, Args...> time(Args... args) {
+    constexpr internal::builtin_function_t<std::string, internal::time_string, Args...> time(Args... args) {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
@@ -11692,7 +11692,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  DATETIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    constexpr internal::built_in_function_t<std::string, internal::datetime_string, Args...> datetime(Args... args) {
+    constexpr internal::builtin_function_t<std::string, internal::datetime_string, Args...> datetime(Args... args) {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
@@ -11700,7 +11700,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  JULIANDAY(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    constexpr internal::built_in_function_t<double, internal::julianday_string, Args...> julianday(Args... args) {
+    constexpr internal::builtin_function_t<double, internal::julianday_string, Args...> julianday(Args... args) {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
@@ -11708,7 +11708,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  STRFTIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    constexpr internal::built_in_function_t<std::string, internal::strftime_string, Args...> strftime(Args... args) {
+    constexpr internal::builtin_function_t<std::string, internal::strftime_string, Args...> strftime(Args... args) {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
@@ -11716,7 +11716,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  ZEROBLOB(N) function https://www.sqlite.org/lang_corefunc.html#zeroblob
      */
     template<class N>
-    constexpr internal::built_in_function_t<std::vector<char>, internal::zeroblob_string, N> zeroblob(N n) {
+    constexpr internal::builtin_function_t<std::vector<char>, internal::zeroblob_string, N> zeroblob(N n) {
         return {std::tuple<N>{std::forward<N>(n)}};
     }
 
@@ -11724,7 +11724,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  SUBSTR(X,Y) function https://www.sqlite.org/lang_corefunc.html#substr
      */
     template<class X, class Y>
-    constexpr internal::built_in_function_t<std::string, internal::substr_string, X, Y> substr(X x, Y y) {
+    constexpr internal::builtin_function_t<std::string, internal::substr_string, X, Y> substr(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
@@ -11732,7 +11732,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  SUBSTR(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#substr
      */
     template<class X, class Y, class Z>
-    constexpr internal::built_in_function_t<std::string, internal::substr_string, X, Y, Z> substr(X x, Y y, Z z) {
+    constexpr internal::builtin_function_t<std::string, internal::substr_string, X, Y, Z> substr(X x, Y y, Z z) {
         return {std::tuple<X, Y, Z>{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
     }
 
@@ -11741,7 +11741,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  SUBSTRING(X,Y) function https://www.sqlite.org/lang_corefunc.html#substr
      */
     template<class X, class Y>
-    constexpr internal::built_in_function_t<std::string, internal::substring_string, X, Y> substring(X x, Y y) {
+    constexpr internal::builtin_function_t<std::string, internal::substring_string, X, Y> substring(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
@@ -11749,7 +11749,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  SUBSTRING(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#substr
      */
     template<class X, class Y, class Z>
-    constexpr internal::built_in_function_t<std::string, internal::substring_string, X, Y, Z> substring(X x, Y y, Z z) {
+    constexpr internal::builtin_function_t<std::string, internal::substring_string, X, Y, Z> substring(X x, Y y, Z z) {
         return {std::tuple<X, Y, Z>{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
     }
 #endif
@@ -11759,7 +11759,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  SOUNDEX(X) function https://www.sqlite.org/lang_corefunc.html#soundex
      */
     template<class X>
-    constexpr internal::built_in_function_t<std::string, internal::soundex_string, X> soundex(X x) {
+    constexpr internal::builtin_function_t<std::string, internal::soundex_string, X> soundex(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
@@ -11768,7 +11768,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  TOTAL(X) aggregate function.
      */
     template<class X>
-    constexpr internal::built_in_aggregate_function_t<double, internal::total_string, X> total(X x) {
+    constexpr internal::builtin_aggregate_function_t<double, internal::total_string, X> total(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11776,7 +11776,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  SUM(X) aggregate function.
      */
     template<class X>
-    constexpr internal::built_in_aggregate_function_t<std::unique_ptr<double>, internal::sum_string, X> sum(X x) {
+    constexpr internal::builtin_aggregate_function_t<std::unique_ptr<double>, internal::sum_string, X> sum(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11784,7 +11784,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  COUNT(X) aggregate function.
      */
     template<class X>
-    internal::built_in_aggregate_function_t<int, internal::count_string, X> count(X x) {
+    internal::builtin_aggregate_function_t<int, internal::count_string, X> count(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11792,7 +11792,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  AVG(X) aggregate function.
      */
     template<class X>
-    constexpr internal::built_in_aggregate_function_t<double, internal::avg_string, X> avg(X x) {
+    constexpr internal::builtin_aggregate_function_t<double, internal::avg_string, X> avg(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11800,7 +11800,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  MAX(X) aggregate function.
      */
     template<class X>
-    constexpr internal::built_in_aggregate_function_t<std::unique_ptr<internal::argument<0>>, internal::max_string, X>
+    constexpr internal::builtin_aggregate_function_t<std::unique_ptr<internal::argument<0>>, internal::max_string, X>
     max(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -11809,7 +11809,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  MIN(X) aggregate function.
      */
     template<class X>
-    constexpr internal::built_in_aggregate_function_t<std::unique_ptr<internal::argument<0>>, internal::min_string, X>
+    constexpr internal::builtin_aggregate_function_t<std::unique_ptr<internal::argument<0>>, internal::min_string, X>
     min(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -11819,7 +11819,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    constexpr internal::built_in_function_t<std::unique_ptr<internal::argument<0>>, internal::max_string, X, Y, Rest...>
+    constexpr internal::builtin_function_t<std::unique_ptr<internal::argument<0>>, internal::max_string, X, Y, Rest...>
     max(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
@@ -11829,7 +11829,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    constexpr internal::built_in_function_t<std::unique_ptr<internal::argument<0>>, internal::min_string, X, Y, Rest...>
+    constexpr internal::builtin_function_t<std::unique_ptr<internal::argument<0>>, internal::min_string, X, Y, Rest...>
     min(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
@@ -11838,7 +11838,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  GROUP_CONCAT(X) aggregate function.
      */
     template<class X>
-    constexpr internal::built_in_aggregate_function_t<std::string, internal::group_concat_string, X> group_concat(X x) {
+    constexpr internal::builtin_aggregate_function_t<std::string, internal::group_concat_string, X> group_concat(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11846,7 +11846,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  GROUP_CONCAT(X, Y) aggregate function.
      */
     template<class X, class Y>
-    constexpr internal::built_in_aggregate_function_t<std::string, internal::group_concat_string, X, Y>
+    constexpr internal::builtin_aggregate_function_t<std::string, internal::group_concat_string, X, Y>
     group_concat(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
@@ -11861,7 +11861,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class X>
     constexpr internal::
-        built_in_function_t<internal::argument<0>, internal::likelihood_string, X, internal::literal_holder<double>>
+        builtin_function_t<internal::argument<0>, internal::likelihood_string, X, internal::literal_holder<double>>
         likelihood(X x, double probability) {
 #ifdef SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
         //  a probability outside [0.0, 1.0] makes SQLite reject the statement at prepare time;
@@ -11877,7 +11877,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  UNLIKELY(X) function https://www.sqlite.org/lang_corefunc.html#unlikely
      */
     template<class X>
-    constexpr internal::built_in_function_t<internal::argument<0>, internal::unlikely_string, X> unlikely(X x) {
+    constexpr internal::builtin_function_t<internal::argument<0>, internal::unlikely_string, X> unlikely(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
@@ -11887,7 +11887,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  PRINTF(FORMAT,...) function https://www.sqlite.org/lang_corefunc.html#printf
      */
     template<class... Args>
-    constexpr internal::built_in_function_t<std::string, internal::printf_string, Args...> printf(Args... args) {
+    constexpr internal::builtin_function_t<std::string, internal::printf_string, Args...> printf(Args... args) {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 #endif
@@ -11897,7 +11897,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  LIKELY(X) function https://www.sqlite.org/lang_corefunc.html#likely
      */
     template<class X>
-    constexpr internal::built_in_function_t<internal::argument<0>, internal::likely_string, X> likely(X x) {
+    constexpr internal::builtin_function_t<internal::argument<0>, internal::likely_string, X> likely(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
@@ -11914,7 +11914,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  auto rows = storage.select(iif<std::string>(c(&User::age) > 18, "adult", "minor"));
      */
     template<class R = void, class X, class Y, class Z>
-    constexpr internal::built_in_function_t<
+    constexpr internal::builtin_function_t<
         std::conditional_t<std::is_void_v<R>, internal::common_argument_type<1, 2>, R>,
         internal::iif_string,
         X,
@@ -11933,7 +11933,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  explicitly as a template argument, which is handy when NULL is a possible result (e.g. for a non-numeric argument).
      */
     template<class R = int, class X>
-    constexpr internal::built_in_function_t<R, internal::sign_string, X> sign(X x) {
+    constexpr internal::builtin_function_t<R, internal::sign_string, X> sign(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
@@ -11943,7 +11943,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  FORMAT(FORMAT,...) function https://www.sqlite.org/lang_corefunc.html#format
      */
     template<class... Args>
-    constexpr internal::built_in_function_t<std::string, internal::format_string, Args...> format(Args... args) {
+    constexpr internal::builtin_function_t<std::string, internal::format_string, Args...> format(Args... args) {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
@@ -11951,7 +11951,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  UNIXEPOCH(timestring, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    constexpr internal::built_in_function_t<int64, internal::unixepoch_string, Args...> unixepoch(Args... args) {
+    constexpr internal::builtin_function_t<int64, internal::unixepoch_string, Args...> unixepoch(Args... args) {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 #endif
@@ -11961,7 +11961,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  UNHEX(X) function https://www.sqlite.org/lang_corefunc.html#unhex
      */
     template<class X>
-    constexpr internal::built_in_function_t<std::vector<char>, internal::unhex_string, X> unhex(X x) {
+    constexpr internal::builtin_function_t<std::vector<char>, internal::unhex_string, X> unhex(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11969,7 +11969,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  UNHEX(X,Y) function https://www.sqlite.org/lang_corefunc.html#unhex
      */
     template<class X, class Y>
-    constexpr internal::built_in_function_t<std::vector<char>, internal::unhex_string, X, Y> unhex(X x, Y y) {
+    constexpr internal::builtin_function_t<std::vector<char>, internal::unhex_string, X, Y> unhex(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
@@ -11979,7 +11979,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  OCTET_LENGTH(X) function https://www.sqlite.org/lang_corefunc.html#octet_length
      */
     template<class X>
-    constexpr internal::built_in_function_t<int, internal::octet_length_string, X> octet_length(X x) {
+    constexpr internal::builtin_function_t<int, internal::octet_length_string, X> octet_length(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -11987,7 +11987,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  TIMEDIFF(A,B) function https://www.sqlite.org/lang_datefunc.html#tmdiff
      */
     template<class X, class Y>
-    constexpr internal::built_in_function_t<std::string, internal::timediff_string, X, Y> timediff(X x, Y y) {
+    constexpr internal::builtin_function_t<std::string, internal::timediff_string, X, Y> timediff(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
@@ -11997,7 +11997,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  CONCAT(X,...) function https://www.sqlite.org/lang_corefunc.html#concat
      */
     template<class... Args>
-    constexpr internal::built_in_function_t<std::string, internal::concat_string, Args...> concat(Args... args) {
+    constexpr internal::builtin_function_t<std::string, internal::concat_string, Args...> concat(Args... args) {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
@@ -12005,7 +12005,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  CONCAT_WS(SEP,X,...) function https://www.sqlite.org/lang_corefunc.html#concat_ws
      */
     template<class... Args>
-    constexpr internal::built_in_function_t<std::string, internal::concat_ws_string, Args...> concat_ws(Args... args) {
+    constexpr internal::builtin_function_t<std::string, internal::concat_ws_string, Args...> concat_ws(Args... args) {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
@@ -12013,8 +12013,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  STRING_AGG(X,SEP) aggregate function https://www.sqlite.org/lang_aggfunc.html#string_agg
      */
     template<class X, class Y>
-    constexpr internal::built_in_aggregate_function_t<std::string, internal::string_agg_string, X, Y> string_agg(X x,
-                                                                                                                 Y y) {
+    constexpr internal::builtin_aggregate_function_t<std::string, internal::string_agg_string, X, Y> string_agg(X x,
+                                                                                                                Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
@@ -12027,7 +12027,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The function is only enabled if a common type of Y and Z can be determined or the return type is explicit.
      */
     template<class R = void, class X, class Y, class Z>
-    constexpr internal::built_in_function_t<
+    constexpr internal::builtin_function_t<
         std::conditional_t<std::is_void_v<R>, internal::common_argument_type<1, 2>, R>,
         internal::if_string,
         X,
@@ -12043,7 +12043,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  UNISTR(X) function https://www.sqlite.org/lang_corefunc.html#unistr
      */
     template<class X>
-    constexpr internal::built_in_function_t<std::string, internal::unistr_string, X> unistr(X x) {
+    constexpr internal::builtin_function_t<std::string, internal::unistr_string, X> unistr(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -12051,7 +12051,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  UNISTR_QUOTE(X) function https://www.sqlite.org/lang_corefunc.html#unistr_quote
      */
     template<class X>
-    constexpr internal::built_in_function_t<std::string, internal::unistr_quote_string, X> unistr_quote(X x) {
+    constexpr internal::builtin_function_t<std::string, internal::unistr_quote_string, X> unistr_quote(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
@@ -12064,7 +12064,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  any other bindable type such as `std::optional<double>` can be specified as a template argument.
      */
     template<class R = std::unique_ptr<double>, class X>
-    constexpr internal::built_in_aggregate_function_t<R, internal::median_string, X> median(X x) {
+    constexpr internal::builtin_aggregate_function_t<R, internal::median_string, X> median(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -12075,7 +12075,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  any other bindable type such as `std::optional<double>` can be specified as a template argument.
      */
     template<class R = std::unique_ptr<double>, class X, class Y>
-    constexpr internal::built_in_aggregate_function_t<R, internal::percentile_string, X, Y> percentile(X x, Y y) {
+    constexpr internal::builtin_aggregate_function_t<R, internal::percentile_string, X, Y> percentile(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
@@ -12086,8 +12086,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  any other bindable type such as `std::optional<double>` can be specified as a template argument.
      */
     template<class R = std::unique_ptr<double>, class X, class Y>
-    constexpr internal::built_in_aggregate_function_t<R, internal::percentile_cont_string, X, Y> percentile_cont(X x,
-                                                                                                                 Y y) {
+    constexpr internal::builtin_aggregate_function_t<R, internal::percentile_cont_string, X, Y> percentile_cont(X x,
+                                                                                                                Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
@@ -12098,42 +12098,41 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  any other bindable type such as `std::optional<double>` can be specified as a template argument.
      */
     template<class R = std::unique_ptr<double>, class X, class Y>
-    constexpr internal::built_in_aggregate_function_t<R, internal::percentile_disc_string, X, Y> percentile_disc(X x,
-                                                                                                                 Y y) {
+    constexpr internal::builtin_aggregate_function_t<R, internal::percentile_disc_string, X, Y> percentile_disc(X x,
+                                                                                                                Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
 
 #ifdef SQLITE_ORM_JSON_SUPPORTED
     template<class X>
-    constexpr internal::built_in_function_t<std::string, internal::json_string, X> json(X x) {
+    constexpr internal::builtin_function_t<std::string, internal::json_string, X> json(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     template<class... Args>
-    constexpr internal::built_in_function_t<std::string, internal::json_array_string, Args...>
-    json_array(Args... args) {
+    constexpr internal::builtin_function_t<std::string, internal::json_array_string, Args...> json_array(Args... args) {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
     template<class R = int, class X>
-    constexpr internal::built_in_function_t<R, internal::json_array_length_string, X> json_array_length(X x) {
+    constexpr internal::builtin_function_t<R, internal::json_array_length_string, X> json_array_length(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     template<class R = int, class X, class Y>
-    constexpr internal::built_in_function_t<R, internal::json_array_length_string, X, Y> json_array_length(X x, Y y) {
+    constexpr internal::builtin_function_t<R, internal::json_array_length_string, X, Y> json_array_length(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     template<class R, class X, class... Args>
-    constexpr internal::built_in_function_t<R, internal::json_extract_string, X, Args...> json_extract(X x,
-                                                                                                       Args... args) {
+    constexpr internal::builtin_function_t<R, internal::json_extract_string, X, Args...> json_extract(X x,
+                                                                                                      Args... args) {
         return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class X, class... Args>
-    constexpr internal::built_in_function_t<std::string, internal::json_insert_string, X, Args...>
+    constexpr internal::builtin_function_t<std::string, internal::json_insert_string, X, Args...>
     json_insert(X x, Args... args) {
         static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
                       "number of arguments in json_insert must be odd");
@@ -12146,7 +12145,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  shifting the existing elements to the right. https://www.sqlite.org/json1.html#jarrins
      */
     template<class X, class... Args>
-    constexpr internal::built_in_function_t<std::string, internal::json_array_insert_string, X, Args...>
+    constexpr internal::builtin_function_t<std::string, internal::json_array_insert_string, X, Args...>
     json_array_insert(X x, Args... args) {
         static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
                       "number of arguments in json_array_insert must be odd");
@@ -12155,7 +12154,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
     template<class X, class... Args>
-    constexpr internal::built_in_function_t<std::string, internal::json_replace_string, X, Args...>
+    constexpr internal::builtin_function_t<std::string, internal::json_replace_string, X, Args...>
     json_replace(X x, Args... args) {
         static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
                       "number of arguments in json_replace must be odd");
@@ -12163,15 +12162,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     template<class X, class... Args>
-    constexpr internal::built_in_function_t<std::string, internal::json_set_string, X, Args...> json_set(X x,
-                                                                                                         Args... args) {
+    constexpr internal::builtin_function_t<std::string, internal::json_set_string, X, Args...> json_set(X x,
+                                                                                                        Args... args) {
         static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
                       "number of arguments in json_set must be odd");
         return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class... Args>
-    constexpr internal::built_in_function_t<std::string, internal::json_object_string, Args...>
+    constexpr internal::builtin_function_t<std::string, internal::json_object_string, Args...>
     json_object(Args... args) {
         static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
                       "number of arguments in json_object must be even");
@@ -12179,28 +12178,27 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     template<class X, class Y>
-    constexpr internal::built_in_function_t<std::string, internal::json_patch_string, X, Y> json_patch(X x, Y y) {
+    constexpr internal::builtin_function_t<std::string, internal::json_patch_string, X, Y> json_patch(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     template<class R = std::string, class X, class... Args>
-    constexpr internal::built_in_function_t<R, internal::json_remove_string, X, Args...> json_remove(X x,
-                                                                                                     Args... args) {
+    constexpr internal::builtin_function_t<R, internal::json_remove_string, X, Args...> json_remove(X x, Args... args) {
         return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class R = std::string, class X>
-    constexpr internal::built_in_function_t<R, internal::json_type_string, X> json_type(X x) {
+    constexpr internal::builtin_function_t<R, internal::json_type_string, X> json_type(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     template<class R = std::string, class X, class Y>
-    constexpr internal::built_in_function_t<R, internal::json_type_string, X, Y> json_type(X x, Y y) {
+    constexpr internal::builtin_function_t<R, internal::json_type_string, X, Y> json_type(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     template<class X>
-    constexpr internal::built_in_function_t<bool, internal::json_valid_string, X> json_valid(X x) {
+    constexpr internal::builtin_function_t<bool, internal::json_valid_string, X> json_valid(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -12210,7 +12208,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  https://www.sqlite.org/json1.html#jvalid
      */
     template<class X, class Y>
-    constexpr internal::built_in_function_t<bool, internal::json_valid_string, X, Y> json_valid(X x, Y y) {
+    constexpr internal::builtin_function_t<bool, internal::json_valid_string, X, Y> json_valid(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
@@ -12221,13 +12219,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  or 0 if X is well-formed. https://www.sqlite.org/json1.html#jerr
      */
     template<class X>
-    constexpr internal::built_in_function_t<int, internal::json_error_position_string, X> json_error_position(X x) {
+    constexpr internal::builtin_function_t<int, internal::json_error_position_string, X> json_error_position(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
 
     template<class R, class X>
-    constexpr internal::built_in_function_t<R, internal::json_quote_string, X> json_quote(X x) {
+    constexpr internal::builtin_function_t<R, internal::json_quote_string, X> json_quote(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -12237,7 +12235,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  https://www.sqlite.org/json1.html#jpretty
      */
     template<class X>
-    constexpr internal::built_in_function_t<std::string, internal::json_pretty_string, X> json_pretty(X x) {
+    constexpr internal::builtin_function_t<std::string, internal::json_pretty_string, X> json_pretty(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -12246,18 +12244,18 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  https://www.sqlite.org/json1.html#jpretty
      */
     template<class X, class Y>
-    constexpr internal::built_in_function_t<std::string, internal::json_pretty_string, X, Y> json_pretty(X x, Y y) {
+    constexpr internal::builtin_function_t<std::string, internal::json_pretty_string, X, Y> json_pretty(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
 
     template<class X>
-    constexpr internal::built_in_function_t<std::string, internal::json_group_array_string, X> json_group_array(X x) {
+    constexpr internal::builtin_function_t<std::string, internal::json_group_array_string, X> json_group_array(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     template<class X, class Y>
-    constexpr internal::built_in_function_t<std::string, internal::json_group_object_string, X, Y>
+    constexpr internal::builtin_function_t<std::string, internal::json_group_object_string, X, Y>
     json_group_object(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
@@ -15353,7 +15351,7 @@ namespace sqlite_orm::internal {
      *  placeholders replaced by the results of the call arguments.
      */
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_built_in_function, T>>
+    struct column_result_t<DBOs, T, match_if<is_builtin_function, T>>
         : substitute_arguments<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<argument_result_of_t, DBOs>> {};
 
     template<class DBOs, class F, class... Args>
@@ -18655,7 +18653,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct ast_iterator<T, match_if<is_built_in_function, T>> {
+    struct ast_iterator<T, match_if<is_builtin_function, T>> {
         using node_type = T;
 
         template<class L>
@@ -24664,7 +24662,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<T, match_if<is_built_in_function, T>> {
+    struct statement_serializer<T, match_if<is_builtin_function, T>> {
         using statement_type = T;
 
         template<class Ctx>
@@ -31393,7 +31391,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/between.h"
 
-// #include "ast/built_in_function.h"
+// #include "ast/builtin_function.h"
 
 // #include "ast/case_expression.h"
 
@@ -31710,7 +31708,7 @@ namespace sqlite_orm::internal {
     /*
      *  An FTS5 auxiliary function: a function whose first argument in SQL is the FTS5 table itself,
      *  which is identified by the mapped object type `T` and serialized as the looked-up table name.
-     *  Deliberately not a `built_in_function_t`, so that the general built-in function machinery,
+     *  Deliberately not a `builtin_function_t`, so that the general built-in function machinery,
      *  which knows nothing about the table argument, never matches it.
      */
     template<class R, class S, class T, class... Args>
@@ -32998,7 +32996,7 @@ namespace sqlite_orm::internal {
     struct node_tuple<bitwise_not_t<T>, void> : node_tuple<T> {};
 
     template<class T>
-    struct node_tuple<T, match_if<is_built_in_function, T>> : node_tuple<args_tuple_t<T>> {};
+    struct node_tuple<T, match_if<is_builtin_function, T>> : node_tuple<args_tuple_t<T>> {};
 
     template<class T>
     struct node_tuple<T, match_if<is_filtered_aggregate_function, T>>

@@ -6,12 +6,12 @@ Branch base: `feature/defaulted-return-type-factories`
 ## Goal
 
 Replace the per-function factory + `*_string` tag pair in `dev/core_functions.h`
-(`lower()` + `lower_string` → `built_in_function_t<R, S, Args...>`) with one
+(`lower()` + `lower_string` → `builtin_function_t<R, S, Args...>`) with one
 generic definition mechanism, so a built-in SQLite function is a single
 `inline constexpr` line stating its name and its signature set:
 
 ```cpp
-inline constexpr orm_built_in_function auto lower = "LOWER"_builtin.scalar<std::string(std::string_view)>();
+inline constexpr orm_builtin_function auto lower = "LOWER"_builtin.scalar<std::string(std::string_view)>();
 ```
 
 The mechanism mirrors the quoted user-defined function pipeline in
@@ -22,7 +22,7 @@ have.
 Phase 1 (this document) covers scalar built-ins, including overload sets and
 open-ended arity, and ports `lower` (single signature), `substr` (overload
 set) and its alias `substring` to prove the pattern. Everything else stays on
-`built_in_function_t` until ported.
+`builtin_function_t` until ported.
 
 ## Decisions
 
@@ -53,7 +53,7 @@ set) and its alias `substring` to prove the pattern. Everything else stays on
    The **return type is not nominal**: it is what `column_result_t` reports,
    so it must be an owning type (`std::string`, never `string_view`).
 
-3. **Value, not type-level.** `built_in_scalar_function<N, Sigs...>` stores
+3. **Value, not type-level.** `builtin_scalar_function<N, Sigs...>` stores
    the name as `char _nme[N]`, exactly like `quoted_scalar_function`. Making
    the name an NTTP was considered (static `name()`, empty definition type)
    and dropped for symmetry with the UDF side.
@@ -66,10 +66,10 @@ set) and its alias `substring` to prove the pattern. Everything else stays on
 4. **Names keep the aggregate path open.** The literal `_builtin` is kind
    neutral; the kind is chosen by the builder method: `.scalar<Sigs...>()`
    now, `.aggregate<Sigs...>()` later. (`quote` was rejected as the method
-   name — there is no callable to quote.) Types: `built_in_scalar_function`
-   (definition), `built_in_function_call` (node); a later
-   `built_in_aggregate_function` sits next to the legacy
-   `built_in_aggregate_function_t` until the port is complete.
+   name — there is no callable to quote.) Types: `builtin_scalar_function`
+   (definition), `builtin_function_call` (node); a later
+   `builtin_aggregate_function` sits next to the legacy
+   `builtin_aggregate_function_t` until the port is complete.
 
 5. **`_builtin` is internal.** sqlite_orm defines all built-ins itself, so
    the literal operator lives in `namespace sqlite_orm::internal`, not in
@@ -82,7 +82,7 @@ set) and its alias `substring` to prove the pattern. Everything else stays on
        inline constexpr auto lower = "LOWER"_builtin.scalar<std::string(std::string_view)>();
    }
    SQLITE_ORM_EXPORT namespace sqlite_orm {
-       inline constexpr orm_built_in_function auto lower = internal::lower;
+       inline constexpr orm_builtin_function auto lower = internal::lower;
    }
    ```
 
@@ -93,11 +93,11 @@ set) and its alias `substring` to prove the pattern. Everything else stays on
    not pick up `_builtin`, because `sqlite_orm` never nominates `internal`.
 
 6. **Trait integration, not type piggy-backing.** The new node specializes
-   `is_built_in_function_v` (and `is_operator_argument_v`) and provides the
+   `is_builtin_function_v` (and `is_operator_argument_v`) and provides the
    three members the trait's consumers use — `serialize()`, `args`,
    `return_type`. `statement_serializer`, `column_result_t`, `ast_iterator`
    and `node_tuple` program against the trait and need no edits.
-   `built_in_function_t` the type is not touched or reused.
+   `builtin_function_t` the type is not touched or reused.
 
 7. **Ported functions switch over under `#ifdef`.** In
    `SQLITE_ORM_WITH_CPP20_ALIASES` builds `lower`/`substr`/`substring` are the
@@ -107,12 +107,12 @@ set) and its alias `substring` to prove the pattern. Everything else stays on
 
 ## Shape
 
-`dev/ast/built_in_function.h`, whole body under `SQLITE_ORM_WITH_CPP20_ALIASES`:
+`dev/ast/builtin_function.h`, whole body under `SQLITE_ORM_WITH_CPP20_ALIASES`:
 
 ```cpp
 namespace sqlite_orm {
     template<class F>
-    concept orm_built_in_function = requires(const F& f) {
+    concept orm_builtin_function = requires(const F& f) {
         { f.name() } -> std::convertible_to<std::string_view>;
         typename std::remove_cvref_t<F>::signature_tuple;
     };
@@ -122,7 +122,7 @@ namespace sqlite_orm::internal {
     template<class T> struct variadic {};
 
     template<class F, class Sig, class... CallArgs>
-    struct built_in_function_call : arithmetic_t {
+    struct builtin_function_call : arithmetic_t {
         using function_type = F;
         using signature_type = Sig;              // the matched overload
         using return_type = function_return_type_t<Sig>;
@@ -135,21 +135,21 @@ namespace sqlite_orm::internal {
     };
 
     template<size_t N, orm_function_sig... Sigs>
-    struct built_in_scalar_function {
+    struct builtin_scalar_function {
         using signature_tuple = std::tuple<Sigs...>;
         template<class... CallArgs> constexpr auto operator()(CallArgs...) const;
         constexpr std::string_view name() const;
-        consteval built_in_scalar_function(const char (&name)[N]);
+        consteval builtin_scalar_function(const char (&name)[N]);
         char _nme[N];
     };
 
     template<size_t N>
-    struct built_in_function_builder : cstring_literal<N> {
+    struct builtin_function_builder : cstring_literal<N> {
         template<orm_function_sig... Sigs> requires (sizeof...(Sigs) > 0)
         [[nodiscard]] consteval auto scalar() const;
     };
 
-    template<built_in_function_builder builder>
+    template<builtin_function_builder builder>
     [[nodiscard]] consteval auto operator""_builtin() { return builder; }
 }
 ```
@@ -157,7 +157,7 @@ namespace sqlite_orm::internal {
 Overload matching runs once in `operator()`: first `Sig` whose parameter
 count equals the call arity, or — when the last parameter is `variadic<T>` —
 whose fixed parameter count is `<=` the arity. On no match the
-`matched_built_in_signature_t` alias is ill-formed (no sentinel type), and
+`matched_builtin_signature_t` alias is ill-formed (no sentinel type), and
 `operator()` is constrained by a type requirement on it, so a wrong arity is
 a "no matching call" error and `std::is_invocable_v` can observe the
 rejection in tests; the return type of the match becomes the node's
@@ -165,9 +165,9 @@ rejection in tests; the return type of the match becomes the node's
 
 ## Files
 
-- New `dev/ast/built_in_function.h`; registered in `dev/node_definitions.h`.
+- New `dev/ast/builtin_function.h`; registered in `dev/node_definitions.h`.
 - `dev/core_functions.h`: include it; `lower`, `substr` and `substring` per decision 7.
-- Tests, all C++20-gated: `tests/static_tests/built_in_function_static_tests.cpp`
+- Tests, all C++20-gated: `tests/static_tests/builtin_function_static_tests.cpp`
   (matching, `variadic`, `return_type`, traits, concept, rejected arity);
   a serializer section with a locally defined `variadic` built-in proving the
   name serializes bare; the pre-existing `lower`/`substr` tests cover the rest.
@@ -181,7 +181,7 @@ first argument.
 
 ### Decisions
 
-8. **Kind per signature.** A definition is `built_in_function<N, KindedSigs...>`
+8. **Kind per signature.** A definition is `builtin_function<N, KindedSigs...>`
    where each element is `scalar_sig<Sig>` or `aggregate_sig<Sig>`, in any
    order. The builder's `.function<KindedSigs...>()` takes them as is;
    `.scalar<Sigs...>()` / `.aggregate<Sigs...>()` remain as sugar for the
@@ -202,14 +202,14 @@ first argument.
    Matching is unchanged — first signature accepting the arity, in declaration
    order — and the kind of the match picks the node.
 
-9. **Aggregate call node.** `built_in_aggregate_function_call` derives from
-   `built_in_function_call` and adds the legacy `.filter(where)` → 
+9. **Aggregate call node.** `builtin_aggregate_function_call` derives from
+   `builtin_function_call` and adds the legacy `.filter(where)` → 
    `filtered_aggregate_function<Self, W>` and `.over(...)` → `over_t<Self, ...>`.
    Both wrappers are already generic over the wrapped function node, so the
    serializer, `column_result_t`, `ast_iterator` and `node_tuple` need
-   nothing. The exact-match traits (`is_built_in_function_v`,
+   nothing. The exact-match traits (`is_builtin_function_v`,
    `is_operator_argument_v`) get a second specialization — inheritance does
-   not classify. No `is_built_in_aggregate_function` trait until something
+   not classify. No `is_builtin_aggregate_function` trait until something
    consumes one.
 
 10. **Return-position placeholder `argument<I>`.** May appear anywhere inside
@@ -239,9 +239,9 @@ first argument.
 
 ### Files
 
-- `dev/ast/built_in_function.h`: `anything`, `scalar_sig`, `aggregate_sig`,
-  `built_in_function` (renamed from `built_in_scalar_function`),
-  `built_in_aggregate_function_call`, builder `.function<>()`.
+- `dev/ast/builtin_function.h`: `anything`, `scalar_sig`, `aggregate_sig`,
+  `builtin_function` (renamed from `builtin_scalar_function`),
+  `builtin_aggregate_function_call`, builder `.function<>()`.
   `filtered_aggregate_function` is forward-declared there; its definition
   stays in `core_functions.h`.
 - `dev/vocabulary/algorithms/argument_placeholders.h`: the placeholders
@@ -250,8 +250,8 @@ first argument.
   entry) and the structural substitution; registered in
   `vocabulary/node_algorithms.h`.
 - `dev/column_result.h`: the single built-in branch applies it (see phase 4
-  for the argument resolver). `built_in_function_t` and
-  `built_in_aggregate_function_t` are C++17-only and retire with the
+  for the argument resolver). `builtin_function_t` and
+  `builtin_aggregate_function_t` are C++17-only and retire with the
   baseline.
 - `dev/core_functions.h`: `max`/`min` per decision 7; `max_string`/`min_string`
   and the four legacy factories move into the C++17 branch.
@@ -293,7 +293,7 @@ needing agreement and a transition path.
     }
     ```
 
-    `built_in_function::operator()` takes the return type as a leading,
+    `builtin_function::operator()` takes the return type as a leading,
     defaulted template parameter (`R = void` keeps the declared one), so an
     explicit `operator()<R>(args...)` yields the ordinary call node with
     signature `R(Params...)` (`with_return_type_t`); a placeholder in `R` is
@@ -380,7 +380,7 @@ way now. Qualifying the call (`sqlite_orm::time("now")`) is the workaround.
 overload set, so the C++17 behaviour is back exactly: `round(&User::id)` picks
 ours because the C overloads are not viable, `abs(-1)` picks `::abs(int)` as it
 always did. What the facade gives up is only that these six cannot be passed
-around as `orm_built_in_function` objects; the internal definition object is
+around as `orm_builtin_function` objects; the internal definition object is
 still there. Rule, recorded next to the other facade reasons in
 `core_functions.h`: a built-in whose name is also a global C library function
 is published as a function template.
@@ -397,11 +397,11 @@ The parts of phase 4 that hold in both standards went out on their own
 (`feature/generic-traits`, `feature/widen-built-in-factories`) and were merged
 back. What that changed for this branch:
 
-- `ast/built_in_function.h` is one header for both standards: the nodes shared
+- `ast/builtin_function.h` is one header for both standards: the nodes shared
   by both (`filtered_aggregate_function`, `count_asterisk_t`,
   `count_asterisk_without_type`, with `count_string` as their name tag) sit
-  unconditionally at the top, the legacy `built_in_function_t` /
-  `built_in_aggregate_function_t` under `#ifndef SQLITE_ORM_WITH_CPP20_ALIASES`,
+  unconditionally at the top, the legacy `builtin_function_t` /
+  `builtin_aggregate_function_t` under `#ifndef SQLITE_ORM_WITH_CPP20_ALIASES`,
   the definition mechanism under `#else`. `core_functions.h` holds only the
   legacy name tags and the factories/definitions; `storage.h` is its one
   consumer.
@@ -425,7 +425,7 @@ back. What that changed for this branch:
 - Optional: `as_result<R>(expr)` as the general, callee-independent result
   type override (generalizing `as_optional`).
 - When C++17 support is dropped: delete the `#ifndef` branches —
-  `built_in_function_t`, `built_in_aggregate_function_t`, the tag structs
+  `builtin_function_t`, `builtin_aggregate_function_t`, the tag structs
   and the legacy factories.
 - Name clashes inside `sqlite_orm::internal` as more built-ins are defined
   there (`max`, `min`, `count`, ...). Class members shadow them, but a

@@ -22,14 +22,14 @@ using namespace sqlite_orm;
 using internal::aggregate_sig;
 using internal::anything;
 using internal::argument;
-using internal::built_in_aggregate_function_call;
-using internal::built_in_function;
-using internal::built_in_function_call;
+using internal::builtin_aggregate_function_call;
+using internal::builtin_function;
+using internal::builtin_function_call;
 using internal::column_result_of_t;
 using internal::common_argument_type;
 using internal::db_objects_tuple;
 using internal::filtered_aggregate_function;
-using internal::is_built_in_function_v;
+using internal::is_builtin_function_v;
 using internal::is_operator_argument_v;
 using internal::over_t;
 using internal::scalar_sig;
@@ -55,9 +55,9 @@ TEST_CASE("built-in function static") {
     SECTION("definition") {
         using lower_type = decltype(lower);
 
-        STATIC_REQUIRE(orm_built_in_function<lower_type>);
+        STATIC_REQUIRE(orm_builtin_function<lower_type>);
         STATIC_REQUIRE(
-            std::is_same_v<lower_type, const built_in_function<6, scalar_sig<std::string(std::string_view)>>>);
+            std::is_same_v<lower_type, const builtin_function<6, scalar_sig<std::string(std::string_view)>>>);
         STATIC_REQUIRE(
             std::is_same_v<lower_type::signature_tuple, std::tuple<scalar_sig<std::string(std::string_view)>>>);
         STATIC_REQUIRE(lower.name() == "LOWER");
@@ -69,12 +69,12 @@ TEST_CASE("built-in function static") {
         using node_type = decltype(lower(&User::name));
 
         STATIC_REQUIRE(std::is_same_v<node_type,
-                                      built_in_function_call<std::remove_const_t<decltype(lower)>,
-                                                             std::string(std::string_view),
-                                                             std::string User::*>>);
+                                      builtin_function_call<std::remove_const_t<decltype(lower)>,
+                                                            std::string(std::string_view),
+                                                            std::string User::*>>);
         STATIC_REQUIRE(std::is_same_v<node_type::return_type, std::string>);
         STATIC_REQUIRE(std::is_same_v<node_type::args_tuple, std::tuple<std::string User::*>>);
-        STATIC_REQUIRE(is_built_in_function_v<node_type>);
+        STATIC_REQUIRE(is_builtin_function_v<node_type>);
         STATIC_REQUIRE(is_operator_argument_v<node_type>);
         STATIC_REQUIRE(internal::is_arithmetic_operand_v<node_type>);
 
@@ -83,7 +83,7 @@ TEST_CASE("built-in function static") {
         STATIC_REQUIRE(std::get<0>(node.args) == std::string_view{"abc"});
     }
     SECTION("overload set") {
-        STATIC_REQUIRE(orm_built_in_function<decltype(substr)>);
+        STATIC_REQUIRE(orm_builtin_function<decltype(substr)>);
         STATIC_REQUIRE(std::is_same_v<decltype(substr)::signature_tuple,
                                       std::tuple<scalar_sig<std::string(std::string_view, int)>,
                                                  scalar_sig<std::string(std::string_view, int, int)>>>);
@@ -126,7 +126,7 @@ TEST_CASE("built-in function static") {
         using aggregate_sig_type = std::unique_ptr<argument<0>>(anything);
         using scalar_sig_type = std::unique_ptr<argument<0>>(anything, anything, variadic<anything>);
 
-        STATIC_REQUIRE(orm_built_in_function<max_type>);
+        STATIC_REQUIRE(orm_builtin_function<max_type>);
         STATIC_REQUIRE(std::is_same_v<max_type::signature_tuple,
                                       std::tuple<aggregate_sig<aggregate_sig_type>, scalar_sig<scalar_sig_type>>>);
         STATIC_REQUIRE(std::is_same_v<decltype(min)::signature_tuple, max_type::signature_tuple>);
@@ -136,9 +136,9 @@ TEST_CASE("built-in function static") {
         STATIC_REQUIRE(
             std::is_same_v<
                 aggregate_node,
-                built_in_aggregate_function_call<std::remove_const_t<max_type>, aggregate_sig_type, int User::*>>);
+                builtin_aggregate_function_call<std::remove_const_t<max_type>, aggregate_sig_type, int User::*>>);
         STATIC_REQUIRE(std::is_same_v<aggregate_node::signature_type, aggregate_sig_type>);
-        STATIC_REQUIRE(is_built_in_function_v<aggregate_node>);
+        STATIC_REQUIRE(is_builtin_function_v<aggregate_node>);
         STATIC_REQUIRE(is_operator_argument_v<aggregate_node>);
         STATIC_REQUIRE(internal::is_arithmetic_operand_v<aggregate_node>);
 
@@ -146,7 +146,7 @@ TEST_CASE("built-in function static") {
         using scalar_node = decltype(max(&User::id, 4));
         STATIC_REQUIRE(
             std::is_same_v<scalar_node,
-                           built_in_function_call<std::remove_const_t<max_type>, scalar_sig_type, int User::*, int>>);
+                           builtin_function_call<std::remove_const_t<max_type>, scalar_sig_type, int User::*, int>>);
         STATIC_REQUIRE(std::is_same_v<decltype(max(1, 2, 3, 4, 5))::signature_type, scalar_sig_type>);
         STATIC_REQUIRE(!std::is_invocable_v<max_type>);
 
@@ -157,9 +157,9 @@ TEST_CASE("built-in function static") {
         using aggregate_node = decltype(max(&User::id));
         using scalar_node = decltype(max(&User::id, 4));
 
-        STATIC_REQUIRE(std::is_base_of_v<built_in_function_call<std::remove_const_t<decltype(max)>,
-                                                                std::unique_ptr<argument<0>>(anything),
-                                                                int User::*>,
+        STATIC_REQUIRE(std::is_base_of_v<builtin_function_call<std::remove_const_t<decltype(max)>,
+                                                               std::unique_ptr<argument<0>>(anything),
+                                                               int User::*>,
                                          aggregate_node>);
         STATIC_REQUIRE(
             std::is_same_v<decltype(max(&User::id).filter(where(c(&User::id) > 1))),
@@ -224,9 +224,9 @@ TEST_CASE("built-in function static") {
         // an explicit `R` replaces the declared return type
         using node_type = decltype(lower.template operator()<std::optional<std::string>>(&User::name));
         STATIC_REQUIRE(std::is_same_v<node_type,
-                                      built_in_function_call<std::remove_const_t<decltype(lower)>,
-                                                             std::optional<std::string>(std::string_view),
-                                                             std::string User::*>>);
+                                      builtin_function_call<std::remove_const_t<decltype(lower)>,
+                                                            std::optional<std::string>(std::string_view),
+                                                            std::string User::*>>);
         STATIC_REQUIRE(std::is_same_v<node_type::return_type, std::optional<std::string>>);
         STATIC_REQUIRE(std::is_same_v<column_result_of_t<db_objects_tuple<>, node_type>, std::optional<std::string>>);
         // the overload is still picked by arity
@@ -242,14 +242,14 @@ TEST_CASE("built-in function static") {
                        std::optional<int>>);
 #ifdef SQLITE_ENABLE_MATH_FUNCTIONS
         // function template facade over a definition object, keeping the `<R>` spelling
-        STATIC_REQUIRE(orm_built_in_function<decltype(internal::acos)>);
+        STATIC_REQUIRE(orm_builtin_function<decltype(internal::acos)>);
         STATIC_REQUIRE(
             std::is_same_v<decltype(sqlite_orm::acos(1)),
-                           built_in_function_call<std::remove_const_t<decltype(internal::acos)>, double(double), int>>);
+                           builtin_function_call<std::remove_const_t<decltype(internal::acos)>, double(double), int>>);
         STATIC_REQUIRE(
             std::is_same_v<decltype(sqlite_orm::acos<std::optional<double>>(1))::return_type, std::optional<double>>);
         STATIC_REQUIRE(std::is_same_v<decltype(sqlite_orm::acos<float>(&User::id))::signature_type, float(double)>);
-        STATIC_REQUIRE(is_built_in_function_v<decltype(sqlite_orm::acos(1))>);
+        STATIC_REQUIRE(is_builtin_function_v<decltype(sqlite_orm::acos(1))>);
 #endif
     }
     SECTION("ported functions") {
@@ -257,9 +257,9 @@ TEST_CASE("built-in function static") {
 
         // count(X) is the aggregate object behind a facade; count(*) is untouched
         STATIC_REQUIRE(std::is_same_v<decltype(count(&User::id)),
-                                      built_in_aggregate_function_call<std::remove_const_t<decltype(internal::count)>,
-                                                                       int(anything),
-                                                                       int User::*>>);
+                                      builtin_aggregate_function_call<std::remove_const_t<decltype(internal::count)>,
+                                                                      int(anything),
+                                                                      int User::*>>);
         STATIC_REQUIRE(std::is_same_v<decltype(count<User>()), internal::count_asterisk_t<User>>);
         STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(count(&User::id))>, int>);
 
@@ -284,13 +284,13 @@ TEST_CASE("built-in function static") {
     SECTION("names shared with the C library") {
         // a built-in whose name is also a global C function is a function template, not an object,
         // so that under `using namespace sqlite_orm;` the two are an overload set rather than an ambiguous lookup
-        STATIC_REQUIRE(is_built_in_function_v<decltype(round(&User::id))>);
-        STATIC_REQUIRE(is_built_in_function_v<decltype(round(&User::id, 2))>);
-        STATIC_REQUIRE(is_built_in_function_v<decltype(time("now"))>);
-        STATIC_REQUIRE(is_built_in_function_v<decltype(strftime("%Y", "now"))>);
-        STATIC_REQUIRE(is_built_in_function_v<decltype(abs(&User::id))>);
+        STATIC_REQUIRE(is_builtin_function_v<decltype(round(&User::id))>);
+        STATIC_REQUIRE(is_builtin_function_v<decltype(round(&User::id, 2))>);
+        STATIC_REQUIRE(is_builtin_function_v<decltype(time("now"))>);
+        STATIC_REQUIRE(is_builtin_function_v<decltype(strftime("%Y", "now"))>);
+        STATIC_REQUIRE(is_builtin_function_v<decltype(abs(&User::id))>);
 #if SQLITE_VERSION_NUMBER >= 3008003
-        STATIC_REQUIRE(is_built_in_function_v<decltype(printf("%d", &User::id))>);
+        STATIC_REQUIRE(is_builtin_function_v<decltype(printf("%d", &User::id))>);
 #endif
         // the C functions keep winning for their own argument types, as they always did
         STATIC_REQUIRE(std::is_same_v<decltype(abs(-1)), int>);
