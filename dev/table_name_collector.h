@@ -79,15 +79,7 @@ namespace sqlite_orm::internal {
          */
         template<class ColRef>
         void operator()(std::true_type, const ColRef&) {
-            // ...
-            if constexpr (is_fts_auxiliary_function_v<ColRef>) {
-                using table_type = typename ColRef::table_type;
-                this->table_names.emplace(lookup_table_name<table_type>(this->db_objects), "");
-            }
-            // ...
-            else {
-                // Do nothing for other types of expressions
-            }
+            // Do nothing for other types of expressions
         }
     };
 }

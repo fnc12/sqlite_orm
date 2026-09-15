@@ -45,8 +45,10 @@ TEST_CASE("ast_iterator") {
         [&typeIndexes](std::true_type, const internal::named_collate_base& collateCall) {
             typeIndexes.push_back(typeid(collateCall));
         },
-        [&typeIndexes]<class T, class X, class Y, class Z>(std::true_type, const internal::highlight_t<T, X, Y, Z>&) {
-            typeIndexes.push_back(typeid(T));
+        [&typeIndexes]<class R, class CP, class X, class Y, class Z>(
+            std::true_type,
+            const internal::builtin_function_t<R, internal::highlight_string, CP, X, Y, Z>&) {
+            typeIndexes.push_back(typeid(internal::table_type_of_t<CP>));
         },
         // swallow leaf expressions
         [](auto&) {}};
@@ -461,6 +463,7 @@ TEST_CASE("ast_iterator") {
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
     SECTION("highlight using explicit template parameter") {
         auto expression = highlight<User>(0, std::string("<b>"), std::string("</b>"));
+        expected.push_back(typeid(user_table->*&fts5::hidden::any));
         expected.push_back(typeid(int));
         expected.push_back(typeid(std::string));
         expected.push_back(typeid(std::string));
@@ -468,6 +471,7 @@ TEST_CASE("ast_iterator") {
     }
     SECTION("highlight using the any column") {
         auto expression = highlight(user_table->*&fts5::hidden::any, 0, std::string("<b>"), std::string("</b>"));
+        expected.push_back(typeid(user_table->*&fts5::hidden::any));
         expected.push_back(typeid(int));
         expected.push_back(typeid(std::string));
         expected.push_back(typeid(std::string));
@@ -475,6 +479,7 @@ TEST_CASE("ast_iterator") {
     }
     SECTION("highlight using the any column, rebound") {
         auto expression = highlight(user_hidden::any_field, 0, std::string("<b>"), std::string("</b>"));
+        expected.push_back(typeid(user_hidden::any_field));
         expected.push_back(typeid(int));
         expected.push_back(typeid(std::string));
         expected.push_back(typeid(std::string));

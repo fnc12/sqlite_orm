@@ -127,16 +127,6 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct ast_iterator<T, match_if<is_fts_auxiliary_function, T>> {
-        using node_type = T;
-
-        template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(expression.args, lambda);
-        }
-    };
-
-    template<class T>
     struct ast_iterator<excluded_t<T>, void> {
         using node_type = excluded_t<T>;
 

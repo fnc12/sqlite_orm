@@ -378,11 +378,6 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_fts_auxiliary_function, T>> {
-        using type = return_type_t<T>;
-    };
-
-    template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_as_node, T>> : column_result_t<DBOs, expression_type_t<T>> {};
 
     template<class DBOs, class T>
