@@ -415,6 +415,12 @@ back. What that changed for this branch:
   than ill-formed.
 - The legacy node's argument tuple is spelled `args_tuple`, like the call
   node's.
+- The FTS5 auxiliary functions `highlight`, `bm25` and `snippet` lost their
+  own node: SQLite takes the table as a reference to its hidden column named
+  like the table, which sqlite_orm maps as `fts5::hidden::any`, so they are
+  ordinary built-in functions with that column as the first argument -
+  definition objects in C++20 builds, `builtin_function_t` factories otherwise
+  - behind the constrained public factories that accept only that column.
 - The JSON functions that arrived on `dev` in the meantime -
   `json_array_insert`, `json_valid(X,Y)`, `json_error_position`, `json_pretty` -
   are defined by the mechanism as well, with the same version gates as their

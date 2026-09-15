@@ -25,6 +25,16 @@
 #include "builtin_function.h"
 
 namespace sqlite_orm::internal {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /*
+     *  The first parameter is the table's hidden column; the public factories constrain the call to it.
+     */
+    inline constexpr auto highlight =
+        "HIGHLIGHT"_builtin.scalar<std::string(anything, int, std::string_view, std::string_view)>();
+    inline constexpr auto bm25 = "BM25"_builtin.scalar<double(anything, variadic<double>)>();
+    inline constexpr auto snippet =
+        "SNIPPET"_builtin.scalar<std::string(anything, int, std::string_view, std::string_view, std::string_view, int)>();
+#else
     struct highlight_string {
         std::string_view serialize() const {
             return "HIGHLIGHT";
@@ -42,6 +52,22 @@ namespace sqlite_orm::internal {
             return "SNIPPET";
         }
     };
+
+    template<class... Args>
+    constexpr builtin_function_t<std::string, highlight_string, Args...> highlight(Args... args) {
+        return {std::make_tuple(std::move(args)...)};
+    }
+
+    template<class... Args>
+    constexpr builtin_function_t<double, bm25_string, Args...> bm25(Args... args) {
+        return {std::make_tuple(std::move(args)...)};
+    }
+
+    template<class... Args>
+    constexpr builtin_function_t<std::string, snippet_string, Args...> snippet(Args... args) {
+        return {std::make_tuple(std::move(args)...)};
+    }
+#endif
 }
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
@@ -55,9 +81,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class CP, class X, class Y, class Z>
         requires (internal::hidden_column_of_vtab<CP, fts5>)
-    constexpr internal::builtin_function_t<std::string, internal::highlight_string, CP, X, Y, Z>
-    highlight(CP theAnyField, X x, Y y, Z z) {
-        return {std::make_tuple(std::move(theAnyField), std::move(x), std::move(y), std::move(z))};
+    constexpr auto highlight(CP theAnyField, X x, Y y, Z z) {
+        return internal::highlight(std::move(theAnyField), std::move(x), std::move(y), std::move(z));
     }
 
     /**
@@ -66,9 +91,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Hidden, class F, class X, class Y, class Z>
         requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
-    constexpr internal::builtin_function_t<std::string, internal::highlight_string, F Hidden::*, X, Y, Z>
-    highlight(F Hidden::* theAnyField, X x, Y y, Z z) {
-        return {std::make_tuple(theAnyField, std::move(x), std::move(y), std::move(z))};
+    constexpr auto highlight(F Hidden::* theAnyField, X x, Y y, Z z) {
+        return internal::highlight(theAnyField, std::move(x), std::move(y), std::move(z));
     }
 
     /**
@@ -77,9 +101,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class CP, class... Ws>
         requires (internal::hidden_column_of_vtab<CP, fts5>)
-    constexpr internal::builtin_function_t<double, internal::bm25_string, CP, Ws...> bm25(CP theAnyField,
-                                                                                          Ws... weights) {
-        return {std::make_tuple(std::move(theAnyField), std::move(weights)...)};
+    constexpr auto bm25(CP theAnyField, Ws... weights) {
+        return internal::bm25(std::move(theAnyField), std::move(weights)...);
     }
 
     /**
@@ -88,9 +111,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Hidden, class F, class... Ws>
         requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
-    constexpr internal::builtin_function_t<double, internal::bm25_string, F Hidden::*, Ws...>
-    bm25(F Hidden::* theAnyField, Ws... weights) {
-        return {std::make_tuple(theAnyField, std::move(weights)...)};
+    constexpr auto bm25(F Hidden::* theAnyField, Ws... weights) {
+        return internal::bm25(theAnyField, std::move(weights)...);
     }
 
     /**
@@ -101,14 +123,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class CP, class X1, class X2, class X3, class X4, class X5>
         requires (internal::hidden_column_of_vtab<CP, fts5>)
-    constexpr internal::builtin_function_t<std::string, internal::snippet_string, CP, X1, X2, X3, X4, X5>
-    snippet(CP theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
-        return {std::make_tuple(std::move(theAnyField),
-                                std::move(columnIndex),
-                                std::move(matchOpen),
-                                std::move(matchClose),
-                                std::move(ellipses),
-                                std::move(tokenCount))};
+    constexpr auto snippet(CP theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
+        return internal::snippet(std::move(theAnyField),
+                                 std::move(columnIndex),
+                                 std::move(matchOpen),
+                                 std::move(matchClose),
+                                 std::move(ellipses),
+                                 std::move(tokenCount));
     }
 
     /**
@@ -119,14 +140,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Hidden, class F, class X1, class X2, class X3, class X4, class X5>
         requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
-    constexpr internal::builtin_function_t<std::string, internal::snippet_string, F Hidden::*, X1, X2, X3, X4, X5>
+    constexpr auto
     snippet(F Hidden::* theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
-        return {std::make_tuple(theAnyField,
-                                std::move(columnIndex),
-                                std::move(matchOpen),
-                                std::move(matchClose),
-                                std::move(ellipses),
-                                std::move(tokenCount))};
+        return internal::snippet(theAnyField,
+                                 std::move(columnIndex),
+                                 std::move(matchOpen),
+                                 std::move(matchClose),
+                                 std::move(ellipses),
+                                 std::move(tokenCount));
     }
 #else
     /**
@@ -138,9 +159,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class Y,
              class Z,
              std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
-    constexpr internal::builtin_function_t<std::string, internal::highlight_string, CP, X, Y, Z>
-    highlight(CP theAnyField, X x, Y y, Z z) {
-        return {std::make_tuple(std::move(theAnyField), std::move(x), std::move(y), std::move(z))};
+    constexpr auto highlight(CP theAnyField, X x, Y y, Z z) {
+        return internal::highlight(std::move(theAnyField), std::move(x), std::move(y), std::move(z));
     }
 
     /**
@@ -153,9 +173,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class Y,
              class Z,
              std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
-    constexpr internal::builtin_function_t<std::string, internal::highlight_string, F Hidden::*, X, Y, Z>
-    highlight(F Hidden::* theAnyField, X x, Y y, Z z) {
-        return {std::make_tuple(theAnyField, std::move(x), std::move(y), std::move(z))};
+    constexpr auto highlight(F Hidden::* theAnyField, X x, Y y, Z z) {
+        return internal::highlight(theAnyField, std::move(x), std::move(y), std::move(z));
     }
 
     /**
@@ -163,9 +182,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  See https://www.sqlite.org/fts5.html#the_bm25_function
      */
     template<class CP, class... Ws, std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
-    constexpr internal::builtin_function_t<double, internal::bm25_string, CP, Ws...> bm25(CP theAnyField,
-                                                                                          Ws... weights) {
-        return {std::make_tuple(std::move(theAnyField), std::move(weights)...)};
+    constexpr auto bm25(CP theAnyField, Ws... weights) {
+        return internal::bm25(std::move(theAnyField), std::move(weights)...);
     }
 
     /**
@@ -176,9 +194,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class F,
              class... Ws,
              std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
-    constexpr internal::builtin_function_t<double, internal::bm25_string, F Hidden::*, Ws...>
-    bm25(F Hidden::* theAnyField, Ws... weights) {
-        return {std::make_tuple(theAnyField, std::move(weights)...)};
+    constexpr auto bm25(F Hidden::* theAnyField, Ws... weights) {
+        return internal::bm25(theAnyField, std::move(weights)...);
     }
 
     /**
@@ -194,14 +211,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class X4,
              class X5,
              std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
-    constexpr internal::builtin_function_t<std::string, internal::snippet_string, CP, X1, X2, X3, X4, X5>
-    snippet(CP theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
-        return {std::make_tuple(std::move(theAnyField),
-                                std::move(columnIndex),
-                                std::move(matchOpen),
-                                std::move(matchClose),
-                                std::move(ellipses),
-                                std::move(tokenCount))};
+    constexpr auto snippet(CP theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
+        return internal::snippet(std::move(theAnyField),
+                                 std::move(columnIndex),
+                                 std::move(matchOpen),
+                                 std::move(matchClose),
+                                 std::move(ellipses),
+                                 std::move(tokenCount));
     }
 
     /**
@@ -218,14 +234,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class X4,
              class X5,
              std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
-    constexpr internal::builtin_function_t<std::string, internal::snippet_string, F Hidden::*, X1, X2, X3, X4, X5>
+    constexpr auto
     snippet(F Hidden::* theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
-        return {std::make_tuple(theAnyField,
-                                std::move(columnIndex),
-                                std::move(matchOpen),
-                                std::move(matchClose),
-                                std::move(ellipses),
-                                std::move(tokenCount))};
+        return internal::snippet(theAnyField,
+                                 std::move(columnIndex),
+                                 std::move(matchOpen),
+                                 std::move(matchClose),
+                                 std::move(ellipses),
+                                 std::move(tokenCount));
     }
 #endif
 
