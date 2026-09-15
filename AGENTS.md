@@ -121,6 +121,15 @@ The library uses a **storage-centric architecture** with compile-time type safet
 amalgamation of `dev/`. Never edit it by hand — change `dev/` and regenerate.
 `not_single_header_include/` holds the non-amalgamated variant.
 
+**Never guard an `#include` of a sqlite_orm header** — not with `#ifdef
+SQLITE_ORM_WITH_CPP20_ALIASES`, not with a SQLite version check, not with
+anything. The amalgamation inlines each header at the place it is *first*
+included; if that place is inside a conditional block, every build in which
+the condition is false loses the header altogether, and some unrelated
+consumer further down fails with "does not name a type". A header that is only
+needed in one configuration guards its *contents*, never its inclusion.
+Guarding C++ standard library includes is fine, they are not inlined.
+
 ### Header layers
 
 **Read [`docs/internals/vocabulary-layer.md`](docs/internals/vocabulary-layer.md) before

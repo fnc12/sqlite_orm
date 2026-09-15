@@ -150,11 +150,11 @@ TEST_CASE("Different getters and setters") {
         REQUIRE(avgValue == storage2.avg(&User::setIdByRef));
     }
     {
-        auto count = storage0.count(&User::id);
-        REQUIRE(count == storage1.count(&User::getIdByValConst));
-        REQUIRE(count == storage1.count(&User::setIdByVal));
-        REQUIRE(count == storage2.count(&User::getConstIdByRefConst));
-        REQUIRE(count == storage2.count(&User::setIdByRef));
+        auto countValue = storage0.count(&User::id);
+        REQUIRE(countValue == storage1.count(&User::getIdByValConst));
+        REQUIRE(countValue == storage1.count(&User::setIdByVal));
+        REQUIRE(countValue == storage2.count(&User::getConstIdByRefConst));
+        REQUIRE(countValue == storage2.count(&User::setIdByRef));
     }
     {
         auto groupConcat = storage0.group_concat(&User::id);
@@ -172,35 +172,35 @@ TEST_CASE("Different getters and setters") {
         REQUIRE(groupConcat == storage2.group_concat(&User::setIdByRef, arg));
     }
     {
-        auto max = storage0.max(&User::id);
-        REQUIRE(max);
-        REQUIRE(*max == *storage1.max(&User::getIdByValConst));
-        REQUIRE(*max == *storage1.max(&User::setIdByVal));
-        REQUIRE(*max == *storage2.max(&User::getConstIdByRefConst));
-        REQUIRE(*max == *storage2.max(&User::setIdByRef));
+        auto maxValue = storage0.max(&User::id);
+        REQUIRE(maxValue);
+        REQUIRE(*maxValue == *storage1.max(&User::getIdByValConst));
+        REQUIRE(*maxValue == *storage1.max(&User::setIdByVal));
+        REQUIRE(*maxValue == *storage2.max(&User::getConstIdByRefConst));
+        REQUIRE(*maxValue == *storage2.max(&User::setIdByRef));
     }
     {
-        auto min = storage0.min(&User::id);
-        REQUIRE(min);
-        REQUIRE(*min == *storage1.min(&User::getIdByValConst));
-        REQUIRE(*min == *storage1.min(&User::setIdByVal));
-        REQUIRE(*min == *storage2.min(&User::getConstIdByRefConst));
-        REQUIRE(*min == *storage2.min(&User::setIdByRef));
+        auto minValue = storage0.min(&User::id);
+        REQUIRE(minValue);
+        REQUIRE(*minValue == *storage1.min(&User::getIdByValConst));
+        REQUIRE(*minValue == *storage1.min(&User::setIdByVal));
+        REQUIRE(*minValue == *storage2.min(&User::getConstIdByRefConst));
+        REQUIRE(*minValue == *storage2.min(&User::setIdByRef));
     }
     {
-        auto sum = storage0.sum(&User::id);
-        REQUIRE(sum);
-        REQUIRE(*sum == *storage1.sum(&User::getIdByValConst));
-        REQUIRE(*sum == *storage1.sum(&User::setIdByVal));
-        REQUIRE(*sum == *storage2.sum(&User::getConstIdByRefConst));
-        REQUIRE(*sum == *storage2.sum(&User::setIdByRef));
+        auto sumValue = storage0.sum(&User::id);
+        REQUIRE(sumValue);
+        REQUIRE(*sumValue == *storage1.sum(&User::getIdByValConst));
+        REQUIRE(*sumValue == *storage1.sum(&User::setIdByVal));
+        REQUIRE(*sumValue == *storage2.sum(&User::getConstIdByRefConst));
+        REQUIRE(*sumValue == *storage2.sum(&User::setIdByRef));
     }
     {
-        auto total = storage0.total(&User::id);
-        REQUIRE(total == storage1.total(&User::getIdByValConst));
-        REQUIRE(total == storage1.total(&User::setIdByVal));
-        REQUIRE(total == storage2.total(&User::getConstIdByRefConst));
-        REQUIRE(total == storage2.total(&User::setIdByRef));
+        auto totalValue = storage0.total(&User::id);
+        REQUIRE(totalValue == storage1.total(&User::getIdByValConst));
+        REQUIRE(totalValue == storage1.total(&User::setIdByVal));
+        REQUIRE(totalValue == storage2.total(&User::getConstIdByRefConst));
+        REQUIRE(totalValue == storage2.total(&User::setIdByRef));
     }
 }
 

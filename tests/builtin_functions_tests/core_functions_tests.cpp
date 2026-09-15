@@ -135,6 +135,16 @@ TEST_CASE("lower") {
     auto rows = storage.select(lower("OTOTO"));
     REQUIRE(rows.size() == 1);
     REQUIRE(rows.front() == "ototo");
+    // built-in function call node as an operator operand
+    auto flags = storage.select(lower("OTOTO") == "ototo");
+    REQUIRE(flags.size() == 1);
+    REQUIRE(flags.front());
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    // the new call node is a general operator argument, hence chainable
+    auto concatenated = storage.select(lower("OTO") || "TO");
+    REQUIRE(concatenated.size() == 1);
+    REQUIRE(concatenated.front() == "otoTO");
+#endif
 }
 
 TEST_CASE("length") {
@@ -1595,6 +1605,16 @@ TEST_CASE("aggregate functions") {
     SECTION("min") {
         auto rows = storage.select(sqlite_orm::min(&Score::value));
         REQUIRE_THAT(rows, PointeesEqual<int>({1}));
+    }
+    SECTION("max/min scalar") {
+        auto rows = storage.select(sqlite_orm::max(&Score::value, 2, 0), order_by(&Score::id));
+        REQUIRE_THAT(rows, PointeesEqual<int>({2, 2, 3}));
+        rows = storage.select(sqlite_orm::min(&Score::value, 2), order_by(&Score::id));
+        REQUIRE_THAT(rows, PointeesEqual<int>({1, 2, 2}));
+    }
+    SECTION("max over") {
+        auto rows = storage.select(sqlite_orm::max(&Score::value).over(), order_by(&Score::id));
+        REQUIRE_THAT(rows, PointeesEqual<int>({3, 3, 3}));
     }
     SECTION("group_concat") {
         auto rows = storage.select(group_concat(&Score::value), order_by(&Score::id));
