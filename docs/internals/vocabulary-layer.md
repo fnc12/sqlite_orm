@@ -178,7 +178,7 @@ each node specializes it **in the node's own header**.
 Classifier/leaf traits plus structural grouping by real SQL grammar production:
 compound-statement, DML-statement, CTE-binding, function-call, alias, and so on —
 `is_column`, `is_base_table`, `is_foreign_key`, `is_compound_operator`,
-`is_built_in_function`, `is_binary_condition`, and many more.
+`is_builtin_function`, `is_binary_condition`, and many more.
 
 ### Semantic
 

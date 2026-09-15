@@ -516,7 +516,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct ast_iterator<T, match_if<is_built_in_function, T>> {
+    struct ast_iterator<T, match_if<is_builtin_function, T>> {
         using node_type = T;
 
         template<class L>

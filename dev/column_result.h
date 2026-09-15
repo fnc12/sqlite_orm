@@ -157,7 +157,7 @@ namespace sqlite_orm::internal {
      *  placeholders replaced by the results of the call arguments.
      */
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_built_in_function, T>>
+    struct column_result_t<DBOs, T, match_if<is_builtin_function, T>>
         : substitute_arguments<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<argument_result_of_t, DBOs>> {};
 
     template<class DBOs, class F, class... Args>

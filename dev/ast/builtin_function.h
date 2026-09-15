@@ -29,7 +29,7 @@ namespace sqlite_orm::internal {
      *  Args - function arguments types
      */
     template<class R, class S, class... Args>
-    struct built_in_function_t : S, arithmetic_t {
+    struct builtin_function_t : S, arithmetic_t {
         using return_type = R;
         using string_type = S;
         using args_tuple = std::tuple<Args...>;
@@ -38,11 +38,11 @@ namespace sqlite_orm::internal {
 
         args_tuple args;
 
-        constexpr built_in_function_t(args_tuple&& args_) : args(std::move(args_)) {}
+        constexpr builtin_function_t(args_tuple&& args_) : args(std::move(args_)) {}
     };
 
     template<class T>
-    constexpr bool is_built_in_function_v = is_base_template_of<built_in_function_t, T>::value;
+    constexpr bool is_builtin_function_v = is_base_template_of<builtin_function_t, T>::value;
 
     template<class F, class W>
     struct filtered_aggregate_function {
@@ -63,18 +63,18 @@ namespace sqlite_orm::internal {
     constexpr bool is_filtered_aggregate_function_v = polyfill::is_specialization_of_v<T, filtered_aggregate_function>;
 
     template<class R, class S, class... Args>
-    struct built_in_aggregate_function_t : built_in_function_t<R, S, Args...> {
-        using super = built_in_function_t<R, S, Args...>;
+    struct builtin_aggregate_function_t : builtin_function_t<R, S, Args...> {
+        using super = builtin_function_t<R, S, Args...>;
 
         using super::super;
 
         template<class Wh, satisfies<is_where, Wh> = true>
-        filtered_aggregate_function<built_in_aggregate_function_t, expression_type_t<Wh>> filter(Wh wh) {
+        filtered_aggregate_function<builtin_aggregate_function_t, expression_type_t<Wh>> filter(Wh wh) {
             return {*this, std::move(wh.expression)};
         }
 
         template<class... OverArgs>
-        over_t<built_in_aggregate_function_t, OverArgs...> over(OverArgs... overArgs) {
+        over_t<builtin_aggregate_function_t, OverArgs...> over(OverArgs... overArgs) {
             validate_over_arguments<OverArgs...>();
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
