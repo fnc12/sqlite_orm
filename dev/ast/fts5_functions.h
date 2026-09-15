@@ -39,13 +39,13 @@ namespace sqlite_orm::internal {
     };
 
     /*
-     *  Represents a call of an FTS5 auxiliary function: a function whose first argument in SQL is the FTS5 table
-     *  itself, which is identified by the mapped object type `T` and serialized as the looked-up table name.
-     *  Deliberately not a built-in function call node, so that the general built-in function machinery,
+     *  An FTS5 auxiliary function: a function whose first argument in SQL is the FTS5 table itself,
+     *  which is identified by the mapped object type `T` and serialized as the looked-up table name.
+     *  Deliberately not a `builtin_function_t`, so that the general built-in function machinery,
      *  which knows nothing about the table argument, never matches it.
      */
     template<class R, class S, class T, class... Args>
-    struct fts5_auxiliary_function_call : S {
+    struct fts5_auxiliary_function_t : S {
         using return_type = R;
         using string_type = S;
         using table_type = T;
@@ -55,14 +55,14 @@ namespace sqlite_orm::internal {
 
         args_type args;
 
-        constexpr fts5_auxiliary_function_call(args_type args) : args(std::move(args)) {}
+        constexpr fts5_auxiliary_function_t(args_type args) : args(std::move(args)) {}
     };
 
     template<class T>
-    constexpr bool is_fts_auxiliary_function_v = polyfill::is_specialization_of_v<T, fts5_auxiliary_function_call>;
+    constexpr bool is_fts_auxiliary_function_v = polyfill::is_specialization_of_v<T, fts5_auxiliary_function_t>;
 
     template<class T, class X, class Y, class Z>
-    using highlight_t = fts5_auxiliary_function_call<std::string, highlight_string, T, X, Y, Z>;
+    using highlight_t = fts5_auxiliary_function_t<std::string, highlight_string, T, X, Y, Z>;
 }
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
@@ -109,7 +109,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class CP, class... Ws>
         requires (internal::hidden_column_of_vtab<CP, fts5>)
-    constexpr internal::fts5_auxiliary_function_call<double, internal::bm25_string, internal::type_t<CP>, Ws...>
+    constexpr internal::fts5_auxiliary_function_t<double, internal::bm25_string, internal::type_t<CP>, Ws...>
     bm25(const CP& /*theAnyField*/, Ws... weights) {
         return {std::make_tuple(std::move(weights)...)};
     }
@@ -120,9 +120,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Hidden, class F, class... Ws>
         requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
-    constexpr internal::
-        fts5_auxiliary_function_call<double, internal::bm25_string, typename Hidden::enclosing_type, Ws...>
-        bm25(F Hidden::* /*theAnyField*/, Ws... weights) {
+    constexpr internal::fts5_auxiliary_function_t<double, internal::bm25_string, typename Hidden::enclosing_type, Ws...>
+    bm25(F Hidden::* /*theAnyField*/, Ws... weights) {
         return {std::make_tuple(std::move(weights)...)};
     }
 
@@ -135,7 +134,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class CP, class X1, class X2, class X3, class X4, class X5>
         requires (internal::hidden_column_of_vtab<CP, fts5>)
     constexpr internal::
-        fts5_auxiliary_function_call<std::string, internal::snippet_string, internal::type_t<CP>, X1, X2, X3, X4, X5>
+        fts5_auxiliary_function_t<std::string, internal::snippet_string, internal::type_t<CP>, X1, X2, X3, X4, X5>
         snippet(const CP& /*theAnyField*/, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
         return {std::make_tuple(std::move(columnIndex),
                                 std::move(matchOpen),
@@ -152,14 +151,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Hidden, class F, class X1, class X2, class X3, class X4, class X5>
         requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
-    constexpr internal::fts5_auxiliary_function_call<std::string,
-                                                     internal::snippet_string,
-                                                     typename Hidden::enclosing_type,
-                                                     X1,
-                                                     X2,
-                                                     X3,
-                                                     X4,
-                                                     X5>
+    constexpr internal::fts5_auxiliary_function_t<std::string,
+                                                  internal::snippet_string,
+                                                  typename Hidden::enclosing_type,
+                                                  X1,
+                                                  X2,
+                                                  X3,
+                                                  X4,
+                                                  X5>
     snippet(F Hidden::* /*theAnyField*/, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
         return {std::make_tuple(std::move(columnIndex),
                                 std::move(matchOpen),
@@ -201,7 +200,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  See https://www.sqlite.org/fts5.html#the_bm25_function
      */
     template<class CP, class... Ws, std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
-    constexpr internal::fts5_auxiliary_function_call<double, internal::bm25_string, internal::type_t<CP>, Ws...>
+    constexpr internal::fts5_auxiliary_function_t<double, internal::bm25_string, internal::type_t<CP>, Ws...>
     bm25(const CP& /*theAnyField*/, Ws... weights) {
         return {std::make_tuple(std::move(weights)...)};
     }
@@ -214,9 +213,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class F,
              class... Ws,
              std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
-    constexpr internal::
-        fts5_auxiliary_function_call<double, internal::bm25_string, typename Hidden::enclosing_type, Ws...>
-        bm25(F Hidden::* /*theAnyField*/, Ws... weights) {
+    constexpr internal::fts5_auxiliary_function_t<double, internal::bm25_string, typename Hidden::enclosing_type, Ws...>
+    bm25(F Hidden::* /*theAnyField*/, Ws... weights) {
         return {std::make_tuple(std::move(weights)...)};
     }
 
@@ -234,7 +232,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class X5,
              std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
     constexpr internal::
-        fts5_auxiliary_function_call<std::string, internal::snippet_string, internal::type_t<CP>, X1, X2, X3, X4, X5>
+        fts5_auxiliary_function_t<std::string, internal::snippet_string, internal::type_t<CP>, X1, X2, X3, X4, X5>
         snippet(const CP& /*theAnyField*/, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
         return {std::make_tuple(std::move(columnIndex),
                                 std::move(matchOpen),
@@ -257,14 +255,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class X4,
              class X5,
              std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
-    constexpr internal::fts5_auxiliary_function_call<std::string,
-                                                     internal::snippet_string,
-                                                     typename Hidden::enclosing_type,
-                                                     X1,
-                                                     X2,
-                                                     X3,
-                                                     X4,
-                                                     X5>
+    constexpr internal::fts5_auxiliary_function_t<std::string,
+                                                  internal::snippet_string,
+                                                  typename Hidden::enclosing_type,
+                                                  X1,
+                                                  X2,
+                                                  X3,
+                                                  X4,
+                                                  X5>
     snippet(F Hidden::* /*theAnyField*/, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
         return {std::make_tuple(std::move(columnIndex),
                                 std::move(matchOpen),
