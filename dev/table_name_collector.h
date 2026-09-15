@@ -73,13 +73,5 @@ namespace sqlite_orm::internal {
                 // Do nothing for other types of expressions
             }
         }
-
-        /*  
-         *  Invoked by the AST iterator for the node itself
-         */
-        template<class ColRef>
-        void operator()(std::true_type, const ColRef&) {
-            // Do nothing for other types of expressions
-        }
     };
 }
