@@ -147,6 +147,7 @@ namespace sqlite_orm::internal {
             return "RANDOM";
         }
     };
+
 #endif
 
     struct sqlite_version_string {
@@ -174,6 +175,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
+
 #ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
     struct sqlite_offset_string {
         std::string_view serialize() const {
@@ -299,6 +301,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3008003
     struct printf_string {
         std::string_view serialize() const {
@@ -306,6 +309,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3008006
     struct likely_string {
         std::string_view serialize() const {
@@ -313,6 +317,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3032000
     struct iif_string {
         std::string_view serialize() const {
@@ -320,6 +325,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3034000
     struct substring_string {
         std::string_view serialize() const {
@@ -327,6 +333,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3035000
     struct sign_string {
         std::string_view serialize() const {
@@ -334,6 +341,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3038000
     struct format_string {
         std::string_view serialize() const {
@@ -347,6 +355,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3041000
     struct unhex_string {
         std::string_view serialize() const {
@@ -354,6 +363,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3043000
     struct octet_length_string {
         std::string_view serialize() const {
@@ -367,6 +377,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3044000
     struct concat_string {
         std::string_view serialize() const {
@@ -386,6 +397,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3048000
     struct if_string {
         std::string_view serialize() const {
@@ -393,6 +405,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3050000
     struct unistr_string {
         std::string_view serialize() const {
@@ -406,6 +419,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
+
 #ifdef SQLITE_ENABLE_PERCENTILE
     struct median_string {
         std::string_view serialize() const {
@@ -2680,6 +2694,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<N>{std::forward<N>(n)}};
     }
 #endif
+
 #ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
     /**
      *  SQLITE_OFFSET(X) function https://www.sqlite.org/lang_corefunc.html#sqlite_offset
@@ -2813,6 +2828,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Y, Z>{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
     }
 #endif
+
 #ifdef SQLITE_SOUNDEX
     /**
      *  SOUNDEX(X) function https://www.sqlite.org/lang_corefunc.html#soundex
@@ -2940,6 +2956,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3008003
     /**
      *  PRINTF(FORMAT,...) function https://www.sqlite.org/lang_corefunc.html#printf
@@ -2949,6 +2966,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3008006
     /**
      *  LIKELY(X) function https://www.sqlite.org/lang_corefunc.html#likely
@@ -2958,6 +2976,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3032000
     /**
      *  IIF(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#iif
@@ -2980,6 +2999,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::make_tuple(std::move(x), std::move(y), std::move(z))};
     }
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3035000
     /**
      *  SIGN(X) function https://www.sqlite.org/lang_corefunc.html#sign
@@ -2992,6 +3012,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3038000
     /**
      *  FORMAT(FORMAT,...) function https://www.sqlite.org/lang_corefunc.html#format
@@ -3009,6 +3030,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3041000
     /**
      *  UNHEX(X) function https://www.sqlite.org/lang_corefunc.html#unhex
@@ -3026,6 +3048,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3043000
     /**
      *  OCTET_LENGTH(X) function https://www.sqlite.org/lang_corefunc.html#octet_length
@@ -3043,6 +3066,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3044000
     /**
      *  CONCAT(X,...) function https://www.sqlite.org/lang_corefunc.html#concat
@@ -3069,6 +3093,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3048000
     /**
      *  IF(X,Y,Z) function, an alias for IIF() https://www.sqlite.org/lang_corefunc.html#iif
@@ -3087,6 +3112,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::make_tuple(std::move(x), std::move(y), std::move(z))};
     }
 #endif
+
 #if SQLITE_VERSION_NUMBER >= 3050000
     /**
      *  UNISTR(X) function https://www.sqlite.org/lang_corefunc.html#unistr
@@ -3104,6 +3130,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
+
 #ifdef SQLITE_ENABLE_PERCENTILE
     /**
      *  MEDIAN(X) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
@@ -3151,6 +3178,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
+
 #ifdef SQLITE_ORM_JSON_SUPPORTED
     template<class X>
     constexpr internal::built_in_function_t<std::string, internal::json_string, X> json(X x) {
