@@ -723,7 +723,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<T, match_if<is_built_in_function, T>> {
+    struct statement_serializer<T, match_if<is_builtin_function, T>> {
         using statement_type = T;
 
         template<class Ctx>

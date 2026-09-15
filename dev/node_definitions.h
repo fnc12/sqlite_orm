@@ -28,7 +28,7 @@
 
 #include "ast/quoted_expression.h"
 #include "ast/between.h"
-#include "ast/built_in_function.h"
+#include "ast/builtin_function.h"
 #include "ast/case_expression.h"
 #include "ast/cast.h"
 #include "ast/compound_operator.h"
