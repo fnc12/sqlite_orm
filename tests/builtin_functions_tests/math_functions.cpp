@@ -31,7 +31,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::acos<std::optional<double>>(1));
+            auto rows = storage.select(acos<std::optional<double>>(1));
             decltype(rows) expected;
             expected.push_back(0);
             REQUIRE(rows == expected);
@@ -45,7 +45,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::acosh<std::optional<double>>(1));
+            auto rows = storage.select(acosh<std::optional<double>>(1));
             decltype(rows) expected;
             expected.push_back(0);
             REQUIRE(rows == expected);
@@ -59,7 +59,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::asin<std::optional<double>>(0));
+            auto rows = storage.select(asin<std::optional<double>>(0));
             decltype(rows) expected;
             expected.push_back(0);
             REQUIRE(rows == expected);
@@ -73,7 +73,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::asinh<std::optional<double>>(0));
+            auto rows = storage.select(asinh<std::optional<double>>(0));
             decltype(rows) expected;
             expected.push_back(0);
             REQUIRE(rows == expected);
@@ -87,7 +87,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::atan<std::optional<double>>(0));
+            auto rows = storage.select(atan<std::optional<double>>(0));
             decltype(rows) expected;
             expected.push_back(0);
             REQUIRE(rows == expected);
@@ -101,7 +101,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::atan2<std::optional<double>>(0, 1));
+            auto rows = storage.select(atan2<std::optional<double>>(0, 1));
             decltype(rows) expected;
             expected.push_back(0);
             REQUIRE(rows == expected);
@@ -115,7 +115,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::atanh<std::optional<double>>(0));
+            auto rows = storage.select(atanh<std::optional<double>>(0));
             decltype(rows) expected;
             expected.push_back(0);
             REQUIRE(rows == expected);
@@ -129,7 +129,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::ceil<std::optional<double>>(0.5));
+            auto rows = storage.select(ceil<std::optional<double>>(0.5));
             decltype(rows) expected;
             expected.push_back(1);
             REQUIRE(rows == expected);
@@ -143,7 +143,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::ceiling<std::optional<double>>(0.5));
+            auto rows = storage.select(ceiling<std::optional<double>>(0.5));
             decltype(rows) expected;
             expected.push_back(1);
             REQUIRE(rows == expected);
@@ -157,7 +157,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::cos<std::optional<double>>(0));
+            auto rows = storage.select(cos<std::optional<double>>(0));
             decltype(rows) expected;
             expected.push_back(1);
             REQUIRE(rows == expected);
@@ -171,7 +171,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::cosh<std::optional<double>>(0));
+            auto rows = storage.select(cosh<std::optional<double>>(0));
             decltype(rows) expected;
             expected.push_back(1);
             REQUIRE(rows == expected);
@@ -185,7 +185,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::degrees<std::optional<double>>(0));
+            auto rows = storage.select(degrees<std::optional<double>>(0));
             decltype(rows) expected;
             expected.push_back(0);
             REQUIRE(rows == expected);
@@ -199,7 +199,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::exp<std::optional<double>>(0));
+            auto rows = storage.select(exp<std::optional<double>>(0));
             decltype(rows) expected;
             expected.push_back(1);
             REQUIRE(rows == expected);
@@ -213,7 +213,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::floor<std::optional<double>>(1.5));
+            auto rows = storage.select(floor<std::optional<double>>(1.5));
             decltype(rows) expected;
             expected.push_back(1);
             REQUIRE(rows == expected);
@@ -227,7 +227,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::ln<std::optional<double>>(1));
+            auto rows = storage.select(ln<std::optional<double>>(1));
             decltype(rows) expected;
             expected.push_back(0);
             REQUIRE(rows == expected);
@@ -241,7 +241,7 @@ TEST_CASE("math functions") {
             REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), doubleComparator));
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::log<std::optional<double>>(10));
+            auto rows = storage.select(log<std::optional<double>>(10));
             decltype(rows) expected;
             expected.push_back(1);
             REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), optionalComparator));
@@ -255,7 +255,7 @@ TEST_CASE("math functions") {
             REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), doubleComparator));
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::log10<std::optional<double>>(10));
+            auto rows = storage.select(log10<std::optional<double>>(10));
             decltype(rows) expected;
             expected.push_back(1);
             REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), optionalComparator));
@@ -269,7 +269,7 @@ TEST_CASE("math functions") {
             REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), doubleComparator));
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::log<std::optional<double>>(25, 625));
+            auto rows = storage.select(log<std::optional<double>>(25, 625));
             decltype(rows) expected;
             expected.push_back(2);
             REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), optionalComparator));
@@ -283,7 +283,7 @@ TEST_CASE("math functions") {
             REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), doubleComparator));
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::log2<std::optional<double>>(4));
+            auto rows = storage.select(log2<std::optional<double>>(4));
             decltype(rows) expected;
             expected.push_back(2);
             REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), optionalComparator));
@@ -297,7 +297,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::mod_f<std::optional<double>>(6, 5));
+            auto rows = storage.select(mod_f<std::optional<double>>(6, 5));
             decltype(rows) expected;
             expected.push_back(1);
             REQUIRE(rows == expected);
@@ -311,7 +311,7 @@ TEST_CASE("math functions") {
             REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), doubleComparator));
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::pi<std::optional<double>>());
+            auto rows = storage.select(pi<std::optional<double>>());
             decltype(rows) expected;
             expected.push_back(3.141592654);
             REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), optionalComparator));
@@ -325,7 +325,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::pow<std::optional<double>>(2, 3));
+            auto rows = storage.select(pow<std::optional<double>>(2, 3));
             decltype(rows) expected;
             expected.push_back(8);
             REQUIRE(rows == expected);
@@ -339,7 +339,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::power<std::optional<double>>(2, 3));
+            auto rows = storage.select(power<std::optional<double>>(2, 3));
             decltype(rows) expected;
             expected.push_back(8);
             REQUIRE(rows == expected);
@@ -353,7 +353,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::radians<std::optional<double>>(0));
+            auto rows = storage.select(radians<std::optional<double>>(0));
             decltype(rows) expected;
             expected.push_back(0);
             REQUIRE(rows == expected);
@@ -367,7 +367,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::sin<std::optional<double>>(0));
+            auto rows = storage.select(sin<std::optional<double>>(0));
             decltype(rows) expected;
             expected.push_back(0);
             REQUIRE(rows == expected);
@@ -381,7 +381,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::sinh<std::optional<double>>(0));
+            auto rows = storage.select(sinh<std::optional<double>>(0));
             decltype(rows) expected;
             expected.push_back(0);
             REQUIRE(rows == expected);
@@ -395,7 +395,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::sqrt<std::optional<double>>(1));
+            auto rows = storage.select(sqrt<std::optional<double>>(1));
             decltype(rows) expected;
             expected.push_back(1);
             REQUIRE(rows == expected);
@@ -409,7 +409,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::tan<std::optional<double>>(0));
+            auto rows = storage.select(tan<std::optional<double>>(0));
             decltype(rows) expected;
             expected.push_back(0);
             REQUIRE(rows == expected);
@@ -423,7 +423,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::tanh<std::optional<double>>(0));
+            auto rows = storage.select(tanh<std::optional<double>>(0));
             decltype(rows) expected;
             expected.push_back(0);
             REQUIRE(rows == expected);
@@ -437,7 +437,7 @@ TEST_CASE("math functions") {
             REQUIRE(rows == expected);
         }
         SECTION("explicit type") {
-            auto rows = storage.select(sqlite_orm::trunc<std::optional<double>>(1.5));
+            auto rows = storage.select(trunc<std::optional<double>>(1.5));
             decltype(rows) expected;
             expected.push_back(1);
             REQUIRE(rows == expected);

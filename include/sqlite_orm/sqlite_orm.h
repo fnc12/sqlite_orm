@@ -8415,14 +8415,19 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 /** @file The nodes of a call of a built-in SQL function: scalar and aggregate function calls,
  *        an aggregate call with a FILTER clause, and COUNT(*).
- *        The functions themselves are in `core_functions.h`.
+ *        In C++20 builds, also the definition of a built-in function by its name and its overload set,
+ *        which generates the call nodes. The functions themselves are in `core_functions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_same
-#include <tuple>  //  std::tuple, std::tuple_size
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_void, std::type_identity, std::conditional, std::remove_cvref
+#include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
 #include <string_view>  //  std::string_view
 #include <utility>  //  std::move, std::forward
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <concepts>  //  std::convertible_to
+#include <algorithm>  //  std::copy_n
+#endif
 #endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
@@ -8430,11 +8435,95 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../functional/is_base_template_of.h"
 
 // #include "../functional/type_traits.h"
-//  satisfies
+//  satisfies, orm_function_sig
+// #include "../functional/cstring_literal.h"
+
+// #include "../functional/function_traits.h"
+
+// #include "cxx_type_traits_polyfill.h"
+
+// #include "mpl.h"
+
+namespace sqlite_orm::internal {
+    /*
+     *  Define nested typenames:
+     *  - return_type
+     *  - arguments_tuple
+     *  - signature_type
+     */
+    template<class F>
+    struct function_traits;
+
+    /*
+     *  A function's return type
+     */
+    template<class F>
+    using function_return_type_t = typename function_traits<F>::return_type;
+
+    /*
+     *  A function's arguments tuple
+     */
+    template<class F, template<class...> class Tuple, template<class...> class ProjectOp = polyfill::type_identity_t>
+    using function_arguments = typename function_traits<F>::template arguments_tuple<Tuple, ProjectOp>;
+
+    /*
+     *  A function's signature
+     */
+    template<class F>
+    using function_signature_type_t = typename function_traits<F>::signature_type;
+
+    template<class R, class... Args>
+    struct function_traits<R(Args...)> {
+        using return_type = R;
+
+        template<template<class...> class Tuple, template<class...> class ProjectOp>
+        using arguments_tuple = Tuple<mpl::invoke_fn_t<ProjectOp, Args>...>;
+
+        using signature_type = R(Args...);
+    };
+
+    // non-exhaustive partial specializations of `function_traits`
+
+    template<class R, class... Args>
+    struct function_traits<R(Args...) const> : function_traits<R(Args...)> {
+        using signature_type = R(Args...) const;
+    };
+
+    template<class R, class... Args>
+    struct function_traits<R(Args...) noexcept> : function_traits<R(Args...)> {
+        using signature_type = R(Args...) noexcept;
+    };
+
+    template<class R, class... Args>
+    struct function_traits<R(Args...) const noexcept> : function_traits<R(Args...)> {
+        using signature_type = R(Args...) const noexcept;
+    };
+
+    /*
+     *  Pick signature of function pointer
+     */
+    template<class F>
+    struct function_traits<F(*)> : function_traits<F> {};
+
+    /*
+     *  Pick signature of function reference
+     */
+    template<class F>
+    struct function_traits<F(&)> : function_traits<F> {};
+
+    /*
+     *  Pick signature of pointer-to-member function
+     */
+    template<class F, class O>
+    struct function_traits<F O::*> : function_traits<F> {};
+}
+//  function_arguments, function_return_type_t
 // #include "../tags.h"
 //  arithmetic_t
 // #include "../vocabulary/node_traits.h"
 //  is_where, expression_type_t
+// #include "../vocabulary/node_algorithms.h"
+//  argument, common_argument_type
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 // #include "../vocabulary/traits/operand_traits_fwd.h"
@@ -8443,28 +8532,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 //  over_t, validate_over_arguments
 
 namespace sqlite_orm::internal {
-    /**
-     *  Base class for operator overloading
-     *  R - return type
-     *  S - class with operator std::string
-     *  Args - function arguments types
+    /*
+     *  Represents an aggregate function call with a FILTER clause,
+     *  which may be turned into a window function with an OVER clause.
      */
-    template<class R, class S, class... Args>
-    struct builtin_function_t : S, arithmetic_t {
-        using return_type = R;
-        using string_type = S;
-        using args_tuple = std::tuple<Args...>;
-
-        static constexpr size_t args_size = std::tuple_size<args_tuple>::value;
-
-        args_tuple args;
-
-        constexpr builtin_function_t(args_tuple&& args_) : args(std::move(args_)) {}
-    };
-
-    template<class T>
-    constexpr bool is_builtin_function_v = is_base_template_of<builtin_function_t, T>::value;
-
     template<class F, class W>
     struct filtered_aggregate_function {
         using function_type = F;
@@ -8482,24 +8553,6 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_filtered_aggregate_function_v = polyfill::is_specialization_of_v<T, filtered_aggregate_function>;
-
-    template<class R, class S, class... Args>
-    struct builtin_aggregate_function_t : builtin_function_t<R, S, Args...> {
-        using super = builtin_function_t<R, S, Args...>;
-
-        using super::super;
-
-        template<class Wh, satisfies<is_where, Wh> = true>
-        filtered_aggregate_function<builtin_aggregate_function_t, expression_type_t<Wh>> filter(Wh wh) {
-            return {*this, std::move(wh.expression)};
-        }
-
-        template<class... OverArgs>
-        over_t<builtin_aggregate_function_t, OverArgs...> over(OverArgs... overArgs) {
-            validate_over_arguments<OverArgs...>();
-            return {*this, {std::forward<OverArgs>(overArgs)...}};
-        }
-    };
 
     struct count_string {
         std::string_view serialize() const {
@@ -8560,7 +8613,339 @@ namespace sqlite_orm::internal {
     constexpr bool is_operator_argument_v<T, std::enable_if_t<is_count_asterisk_v<T>>> = true;
 }
 
+#ifndef SQLITE_ORM_WITH_CPP20_ALIASES
 namespace sqlite_orm::internal {
+    /*
+     *  The legacy built-in function nodes, superseded by the definition mechanism below in C++20 builds.
+     *  Their return type may use the placeholders of `vocabulary/algorithms/argument_placeholders.h` all the same.
+     */
+
+    /**
+     *  Base class for operator overloading
+     *  R - return type
+     *  S - class with operator std::string
+     *  Args - function arguments types
+     */
+    template<class R, class S, class... Args>
+    struct builtin_function_t : S, arithmetic_t {
+        using return_type = R;
+        using string_type = S;
+        using args_tuple = std::tuple<Args...>;
+
+        static constexpr size_t args_size = std::tuple_size<args_tuple>::value;
+
+        args_tuple args;
+
+        constexpr builtin_function_t(args_tuple&& args_) : args(std::move(args_)) {}
+    };
+
+    template<class T>
+    constexpr bool is_builtin_function_v = is_base_template_of<builtin_function_t, T>::value;
+
+    template<class R, class S, class... Args>
+    struct builtin_aggregate_function_t : builtin_function_t<R, S, Args...> {
+        using super = builtin_function_t<R, S, Args...>;
+
+        using super::super;
+
+        template<class Wh, satisfies<is_where, Wh> = true>
+        filtered_aggregate_function<builtin_aggregate_function_t, expression_type_t<Wh>> filter(Wh wh) {
+            return {*this, std::move(wh.expression)};
+        }
+
+        template<class... OverArgs>
+        over_t<builtin_aggregate_function_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
+            return {*this, {std::forward<OverArgs>(overArgs)...}};
+        }
+    };
+}
+#else
+/*
+ *  Signature vocabulary of built-in functions (see also the return type placeholders
+ *  `argument<I>` and `common_argument_type<I...>` in `vocabulary/algorithms/argument_placeholders.h`).
+ *
+ *  Parameter types are nominal: no callable receives them and call arguments are not checked against them;
+ *  they state the SQL contract and fix the arity. The return type is not nominal - it is what a select yields.
+ */
+namespace sqlite_orm::internal {
+    template<class T>
+    constexpr bool is_builtin_function_v = false;
+
+    /*
+     *  Marker for the last parameter of a built-in function's signature: "zero or more further `T`".
+     *
+     *  The parameters preceding the marker are required, so the minimum arity follows from its position.
+     *
+     *  Example:
+     *  "COALESCE"_builtin.scalar<argument<0>(anything, anything, variadic<anything>)>()
+     */
+    template<class T>
+    struct variadic {};
+
+    /*
+     *  Parameter type of a built-in function that is polymorphic in SQL, e.g. compared by collation.
+     */
+    struct anything {};
+
+    /*
+     *  A built-in function's signature, tagged with its kind.
+     */
+    template<orm_function_sig Sig>
+    struct scalar_sig {
+        using signature_type = Sig;
+    };
+
+    template<orm_function_sig Sig>
+    struct aggregate_sig {
+        using signature_type = Sig;
+    };
+
+    template<class T>
+    constexpr bool is_kinded_signature_v = false;
+    template<class Sig>
+    constexpr bool is_kinded_signature_v<scalar_sig<Sig>> = true;
+    template<class Sig>
+    constexpr bool is_kinded_signature_v<aggregate_sig<Sig>> = true;
+
+    /*
+     *  Whether a built-in function's signature accepts a call with `Argc` arguments.
+     */
+    template<orm_function_sig Sig, size_t Argc>
+    consteval bool builtin_signature_accepts() {
+        using params_tuple = function_arguments<Sig, std::tuple>;
+        constexpr size_t paramsCount = std::tuple_size_v<params_tuple>;
+        if constexpr (paramsCount == 0) {
+            return Argc == 0;
+        } else if constexpr (polyfill::is_specialization_of_v<std::tuple_element_t<paramsCount - 1, params_tuple>,
+                                                              variadic>) {
+            return Argc >= paramsCount - 1;
+        } else {
+            return Argc == paramsCount;
+        }
+    }
+
+    /*
+     *  The first kinded signature of a built-in function's overload set accepting a call with `Argc` arguments.
+     *  Has no nested `type` if none does.
+     */
+    template<size_t Argc, class... KindedSigs>
+    struct matched_builtin_signature {};
+
+    template<size_t Argc, class KindedSig, class... KindedSigs>
+    struct matched_builtin_signature<Argc, KindedSig, KindedSigs...>
+        : std::conditional_t<builtin_signature_accepts<typename KindedSig::signature_type, Argc>(),
+                             std::type_identity<KindedSig>,
+                             matched_builtin_signature<Argc, KindedSigs...>> {};
+
+    template<size_t Argc, class... KindedSigs>
+    using matched_builtin_signature_t = typename matched_builtin_signature<Argc, KindedSigs...>::type;
+
+    /*
+     *  Whether a built-in function's overload set has a signature accepting a call with `Argc` arguments.
+     */
+    template<size_t Argc, class... KindedSigs>
+    concept has_matching_builtin_signature = requires { typename matched_builtin_signature_t<Argc, KindedSigs...>; };
+
+    /*
+     *  A kinded signature with its return type replaced by `R`, or as is if `R` is `void`.
+     */
+    template<class R, class KindedSig>
+    struct with_return_type;
+
+    template<class R, class R0, class... Params>
+    struct with_return_type<R, scalar_sig<R0(Params...)>>
+        : std::type_identity<scalar_sig<std::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+
+    template<class R, class R0, class... Params>
+    struct with_return_type<R, aggregate_sig<R0(Params...)>>
+        : std::type_identity<aggregate_sig<std::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+
+    template<class R, class KindedSig>
+    using with_return_type_t = typename with_return_type<R, KindedSig>::type;
+
+    /*
+     *  Represents a call of a built-in scalar function.
+     *
+     *  `F` is the definition type of the built-in function, `Sig` the matched overload.
+     */
+    template<class F, class Sig, class... CallArgs>
+    struct builtin_function_call : arithmetic_t {
+        using function_type = F;
+        using signature_type = Sig;
+        using return_type = function_return_type_t<Sig>;
+        using args_tuple = std::tuple<CallArgs...>;
+
+        SQLITE_ORM_NOUNIQUEADDRESS function_type function;
+        args_tuple args;
+
+        constexpr builtin_function_call(function_type function_, args_tuple args_) :
+            function{std::move(function_)}, args{std::move(args_)} {}
+
+        constexpr std::string_view serialize() const {
+            return this->function.name();
+        }
+    };
+
+    /*
+     *  Represents a call of a built-in aggregate function, which may take a FILTER clause
+     *  or be turned into a window function with an OVER clause.
+     */
+    template<class F, class Sig, class... CallArgs>
+    struct builtin_aggregate_function_call : builtin_function_call<F, Sig, CallArgs...> {
+        using super = builtin_function_call<F, Sig, CallArgs...>;
+
+        using super::super;
+
+        template<class Wh>
+            requires (is_where_v<Wh>)
+        constexpr filtered_aggregate_function<builtin_aggregate_function_call, expression_type_t<Wh>>
+        filter(Wh wh) const {
+            return {*this, std::move(wh.expression)};
+        }
+
+        template<class... OverArgs>
+        constexpr over_t<builtin_aggregate_function_call, OverArgs...> over(OverArgs... overArgs) const {
+            validate_over_arguments<OverArgs...>();
+            return {*this, {std::forward<OverArgs>(overArgs)...}};
+        }
+    };
+
+    template<class F, class Sig, class... CallArgs>
+    constexpr bool is_builtin_function_v<builtin_function_call<F, Sig, CallArgs...>> = true;
+    template<class F, class Sig, class... CallArgs>
+    constexpr bool is_builtin_function_v<builtin_aggregate_function_call<F, Sig, CallArgs...>> = true;
+
+    template<class F, class Sig, class... CallArgs>
+    constexpr bool is_operator_argument_v<builtin_function_call<F, Sig, CallArgs...>, void> = true;
+    template<class F, class Sig, class... CallArgs>
+    constexpr bool is_operator_argument_v<builtin_aggregate_function_call<F, Sig, CallArgs...>, void> = true;
+
+    /*
+     *  The call node for a matched kinded signature.
+     */
+    template<class KindedSig, class F, class... CallArgs>
+    struct builtin_function_call_for;
+
+    template<class Sig, class F, class... CallArgs>
+    struct builtin_function_call_for<scalar_sig<Sig>, F, CallArgs...>
+        : std::type_identity<builtin_function_call<F, Sig, CallArgs...>> {};
+
+    template<class Sig, class F, class... CallArgs>
+    struct builtin_function_call_for<aggregate_sig<Sig>, F, CallArgs...>
+        : std::type_identity<builtin_aggregate_function_call<F, Sig, CallArgs...>> {};
+
+    template<class KindedSig, class F, class... CallArgs>
+    using builtin_function_call_for_t = typename builtin_function_call_for<KindedSig, F, CallArgs...>::type;
+
+    /*
+     *  Generator of a built-in function call in a sql query expression.
+     *
+     *  Use the string literal operator template `""_builtin.function<KindedSig...>()`
+     *  - or the single-kind shorthands `.scalar<Sig...>()` and `.aggregate<Sig...>()` -
+     *  to define a built-in function by its name and its overload set.
+     *
+     *  Calling the generator picks the overload by the number of call arguments
+     *  and captures the arguments in a call expression of the overload's kind.
+     */
+    template<size_t N, class... KindedSigs>
+        requires (is_kinded_signature_v<KindedSigs> && ...)
+    struct builtin_function {
+        using signature_tuple = std::tuple<KindedSigs...>;
+
+        /*
+         *  Generates the SQL function call expression.
+         *
+         *  An explicitly specified `R` replaces the matched overload's return type:
+         *  `f.template operator()<std::optional<double>>(x)`. This is what the function template facades
+         *  of the built-in functions taking the return type as a template argument (`acos<std::optional<double>>(x)`)
+         *  are implemented with.
+         */
+        template<class R = void, class... CallArgs>
+            requires (has_matching_builtin_signature<sizeof...(CallArgs), KindedSigs...>)
+        constexpr builtin_function_call_for_t<
+            with_return_type_t<R, matched_builtin_signature_t<sizeof...(CallArgs), KindedSigs...>>,
+            builtin_function,
+            CallArgs...>
+        operator()(CallArgs... callArgs) const {
+            return {*this, {std::forward<CallArgs>(callArgs)...}};
+        }
+
+        constexpr std::string_view name() const {
+            return {_nme, N - 1};
+        }
+
+        consteval builtin_function(const char (&name)[N]) {
+            std::copy_n(name, N, _nme);
+        }
+
+        char _nme[N];
+    };
+
+    template<size_t N>
+    struct builtin_function_builder : cstring_literal<N> {
+        constexpr builtin_function_builder(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
+
+        /*
+         *  A function with the given overload set of kinded signatures, in any order.
+         */
+        template<class... KindedSigs>
+            requires (sizeof...(KindedSigs) > 0) && (is_kinded_signature_v<KindedSigs> && ...)
+        [[nodiscard]] consteval auto function() const {
+            return builtin_function<N, KindedSigs...>{this->cstr};
+        }
+
+        /*
+         *  A scalar function with the given overload set.
+         */
+        template<orm_function_sig... Sigs>
+            requires (sizeof...(Sigs) > 0)
+        [[nodiscard]] consteval auto scalar() const {
+            return builtin_function<N, scalar_sig<Sigs>...>{this->cstr};
+        }
+
+        /*
+         *  An aggregate function with the given overload set.
+         */
+        template<orm_function_sig... Sigs>
+            requires (sizeof...(Sigs) > 0)
+        [[nodiscard]] consteval auto aggregate() const {
+            return builtin_function<N, aggregate_sig<Sigs>...>{this->cstr};
+        }
+    };
+
+    /*  @short Define a built-in function by its name and its overload set.
+     *
+     *  Deliberately internal: sqlite_orm defines all built-in functions itself.
+     *
+     *  Examples:
+     *  inline constexpr auto lower = "LOWER"_builtin.scalar<std::string(std::string_view)>();
+     *  inline constexpr auto substr = "SUBSTR"_builtin.scalar<std::string(std::string_view, int), std::string(std::string_view, int, int)>();
+     *  inline constexpr auto max = "MAX"_builtin.function<aggregate_sig<std::unique_ptr<argument<0>>(anything)>,
+     *                                                     scalar_sig<std::unique_ptr<argument<0>>(anything, anything, variadic<anything>)>>();
+     */
+    template<builtin_function_builder builder>
+    [[nodiscard]] consteval auto operator""_builtin() {
+        return builder;
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /** @short Specifies that a type is a built-in function definition.
+     */
+    template<class F>
+    concept orm_builtin_function = requires(const F& f) {
+        { f.name() } -> std::convertible_to<std::string_view>;
+        typename std::remove_cvref_t<F>::signature_tuple;
+    };
+}
+#endif
+
+namespace sqlite_orm::internal {
+#ifndef SQLITE_ORM_WITH_CPP20_ALIASES
+    /*
+     *  The name tags of the legacy built-in function nodes.
+     */
     struct typeof_string {
         std::string_view serialize() const {
             return "TYPEOF";
@@ -8777,6 +9162,7 @@ namespace sqlite_orm::internal {
             return "SUBSTR";
         }
     };
+
 #ifdef SQLITE_SOUNDEX
     struct soundex_string {
         std::string_view serialize() const {
@@ -8784,6 +9170,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
+
     struct total_string {
         std::string_view serialize() const {
             return "TOTAL";
@@ -9151,8 +9538,7 @@ namespace sqlite_orm::internal {
             return "TRUNC";
         }
     };
-
-#endif  //  SQLITE_ENABLE_MATH_FUNCTIONS
+#endif
 #ifdef SQLITE_ORM_JSON_SUPPORTED
     struct json_string {
         std::string_view serialize() const {
@@ -9267,7 +9653,206 @@ namespace sqlite_orm::internal {
             return "JSON_GROUP_OBJECT";
         }
     };
-#endif  //  SQLITE_ORM_JSON_SUPPORTED
+#endif
+#else
+    /*
+     *  Built-in function definitions.
+     *
+     *  Defined here, where the internal `""_builtin` literal is found by unqualified lookup,
+     *  and published below in the `sqlite_orm` namespace - as copies, or wrapped by a function template
+     *  where the public function takes the return type as a template argument or checks its arguments.
+     */
+    inline constexpr auto typeof_ = "TYPEOF"_builtin.scalar<std::string(anything)>();
+    inline constexpr auto unicode = "UNICODE"_builtin.scalar<int(std::string_view)>();
+    inline constexpr auto length = "LENGTH"_builtin.scalar<int(anything)>();
+    inline constexpr auto abs = "ABS"_builtin.scalar<std::unique_ptr<double>(anything)>();
+    inline constexpr auto lower = "LOWER"_builtin.scalar<std::string(std::string_view)>();
+    inline constexpr auto upper = "UPPER"_builtin.scalar<std::string(std::string_view)>();
+    inline constexpr auto last_insert_rowid = "LAST_INSERT_ROWID"_builtin.scalar<sqlite_int64()>();
+    inline constexpr auto total_changes = "TOTAL_CHANGES"_builtin.scalar<int()>();
+    inline constexpr auto changes = "CHANGES"_builtin.scalar<int()>();
+    inline constexpr auto trim =
+        "TRIM"_builtin.scalar<std::string(std::string_view), std::string(std::string_view, std::string_view)>();
+    inline constexpr auto ltrim =
+        "LTRIM"_builtin.scalar<std::string(std::string_view), std::string(std::string_view, std::string_view)>();
+    inline constexpr auto rtrim =
+        "RTRIM"_builtin.scalar<std::string(std::string_view), std::string(std::string_view, std::string_view)>();
+    inline constexpr auto hex = "HEX"_builtin.scalar<std::string(anything)>();
+    inline constexpr auto quote = "QUOTE"_builtin.scalar<std::string(anything)>();
+    inline constexpr auto randomblob = "RANDOMBLOB"_builtin.scalar<std::vector<char>(int)>();
+    inline constexpr auto instr = "INSTR"_builtin.scalar<int(anything, anything)>();
+    inline constexpr auto replace =
+        "REPLACE"_builtin.scalar<std::string(std::string_view, std::string_view, std::string_view)>();
+    inline constexpr auto round = "ROUND"_builtin.scalar<double(double), double(double, int)>();
+#if SQLITE_VERSION_NUMBER >= 3007016
+    inline constexpr auto char_ = "CHAR"_builtin.scalar<std::string(variadic<int>)>();
+    inline constexpr auto random = "RANDOM"_builtin.scalar<int()>();
+#endif
+    inline constexpr auto sqlite_version = "SQLITE_VERSION"_builtin.scalar<std::string()>();
+    inline constexpr auto sqlite_source_id = "SQLITE_SOURCE_ID"_builtin.scalar<std::string()>();
+#ifndef SQLITE_OMIT_COMPILEOPTION_DIAGS
+    inline constexpr auto sqlite_compileoption_used =
+        "SQLITE_COMPILEOPTION_USED"_builtin.scalar<int(std::string_view)>();
+    inline constexpr auto sqlite_compileoption_get =
+        "SQLITE_COMPILEOPTION_GET"_builtin.scalar<std::unique_ptr<std::string>(int)>();
+#endif
+#ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
+    inline constexpr auto sqlite_offset = "SQLITE_OFFSET"_builtin.scalar<std::unique_ptr<sqlite_int64>(anything)>();
+#endif
+    inline constexpr auto coalesce =
+        "COALESCE"_builtin.scalar<common_argument_type<>(anything, anything, variadic<anything>)>();
+    inline constexpr auto ifnull = "IFNULL"_builtin.scalar<common_argument_type<0, 1>(anything, anything)>();
+    inline constexpr auto nullif =
+        "NULLIF"_builtin.scalar<std::optional<common_argument_type<0, 1>>(anything, anything)>();
+    inline constexpr auto date = "DATE"_builtin.scalar<std::string(variadic<anything>)>();
+    inline constexpr auto time = "TIME"_builtin.scalar<std::string(variadic<anything>)>();
+    inline constexpr auto datetime = "DATETIME"_builtin.scalar<std::string(variadic<anything>)>();
+    inline constexpr auto julianday = "JULIANDAY"_builtin.scalar<double(variadic<anything>)>();
+    inline constexpr auto strftime = "STRFTIME"_builtin.scalar<std::string(std::string_view, variadic<anything>)>();
+    inline constexpr auto zeroblob = "ZEROBLOB"_builtin.scalar<std::vector<char>(int)>();
+    inline constexpr auto substr =
+        "SUBSTR"_builtin.scalar<std::string(std::string_view, int), std::string(std::string_view, int, int)>();
+#if SQLITE_VERSION_NUMBER >= 3034000
+    inline constexpr auto substring =
+        "SUBSTRING"_builtin.scalar<std::string(std::string_view, int), std::string(std::string_view, int, int)>();
+#endif
+#ifdef SQLITE_SOUNDEX
+    inline constexpr auto soundex = "SOUNDEX"_builtin.scalar<std::string(std::string_view)>();
+#endif
+    inline constexpr auto total = "TOTAL"_builtin.aggregate<double(anything)>();
+    inline constexpr auto sum = "SUM"_builtin.aggregate<std::unique_ptr<double>(anything)>();
+    inline constexpr auto count = "COUNT"_builtin.aggregate<int(anything)>();
+    inline constexpr auto avg = "AVG"_builtin.aggregate<double(anything)>();
+    // MAX(X) aggregate and MAX(X, Y, ...) scalar: nullable, typed like the first argument
+    inline constexpr auto max =
+        "MAX"_builtin.function<aggregate_sig<std::unique_ptr<argument<0>>(anything)>,
+                               scalar_sig<std::unique_ptr<argument<0>>(anything, anything, variadic<anything>)>>();
+    inline constexpr auto min =
+        "MIN"_builtin.function<aggregate_sig<std::unique_ptr<argument<0>>(anything)>,
+                               scalar_sig<std::unique_ptr<argument<0>>(anything, anything, variadic<anything>)>>();
+    inline constexpr auto group_concat =
+        "GROUP_CONCAT"_builtin.aggregate<std::string(anything), std::string(anything, std::string_view)>();
+#if SQLITE_VERSION_NUMBER >= 3008001
+    inline constexpr auto likelihood = "LIKELIHOOD"_builtin.scalar<argument<0>(anything, double)>();
+    inline constexpr auto unlikely = "UNLIKELY"_builtin.scalar<argument<0>(anything)>();
+#endif
+#if SQLITE_VERSION_NUMBER >= 3008003
+    inline constexpr auto printf = "PRINTF"_builtin.scalar<std::string(std::string_view, variadic<anything>)>();
+#endif
+#if SQLITE_VERSION_NUMBER >= 3008006
+    inline constexpr auto likely = "LIKELY"_builtin.scalar<argument<0>(anything)>();
+#endif
+#if SQLITE_VERSION_NUMBER >= 3032000
+    inline constexpr auto iif = "IIF"_builtin.scalar<common_argument_type<1, 2>(anything, anything, anything)>();
+#endif
+#if SQLITE_VERSION_NUMBER >= 3035000
+    inline constexpr auto sign = "SIGN"_builtin.scalar<int(double)>();
+#endif
+#if SQLITE_VERSION_NUMBER >= 3038000
+    inline constexpr auto format = "FORMAT"_builtin.scalar<std::string(std::string_view, variadic<anything>)>();
+    inline constexpr auto unixepoch = "UNIXEPOCH"_builtin.scalar<sqlite_int64(variadic<anything>)>();
+#endif
+#if SQLITE_VERSION_NUMBER >= 3041000
+    inline constexpr auto unhex =
+        "UNHEX"_builtin
+            .scalar<std::vector<char>(std::string_view), std::vector<char>(std::string_view, std::string_view)>();
+#endif
+#if SQLITE_VERSION_NUMBER >= 3043000
+    inline constexpr auto octet_length = "OCTET_LENGTH"_builtin.scalar<int(anything)>();
+    inline constexpr auto timediff = "TIMEDIFF"_builtin.scalar<std::string(anything, anything)>();
+#endif
+#if SQLITE_VERSION_NUMBER >= 3044000
+    inline constexpr auto concat = "CONCAT"_builtin.scalar<std::string(anything, variadic<anything>)>();
+    inline constexpr auto concat_ws =
+        "CONCAT_WS"_builtin.scalar<std::string(std::string_view, anything, variadic<anything>)>();
+    inline constexpr auto string_agg = "STRING_AGG"_builtin.aggregate<std::string(anything, std::string_view)>();
+#endif
+#if SQLITE_VERSION_NUMBER >= 3048000
+    inline constexpr auto if_ = "IF"_builtin.scalar<common_argument_type<1, 2>(anything, anything, anything)>();
+#endif
+#if SQLITE_VERSION_NUMBER >= 3050000
+    inline constexpr auto unistr = "UNISTR"_builtin.scalar<std::string(std::string_view)>();
+    inline constexpr auto unistr_quote = "UNISTR_QUOTE"_builtin.scalar<std::string(std::string_view)>();
+#endif
+#ifdef SQLITE_ENABLE_PERCENTILE
+    inline constexpr auto median = "MEDIAN"_builtin.aggregate<std::unique_ptr<double>(anything)>();
+    inline constexpr auto percentile = "PERCENTILE"_builtin.aggregate<std::unique_ptr<double>(anything, double)>();
+    inline constexpr auto percentile_cont =
+        "PERCENTILE_CONT"_builtin.aggregate<std::unique_ptr<double>(anything, double)>();
+    inline constexpr auto percentile_disc =
+        "PERCENTILE_DISC"_builtin.aggregate<std::unique_ptr<double>(anything, double)>();
+#endif
+#ifdef SQLITE_ENABLE_MATH_FUNCTIONS
+    inline constexpr auto acos = "ACOS"_builtin.scalar<double(double)>();
+    inline constexpr auto acosh = "ACOSH"_builtin.scalar<double(double)>();
+    inline constexpr auto asin = "ASIN"_builtin.scalar<double(double)>();
+    inline constexpr auto asinh = "ASINH"_builtin.scalar<double(double)>();
+    inline constexpr auto atan = "ATAN"_builtin.scalar<double(double)>();
+    inline constexpr auto atan2 = "ATAN2"_builtin.scalar<double(double, double)>();
+    inline constexpr auto atanh = "ATANH"_builtin.scalar<double(double)>();
+    inline constexpr auto ceil = "CEIL"_builtin.scalar<double(double)>();
+    inline constexpr auto ceiling = "CEILING"_builtin.scalar<double(double)>();
+    inline constexpr auto cos = "COS"_builtin.scalar<double(double)>();
+    inline constexpr auto cosh = "COSH"_builtin.scalar<double(double)>();
+    inline constexpr auto degrees = "DEGREES"_builtin.scalar<double(double)>();
+    inline constexpr auto exp = "EXP"_builtin.scalar<double(double)>();
+    inline constexpr auto floor = "FLOOR"_builtin.scalar<double(double)>();
+    inline constexpr auto ln = "LN"_builtin.scalar<double(double)>();
+    inline constexpr auto log = "LOG"_builtin.scalar<double(double), double(double, double)>();
+    inline constexpr auto log10 = "LOG10"_builtin.scalar<double(double)>();
+    inline constexpr auto log2 = "LOG2"_builtin.scalar<double(double)>();
+    inline constexpr auto mod_f = "MOD"_builtin.scalar<double(double, double)>();
+    inline constexpr auto pi = "PI"_builtin.scalar<double()>();
+    inline constexpr auto pow = "POW"_builtin.scalar<double(double, double)>();
+    inline constexpr auto power = "POWER"_builtin.scalar<double(double, double)>();
+    inline constexpr auto radians = "RADIANS"_builtin.scalar<double(double)>();
+    inline constexpr auto sin = "SIN"_builtin.scalar<double(double)>();
+    inline constexpr auto sinh = "SINH"_builtin.scalar<double(double)>();
+    inline constexpr auto sqrt = "SQRT"_builtin.scalar<double(double)>();
+    inline constexpr auto tan = "TAN"_builtin.scalar<double(double)>();
+    inline constexpr auto tanh = "TANH"_builtin.scalar<double(double)>();
+    inline constexpr auto trunc = "TRUNC"_builtin.scalar<double(double)>();
+#endif
+#ifdef SQLITE_ORM_JSON_SUPPORTED
+    inline constexpr auto json = "JSON"_builtin.scalar<std::string(anything)>();
+    inline constexpr auto json_array = "JSON_ARRAY"_builtin.scalar<std::string(variadic<anything>)>();
+    inline constexpr auto json_array_length =
+        "JSON_ARRAY_LENGTH"_builtin.scalar<int(anything), int(anything, std::string_view)>();
+#if SQLITE_VERSION_NUMBER >= 3053000
+    inline constexpr auto json_array_insert =
+        "JSON_ARRAY_INSERT"_builtin.scalar<std::string(anything, std::string_view, anything, variadic<anything>)>();
+#endif
+    inline constexpr auto json_extract =
+        "JSON_EXTRACT"_builtin.scalar<std::string(anything, std::string_view, variadic<std::string_view>)>();
+    inline constexpr auto json_insert =
+        "JSON_INSERT"_builtin.scalar<std::string(anything, std::string_view, anything, variadic<anything>)>();
+    inline constexpr auto json_replace =
+        "JSON_REPLACE"_builtin.scalar<std::string(anything, std::string_view, anything, variadic<anything>)>();
+    inline constexpr auto json_set =
+        "JSON_SET"_builtin.scalar<std::string(anything, std::string_view, anything, variadic<anything>)>();
+    inline constexpr auto json_object = "JSON_OBJECT"_builtin.scalar<std::string(variadic<anything>)>();
+    inline constexpr auto json_patch = "JSON_PATCH"_builtin.scalar<std::string(anything, anything)>();
+    inline constexpr auto json_remove =
+        "JSON_REMOVE"_builtin.scalar<std::string(anything, variadic<std::string_view>)>();
+    inline constexpr auto json_type =
+        "JSON_TYPE"_builtin.scalar<std::string(anything), std::string(anything, std::string_view)>();
+#if SQLITE_VERSION_NUMBER >= 3045000
+    inline constexpr auto json_valid = "JSON_VALID"_builtin.scalar<bool(anything), bool(anything, int)>();
+#else
+    inline constexpr auto json_valid = "JSON_VALID"_builtin.scalar<bool(anything)>();
+#endif
+#if SQLITE_VERSION_NUMBER >= 3042000
+    inline constexpr auto json_error_position = "JSON_ERROR_POSITION"_builtin.scalar<int(anything)>();
+#endif
+#if SQLITE_VERSION_NUMBER >= 3046000
+    inline constexpr auto json_pretty =
+        "JSON_PRETTY"_builtin.scalar<std::string(anything), std::string(anything, std::string_view)>();
+#endif
+    inline constexpr auto json_quote = "JSON_QUOTE"_builtin.scalar<std::string(anything)>();
+    inline constexpr auto json_group_array = "JSON_GROUP_ARRAY"_builtin.aggregate<std::string(anything)>();
+    inline constexpr auto json_group_object = "JSON_GROUP_OBJECT"_builtin.aggregate<std::string(anything, anything)>();
+#endif
+#endif
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -9275,6 +9860,1051 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     using int64 = sqlite_int64;
     using uint64 = sqlite_uint64;
 
+    /**
+     *  COUNT(*) without FROM function.
+     */
+    constexpr internal::count_asterisk_without_type count() {
+        return {};
+    }
+
+    /**
+     *  COUNT(*) with FROM function. Specified type T will be serialized as
+     *  a from argument.
+     */
+    template<class T>
+    constexpr internal::count_asterisk_t<T> count() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  COUNT(*) with FROM function. Specified recordset will be serialized as
+     *  a from argument.
+     */
+    template<orm_refers_to_recordset auto mapped>
+    constexpr auto count() {
+        return count<internal::auto_decay_table_ref_t<mapped>>();
+    }
+#endif
+
+    /*
+     *  The built-in functions.
+     *
+     *  In C++20 builds a built-in function is a definition object of `ast/builtin_function.h` (name + overload set),
+     *  published here as a copy - or wrapped by a function template where the public function takes the return type
+     *  as a template argument, shares its name with other function templates or checks its arguments.
+     *  The C++17 branch keeps the legacy factories over `builtin_function_t`.
+     *
+     *  A built-in whose name is also that of a C library function in the global namespace - `abs`, `round`,
+     *  `time`, `random`, `strftime`, `printf` - is wrapped as well: under `using namespace sqlite_orm;` an object
+     *  and a function of the same name are an ambiguous lookup, whereas two functions are an overload set.
+     */
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#ifdef SQLITE_ENABLE_MATH_FUNCTIONS
+    /**
+     *  ACOS(X) function https://www.sqlite.org/lang_mathfunc.html#acos
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::acos(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::acos<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto acos(X x) {
+        return internal::acos.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  ACOSH(X) function https://www.sqlite.org/lang_mathfunc.html#acosh
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::acosh(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::acosh<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto acosh(X x) {
+        return internal::acosh.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  ASIN(X) function https://www.sqlite.org/lang_mathfunc.html#asin
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::asin(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::asin<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto asin(X x) {
+        return internal::asin.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  ASINH(X) function https://www.sqlite.org/lang_mathfunc.html#asinh
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::asinh(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::asinh<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto asinh(X x) {
+        return internal::asinh.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  ATAN(X) function https://www.sqlite.org/lang_mathfunc.html#atan
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::atan(1));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::atan<std::optional<double>>(1));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto atan(X x) {
+        return internal::atan.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  ATAN2(X, Y) function https://www.sqlite.org/lang_mathfunc.html#atan2
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::atan2(1, 3));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::atan2<std::optional<double>>(1, 3));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X, class Y>
+    constexpr auto atan2(X x, Y y) {
+        return internal::atan2.template operator()<R>(std::move(x), std::move(y));
+    }
+
+    /**
+     *  ATANH(X) function https://www.sqlite.org/lang_mathfunc.html#atanh
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::atanh(1));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::atanh<std::optional<double>>(1));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto atanh(X x) {
+        return internal::atanh.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  CEIL(X) function https://www.sqlite.org/lang_mathfunc.html#ceil
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::ceil(&User::rating));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::ceil<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto ceil(X x) {
+        return internal::ceil.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  CEILING(X) function https://www.sqlite.org/lang_mathfunc.html#ceil
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::ceiling(&User::rating));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::ceiling<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto ceiling(X x) {
+        return internal::ceiling.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  COS(X) function https://www.sqlite.org/lang_mathfunc.html#cos
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::cos(&Triangle::cornerB));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::cos<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto cos(X x) {
+        return internal::cos.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  COSH(X)  function https://www.sqlite.org/lang_mathfunc.html#cosh
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::cosh(&Triangle::cornerB));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::cosh<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto cosh(X x) {
+        return internal::cosh.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  DEGREES(X) function https://www.sqlite.org/lang_mathfunc.html#degrees
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::degrees(&Triangle::cornerB));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::degrees<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto degrees(X x) {
+        return internal::degrees.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  EXP(X) function https://www.sqlite.org/lang_mathfunc.html#exp
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::exp(&Triangle::cornerB));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::exp<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto exp(X x) {
+        return internal::exp.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  FLOOR(X) function https://www.sqlite.org/lang_mathfunc.html#floor
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::floor(&User::rating));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::floor<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto floor(X x) {
+        return internal::floor.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  LN(X) function https://www.sqlite.org/lang_mathfunc.html#ln
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::ln(200));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::ln<std::optional<double>>(200));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto ln(X x) {
+        return internal::ln.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  LOG(X) and LOG(B,X) function https://www.sqlite.org/lang_mathfunc.html#log
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::log(100));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::log<std::optional<double>>(100));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class... Args>
+    constexpr auto log(Args... args) {
+        return internal::log.template operator()<R>(std::move(args)...);
+    }
+
+    /**
+     *  LOG10(X) function https://www.sqlite.org/lang_mathfunc.html#log
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::log10(100));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::log10<std::optional<double>>(100));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto log10(X x) {
+        return internal::log10.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  LOG2(X) function https://www.sqlite.org/lang_mathfunc.html#log2
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::log2(64));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::log2<std::optional<double>>(64));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto log2(X x) {
+        return internal::log2.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  MOD(X, Y) function https://www.sqlite.org/lang_mathfunc.html#mod
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::mod_f(6, 5));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::mod_f<std::optional<double>>(6, 5));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X, class Y>
+    constexpr auto mod_f(X x, Y y) {
+        return internal::mod_f.template operator()<R>(std::move(x), std::move(y));
+    }
+
+    /**
+     *  PI() function https://www.sqlite.org/lang_mathfunc.html#pi
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` can be specified
+     *  explicitly as a template argument.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::pi());   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::pi<float>());   //  decltype(rows) is std::vector<float>
+     */
+    template<class R = double>
+    constexpr auto pi() {
+        return internal::pi.template operator()<R>();
+    }
+
+    /**
+     *  POW(X, Y) function https://www.sqlite.org/lang_mathfunc.html#pow
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::pow(2, 5));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::pow<std::optional<double>>(2, 5));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X, class Y>
+    constexpr auto pow(X x, Y y) {
+        return internal::pow.template operator()<R>(std::move(x), std::move(y));
+    }
+
+    /**
+     *  POWER(X, Y) function https://www.sqlite.org/lang_mathfunc.html#pow
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::power(2, 5));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::power<std::optional<double>>(2, 5));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X, class Y>
+    constexpr auto power(X x, Y y) {
+        return internal::power.template operator()<R>(std::move(x), std::move(y));
+    }
+
+    /**
+     *  RADIANS(X) function https://www.sqlite.org/lang_mathfunc.html#radians
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::radians(&Triangle::cornerAInDegrees));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::radians<std::optional<double>>(&Triangle::cornerAInDegrees));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto radians(X x) {
+        return internal::radians.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  SIN(X) function https://www.sqlite.org/lang_mathfunc.html#sin
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::sin(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::sin<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto sin(X x) {
+        return internal::sin.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  SINH(X) function https://www.sqlite.org/lang_mathfunc.html#sinh
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::sinh(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::sinh<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R = double, class X>
+    constexpr auto sinh(X x) {
+        return internal::sinh.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  SQRT(X) function https://www.sqlite.org/lang_mathfunc.html#sqrt
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::sqrt(25));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::sqrt<int>(25));   //  decltype(rows) is std::vector<int>
+     */
+    template<class R = double, class X>
+    constexpr auto sqrt(X x) {
+        return internal::sqrt.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  TAN(X) function https://www.sqlite.org/lang_mathfunc.html#tan
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::tan(&Triangle::cornerC));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::tan<float>(&Triangle::cornerC));   //  decltype(rows) is std::vector<float>
+     */
+    template<class R = double, class X>
+    constexpr auto tan(X x) {
+        return internal::tan.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  TANH(X) function https://www.sqlite.org/lang_mathfunc.html#tanh
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::tanh(&Triangle::cornerC));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::tanh<float>(&Triangle::cornerC));   //  decltype(rows) is std::vector<float>
+     */
+    template<class R = double, class X>
+    constexpr auto tanh(X x) {
+        return internal::tanh.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  TRUNC(X) function https://www.sqlite.org/lang_mathfunc.html#trunc
+     *
+     *  The return type defaults to `double`; any other bindable type such as `float` or `std::optional<double>`
+     *  can be specified explicitly as a template argument, which is handy when NULL is a possible result.
+     *
+     *  Examples:
+     *
+     *  auto rows = storage.select(sqlite_orm::trunc(5.5));   //  decltype(rows) is std::vector<double>
+     *  auto rows = storage.select(sqlite_orm::trunc<float>(5.5));   //  decltype(rows) is std::vector<float>
+     */
+    template<class R = double, class X>
+    constexpr auto trunc(X x) {
+        return internal::trunc.template operator()<R>(std::move(x));
+    }
+#endif
+
+    /**
+     *  TYPEOF(x) function https://sqlite.org/lang_corefunc.html#typeof
+     */
+    inline constexpr orm_builtin_function auto typeof_ = internal::typeof_;
+
+    /**
+     *  UNICODE(x) function https://sqlite.org/lang_corefunc.html#unicode
+     */
+    inline constexpr orm_builtin_function auto unicode = internal::unicode;
+
+    /**
+     *  LENGTH(x) function https://sqlite.org/lang_corefunc.html#length
+     */
+    inline constexpr orm_builtin_function auto length = internal::length;
+
+    /**
+     *  ABS(x) function https://sqlite.org/lang_corefunc.html#abs
+     */
+    template<class X>
+    constexpr auto abs(X x) {
+        return internal::abs(std::move(x));
+    }
+
+    /**
+     *  LOWER(x) function https://sqlite.org/lang_corefunc.html#lower
+     */
+    inline constexpr orm_builtin_function auto lower = internal::lower;
+
+    /**
+     *  UPPER(x) function https://sqlite.org/lang_corefunc.html#upper
+     */
+    inline constexpr orm_builtin_function auto upper = internal::upper;
+
+    /**
+     *  LAST_INSERT_ROWID() function https://www.sqlite.org/lang_corefunc.html#last_insert_rowid
+     */
+    inline constexpr orm_builtin_function auto last_insert_rowid = internal::last_insert_rowid;
+
+    /**
+     *  TOTAL_CHANGES() function https://sqlite.org/lang_corefunc.html#total_changes
+     */
+    inline constexpr orm_builtin_function auto total_changes = internal::total_changes;
+
+    /**
+     *  CHANGES() function https://sqlite.org/lang_corefunc.html#changes
+     */
+    inline constexpr orm_builtin_function auto changes = internal::changes;
+
+    /**
+     *  TRIM(X) and TRIM(X,Y) function https://sqlite.org/lang_corefunc.html#trim
+     */
+    inline constexpr orm_builtin_function auto trim = internal::trim;
+
+    /**
+     *  LTRIM(X) and LTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#ltrim
+     */
+    inline constexpr orm_builtin_function auto ltrim = internal::ltrim;
+
+    /**
+     *  RTRIM(X) and RTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#rtrim
+     */
+    inline constexpr orm_builtin_function auto rtrim = internal::rtrim;
+
+    /**
+     *  HEX(X) function https://sqlite.org/lang_corefunc.html#hex
+     */
+    inline constexpr orm_builtin_function auto hex = internal::hex;
+
+    /**
+     *  QUOTE(X) function https://sqlite.org/lang_corefunc.html#quote
+     */
+    inline constexpr orm_builtin_function auto quote = internal::quote;
+
+    /**
+     *  RANDOMBLOB(X) function https://sqlite.org/lang_corefunc.html#randomblob
+     */
+    inline constexpr orm_builtin_function auto randomblob = internal::randomblob;
+
+    /**
+     *  INSTR(X) function https://sqlite.org/lang_corefunc.html#instr
+     */
+    inline constexpr orm_builtin_function auto instr = internal::instr;
+
+    /**
+     *  REPLACE(X) function https://sqlite.org/lang_corefunc.html#replace
+     */
+    template<class X, class Y, class Z>
+        requires (internal::count_tuple<std::tuple<X, Y, Z>, internal::is_into>::value == 0)
+    constexpr auto replace(X x, Y y, Z z) {
+        return internal::replace(std::move(x), std::move(y), std::move(z));
+    }
+
+    /**
+     *  ROUND(X) and ROUND(X,Y) function https://sqlite.org/lang_corefunc.html#round
+     */
+    template<class... Args>
+        requires requires(Args... args) { internal::round(std::move(args)...); }
+    constexpr auto round(Args... args) {
+        return internal::round(std::move(args)...);
+    }
+
+#if SQLITE_VERSION_NUMBER >= 3007016
+    /**
+     *  CHAR(X1,X2,...,XN) function https://sqlite.org/lang_corefunc.html#char
+     */
+    inline constexpr orm_builtin_function auto char_ = internal::char_;
+
+    /**
+     *  RANDOM() function https://www.sqlite.org/lang_corefunc.html#random
+     */
+    constexpr auto random() {
+        return internal::random();
+    }
+#endif
+
+    /**
+     *  SQLITE_VERSION() function https://www.sqlite.org/lang_corefunc.html#sqlite_version
+     */
+    inline constexpr orm_builtin_function auto sqlite_version = internal::sqlite_version;
+
+    /**
+     *  SQLITE_SOURCE_ID() function https://www.sqlite.org/lang_corefunc.html#sqlite_source_id
+     */
+    inline constexpr orm_builtin_function auto sqlite_source_id = internal::sqlite_source_id;
+
+#ifndef SQLITE_OMIT_COMPILEOPTION_DIAGS
+    /**
+     *  SQLITE_COMPILEOPTION_USED(X) function https://www.sqlite.org/lang_corefunc.html#sqlite_compileoption_used
+     */
+    inline constexpr orm_builtin_function auto sqlite_compileoption_used = internal::sqlite_compileoption_used;
+
+    /**
+     *  SQLITE_COMPILEOPTION_GET(N) function https://www.sqlite.org/lang_corefunc.html#sqlite_compileoption_get
+     */
+    inline constexpr orm_builtin_function auto sqlite_compileoption_get = internal::sqlite_compileoption_get;
+#endif
+#ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
+    /**
+     *  SQLITE_OFFSET(X) function https://www.sqlite.org/lang_corefunc.html#sqlite_offset
+     *
+     *  Only available if the linked SQLite is compiled with SQLITE_ENABLE_OFFSET_SQL_FUNC.
+     */
+    template<class C>
+    constexpr auto sqlite_offset(C column) {
+        static_assert(polyfill::disjunction<std::is_member_pointer<C>, internal::is_column_pointer<C>>::value,
+                      "sqlite_offset() argument must be a column");
+        return internal::sqlite_offset(std::move(column));
+    }
+#endif
+
+    /**
+     *  COALESCE(X,Y,...) function https://www.sqlite.org/lang_corefunc.html#coalesce
+     */
+    template<class R = void, class... Args>
+    constexpr auto coalesce(Args... args) {
+        return internal::coalesce.template operator()<R>(std::move(args)...);
+    }
+
+    /**
+     *  IFNULL(X,Y) function https://www.sqlite.org/lang_corefunc.html#ifnull
+     */
+    template<class R = void, class X, class Y>
+    constexpr auto ifnull(X x, Y y) {
+        return internal::ifnull.template operator()<R>(std::move(x), std::move(y));
+    }
+
+    /**
+     *  NULLIF(X,Y) using common return type of X and Y
+     */
+    template<class R = void, class X, class Y>
+    constexpr auto nullif(X x, Y y) {
+        return internal::nullif.template operator()<R>(std::move(x), std::move(y));
+    }
+
+    /**
+     *  DATE(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
+     */
+    inline constexpr orm_builtin_function auto date = internal::date;
+
+    /**
+     *  TIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
+     */
+    template<class... Args>
+    constexpr auto time(Args... args) {
+        return internal::time(std::move(args)...);
+    }
+
+    /**
+     *  DATETIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
+     */
+    inline constexpr orm_builtin_function auto datetime = internal::datetime;
+
+    /**
+     *  JULIANDAY(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
+     */
+    inline constexpr orm_builtin_function auto julianday = internal::julianday;
+
+    /**
+     *  STRFTIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
+     */
+    template<class... Args>
+        requires requires(Args... args) { internal::strftime(std::move(args)...); }
+    constexpr auto strftime(Args... args) {
+        return internal::strftime(std::move(args)...);
+    }
+
+    /**
+     *  ZEROBLOB(N) function https://www.sqlite.org/lang_corefunc.html#zeroblob
+     */
+    inline constexpr orm_builtin_function auto zeroblob = internal::zeroblob;
+
+    /**
+     *  SUBSTR(X,Y) and SUBSTR(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#substr
+     */
+    inline constexpr orm_builtin_function auto substr = internal::substr;
+
+#if SQLITE_VERSION_NUMBER >= 3034000
+    /**
+     *  SUBSTRING(X,Y) and SUBSTRING(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#substr
+     */
+    inline constexpr orm_builtin_function auto substring = internal::substring;
+#endif
+#ifdef SQLITE_SOUNDEX
+    /**
+     *  SOUNDEX(X) function https://www.sqlite.org/lang_corefunc.html#soundex
+     */
+    inline constexpr orm_builtin_function auto soundex = internal::soundex;
+#endif
+
+    /**
+     *  TOTAL(X) aggregate function.
+     */
+    inline constexpr orm_builtin_function auto total = internal::total;
+
+    /**
+     *  SUM(X) aggregate function.
+     */
+    inline constexpr orm_builtin_function auto sum = internal::sum;
+
+    /**
+     *  COUNT(X) aggregate function.
+     */
+    template<class X>
+    constexpr auto count(X x) {
+        return internal::count(std::move(x));
+    }
+
+    /**
+     *  AVG(X) aggregate function.
+     */
+    inline constexpr orm_builtin_function auto avg = internal::avg;
+
+    /**
+     *  MAX(X) aggregate function.
+     */
+    inline constexpr orm_builtin_function auto max = internal::max;
+
+    /**
+     *  MIN(X) aggregate function.
+     */
+    inline constexpr orm_builtin_function auto min = internal::min;
+
+    /**
+     *  GROUP_CONCAT(X) and GROUP_CONCAT(X,Y) aggregate function.
+     */
+    inline constexpr orm_builtin_function auto group_concat = internal::group_concat;
+
+#if SQLITE_VERSION_NUMBER >= 3008001
+    /**
+     *  LIKELIHOOD(X,Y) function https://www.sqlite.org/lang_corefunc.html#likelihood
+     *
+     *  The probability is stored as a literal, never as a bound parameter:
+     *  SQLite requires the second argument to be a floating point constant between 0.0 and 1.0,
+     *  and rejects a statement that binds it.
+     */
+    template<class X>
+    constexpr auto likelihood(X x, double probability) {
+#ifdef SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
+        //  a probability outside [0.0, 1.0] makes SQLite reject the statement at prepare time;
+        //  when the call is constant-evaluated the error surfaces right here, at compile time
+        if (std::is_constant_evaluated() && !(probability >= 0.0 && probability <= 1.0)) {
+            throw std::domain_error("likelihood() probability must be a constant between 0.0 and 1.0");
+        }
+#endif
+        return internal::likelihood(std::move(x), internal::literal_holder<double>{probability});
+    }
+
+    /**
+     *  UNLIKELY(X) function https://www.sqlite.org/lang_corefunc.html#unlikely
+     */
+    inline constexpr orm_builtin_function auto unlikely = internal::unlikely;
+#endif
+#if SQLITE_VERSION_NUMBER >= 3008003
+    /**
+     *  PRINTF(FORMAT,...) function https://www.sqlite.org/lang_corefunc.html#printf
+     */
+    template<class... Args>
+        requires requires(Args... args) { internal::printf(std::move(args)...); }
+    constexpr auto printf(Args... args) {
+        return internal::printf(std::move(args)...);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3008006
+    /**
+     *  LIKELY(X) function https://www.sqlite.org/lang_corefunc.html#likely
+     */
+    inline constexpr orm_builtin_function auto likely = internal::likely;
+#endif
+#if SQLITE_VERSION_NUMBER >= 3032000
+    /**
+     *  IIF(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#iif
+     *
+     *  The return type is the common type of Y and Z, unless it is explicitly specified as a template argument.
+     *  The function is only enabled if a common type of Y and Z can be determined or the return type is explicit.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(iif<std::string>(c(&User::age) > 18, "adult", "minor"));
+     */
+    template<class R = void, class X, class Y, class Z>
+    constexpr auto iif(X x, Y y, Z z) {
+        return internal::iif.template operator()<R>(std::move(x), std::move(y), std::move(z));
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3035000
+    /**
+     *  SIGN(X) function https://www.sqlite.org/lang_corefunc.html#sign
+     *
+     *  The return type defaults to `int`; any other bindable type such as `std::optional<int>` can be specified
+     *  explicitly as a template argument, which is handy when NULL is a possible result (e.g. for a non-numeric argument).
+     */
+    template<class R = int, class X>
+    constexpr auto sign(X x) {
+        return internal::sign.template operator()<R>(std::move(x));
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3038000
+    /**
+     *  FORMAT(FORMAT,...) function https://www.sqlite.org/lang_corefunc.html#format
+     */
+    inline constexpr orm_builtin_function auto format = internal::format;
+
+    /**
+     *  UNIXEPOCH(timestring, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
+     */
+    inline constexpr orm_builtin_function auto unixepoch = internal::unixepoch;
+#endif
+#if SQLITE_VERSION_NUMBER >= 3041000
+    /**
+     *  UNHEX(X) and UNHEX(X,Y) function https://www.sqlite.org/lang_corefunc.html#unhex
+     */
+    inline constexpr orm_builtin_function auto unhex = internal::unhex;
+#endif
+#if SQLITE_VERSION_NUMBER >= 3043000
+    /**
+     *  OCTET_LENGTH(X) function https://www.sqlite.org/lang_corefunc.html#octet_length
+     */
+    inline constexpr orm_builtin_function auto octet_length = internal::octet_length;
+
+    /**
+     *  TIMEDIFF(A,B) function https://www.sqlite.org/lang_datefunc.html#tmdiff
+     */
+    inline constexpr orm_builtin_function auto timediff = internal::timediff;
+#endif
+#if SQLITE_VERSION_NUMBER >= 3044000
+    /**
+     *  CONCAT(X,...) function https://www.sqlite.org/lang_corefunc.html#concat
+     */
+    inline constexpr orm_builtin_function auto concat = internal::concat;
+
+    /**
+     *  CONCAT_WS(SEP,X,...) function https://www.sqlite.org/lang_corefunc.html#concat_ws
+     */
+    inline constexpr orm_builtin_function auto concat_ws = internal::concat_ws;
+
+    /**
+     *  STRING_AGG(X,SEP) aggregate function https://www.sqlite.org/lang_aggfunc.html#string_agg
+     */
+    inline constexpr orm_builtin_function auto string_agg = internal::string_agg;
+#endif
+#if SQLITE_VERSION_NUMBER >= 3048000
+    /**
+     *  IF(X,Y,Z) function, an alias for IIF() https://www.sqlite.org/lang_corefunc.html#iif
+     *
+     *  The return type is the common type of Y and Z, unless it is explicitly specified as a template argument.
+     *  The function is only enabled if a common type of Y and Z can be determined or the return type is explicit.
+     */
+    template<class R = void, class X, class Y, class Z>
+    constexpr auto if_(X x, Y y, Z z) {
+        return internal::if_.template operator()<R>(std::move(x), std::move(y), std::move(z));
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3050000
+    /**
+     *  UNISTR(X) function https://www.sqlite.org/lang_corefunc.html#unistr
+     */
+    inline constexpr orm_builtin_function auto unistr = internal::unistr;
+
+    /**
+     *  UNISTR_QUOTE(X) function https://www.sqlite.org/lang_corefunc.html#unistr_quote
+     */
+    inline constexpr orm_builtin_function auto unistr_quote = internal::unistr_quote;
+#endif
+#ifdef SQLITE_ENABLE_PERCENTILE
+    /**
+     *  MEDIAN(X) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
+     *
+     *  The return type defaults to `std::unique_ptr<double>` (the result is NULL for an empty group);
+     *  any other bindable type such as `std::optional<double>` can be specified as a template argument.
+     */
+    template<class R = std::unique_ptr<double>, class X>
+    constexpr auto median(X x) {
+        return internal::median.template operator()<R>(std::move(x));
+    }
+
+    /**
+     *  PERCENTILE(Y,P) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
+     *
+     *  The return type defaults to `std::unique_ptr<double>` (the result is NULL for an empty group);
+     *  any other bindable type such as `std::optional<double>` can be specified as a template argument.
+     */
+    template<class R = std::unique_ptr<double>, class X, class Y>
+    constexpr auto percentile(X x, Y y) {
+        return internal::percentile.template operator()<R>(std::move(x), std::move(y));
+    }
+
+    /**
+     *  PERCENTILE_CONT(Y,P) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
+     *
+     *  The return type defaults to `std::unique_ptr<double>` (the result is NULL for an empty group);
+     *  any other bindable type such as `std::optional<double>` can be specified as a template argument.
+     */
+    template<class R = std::unique_ptr<double>, class X, class Y>
+    constexpr auto percentile_cont(X x, Y y) {
+        return internal::percentile_cont.template operator()<R>(std::move(x), std::move(y));
+    }
+
+    /**
+     *  PERCENTILE_DISC(Y,P) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
+     *
+     *  The return type defaults to `std::unique_ptr<double>` (the result is NULL for an empty group);
+     *  any other bindable type such as `std::optional<double>` can be specified as a template argument.
+     */
+    template<class R = std::unique_ptr<double>, class X, class Y>
+    constexpr auto percentile_disc(X x, Y y) {
+        return internal::percentile_disc.template operator()<R>(std::move(x), std::move(y));
+    }
+#endif
+#ifdef SQLITE_ORM_JSON_SUPPORTED
+    inline constexpr orm_builtin_function auto json = internal::json;
+
+    inline constexpr orm_builtin_function auto json_array = internal::json_array;
+
+    template<class R = int, class... Args>
+    constexpr auto json_array_length(Args... args) {
+        return internal::json_array_length.template operator()<R>(std::move(args)...);
+    }
+
+    template<class R, class... Args>
+    constexpr auto json_extract(Args... args) {
+        return internal::json_extract.template operator()<R>(std::move(args)...);
+    }
+
+    template<class X, class... Args>
+    constexpr auto json_insert(X x, Args... args) {
+        static_assert(sizeof...(Args) % 2 == 0, "number of arguments in json_insert must be odd");
+        return internal::json_insert(std::move(x), std::move(args)...);
+    }
+
+#if SQLITE_VERSION_NUMBER >= 3053000
+    /**
+     *  JSON_ARRAY_INSERT(X,P,V,...) function: inserts values into the arrays of X at the paths P,
+     *  shifting the existing elements to the right. https://www.sqlite.org/json1.html#jarrins
+     */
+    template<class X, class... Args>
+    constexpr auto json_array_insert(X x, Args... args) {
+        static_assert(sizeof...(Args) % 2 == 0, "number of arguments in json_array_insert must be odd");
+        return internal::json_array_insert(std::move(x), std::move(args)...);
+    }
+#endif
+
+    template<class X, class... Args>
+    constexpr auto json_replace(X x, Args... args) {
+        static_assert(sizeof...(Args) % 2 == 0, "number of arguments in json_replace must be odd");
+        return internal::json_replace(std::move(x), std::move(args)...);
+    }
+
+    template<class X, class... Args>
+    constexpr auto json_set(X x, Args... args) {
+        static_assert(sizeof...(Args) % 2 == 0, "number of arguments in json_set must be odd");
+        return internal::json_set(std::move(x), std::move(args)...);
+    }
+
+    inline constexpr orm_builtin_function auto json_object = internal::json_object;
+
+    inline constexpr orm_builtin_function auto json_patch = internal::json_patch;
+
+    template<class R = std::string, class... Args>
+    constexpr auto json_remove(Args... args) {
+        return internal::json_remove.template operator()<R>(std::move(args)...);
+    }
+
+    template<class R = std::string, class... Args>
+    constexpr auto json_type(Args... args) {
+        return internal::json_type.template operator()<R>(std::move(args)...);
+    }
+
+    /**
+     *  JSON_VALID(X) and, as of SQLite 3.45.0, JSON_VALID(X,Y) function: validates X,
+     *  against the conformance flags Y. https://www.sqlite.org/json1.html#jvalid
+     */
+    inline constexpr orm_builtin_function auto json_valid = internal::json_valid;
+
+#if SQLITE_VERSION_NUMBER >= 3042000
+    /**
+     *  JSON_ERROR_POSITION(X) function: the character offset of the first syntax error in X,
+     *  or 0 if X is well-formed. https://www.sqlite.org/json1.html#jerr
+     */
+    inline constexpr orm_builtin_function auto json_error_position = internal::json_error_position;
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3046000
+    /**
+     *  JSON_PRETTY(X) and JSON_PRETTY(X,Y) function: pretty-prints X with four-space indentation,
+     *  or indenting with the string Y. https://www.sqlite.org/json1.html#jpretty
+     */
+    inline constexpr orm_builtin_function auto json_pretty = internal::json_pretty;
+#endif
+
+    template<class R, class X>
+    constexpr auto json_quote(X x) {
+        return internal::json_quote.template operator()<R>(std::move(x));
+    }
+
+    inline constexpr orm_builtin_function auto json_group_array = internal::json_group_array;
+
+    inline constexpr orm_builtin_function auto json_group_object = internal::json_group_object;
+#endif
+#else  //  the legacy built-in function factories
 #ifdef SQLITE_ENABLE_MATH_FUNCTIONS
     /**
      *  ACOS(X) function https://www.sqlite.org/lang_mathfunc.html#acos
@@ -9755,7 +11385,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     constexpr internal::builtin_function_t<R, internal::trunc_string, X> trunc(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
-#endif  //  SQLITE_ENABLE_MATH_FUNCTIONS
+#endif
 
     /**
      *  TYPEOF(x) function https://sqlite.org/lang_corefunc.html#typeof
@@ -10024,9 +11654,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  NULLIF(X,Y) function https://www.sqlite.org/lang_corefunc.html#nullif
-     */
-    /**
      *  NULLIF(X,Y) using common return type of X and Y
      */
     template<class R = void, class X, class Y>
@@ -10154,33 +11781,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::builtin_aggregate_function_t<int, internal::count_string, X> count(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
-
-    /**
-     *  COUNT(*) without FROM function.
-     */
-    constexpr internal::count_asterisk_without_type count() {
-        return {};
-    }
-
-    /**
-     *  COUNT(*) with FROM function. Specified type T will be serialized as
-     *  a from argument.
-     */
-    template<class T>
-    constexpr internal::count_asterisk_t<T> count() {
-        return {};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  COUNT(*) with FROM function. Specified recordset will be serialized as
-     *  a from argument.
-     */
-    template<orm_refers_to_recordset auto mapped>
-    constexpr auto count() {
-        return count<internal::auto_decay_table_ref_t<mapped>>();
-    }
-#endif
 
     /**
      *  AVG(X) aggregate function.
@@ -10497,6 +12097,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
+
 #ifdef SQLITE_ORM_JSON_SUPPORTED
     template<class X>
     constexpr internal::builtin_function_t<std::string, internal::json_string, X> json(X x) {
@@ -10652,7 +12253,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     json_group_object(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
-#endif  //  SQLITE_ORM_JSON_SUPPORTED
+#endif
+#endif
 
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
@@ -12512,84 +14114,6 @@ namespace sqlite_orm::internal::storage_traits {
 // #include "functional/cstring_literal.h"
 
 // #include "functional/function_traits.h"
-
-// #include "cxx_type_traits_polyfill.h"
-
-// #include "mpl.h"
-
-namespace sqlite_orm::internal {
-    /*
-     *  Define nested typenames:
-     *  - return_type
-     *  - arguments_tuple
-     *  - signature_type
-     */
-    template<class F>
-    struct function_traits;
-
-    /*
-     *  A function's return type
-     */
-    template<class F>
-    using function_return_type_t = typename function_traits<F>::return_type;
-
-    /*
-     *  A function's arguments tuple
-     */
-    template<class F, template<class...> class Tuple, template<class...> class ProjectOp = polyfill::type_identity_t>
-    using function_arguments = typename function_traits<F>::template arguments_tuple<Tuple, ProjectOp>;
-
-    /*
-     *  A function's signature
-     */
-    template<class F>
-    using function_signature_type_t = typename function_traits<F>::signature_type;
-
-    template<class R, class... Args>
-    struct function_traits<R(Args...)> {
-        using return_type = R;
-
-        template<template<class...> class Tuple, template<class...> class ProjectOp>
-        using arguments_tuple = Tuple<mpl::invoke_fn_t<ProjectOp, Args>...>;
-
-        using signature_type = R(Args...);
-    };
-
-    // non-exhaustive partial specializations of `function_traits`
-
-    template<class R, class... Args>
-    struct function_traits<R(Args...) const> : function_traits<R(Args...)> {
-        using signature_type = R(Args...) const;
-    };
-
-    template<class R, class... Args>
-    struct function_traits<R(Args...) noexcept> : function_traits<R(Args...)> {
-        using signature_type = R(Args...) noexcept;
-    };
-
-    template<class R, class... Args>
-    struct function_traits<R(Args...) const noexcept> : function_traits<R(Args...)> {
-        using signature_type = R(Args...) const noexcept;
-    };
-
-    /*
-     *  Pick signature of function pointer
-     */
-    template<class F>
-    struct function_traits<F(*)> : function_traits<F> {};
-
-    /*
-     *  Pick signature of function reference
-     */
-    template<class F>
-    struct function_traits<F(&)> : function_traits<F> {};
-
-    /*
-     *  Pick signature of pointer-to-member function
-     */
-    template<class F, class O>
-    struct function_traits<F O::*> : function_traits<F> {};
-}
 
 // #include "functional/type_traits.h"
 
@@ -31836,6 +33360,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "fts5.h"
 
 namespace sqlite_orm::internal {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /*
+     *  The first parameter is the table's hidden column; the public factories constrain the call to it.
+     */
+    inline constexpr auto highlight =
+        "HIGHLIGHT"_builtin.scalar<std::string(anything, int, std::string_view, std::string_view)>();
+    inline constexpr auto bm25 = "BM25"_builtin.scalar<double(anything, variadic<double>)>();
+    inline constexpr auto snippet =
+        "SNIPPET"_builtin
+            .scalar<std::string(anything, int, std::string_view, std::string_view, std::string_view, int)>();
+#else
     struct highlight_string {
         std::string_view serialize() const {
             return "HIGHLIGHT";
@@ -31853,6 +33388,22 @@ namespace sqlite_orm::internal {
             return "SNIPPET";
         }
     };
+
+    template<class... Args>
+    constexpr builtin_function_t<std::string, highlight_string, Args...> highlight(Args... args) {
+        return {std::make_tuple(std::move(args)...)};
+    }
+
+    template<class... Args>
+    constexpr builtin_function_t<double, bm25_string, Args...> bm25(Args... args) {
+        return {std::make_tuple(std::move(args)...)};
+    }
+
+    template<class... Args>
+    constexpr builtin_function_t<std::string, snippet_string, Args...> snippet(Args... args) {
+        return {std::make_tuple(std::move(args)...)};
+    }
+#endif
 }
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
@@ -31864,9 +33415,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class CP, class X, class Y, class Z>
         requires (internal::hidden_column_of_vtab<CP, fts5>)
-    constexpr internal::builtin_function_t<std::string, internal::highlight_string, CP, X, Y, Z>
-    highlight(CP theAnyField, X x, Y y, Z z) {
-        return {std::make_tuple(std::move(theAnyField), std::move(x), std::move(y), std::move(z))};
+    constexpr auto highlight(CP theAnyField, X x, Y y, Z z) {
+        return internal::highlight(std::move(theAnyField), std::move(x), std::move(y), std::move(z));
     }
 
     /**
@@ -31875,9 +33425,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Hidden, class F, class X, class Y, class Z>
         requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
-    constexpr internal::builtin_function_t<std::string, internal::highlight_string, F Hidden::*, X, Y, Z>
-    highlight(F Hidden::* theAnyField, X x, Y y, Z z) {
-        return {std::make_tuple(theAnyField, std::move(x), std::move(y), std::move(z))};
+    constexpr auto highlight(F Hidden::* theAnyField, X x, Y y, Z z) {
+        return internal::highlight(theAnyField, std::move(x), std::move(y), std::move(z));
     }
 
     /**
@@ -31886,9 +33435,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class CP, class... Ws>
         requires (internal::hidden_column_of_vtab<CP, fts5>)
-    constexpr internal::builtin_function_t<double, internal::bm25_string, CP, Ws...> bm25(CP theAnyField,
-                                                                                          Ws... weights) {
-        return {std::make_tuple(std::move(theAnyField), std::move(weights)...)};
+    constexpr auto bm25(CP theAnyField, Ws... weights) {
+        return internal::bm25(std::move(theAnyField), std::move(weights)...);
     }
 
     /**
@@ -31897,9 +33445,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Hidden, class F, class... Ws>
         requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
-    constexpr internal::builtin_function_t<double, internal::bm25_string, F Hidden::*, Ws...>
-    bm25(F Hidden::* theAnyField, Ws... weights) {
-        return {std::make_tuple(theAnyField, std::move(weights)...)};
+    constexpr auto bm25(F Hidden::* theAnyField, Ws... weights) {
+        return internal::bm25(theAnyField, std::move(weights)...);
     }
 
     /**
@@ -31910,14 +33457,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class CP, class X1, class X2, class X3, class X4, class X5>
         requires (internal::hidden_column_of_vtab<CP, fts5>)
-    constexpr internal::builtin_function_t<std::string, internal::snippet_string, CP, X1, X2, X3, X4, X5>
-    snippet(CP theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
-        return {std::make_tuple(std::move(theAnyField),
-                                std::move(columnIndex),
-                                std::move(matchOpen),
-                                std::move(matchClose),
-                                std::move(ellipses),
-                                std::move(tokenCount))};
+    constexpr auto snippet(CP theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
+        return internal::snippet(std::move(theAnyField),
+                                 std::move(columnIndex),
+                                 std::move(matchOpen),
+                                 std::move(matchClose),
+                                 std::move(ellipses),
+                                 std::move(tokenCount));
     }
 
     /**
@@ -31928,14 +33474,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class Hidden, class F, class X1, class X2, class X3, class X4, class X5>
         requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
-    constexpr internal::builtin_function_t<std::string, internal::snippet_string, F Hidden::*, X1, X2, X3, X4, X5>
+    constexpr auto
     snippet(F Hidden::* theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
-        return {std::make_tuple(theAnyField,
-                                std::move(columnIndex),
-                                std::move(matchOpen),
-                                std::move(matchClose),
-                                std::move(ellipses),
-                                std::move(tokenCount))};
+        return internal::snippet(theAnyField,
+                                 std::move(columnIndex),
+                                 std::move(matchOpen),
+                                 std::move(matchClose),
+                                 std::move(ellipses),
+                                 std::move(tokenCount));
     }
 #else
     /**
@@ -31947,9 +33493,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class Y,
              class Z,
              std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
-    constexpr internal::builtin_function_t<std::string, internal::highlight_string, CP, X, Y, Z>
-    highlight(CP theAnyField, X x, Y y, Z z) {
-        return {std::make_tuple(std::move(theAnyField), std::move(x), std::move(y), std::move(z))};
+    constexpr auto highlight(CP theAnyField, X x, Y y, Z z) {
+        return internal::highlight(std::move(theAnyField), std::move(x), std::move(y), std::move(z));
     }
 
     /**
@@ -31962,9 +33507,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class Y,
              class Z,
              std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
-    constexpr internal::builtin_function_t<std::string, internal::highlight_string, F Hidden::*, X, Y, Z>
-    highlight(F Hidden::* theAnyField, X x, Y y, Z z) {
-        return {std::make_tuple(theAnyField, std::move(x), std::move(y), std::move(z))};
+    constexpr auto highlight(F Hidden::* theAnyField, X x, Y y, Z z) {
+        return internal::highlight(theAnyField, std::move(x), std::move(y), std::move(z));
     }
 
     /**
@@ -31972,9 +33516,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  See https://www.sqlite.org/fts5.html#the_bm25_function
      */
     template<class CP, class... Ws, std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
-    constexpr internal::builtin_function_t<double, internal::bm25_string, CP, Ws...> bm25(CP theAnyField,
-                                                                                          Ws... weights) {
-        return {std::make_tuple(std::move(theAnyField), std::move(weights)...)};
+    constexpr auto bm25(CP theAnyField, Ws... weights) {
+        return internal::bm25(std::move(theAnyField), std::move(weights)...);
     }
 
     /**
@@ -31985,9 +33528,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class F,
              class... Ws,
              std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
-    constexpr internal::builtin_function_t<double, internal::bm25_string, F Hidden::*, Ws...>
-    bm25(F Hidden::* theAnyField, Ws... weights) {
-        return {std::make_tuple(theAnyField, std::move(weights)...)};
+    constexpr auto bm25(F Hidden::* theAnyField, Ws... weights) {
+        return internal::bm25(theAnyField, std::move(weights)...);
     }
 
     /**
@@ -32003,14 +33545,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class X4,
              class X5,
              std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
-    constexpr internal::builtin_function_t<std::string, internal::snippet_string, CP, X1, X2, X3, X4, X5>
-    snippet(CP theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
-        return {std::make_tuple(std::move(theAnyField),
-                                std::move(columnIndex),
-                                std::move(matchOpen),
-                                std::move(matchClose),
-                                std::move(ellipses),
-                                std::move(tokenCount))};
+    constexpr auto snippet(CP theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
+        return internal::snippet(std::move(theAnyField),
+                                 std::move(columnIndex),
+                                 std::move(matchOpen),
+                                 std::move(matchClose),
+                                 std::move(ellipses),
+                                 std::move(tokenCount));
     }
 
     /**
@@ -32027,14 +33568,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
              class X4,
              class X5,
              std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
-    constexpr internal::builtin_function_t<std::string, internal::snippet_string, F Hidden::*, X1, X2, X3, X4, X5>
+    constexpr auto
     snippet(F Hidden::* theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
-        return {std::make_tuple(theAnyField,
-                                std::move(columnIndex),
-                                std::move(matchOpen),
-                                std::move(matchClose),
-                                std::move(ellipses),
-                                std::move(tokenCount))};
+        return internal::snippet(theAnyField,
+                                 std::move(columnIndex),
+                                 std::move(matchOpen),
+                                 std::move(matchClose),
+                                 std::move(ellipses),
+                                 std::move(tokenCount));
     }
 #endif
 

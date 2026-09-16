@@ -45,11 +45,20 @@ TEST_CASE("ast_iterator") {
         [&typeIndexes](std::true_type, const internal::named_collate_base& collateCall) {
             typeIndexes.push_back(typeid(collateCall));
         },
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        [&typeIndexes]<class Sig, class CP, class X, class Y, class Z>(
+            std::true_type,
+            const internal::
+                builtin_function_call<std::remove_const_t<decltype(internal::highlight)>, Sig, CP, X, Y, Z>&) {
+            typeIndexes.push_back(typeid(internal::table_type_of_t<CP>));
+        },
+#else
         [&typeIndexes]<class R, class CP, class X, class Y, class Z>(
             std::true_type,
             const internal::builtin_function_t<R, internal::highlight_string, CP, X, Y, Z>&) {
             typeIndexes.push_back(typeid(internal::table_type_of_t<CP>));
         },
+#endif
         // swallow leaf expressions
         [](auto&) {}};
 #endif
