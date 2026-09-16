@@ -17,20 +17,20 @@ TEST_CASE("substr") {
 
     {
         auto rows = storage.select(substr("SQLite substr", 8));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == "substr");
+        decltype(rows) expected{"substr"};
+        REQUIRE(rows == expected);
     }
     {
         storage.insert(Test{"SQLite substr", 8, 1});
         REQUIRE(storage.count<Test>() == 1);
         auto rows = storage.select(substr(&Test::text, &Test::x));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == "substr");
+        decltype(rows) expected{"substr"};
+        REQUIRE(rows == expected);
     }
     {
         auto rows = storage.select(substr("SQLite substr", 1, 6));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == "SQLite");
+        decltype(rows) expected{"SQLite"};
+        REQUIRE(rows == expected);
     }
     {
 
@@ -39,8 +39,8 @@ TEST_CASE("substr") {
         REQUIRE(storage.count<Test>() == 1);
 
         auto rows = storage.select(substr(&Test::text, &Test::x, &Test::y));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == "SQLite");
+        decltype(rows) expected{"SQLite"};
+        REQUIRE(rows == expected);
     }
 }
 
@@ -54,23 +54,15 @@ TEST_CASE("zeroblob") {
 
     {
         auto rows = storage.select(zeroblob(10));
-        REQUIRE(rows.size() == 1);
-        auto& row = rows.front();
-        REQUIRE(row.size() == 10);
-        std::vector<char> expectedValue(10);
-        std::fill(expectedValue.begin(), expectedValue.end(), 0);
-        REQUIRE(row == expectedValue);
+        decltype(rows) expected{std::vector<char>(10)};
+        REQUIRE(rows == expected);
     }
     {
         storage.insert(Test{100});
 
         auto rows = storage.select(zeroblob(&Test::value));
-        REQUIRE(rows.size() == 1);
-        auto& row = rows.front();
-        REQUIRE(row.size() == 100);
-        std::vector<char> expectedValue(100);
-        std::fill(expectedValue.begin(), expectedValue.end(), 0);
-        REQUIRE(row == expectedValue);
+        decltype(rows) expected{std::vector<char>(100)};
+        REQUIRE(rows == expected);
     }
 }
 
@@ -78,8 +70,8 @@ TEST_CASE("zeroblob") {
 TEST_CASE("char") {
     auto storage = make_storage({});
     auto rows = storage.select(char_(67, 72, 65, 82));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == "CHAR");
+    decltype(rows) expected{"CHAR"};
+    REQUIRE(rows == expected);
 }
 
 TEST_CASE("random") {
@@ -93,91 +85,86 @@ TEST_CASE("random") {
 TEST_CASE("rtrim") {
     auto storage = make_storage({});
     auto rows = storage.select(rtrim("ototo   "));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == "ototo");
+    decltype(rows) expected{"ototo"};
+    REQUIRE(rows == expected);
 
     rows = storage.select(rtrim("ototo   ", " "));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == "ototo");
+    REQUIRE(rows == expected);
 }
 
 TEST_CASE("ltrim") {
     auto storage = make_storage({});
     auto rows = storage.select(ltrim("  ototo"));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == "ototo");
+    decltype(rows) expected{"ototo"};
+    REQUIRE(rows == expected);
 
     rows = storage.select(ltrim("  ototo", " "));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == "ototo");
+    REQUIRE(rows == expected);
 }
 
 TEST_CASE("trim") {
     auto storage = make_storage({});
     auto rows = storage.select(trim("   ototo   "));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == "ototo");
+    decltype(rows) expected{"ototo"};
+    REQUIRE(rows == expected);
 
     rows = storage.select(trim("   ototo   ", " "));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == "ototo");
+    REQUIRE(rows == expected);
 }
 
 TEST_CASE("upper") {
     auto storage = make_storage({});
     auto rows = storage.select(upper("ototo"));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == "OTOTO");
+    decltype(rows) expected{"OTOTO"};
+    REQUIRE(rows == expected);
 }
 
 TEST_CASE("lower") {
     auto storage = make_storage({});
     auto rows = storage.select(lower("OTOTO"));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == "ototo");
+    decltype(rows) expected{"ototo"};
+    REQUIRE(rows == expected);
     // built-in function call node as an operator operand
     auto flags = storage.select(lower("OTOTO") == "ototo");
-    REQUIRE(flags.size() == 1);
-    REQUIRE(flags.front());
+    decltype(flags) expectedFlags{true};
+    REQUIRE(flags == expectedFlags);
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     // the new call node is a general operator argument, hence chainable
     auto concatenated = storage.select(lower("OTO") || "TO");
-    REQUIRE(concatenated.size() == 1);
-    REQUIRE(concatenated.front() == "otoTO");
+    decltype(concatenated) expectedConcatenated{"otoTO"};
+    REQUIRE(concatenated == expectedConcatenated);
 #endif
 }
 
 TEST_CASE("length") {
     auto storage = make_storage({});
     auto rows = storage.select(length("ototo"));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == 5);
+    decltype(rows) expected{5};
+    REQUIRE(rows == expected);
 }
 
 TEST_CASE("abs") {
     auto storage = make_storage({});
     auto rows = storage.select(sqlite_orm::abs(-10));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front());
-    REQUIRE(*rows.front() == 10);
+    REQUIRE_THAT(rows, PointeesEqual<double>({10.0}));
 }
 
 TEST_CASE("hex") {
     auto storage = make_storage({});
     {
         auto rows = storage.select(hex(67));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == "3637");
+        decltype(rows) expected{"3637"};
+        REQUIRE(rows == expected);
     }
     {
         auto rows = storage.select(hex("ä"));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == "C3A4");
+        decltype(rows) expected{"C3A4"};
+        REQUIRE(rows == expected);
     }
     {
         auto rows = storage.select(hex(nullptr));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == std::string());
+        decltype(rows) expected{""};
+        REQUIRE(rows == expected);
     }
 }
 
@@ -225,8 +212,8 @@ TEST_CASE("quote") {
     storage.replace(Department{270, "Payroll", 0, 1700});
     {
         auto rows = storage.select(quote("hi"));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == "'hi'");
+        decltype(rows) expected{"'hi'"};
+        REQUIRE(rows == expected);
     }
     {
         auto rows =
@@ -283,13 +270,13 @@ TEST_CASE("instr") {
     storage.sync_schema();
     {
         auto rows = storage.select(instr("SQLite Tutorial", "Tutorial"));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == 8);
+        decltype(rows) expected{8};
+        REQUIRE(rows == expected);
     }
     {
         auto rows = storage.select(instr("SQLite Tutorial", "I"));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == 0);
+        decltype(rows) expected{0};
+        REQUIRE(rows == expected);
     }
     Employee nancy{1, "Nancy", "Edwards", "825 8 Ave SW"};
     Employee jane{2, "Jane", "Peacock", "1111 6 Ave SW"};
@@ -357,13 +344,13 @@ TEST_CASE("replace func") {
     storage.sync_schema();
     {
         auto rows = storage.select(replace("AA B CC AAA", "A", "Z"));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == "ZZ B CC ZZZ");
+        decltype(rows) expected{"ZZ B CC ZZZ"};
+        REQUIRE(rows == expected);
     }
     {
         auto rows = storage.select(replace("This is a cat", "This", "That"));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == "That is a cat");
+        decltype(rows) expected{"That is a cat"};
+        REQUIRE(rows == expected);
     }
     Contact john{0, "John", "Doe", "410-555-0168"};
     Contact lily{0, "Lily", "Bush", "410-444-9862"};
@@ -390,15 +377,15 @@ TEST_CASE("replace func") {
 
 TEST_CASE("round") {
     auto storage = make_storage({});
-    auto test = [&storage](auto input, double expected) {
+    auto test = [&storage](auto input, double expectedValue) {
         auto rows = storage.select(round(input));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == expected);
+        decltype(rows) expected{expectedValue};
+        REQUIRE(rows == expected);
     };
-    auto test2 = [&storage](auto inputA, auto inputB, double expected) {
+    auto test2 = [&storage](auto inputA, auto inputB, double expectedValue) {
         auto rows = storage.select(round(inputA, inputB));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == expected);
+        decltype(rows) expected{expectedValue};
+        REQUIRE(rows == expected);
     };
     test(23.4, 23.0);
     test(23.6, 24.0);
@@ -475,13 +462,11 @@ TEST_CASE("nullif") {
 
     SECTION("explicit return type") {
         auto rows = storage.select(&Foo::field, where(nullif<std::optional<bool>>(&Foo::field, false)));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows[0] == true);
+        REQUIRE_THAT(rows, Equals(vector<bool>{true}));
     }
     SECTION("common return type") {
         auto rows = storage.select(&Foo::field, where(nullif(&Foo::field, false)));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows[0] == true);
+        REQUIRE_THAT(rows, Equals(vector<bool>{true}));
     }
     SECTION("null if 0") {
         auto rows = storage.select(nullif(&Foo::field, 0), order_by(1));
