@@ -10,4 +10,5 @@
 #include "../../dev/get_prepared_statement.h"
 #include "../../dev/vtabs/vtabs.h"
 #include "../../dev/carray.h"
+#include "../../dev/async/async.h"
 #include "../../dev/functional/finish_macros.h"
