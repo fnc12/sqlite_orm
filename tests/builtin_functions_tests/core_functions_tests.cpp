@@ -1562,11 +1562,11 @@ TEST_CASE("aggregate functions") {
         REQUIRE(rows == expected);
     }
     SECTION("sum") {
-        auto rows = storage.select(sqlite_orm::sum(&Score::value));
+        auto rows = storage.select(sum(&Score::value));
         REQUIRE_THAT(rows, PointeesEqual<double>({6.0}));
     }
     SECTION("sum of an empty group is null") {
-        auto rows = storage.select(sqlite_orm::sum(&Score::value), where(c(&Score::id) > 3));
+        auto rows = storage.select(sum(&Score::value), where(c(&Score::id) > 3));
         REQUIRE_THAT(rows, PointeesEqual<double>({std::nullopt}));
     }
     SECTION("total") {
@@ -1580,25 +1580,25 @@ TEST_CASE("aggregate functions") {
         REQUIRE(rows == expected);
     }
     SECTION("max") {
-        auto rows = storage.select(sqlite_orm::max(&Score::value));
+        auto rows = storage.select(max(&Score::value));
         REQUIRE_THAT(rows, PointeesEqual<int>({3}));
     }
     SECTION("max of an empty group is null") {
-        auto rows = storage.select(sqlite_orm::max(&Score::value), where(c(&Score::id) > 3));
+        auto rows = storage.select(max(&Score::value), where(c(&Score::id) > 3));
         REQUIRE_THAT(rows, PointeesEqual<int>({std::nullopt}));
     }
     SECTION("min") {
-        auto rows = storage.select(sqlite_orm::min(&Score::value));
+        auto rows = storage.select(min(&Score::value));
         REQUIRE_THAT(rows, PointeesEqual<int>({1}));
     }
     SECTION("max/min scalar") {
-        auto rows = storage.select(sqlite_orm::max(&Score::value, 2, 0), order_by(&Score::id));
+        auto rows = storage.select(max(&Score::value, 2, 0), order_by(&Score::id));
         REQUIRE_THAT(rows, PointeesEqual<int>({2, 2, 3}));
-        rows = storage.select(sqlite_orm::min(&Score::value, 2), order_by(&Score::id));
+        rows = storage.select(min(&Score::value, 2), order_by(&Score::id));
         REQUIRE_THAT(rows, PointeesEqual<int>({1, 2, 2}));
     }
     SECTION("max over") {
-        auto rows = storage.select(sqlite_orm::max(&Score::value).over(), order_by(&Score::id));
+        auto rows = storage.select(max(&Score::value).over(), order_by(&Score::id));
         REQUIRE_THAT(rows, PointeesEqual<int>({3, 3, 3}));
     }
     SECTION("group_concat") {

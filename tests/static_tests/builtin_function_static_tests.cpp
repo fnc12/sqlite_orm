@@ -246,9 +246,8 @@ TEST_CASE("built-in function static") {
         STATIC_REQUIRE(
             std::is_same_v<decltype(sqlite_orm::acos(1)),
                            builtin_function_call<std::remove_const_t<decltype(internal::acos)>, double(double), int>>);
-        STATIC_REQUIRE(
-            std::is_same_v<decltype(sqlite_orm::acos<std::optional<double>>(1))::return_type, std::optional<double>>);
-        STATIC_REQUIRE(std::is_same_v<decltype(sqlite_orm::acos<float>(&User::id))::signature_type, float(double)>);
+        STATIC_REQUIRE(std::is_same_v<decltype(acos<std::optional<double>>(1))::return_type, std::optional<double>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(acos<float>(&User::id))::signature_type, float(double)>);
         STATIC_REQUIRE(is_builtin_function_v<decltype(sqlite_orm::acos(1))>);
 #endif
     }
@@ -272,8 +271,7 @@ TEST_CASE("built-in function static") {
         STATIC_REQUIRE(std::is_invocable_v<decltype(internal::coalesce), int, int>);
 
         // argument-dependent return types
-        STATIC_REQUIRE(
-            std::is_same_v<column_result_of_t<dbos, decltype(sqlite_orm::abs(&User::id))>, std::unique_ptr<double>>);
+        STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(abs(&User::id))>, std::unique_ptr<double>>);
         STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(ifnull(&User::name, "n/a"))>, std::string>);
         STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(nullif(&User::id, 0))>, std::optional<int>>);
         STATIC_REQUIRE(std::is_same_v<column_result_of_t<dbos, decltype(nullif<double>(&User::id, 0))>, double>);
