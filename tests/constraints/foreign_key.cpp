@@ -210,4 +210,49 @@ TEST_CASE("Foreign key with inheritance") {
     Classroom classroom = {0, teacher_id, student_id, "Room A"};
     storage.insert(classroom);
 }
+
+TEST_CASE("deferrable foreign key") {
+    struct Parent {
+        int id = 0;
+    };
+    struct Child {
+        int id = 0;
+        int parentId = 0;
+    };
+    auto parentTable = make_table("parents", make_column("id", &Parent::id, primary_key()));
+
+    SECTION("initially deferred defers the check to the commit") {
+        auto storage = make_storage(
+            {},
+            parentTable,
+            make_table("children",
+                       make_column("id", &Child::id, primary_key()),
+                       make_column("parent_id", &Child::parentId),
+                       foreign_key(&Child::parentId).references(&Parent::id).deferrable.initially_deferred()));
+        storage.sync_schema();
+
+        //  the deferrable clause must survive a schema roundtrip untouched
+        auto simulated = storage.sync_schema_simulate();
+        REQUIRE(simulated["children"] == sync_schema_result::already_in_sync);
+
+        //  a child may be inserted before its parent as long as the parent exists at COMMIT
+        auto guard = storage.transaction_guard();
+        storage.insert(Child{1, 42});
+        storage.replace(Parent{42});
+        guard.commit();
+        REQUIRE(storage.count<Child>() == 1);
+    }
+    SECTION("the default enforcement rejects an orphan right away") {
+        auto storage = make_storage({},
+                                    parentTable,
+                                    make_table("children",
+                                               make_column("id", &Child::id, primary_key()),
+                                               make_column("parent_id", &Child::parentId),
+                                               foreign_key(&Child::parentId).references(&Parent::id)));
+        storage.sync_schema();
+
+        auto guard = storage.transaction_guard();
+        REQUIRE_THROWS_AS(storage.insert(Child{1, 42}), std::system_error);
+    }
+}
 #endif

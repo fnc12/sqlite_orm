@@ -284,6 +284,79 @@ TEST_CASE("statement_serializer foreign key") {
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON DELETE CASCADE)");
             }
         }
+        SECTION("deferrable") {
+            std::string value;
+            decltype(value) expected;
+            SECTION("initially_deferred") {
+                const auto fk = foreign_key(&Visit::userId).references(&User::id).deferrable.initially_deferred();
+
+                auto visitsTable = make_table("visits",
+                                              make_column("id", &Visit::id, primary_key().autoincrement()),
+                                              make_column("user_id", &Visit::userId),
+                                              make_column("time", &Visit::time),
+                                              fk);
+
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
+                db_objects_t dbObjects{usersTable, visitsTable};
+                using context_t = internal::serializer_context<db_objects_t>;
+                context_t context{dbObjects};
+                value = serialize(fk, context);
+                expected = R"(FOREIGN KEY("user_id") REFERENCES "users"("id") DEFERRABLE INITIALLY DEFERRED)";
+            }
+            SECTION("initially_immediate") {
+                const auto fk = foreign_key(&Visit::userId).references(&User::id).deferrable.initially_immediate();
+
+                auto visitsTable = make_table("visits",
+                                              make_column("id", &Visit::id, primary_key().autoincrement()),
+                                              make_column("user_id", &Visit::userId),
+                                              make_column("time", &Visit::time),
+                                              fk);
+
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
+                db_objects_t dbObjects{usersTable, visitsTable};
+                using context_t = internal::serializer_context<db_objects_t>;
+                context_t context{dbObjects};
+                value = serialize(fk, context);
+                expected = R"(FOREIGN KEY("user_id") REFERENCES "users"("id") DEFERRABLE INITIALLY IMMEDIATE)";
+            }
+            SECTION("not_deferrable") {
+                const auto fk = foreign_key(&Visit::userId).references(&User::id).deferrable.not_deferrable();
+
+                auto visitsTable = make_table("visits",
+                                              make_column("id", &Visit::id, primary_key().autoincrement()),
+                                              make_column("user_id", &Visit::userId),
+                                              make_column("time", &Visit::time),
+                                              fk);
+
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
+                db_objects_t dbObjects{usersTable, visitsTable};
+                using context_t = internal::serializer_context<db_objects_t>;
+                context_t context{dbObjects};
+                value = serialize(fk, context);
+                expected = R"(FOREIGN KEY("user_id") REFERENCES "users"("id") NOT DEFERRABLE)";
+            }
+            SECTION("after the actions") {
+                const auto fk = foreign_key(&Visit::userId)
+                                    .references(&User::id)
+                                    .on_delete.cascade()
+                                    .deferrable.initially_deferred();
+
+                auto visitsTable = make_table("visits",
+                                              make_column("id", &Visit::id, primary_key().autoincrement()),
+                                              make_column("user_id", &Visit::userId),
+                                              make_column("time", &Visit::time),
+                                              fk);
+
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
+                db_objects_t dbObjects{usersTable, visitsTable};
+                using context_t = internal::serializer_context<db_objects_t>;
+                context_t context{dbObjects};
+                value = serialize(fk, context);
+                expected =
+                    R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED)";
+            }
+            REQUIRE(value == expected);
+        }
     }
     SECTION("one to explicit one") {
         struct Object {
