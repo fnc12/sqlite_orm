@@ -130,6 +130,84 @@ namespace sqlite_orm::internal {
         }
     };
 
+    enum class foreign_key_enforcement {
+        not_specified,  //  clause absent, which SQLite treats as NOT DEFERRABLE
+        deferred,  //  DEFERRABLE INITIALLY DEFERRED
+        immediate,  //  DEFERRABLE INITIALLY IMMEDIATE
+        not_deferrable,  //  NOT DEFERRABLE
+    };
+
+    inline std::ostream& operator<<(std::ostream& os, foreign_key_enforcement enforcement) {
+        switch (enforcement) {
+            case foreign_key_enforcement::deferred:
+                os << "DEFERRABLE INITIALLY DEFERRED";
+                break;
+            case foreign_key_enforcement::immediate:
+                os << "DEFERRABLE INITIALLY IMMEDIATE";
+                break;
+            case foreign_key_enforcement::not_deferrable:
+                os << "NOT DEFERRABLE";
+                break;
+            case foreign_key_enforcement::not_specified:
+                break;
+        }
+        return os;
+    }
+
+    struct fk_enforcement_state {
+        foreign_key_enforcement _enforcement = foreign_key_enforcement::not_specified;
+
+        explicit operator bool() const {
+            return _enforcement != foreign_key_enforcement::not_specified;
+        }
+
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        friend bool operator==(const fk_enforcement_state&, const fk_enforcement_state&) = default;
+#else
+        friend bool operator==(const fk_enforcement_state& lhs, const fk_enforcement_state& rhs) {
+            return lhs._enforcement == rhs._enforcement;
+        }
+#endif
+    };
+
+    /**
+     *  F - foreign key class
+     */
+    template<class F>
+    struct fk_deferrable : fk_enforcement_state {
+        static_assert(polyfill::is_specialization_of_v<F, foreign_key_t>);
+        using foreign_key_type = F;
+
+        /**
+         *  `DEFERRABLE INITIALLY DEFERRED`: the constraint is checked at `COMMIT`
+         *  instead of at the end of each statement.
+         */
+        foreign_key_type initially_deferred() const {
+            return this->copy_fk(foreign_key_enforcement::deferred);
+        }
+
+        /**
+         *  `DEFERRABLE INITIALLY IMMEDIATE`: the default per-statement enforcement, spelled out.
+         */
+        foreign_key_type initially_immediate() const {
+            return this->copy_fk(foreign_key_enforcement::immediate);
+        }
+
+        /**
+         *  `NOT DEFERRABLE`: the default per-statement enforcement, spelled out.
+         */
+        foreign_key_type not_deferrable() const {
+            return this->copy_fk(foreign_key_enforcement::not_deferrable);
+        }
+
+      private:
+        foreign_key_type copy_fk(foreign_key_enforcement newEnforcement) const {
+            foreign_key_type fk2 = *addressof_enclosing(this, &F::deferrable);
+            fk2.deferrable._enforcement = newEnforcement;
+            return fk2;
+        }
+    };
+
     template<class... Cs, class... Rs>
     struct foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> {
         using columns_type = std::tuple<Cs...>;
@@ -149,13 +227,14 @@ namespace sqlite_orm::internal {
         references_type _references;
         on_fk_update_delete<foreign_key_t, true> on_update;
         on_fk_update_delete<foreign_key_t, false> on_delete;
+        fk_deferrable<foreign_key_t> deferrable;
 
         static_assert(!std::is_same<source_type, void>::value, "All columns must have the same mapped type");
         static_assert(!std::is_same<target_type, void>::value, "All references must have the same mapped type");
 
         friend bool operator==(const foreign_key_t& lhs, const foreign_key_t& rhs) {
             return lhs._columns == rhs._columns && lhs._references == rhs._references &&
-                   lhs.on_update == rhs.on_update && lhs.on_delete == rhs.on_delete;
+                   lhs.on_update == rhs.on_update && lhs.on_delete == rhs.on_delete && lhs.deferrable == rhs.deferrable;
         }
     };
 
