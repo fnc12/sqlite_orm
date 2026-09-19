@@ -974,10 +974,12 @@ namespace sqlite_orm::internal {
          */
         void release_savepoint(const std::string& savepointName) {
             if (connection_ptr maybeConnection = *this->connection) {
+                //  drop the reference owned by the savepoint since `savepoint()` first -
+                //  `maybeConnection` keeps the connection alive through the statement -
+                //  so that a failing statement cannot leak it
+                this->connection->release();
                 this->executor.perform_void_exec(maybeConnection.get(),
                                                  this->savepoint_sql("RELEASE SAVEPOINT ", savepointName).c_str());
-                //  drop the reference owned by the savepoint since `savepoint()`
-                this->connection->release();
             }
             // check for programming error on user's side not having called `savepoint()` before
             else {
@@ -1003,9 +1005,11 @@ namespace sqlite_orm::internal {
 
         void commit() {
             if (connection_ptr maybeConnection = *this->connection) {
-                this->executor.perform_void_exec(maybeConnection.get(), "COMMIT");
-                //  drop the reference owned by the transaction since `begin_transaction()`
+                //  drop the reference owned by the transaction since `begin_transaction()` first -
+                //  `maybeConnection` keeps the connection alive through the statement -
+                //  so that a failing COMMIT cannot leak it
                 this->connection->release();
+                this->executor.perform_void_exec(maybeConnection.get(), "COMMIT");
             }
             // check for programming error on user's side not having called `begin_transaction()` before
             else {
@@ -1015,9 +1019,11 @@ namespace sqlite_orm::internal {
 
         void rollback() {
             if (connection_ptr maybeConnection = *this->connection) {
-                this->executor.perform_void_exec(maybeConnection.get(), "ROLLBACK");
-                //  drop the reference owned by the transaction since `begin_transaction()`
+                //  drop the reference owned by the transaction since `begin_transaction()` first -
+                //  `maybeConnection` keeps the connection alive through the statement -
+                //  so that a failing ROLLBACK cannot leak it
                 this->connection->release();
+                this->executor.perform_void_exec(maybeConnection.get(), "ROLLBACK");
             }
             // check for programming error on user's side not having called `begin_transaction()` before
             else {
