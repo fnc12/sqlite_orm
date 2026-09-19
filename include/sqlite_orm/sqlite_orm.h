@@ -14096,7 +14096,13 @@ namespace sqlite_orm::internal::storage_traits {
 
 // #include "schema/algorithms/table_lookup.h"
 // schema_pick_table_t
-// #include "function.h"
+// #include "ast/app_function.h"
+
+/** @file The node of a call of an application-defined function, and the definition of an application-defined
+ *        function by its UDF type (`func<UDF>`) or by a quoted callable (`"name"_scalar`), which generates the
+ *        call nodes. Also the UDF classification traits and the argument/return type deduction the storage
+ *        uses to register the function with SQLite.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_member_function_pointer, std::is_function, std::remove_const, std::decay, std::is_convertible, std::is_same, std::false_type, std::true_type, std::is_pointer
@@ -14109,17 +14115,17 @@ namespace sqlite_orm::internal::storage_traits {
 #include <utility>  //  std::move, std::forward
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/cstring_literal.h"
+// #include "../functional/cstring_literal.h"
 
-// #include "functional/function_traits.h"
+// #include "../functional/function_traits.h"
 
-// #include "functional/type_traits.h"
+// #include "../functional/type_traits.h"
 
-// #include "vocabulary/traits/grammar_traits_fwd.h"
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
-// #include "vocabulary/traits/operand_traits_fwd.h"
+// #include "../vocabulary/traits/operand_traits_fwd.h"
 // Included to specialize traits
 
 // export forward-declarations
@@ -14156,7 +14162,7 @@ namespace sqlite_orm::internal {
                     std::enable_if_t<std::is_member_function_pointer<aggregate_fin_function_t<F>>::value>>> = true;
 
     template<class UDF>
-    struct function;
+    struct app_function;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -14204,14 +14210,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** @short Specifies that a type is a framed user-defined scalar function.
      */
     template<class F>
-    concept orm_scalar_function = (polyfill::is_specialization_of_v<std::remove_const_t<F>, internal::function> &&
+    concept orm_scalar_function = (polyfill::is_specialization_of_v<std::remove_const_t<F>, internal::app_function> &&
                                    orm_scalar_udf<typename F::udf_type>);
 
     /** @short Specifies that a type is a framed user-defined aggregate function.
      */
     template<class F>
-    concept orm_aggregate_function = (polyfill::is_specialization_of_v<std::remove_const_t<F>, internal::function> &&
-                                      orm_aggregate_udf<typename F::udf_type>);
+    concept orm_aggregate_function =
+        (polyfill::is_specialization_of_v<std::remove_const_t<F>, internal::app_function> &&
+         orm_aggregate_udf<typename F::udf_type>);
 
     /** @short Specifies that a type is a framed and quoted user-defined scalar function.
      */
@@ -14311,7 +14318,7 @@ namespace sqlite_orm::internal {
      *  Represents a call of a user-defined function.
      */
     template<class UDF, class... CallArgs>
-    struct function_call {
+    struct app_function_call {
         using udf_type = UDF;
         using args_tuple = std::tuple<CallArgs...>;
 
@@ -14321,14 +14328,14 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool
-        is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, function_call>::value>> = true;
+        is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, app_function_call>::value>> = true;
 
     template<class T>
     struct unpacked_arg {
         using type = T;
     };
     template<class F, class... CallArgs>
-    struct unpacked_arg<function_call<F, CallArgs...>> {
+    struct unpacked_arg<app_function_call<F, CallArgs...>> {
         using type = typename callable_arguments<F>::return_type;
     };
     template<class T>
@@ -14433,10 +14440,10 @@ namespace sqlite_orm::internal {
      *  
      *  Use the variable template `func<>` to instantiate.
      *  
-     *  Calling the generator captures the parameters in a `function_call` expression.
+     *  Calling the generator captures the parameters in an `app_function_call` expression.
      */
     template<class UDF>
-    struct function {
+    struct app_function {
         using udf_type = UDF;
         using callable_type = UDF;
 
@@ -14444,7 +14451,7 @@ namespace sqlite_orm::internal {
          *  Generates the SQL function call expression.
          */
         template<typename... CallArgs>
-        function_call<UDF, CallArgs...> operator()(CallArgs... callArgs) const {
+        app_function_call<UDF, CallArgs...> operator()(CallArgs... callArgs) const {
             check_function_call<UDF, CallArgs...>();
             return {_udf_holder(), {std::forward<CallArgs>(callArgs)...}};
         }
@@ -14466,7 +14473,7 @@ namespace sqlite_orm::internal {
      *  Use the string literal operator template `""_scalar.quote()` to quote
      *  a freestanding function, lambda or function object.
      *  
-     *  Calling the generator captures the parameters in a `function_call` expression.
+     *  Calling the generator captures the parameters in an `app_function_call` expression.
      *  
      *  Internal notes:
      *  1. The nested `udf_type` typename is deliberately chosen to be the function signature,
@@ -14481,7 +14488,7 @@ namespace sqlite_orm::internal {
          *  Generates the SQL function call expression.
          */
         template<typename... CallArgs>
-        function_call<udf_type, CallArgs...> operator()(CallArgs... callArgs) const {
+        app_function_call<udf_type, CallArgs...> operator()(CallArgs... callArgs) const {
             check_function_call<udf_type, CallArgs...>();
             return {_udf_holder(), {std::forward<CallArgs>(callArgs)...}};
         }
@@ -14624,7 +14631,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         requires (orm_scalar_udf<UDF> || orm_aggregate_udf<UDF>)
 #endif
-    inline constexpr internal::function<UDF> func{};
+    inline constexpr internal::app_function<UDF> func{};
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     inline namespace literals {
@@ -15349,7 +15356,7 @@ namespace sqlite_orm::internal {
         : substitute_arguments<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<argument_result_of_t, DBOs>> {};
 
     template<class DBOs, class F, class... Args>
-    struct column_result_t<DBOs, function_call<F, Args...>, void> {
+    struct column_result_t<DBOs, app_function_call<F, Args...>, void> {
         using type = typename callable_arguments<F>::return_type;
     };
 
@@ -18016,7 +18023,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-// #include "function.h"
+// #include "ast/app_function.h"
 
 // #include "ast/excluded.h"
 
@@ -18622,8 +18629,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class F, class... CallArgs>
-    struct ast_iterator<function_call<F, CallArgs...>, void> {
-        using node_type = function_call<F, CallArgs...>;
+    struct ast_iterator<app_function_call<F, CallArgs...>, void> {
+        using node_type = app_function_call<F, CallArgs...>;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& f, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -20343,7 +20350,7 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "function.h"
+// #include "ast/app_function.h"
 
 // #include "values_to_tuple.h"
 
@@ -23234,7 +23241,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "conditions.h"
 
-// #include "function.h"
+// #include "ast/app_function.h"
 
 // #include "prepared_statement.h"
 
@@ -24620,8 +24627,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class F, class... CallArgs>
-    struct statement_serializer<function_call<F, CallArgs...>, void> {
-        using statement_type = function_call<F, CallArgs...>;
+    struct statement_serializer<app_function_call<F, CallArgs...>, void> {
+        using statement_type = app_function_call<F, CallArgs...>;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -27564,7 +27571,7 @@ namespace sqlite_orm::internal {
 
 // #include "conditions.h"
 
-// #include "function.h"
+// #include "ast/app_function.h"
 
 // #include "storage_base.h"
 
@@ -27580,9 +27587,9 @@ namespace sqlite_orm::internal {
         const std::list<udf_proxy>& _aggregateFunctions;
         const std::map<std::string, storage_base::collating_function>& _collatingFunctions;
 
-        // examine `function_call` node expressions
+        // examine `app_function_call` node expressions
         template<class UDF, class... CallArgs>
-        void operator()(std::true_type, const function_call<UDF, CallArgs...>& udfCall) const {
+        void operator()(std::true_type, const app_function_call<UDF, CallArgs...>& udfCall) const {
             auto&& name = udfCall.name();
             SQLITE_ORM_CPP_UNLIKELY {
                 if (!_contains(_scalarFunctions, name) && !_contains(_aggregateFunctions, name))
@@ -31868,6 +31875,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/special_keywords.h"
 
+// #include "ast/app_function.h"
+
 // #include "ast/values.h"
 
 /** @file The VALUES row list, in both of the DSL spellings sqlite_orm offers for it - spelled out
@@ -32466,7 +32475,7 @@ namespace sqlite_orm::internal {
 
 // #include "optional_container.h"
 
-// #include "function.h"
+// #include "ast/app_function.h"
 
 // #include "ast/excluded.h"
 
@@ -32664,7 +32673,7 @@ namespace sqlite_orm::internal {
         : node_tuple_for<function_type_t<T>, where_expression_t<T>> {};
 
     template<class F, class... Args>
-    struct node_tuple<function_call<F, Args...>, void> : node_tuple_for<Args...> {};
+    struct node_tuple<app_function_call<F, Args...>, void> : node_tuple_for<Args...> {};
 
     template<class T, class O>
     struct node_tuple<left_join_t<T, O>, void> : node_tuple<O> {};

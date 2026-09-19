@@ -29,7 +29,7 @@
 #include "row_extractor.h"
 #include "connection_holder.h"
 #include "backup.h"
-#include "function.h"
+#include "ast/app_function.h"
 #include "values_to_tuple.h"
 #include "arg_values.h"
 #include "util.h"

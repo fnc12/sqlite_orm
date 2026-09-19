@@ -15,7 +15,7 @@ inline constexpr orm_builtin_function auto lower = "LOWER"_builtin.scalar<std::s
 ```
 
 The mechanism mirrors the quoted user-defined function pipeline in
-`dev/function.h` — `_scalar` → `quoted_function_builder` →
+`dev/ast/app_function.h` — `_scalar` → `quoted_function_builder` →
 `quoted_scalar_function` — minus the callable, which a built-in does not
 have.
 

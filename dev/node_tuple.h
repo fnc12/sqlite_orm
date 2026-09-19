@@ -13,7 +13,7 @@
 #include "operators.h"
 #include "prepared_statement.h"
 #include "optional_container.h"
-#include "function.h"
+#include "ast/app_function.h"
 #include "ast/excluded.h"
 #include "ast/match.h"
 #include "ast/cast.h"
@@ -203,7 +203,7 @@ namespace sqlite_orm::internal {
         : node_tuple_for<function_type_t<T>, where_expression_t<T>> {};
 
     template<class F, class... Args>
-    struct node_tuple<function_call<F, Args...>, void> : node_tuple_for<Args...> {};
+    struct node_tuple<app_function_call<F, Args...>, void> : node_tuple_for<Args...> {};
 
     template<class T, class O>
     struct node_tuple<left_join_t<T, O>, void> : node_tuple<O> {};

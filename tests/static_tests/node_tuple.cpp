@@ -957,7 +957,7 @@ TEST_CASE("Node tuple") {
         using ExpectedTuple = tuple<decltype(&User::name)>;
         STATIC_REQUIRE(is_same<Tuple, ExpectedTuple>::value);
     }
-    SECTION("function_call") {
+    SECTION("app_function_call") {
         struct Func {
             static const char* name();
             bool operator()(int value) const {

@@ -56,6 +56,7 @@
 #include "ast/rowset_deduplicators.h"
 #include "ast/select.h"
 #include "ast/special_keywords.h"
+#include "ast/app_function.h"
 #include "ast/values.h"
 #include "ast/where.h"
 #include "ast/window.h"

@@ -37,7 +37,7 @@
 #include "ast/is_not_null.h"
 #include "window_functions.h"
 #include "conditions.h"
-#include "function.h"
+#include "ast/app_function.h"
 #include "prepared_statement.h"
 #include "rowid.h"
 #include "pointer_value.h"
@@ -718,8 +718,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class F, class... CallArgs>
-    struct statement_serializer<function_call<F, CallArgs...>, void> {
-        using statement_type = function_call<F, CallArgs...>;
+    struct statement_serializer<app_function_call<F, CallArgs...>, void> {
+        using statement_type = app_function_call<F, CallArgs...>;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,

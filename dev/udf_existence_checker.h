@@ -7,7 +7,7 @@
 
 #include "error_code.h"
 #include "conditions.h"
-#include "function.h"
+#include "ast/app_function.h"
 #include "storage_base.h"
 
 namespace sqlite_orm::internal {
@@ -22,9 +22,9 @@ namespace sqlite_orm::internal {
         const std::list<udf_proxy>& _aggregateFunctions;
         const std::map<std::string, storage_base::collating_function>& _collatingFunctions;
 
-        // examine `function_call` node expressions
+        // examine `app_function_call` node expressions
         template<class UDF, class... CallArgs>
-        void operator()(std::true_type, const function_call<UDF, CallArgs...>& udfCall) const {
+        void operator()(std::true_type, const app_function_call<UDF, CallArgs...>& udfCall) const {
             auto&& name = udfCall.name();
             SQLITE_ORM_CPP_UNLIKELY {
                 if (!_contains(_scalarFunctions, name) && !_contains(_aggregateFunctions, name))

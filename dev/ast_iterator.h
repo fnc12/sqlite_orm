@@ -14,7 +14,7 @@
 #include "alias.h"
 #include "operators.h"
 #include "prepared_statement.h"
-#include "function.h"
+#include "ast/app_function.h"
 #include "ast/excluded.h"
 #include "ast/exists.h"
 #include "ast/match.h"
@@ -496,8 +496,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class F, class... CallArgs>
-    struct ast_iterator<function_call<F, CallArgs...>, void> {
-        using node_type = function_call<F, CallArgs...>;
+    struct ast_iterator<app_function_call<F, CallArgs...>, void> {
+        using node_type = app_function_call<F, CallArgs...>;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& f, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
