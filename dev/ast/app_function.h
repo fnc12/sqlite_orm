@@ -223,8 +223,10 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool
-        is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, app_function_call>::value>> = true;
+    constexpr bool is_app_function_call_v = polyfill::is_specialization_of_v<T, app_function_call>;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_app_function_call_v<T>>> = true;
 
     template<class T>
     struct unpacked_arg {

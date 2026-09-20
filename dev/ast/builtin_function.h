@@ -138,7 +138,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool is_builtin_function_v = is_base_template_of<builtin_function_t, T>::value;
+    constexpr bool is_builtin_function_call_v = is_base_template_of<builtin_function_t, T>::value;
 
     template<class R, class S, class... Args>
     struct builtin_aggregate_function_t : builtin_function_t<R, S, Args...> {
@@ -167,9 +167,6 @@ namespace sqlite_orm::internal {
  *  they state the SQL contract and fix the arity. The return type is not nominal - it is what a select yields.
  */
 namespace sqlite_orm::internal {
-    template<class T>
-    constexpr bool is_builtin_function_v = false;
-
     /*
      *  Marker for the last parameter of a built-in function's signature: "zero or more further `T`".
      *
@@ -309,15 +306,11 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class F, class Sig, class... CallArgs>
-    constexpr bool is_builtin_function_v<builtin_function_call<F, Sig, CallArgs...>> = true;
-    template<class F, class Sig, class... CallArgs>
-    constexpr bool is_builtin_function_v<builtin_aggregate_function_call<F, Sig, CallArgs...>> = true;
+    template<class T>
+    constexpr bool is_builtin_function_call_v = is_base_template_of<builtin_function_call, T>::value;
 
-    template<class F, class Sig, class... CallArgs>
-    constexpr bool is_operator_argument_v<builtin_function_call<F, Sig, CallArgs...>, void> = true;
-    template<class F, class Sig, class... CallArgs>
-    constexpr bool is_operator_argument_v<builtin_aggregate_function_call<F, Sig, CallArgs...>, void> = true;
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_builtin_function_call_v<T>>> = true;
 
     /*
      *  The call node for a matched kinded signature.

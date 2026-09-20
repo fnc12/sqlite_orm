@@ -5,9 +5,10 @@
 #include <string_view>  //  std::string_view
 #endif
 
+#include "functional/type_traits.h"  //  satisfies
+#include "vocabulary/node_traits.h"  //  is_app_function_call
 #include "error_code.h"
 #include "conditions.h"
-#include "ast/app_function.h"
 #include "storage_base.h"
 
 namespace sqlite_orm::internal {
@@ -23,8 +24,8 @@ namespace sqlite_orm::internal {
         const std::map<std::string, storage_base::collating_function>& _collatingFunctions;
 
         // examine `app_function_call` node expressions
-        template<class UDF, class... CallArgs>
-        void operator()(std::true_type, const app_function_call<UDF, CallArgs...>& udfCall) const {
+        template<class T, satisfies<is_app_function_call, T> = true>
+        void operator()(std::true_type, const T& udfCall) const {
             auto&& name = udfCall.name();
             SQLITE_ORM_CPP_UNLIKELY {
                 if (!_contains(_scalarFunctions, name) && !_contains(_aggregateFunctions, name))

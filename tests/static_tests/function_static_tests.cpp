@@ -7,6 +7,8 @@ using internal::app_function;
 using internal::app_function_call;
 using internal::callable_arguments;
 using internal::is_aggregate_udf_v;
+using internal::is_app_function_call_v;
+using internal::is_operator_argument_v;
 using internal::is_scalar_udf_v;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 using internal::quoted_scalar_function;
@@ -268,6 +270,13 @@ TEST_CASE("function static") {
         STATIC_REQUIRE(std::is_same<decltype(scalar(42)), app_function_call<SFunction, int>>::value);
         STATIC_REQUIRE(std::is_same<decltype(aggregate), const app_function<AFunction>>::value);
         STATIC_REQUIRE(std::is_same<decltype(aggregate(42)), app_function_call<AFunction, int>>::value);
+
+        STATIC_REQUIRE(is_app_function_call_v<decltype(scalar(42))>);
+        STATIC_REQUIRE(is_app_function_call_v<decltype(aggregate(42))>);
+        STATIC_REQUIRE_FALSE(is_app_function_call_v<SFunction>);
+        STATIC_REQUIRE_FALSE(is_app_function_call_v<decltype(scalar)>);
+        STATIC_REQUIRE(is_operator_argument_v<decltype(scalar(42))>);
+        STATIC_REQUIRE(is_operator_argument_v<decltype(aggregate(42))>);
 
         STATIC_REQUIRE(std::is_same<app_function<SFunction>::callable_type, SFunction>::value);
         STATIC_REQUIRE(std::is_same<app_function<SFunction>::udf_type, SFunction>::value);

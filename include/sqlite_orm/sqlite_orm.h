@@ -2622,10 +2622,19 @@ namespace sqlite_orm::internal {
     using is_binary_condition = std::bool_constant<is_binary_condition_v<T>>;
 
     template<class T>
-    extern const bool is_builtin_function_v;
+    extern const bool is_builtin_function_call_v;
 
     template<class T>
-    using is_builtin_function = std::bool_constant<is_builtin_function_v<T>>;
+    using is_builtin_function_call = std::bool_constant<is_builtin_function_call_v<T>>;
+
+    /**
+     *  Node representing a call of an application-defined function.
+     */
+    template<class T>
+    extern const bool is_app_function_call_v;
+
+    template<class T>
+    using is_app_function_call = std::bool_constant<is_app_function_call_v<T>>;
 
     /**
      *  Node representing an aggregate function call with a FILTER clause.
@@ -2972,10 +2981,10 @@ namespace sqlite_orm::internal {
     template<class T, class O>
     using enclosing_type_of_t = typename T::template _of<O>::enclosing_type;
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<class T>
     using udf_type_t = typename T::udf_type;
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<decltype(auto) a>
     using auto_udf_type_t = typename std::remove_reference_t<decltype(a)>::udf_type;
 #endif
@@ -8640,7 +8649,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool is_builtin_function_v = is_base_template_of<builtin_function_t, T>::value;
+    constexpr bool is_builtin_function_call_v = is_base_template_of<builtin_function_t, T>::value;
 
     template<class R, class S, class... Args>
     struct builtin_aggregate_function_t : builtin_function_t<R, S, Args...> {
@@ -8669,9 +8678,6 @@ namespace sqlite_orm::internal {
  *  they state the SQL contract and fix the arity. The return type is not nominal - it is what a select yields.
  */
 namespace sqlite_orm::internal {
-    template<class T>
-    constexpr bool is_builtin_function_v = false;
-
     /*
      *  Marker for the last parameter of a built-in function's signature: "zero or more further `T`".
      *
@@ -8811,15 +8817,11 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class F, class Sig, class... CallArgs>
-    constexpr bool is_builtin_function_v<builtin_function_call<F, Sig, CallArgs...>> = true;
-    template<class F, class Sig, class... CallArgs>
-    constexpr bool is_builtin_function_v<builtin_aggregate_function_call<F, Sig, CallArgs...>> = true;
+    template<class T>
+    constexpr bool is_builtin_function_call_v = is_base_template_of<builtin_function_call, T>::value;
 
-    template<class F, class Sig, class... CallArgs>
-    constexpr bool is_operator_argument_v<builtin_function_call<F, Sig, CallArgs...>, void> = true;
-    template<class F, class Sig, class... CallArgs>
-    constexpr bool is_operator_argument_v<builtin_aggregate_function_call<F, Sig, CallArgs...>, void> = true;
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_builtin_function_call_v<T>>> = true;
 
     /*
      *  The call node for a matched kinded signature.
@@ -14327,8 +14329,10 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool
-        is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, app_function_call>::value>> = true;
+    constexpr bool is_app_function_call_v = polyfill::is_specialization_of_v<T, app_function_call>;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_app_function_call_v<T>>> = true;
 
     template<class T>
     struct unpacked_arg {
@@ -15352,12 +15356,12 @@ namespace sqlite_orm::internal {
      *  placeholders replaced by the results of the call arguments.
      */
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_builtin_function, T>>
+    struct column_result_t<DBOs, T, match_if<is_builtin_function_call, T>>
         : substitute_arguments<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<argument_result_of_t, DBOs>> {};
 
-    template<class DBOs, class F, class... Args>
-    struct column_result_t<DBOs, app_function_call<F, Args...>, void> {
-        using type = typename callable_arguments<F>::return_type;
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_app_function_call, T>> {
+        using type = typename callable_arguments<udf_type_t<T>>::return_type;
     };
 
     template<class DBOs, class T>
@@ -18023,8 +18027,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-// #include "ast/app_function.h"
-
 // #include "ast/excluded.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -18628,18 +18630,18 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class F, class... CallArgs>
-    struct ast_iterator<app_function_call<F, CallArgs...>, void> {
-        using node_type = app_function_call<F, CallArgs...>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_app_function_call, T>> {
+        using node_type = T;
 
         template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& f, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(f.callArgs, lambda);
+        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+            iterate_ast(node.callArgs, lambda);
         }
     };
 
     template<class T>
-    struct ast_iterator<T, match_if<is_builtin_function, T>> {
+    struct ast_iterator<T, match_if<is_builtin_function_call, T>> {
         using node_type = T;
 
         template<class L>
@@ -23241,8 +23243,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "conditions.h"
 
-// #include "ast/app_function.h"
-
 // #include "prepared_statement.h"
 
 // #include "rowid.h"
@@ -24614,7 +24614,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<T, match_if<is_builtin_function, T>> {
+    struct statement_serializer<T, match_if<is_builtin_function_call, T>> {
         using statement_type = T;
 
         template<class Ctx>
@@ -24626,9 +24626,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class F, class... CallArgs>
-    struct statement_serializer<app_function_call<F, CallArgs...>, void> {
-        using statement_type = app_function_call<F, CallArgs...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_app_function_call, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -27567,11 +27567,13 @@ namespace sqlite_orm::internal {
 #include <string_view>  //  std::string_view
 #endif
 
+// #include "functional/type_traits.h"
+//  satisfies
+// #include "vocabulary/node_traits.h"
+//  is_app_function_call
 // #include "error_code.h"
 
 // #include "conditions.h"
-
-// #include "ast/app_function.h"
 
 // #include "storage_base.h"
 
@@ -27588,8 +27590,8 @@ namespace sqlite_orm::internal {
         const std::map<std::string, storage_base::collating_function>& _collatingFunctions;
 
         // examine `app_function_call` node expressions
-        template<class UDF, class... CallArgs>
-        void operator()(std::true_type, const app_function_call<UDF, CallArgs...>& udfCall) const {
+        template<class T, satisfies<is_app_function_call, T> = true>
+        void operator()(std::true_type, const T& udfCall) const {
             auto&& name = udfCall.name();
             SQLITE_ORM_CPP_UNLIKELY {
                 if (!_contains(_scalarFunctions, name) && !_contains(_aggregateFunctions, name))
@@ -32475,8 +32477,6 @@ namespace sqlite_orm::internal {
 
 // #include "optional_container.h"
 
-// #include "ast/app_function.h"
-
 // #include "ast/excluded.h"
 
 // #include "ast/match.h"
@@ -32666,14 +32666,14 @@ namespace sqlite_orm::internal {
     struct node_tuple<bitwise_not_t<T>, void> : node_tuple<T> {};
 
     template<class T>
-    struct node_tuple<T, match_if<is_builtin_function, T>> : node_tuple<args_tuple_t<T>> {};
+    struct node_tuple<T, match_if<is_builtin_function_call, T>> : node_tuple<args_tuple_t<T>> {};
 
     template<class T>
     struct node_tuple<T, match_if<is_filtered_aggregate_function, T>>
         : node_tuple_for<function_type_t<T>, where_expression_t<T>> {};
 
-    template<class F, class... Args>
-    struct node_tuple<app_function_call<F, Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_app_function_call, T>> : node_tuple<args_tuple_t<T>> {};
 
     template<class T, class O>
     struct node_tuple<left_join_t<T, O>, void> : node_tuple<O> {};
