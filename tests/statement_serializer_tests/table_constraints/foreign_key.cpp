@@ -288,7 +288,7 @@ TEST_CASE("statement_serializer foreign key") {
             std::string value;
             decltype(value) expected;
             SECTION("initially_deferred") {
-                const auto fk = foreign_key(&Visit::userId).references(&User::id).deferrable.initially_deferred();
+                const auto fk = foreign_key(&Visit::userId).references(&User::id).initially_deferred();
 
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key().autoincrement()),
@@ -304,7 +304,7 @@ TEST_CASE("statement_serializer foreign key") {
                 expected = R"(FOREIGN KEY("user_id") REFERENCES "users"("id") DEFERRABLE INITIALLY DEFERRED)";
             }
             SECTION("initially_immediate") {
-                const auto fk = foreign_key(&Visit::userId).references(&User::id).deferrable.initially_immediate();
+                const auto fk = foreign_key(&Visit::userId).references(&User::id).initially_immediate();
 
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key().autoincrement()),
@@ -320,7 +320,7 @@ TEST_CASE("statement_serializer foreign key") {
                 expected = R"(FOREIGN KEY("user_id") REFERENCES "users"("id") DEFERRABLE INITIALLY IMMEDIATE)";
             }
             SECTION("not_deferrable") {
-                const auto fk = foreign_key(&Visit::userId).references(&User::id).deferrable.not_deferrable();
+                const auto fk = foreign_key(&Visit::userId).references(&User::id).not_deferrable();
 
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key().autoincrement()),
@@ -336,10 +336,8 @@ TEST_CASE("statement_serializer foreign key") {
                 expected = R"(FOREIGN KEY("user_id") REFERENCES "users"("id") NOT DEFERRABLE)";
             }
             SECTION("after the actions") {
-                const auto fk = foreign_key(&Visit::userId)
-                                    .references(&User::id)
-                                    .on_delete.cascade()
-                                    .deferrable.initially_deferred();
+                const auto fk =
+                    foreign_key(&Visit::userId).references(&User::id).on_delete.cascade().initially_deferred();
 
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key().autoincrement()),

@@ -1549,8 +1549,8 @@ namespace sqlite_orm::internal {
             if (fk.on_delete) {
                 ss << ' ' << static_cast<std::string>(fk.on_delete) << " " << fk.on_delete._action;
             }
-            if (fk.deferrable) {
-                ss << ' ' << fk.deferrable._enforcement;
+            if (fk._deferrable) {
+                ss << ' ' << fk._deferrable._enforcement;
             }
             return ss.str();
         }

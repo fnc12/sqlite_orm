@@ -222,13 +222,13 @@ TEST_CASE("deferrable foreign key") {
     auto parentTable = make_table("parents", make_column("id", &Parent::id, primary_key()));
 
     SECTION("initially deferred defers the check to the commit") {
-        auto storage = make_storage(
-            {},
-            parentTable,
-            make_table("children",
-                       make_column("id", &Child::id, primary_key()),
-                       make_column("parent_id", &Child::parentId),
-                       foreign_key(&Child::parentId).references(&Parent::id).deferrable.initially_deferred()));
+        auto storage =
+            make_storage({},
+                         parentTable,
+                         make_table("children",
+                                    make_column("id", &Child::id, primary_key()),
+                                    make_column("parent_id", &Child::parentId),
+                                    foreign_key(&Child::parentId).references(&Parent::id).initially_deferred()));
         storage.sync_schema();
 
         //  the deferrable clause must survive a schema roundtrip untouched
