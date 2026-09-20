@@ -24,7 +24,7 @@
 #include "cte_types.h"
 #include "storage_traits.h"
 #include "schema/algorithms/table_lookup.h"  // schema_pick_table_t
-#include "function.h"
+#include "ast/app_function.h"
 #include "ast/special_keywords.h"
 #include "ast/cast.h"
 #include "ast/in.h"
@@ -157,12 +157,12 @@ namespace sqlite_orm::internal {
      *  placeholders replaced by the results of the call arguments.
      */
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_builtin_function, T>>
+    struct column_result_t<DBOs, T, match_if<is_builtin_function_call, T>>
         : substitute_arguments<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<argument_result_of_t, DBOs>> {};
 
-    template<class DBOs, class F, class... Args>
-    struct column_result_t<DBOs, function_call<F, Args...>, void> {
-        using type = typename callable_arguments<F>::return_type;
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_app_function_call, T>> {
+        using type = typename callable_arguments<udf_type_t<T>>::return_type;
     };
 
     template<class DBOs, class T>

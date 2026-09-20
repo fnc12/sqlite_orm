@@ -15,7 +15,7 @@ inline constexpr orm_builtin_function auto lower = "LOWER"_builtin.scalar<std::s
 ```
 
 The mechanism mirrors the quoted user-defined function pipeline in
-`dev/function.h` — `_scalar` → `quoted_function_builder` →
+`dev/ast/app_function.h` — `_scalar` → `quoted_function_builder` →
 `quoted_scalar_function` — minus the callable, which a built-in does not
 have.
 
@@ -93,7 +93,7 @@ set) and its alias `substring` to prove the pattern. Everything else stays on
    not pick up `_builtin`, because `sqlite_orm` never nominates `internal`.
 
 6. **Trait integration, not type piggy-backing.** The new node specializes
-   `is_builtin_function_v` (and `is_operator_argument_v`) and provides the
+   `is_builtin_function_call_v` (and `is_operator_argument_v`) and provides the
    three members the trait's consumers use — `serialize()`, `args`,
    `return_type`. `statement_serializer`, `column_result_t`, `ast_iterator`
    and `node_tuple` program against the trait and need no edits.
@@ -207,7 +207,7 @@ first argument.
    `filtered_aggregate_function<Self, W>` and `.over(...)` → `over_t<Self, ...>`.
    Both wrappers are already generic over the wrapped function node, so the
    serializer, `column_result_t`, `ast_iterator` and `node_tuple` need
-   nothing. The exact-match traits (`is_builtin_function_v`,
+   nothing. The exact-match traits (`is_builtin_function_call_v`,
    `is_operator_argument_v`) get a second specialization — inheritance does
    not classify. No `is_builtin_aggregate_function` trait until something
    consumes one.

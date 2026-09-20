@@ -100,6 +100,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 **Query building:**
 - `dev/conditions.h` - WHERE clause conditions
 - `dev/core_functions.h` - The built-in SQL functions; their call nodes are in `dev/ast/builtin_function.h`
+- `dev/ast/app_function.h` - Application-defined function calls (`func<UDF>`, `"name"_scalar`) and the UDF classification traits
 - `dev/ast/` - AST nodes for query, DML and operational constructs (`select_t`, `insert_t`, `where`, `window`, ...)
 - `dev/ast/dml/` - One header per DML statement kind (`insert`, `replace`, `update`, `remove`), plus the clause nodes only they take (`into`, `set`, `default_values`, `upsert_clause`)
 
@@ -152,7 +153,11 @@ composes five others is still a trait.
 
 1. Define the node struct in `dev/schema/` or `dev/ast/`.
 2. In **that same header**, specialize whichever vocabulary axes apply (grammar, semantic,
-   structural, operand), including the relevant `vocabulary/traits/*_fwd.h` for each.
+   structural, operand), including the relevant `vocabulary/traits/*_fwd.h` for each. Write
+   them over a type predicate (`is_specialization_of_v`, `is_base_template_of`) or as a
+   SFINAE enabler on the node's grammar trait — never by restating the node's
+   template-parameter pattern. Consumers grammar-match and read through the projections;
+   they never pattern-match the concrete node. The doc has the details.
 3. **Register the header in `dev/node_definitions.h`.**
 4. Add tests under `tests/`.
 
