@@ -21126,6 +21126,19 @@ namespace sqlite_orm::internal {
             return ss.str();
         }
 
+        /*
+         *  Exception-safe kickoff shared by the manual transaction and savepoint methods.
+         *  The connection reference that the open transaction owns until the matching
+         *  `commit()`/`rollback()`/`release_savepoint()` is only retained once the `BEGIN` or
+         *  `SAVEPOINT` statement has succeeded, so that a failing one - e.g. a nested
+         *  `BEGIN` - cannot leak the connection [#1539].
+         */
+        void begin_transaction_internal(const char* sql) {
+            const connection_ref connection = this->get_connection();
+            this->executor.perform_void_exec(connection.get(), sql);
+            this->connection->retain();
+        }
+
         void add_generated_cols(std::vector<const table_xinfo*>& columnsToAdd,
                                 const std::vector<table_xinfo>& storageTableInfo) {
             //  iterate through storage columns
@@ -21706,23 +21719,19 @@ namespace sqlite_orm::internal {
         }
 
         void begin_transaction() {
-            sqlite3* db = this->connection->retain();
-            this->executor.perform_void_exec(db, "BEGIN TRANSACTION");
+            this->begin_transaction_internal("BEGIN TRANSACTION");
         }
 
         void begin_deferred_transaction() {
-            sqlite3* db = this->connection->retain();
-            this->executor.perform_void_exec(db, "BEGIN DEFERRED TRANSACTION");
+            this->begin_transaction_internal("BEGIN DEFERRED TRANSACTION");
         }
 
         void begin_immediate_transaction() {
-            sqlite3* db = this->connection->retain();
-            this->executor.perform_void_exec(db, "BEGIN IMMEDIATE TRANSACTION");
+            this->begin_transaction_internal("BEGIN IMMEDIATE TRANSACTION");
         }
 
         void begin_exclusive_transaction() {
-            sqlite3* db = this->connection->retain();
-            this->executor.perform_void_exec(db, "BEGIN EXCLUSIVE TRANSACTION");
+            this->begin_transaction_internal("BEGIN EXCLUSIVE TRANSACTION");
         }
 
         /**
@@ -21731,8 +21740,7 @@ namespace sqlite_orm::internal {
          *  More info: https://www.sqlite.org/lang_savepoint.html
          */
         void savepoint(const std::string& savepointName) {
-            sqlite3* db = this->connection->retain();
-            this->executor.perform_void_exec(db, this->savepoint_sql("SAVEPOINT ", savepointName).c_str());
+            this->begin_transaction_internal(this->savepoint_sql("SAVEPOINT ", savepointName).c_str());
         }
 
         /**
@@ -21742,6 +21750,10 @@ namespace sqlite_orm::internal {
          */
         void release_savepoint(const std::string& savepointName) {
             if (connection_ptr maybeConnection = *this->connection) {
+                //  drop the reference owned by the savepoint since `savepoint()` first -
+                //  `maybeConnection` keeps the connection alive through the statement -
+                //  so that a failing statement cannot leak it
+                this->connection->release();
                 this->executor.perform_void_exec(maybeConnection.get(),
                                                  this->savepoint_sql("RELEASE SAVEPOINT ", savepointName).c_str());
             }
@@ -21769,6 +21781,10 @@ namespace sqlite_orm::internal {
 
         void commit() {
             if (connection_ptr maybeConnection = *this->connection) {
+                //  drop the reference owned by the transaction since `begin_transaction()` first -
+                //  `maybeConnection` keeps the connection alive through the statement -
+                //  so that a failing COMMIT cannot leak it
+                this->connection->release();
                 this->executor.perform_void_exec(maybeConnection.get(), "COMMIT");
             }
             // check for programming error on user's side not having called `begin_transaction()` before
@@ -21779,6 +21795,10 @@ namespace sqlite_orm::internal {
 
         void rollback() {
             if (connection_ptr maybeConnection = *this->connection) {
+                //  drop the reference owned by the transaction since `begin_transaction()` first -
+                //  `maybeConnection` keeps the connection alive through the statement -
+                //  so that a failing ROLLBACK cannot leak it
+                this->connection->release();
                 this->executor.perform_void_exec(maybeConnection.get(), "ROLLBACK");
             }
             // check for programming error on user's side not having called `begin_transaction()` before
