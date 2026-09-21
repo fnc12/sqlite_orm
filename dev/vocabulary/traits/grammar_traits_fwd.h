@@ -694,10 +694,19 @@ namespace sqlite_orm::internal {
     using is_binary_condition = std::bool_constant<is_binary_condition_v<T>>;
 
     template<class T>
-    extern const bool is_builtin_function_v;
+    extern const bool is_builtin_function_call_v;
 
     template<class T>
-    using is_builtin_function = std::bool_constant<is_builtin_function_v<T>>;
+    using is_builtin_function_call = std::bool_constant<is_builtin_function_call_v<T>>;
+
+    /**
+     *  Node representing a call of an application-defined function.
+     */
+    template<class T>
+    extern const bool is_app_function_call_v;
+
+    template<class T>
+    using is_app_function_call = std::bool_constant<is_app_function_call_v<T>>;
 
     /**
      *  Node representing an aggregate function call with a FILTER clause.

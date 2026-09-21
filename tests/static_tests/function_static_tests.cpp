@@ -3,10 +3,12 @@
 #include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
+using internal::app_function;
+using internal::app_function_call;
 using internal::callable_arguments;
-using internal::function;
-using internal::function_call;
 using internal::is_aggregate_udf_v;
+using internal::is_app_function_call_v;
+using internal::is_operator_argument_v;
 using internal::is_scalar_udf_v;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 using internal::quoted_scalar_function;
@@ -264,21 +266,28 @@ TEST_CASE("function static") {
         constexpr auto scalar = func<SFunction>;
         constexpr auto aggregate = func<AFunction>;
 
-        STATIC_REQUIRE(std::is_same<decltype(scalar), const function<SFunction>>::value);
-        STATIC_REQUIRE(std::is_same<decltype(scalar(42)), function_call<SFunction, int>>::value);
-        STATIC_REQUIRE(std::is_same<decltype(aggregate), const function<AFunction>>::value);
-        STATIC_REQUIRE(std::is_same<decltype(aggregate(42)), function_call<AFunction, int>>::value);
+        STATIC_REQUIRE(std::is_same<decltype(scalar), const app_function<SFunction>>::value);
+        STATIC_REQUIRE(std::is_same<decltype(scalar(42)), app_function_call<SFunction, int>>::value);
+        STATIC_REQUIRE(std::is_same<decltype(aggregate), const app_function<AFunction>>::value);
+        STATIC_REQUIRE(std::is_same<decltype(aggregate(42)), app_function_call<AFunction, int>>::value);
 
-        STATIC_REQUIRE(std::is_same<function<SFunction>::callable_type, SFunction>::value);
-        STATIC_REQUIRE(std::is_same<function<SFunction>::udf_type, SFunction>::value);
+        STATIC_REQUIRE(is_app_function_call_v<decltype(scalar(42))>);
+        STATIC_REQUIRE(is_app_function_call_v<decltype(aggregate(42))>);
+        STATIC_REQUIRE_FALSE(is_app_function_call_v<SFunction>);
+        STATIC_REQUIRE_FALSE(is_app_function_call_v<decltype(scalar)>);
+        STATIC_REQUIRE(is_operator_argument_v<decltype(scalar(42))>);
+        STATIC_REQUIRE(is_operator_argument_v<decltype(aggregate(42))>);
+
+        STATIC_REQUIRE(std::is_same<app_function<SFunction>::callable_type, SFunction>::value);
+        STATIC_REQUIRE(std::is_same<app_function<SFunction>::udf_type, SFunction>::value);
 
 #ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
         constexpr auto scalar2 = func<SFunction2>;
 
-        STATIC_REQUIRE(std::is_same<decltype(scalar2), const function<SFunction2>>::value);
-        STATIC_REQUIRE(std::is_same<decltype(scalar2(42)), function_call<SFunction2, int>>::value);
-        STATIC_REQUIRE(std::is_same<function<SFunction2>::callable_type, SFunction2>::value);
-        STATIC_REQUIRE(std::is_same<function<SFunction2>::udf_type, SFunction2>::value);
+        STATIC_REQUIRE(std::is_same<decltype(scalar2), const app_function<SFunction2>>::value);
+        STATIC_REQUIRE(std::is_same<decltype(scalar2(42)), app_function_call<SFunction2, int>>::value);
+        STATIC_REQUIRE(std::is_same<app_function<SFunction2>::callable_type, SFunction2>::value);
+        STATIC_REQUIRE(std::is_same<app_function<SFunction2>::udf_type, SFunction2>::value);
 #endif
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -370,7 +379,7 @@ TEST_CASE("function static") {
 
             STATIC_REQUIRE(
                 std::is_same_v<decltype(quotedScalar(0, 1, 1)),
-                               function_call<const int&(const int&, const int&, const int&), int, int, int>>);
+                               app_function_call<const int&(const int&, const int&, const int&), int, int, int>>);
 
             using storage_type = decltype(make_storage(""));
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
@@ -404,7 +413,7 @@ TEST_CASE("function static") {
 
             STATIC_REQUIRE(
                 std::is_same_v<decltype(quotedScalar(0, 1, 1)),
-                               function_call<const int&(const int&, const int&, const int&), int, int, int>>);
+                               app_function_call<const int&(const int&, const int&, const int&), int, int, int>>);
 
             using storage_type = decltype(make_storage(""));
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
@@ -432,8 +441,8 @@ TEST_CASE("function static") {
             STATIC_REQUIRE(orm_quoted_scalar_function<decltype(quotedScalar)>);
             STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(quotedScalar)>);
 
-            STATIC_REQUIRE(
-                std::is_same_v<decltype(quotedScalar(1ul)), function_call<bool(unsigned long) const, unsigned long>>);
+            STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar(1ul)),
+                                          app_function_call<bool(unsigned long) const, unsigned long>>);
 
             using storage_type = decltype(make_storage(""));
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
@@ -462,7 +471,7 @@ TEST_CASE("function static") {
             STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(quotedScalar)>);
 
             STATIC_REQUIRE(
-                std::is_same_v<decltype(quotedScalar(1ul)), function_call<bool(unsigned long), unsigned long>>);
+                std::is_same_v<decltype(quotedScalar(1ul)), app_function_call<bool(unsigned long), unsigned long>>);
 
             using storage_type = decltype(make_storage(""));
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
@@ -487,7 +496,7 @@ TEST_CASE("function static") {
             STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(quotedScalar)>);
 
             STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar(1, 1)),
-                                          function_call<bool(const int&, const int&) const, int, int>>);
+                                          app_function_call<bool(const int&, const int&) const, int, int>>);
 
             using storage_type = decltype(make_storage(""));
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
@@ -511,7 +520,7 @@ TEST_CASE("function static") {
             STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(quotedScalar)>);
 
             STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar(1, 1)),
-                                          function_call<bool(const int&, const int&) const, int, int>>);
+                                          app_function_call<bool(const int&, const int&) const, int, int>>);
 
             using storage_type = decltype(make_storage(""));
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
@@ -535,7 +544,7 @@ TEST_CASE("function static") {
             STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(quotedScalar)>);
 
             STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar(1, 1)),
-                                          function_call<bool(const int&, const int&) const, int, int>>);
+                                          app_function_call<bool(const int&, const int&) const, int, int>>);
 
             using storage_type = decltype(make_storage(""));
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
@@ -558,7 +567,7 @@ TEST_CASE("function static") {
             STATIC_REQUIRE(orm_quoted_scalar_function<decltype(quotedScalar)>);
             STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(quotedScalar)>);
 
-            STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar(1, 1)), function_call<bool(int, int), int, int>>);
+            STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar(1, 1)), app_function_call<bool(int, int), int, int>>);
 
             using storage_type = decltype(make_storage(""));
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);

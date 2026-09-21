@@ -29,7 +29,7 @@ using internal::column_result_of_t;
 using internal::common_argument_type;
 using internal::db_objects_tuple;
 using internal::filtered_aggregate_function;
-using internal::is_builtin_function_v;
+using internal::is_builtin_function_call_v;
 using internal::is_operator_argument_v;
 using internal::over_t;
 using internal::scalar_sig;
@@ -74,7 +74,7 @@ TEST_CASE("built-in function static") {
                                                             std::string User::*>>);
         STATIC_REQUIRE(std::is_same_v<node_type::return_type, std::string>);
         STATIC_REQUIRE(std::is_same_v<node_type::args_tuple, std::tuple<std::string User::*>>);
-        STATIC_REQUIRE(is_builtin_function_v<node_type>);
+        STATIC_REQUIRE(is_builtin_function_call_v<node_type>);
         STATIC_REQUIRE(is_operator_argument_v<node_type>);
         STATIC_REQUIRE(internal::is_arithmetic_operand_v<node_type>);
 
@@ -138,7 +138,7 @@ TEST_CASE("built-in function static") {
                 aggregate_node,
                 builtin_aggregate_function_call<std::remove_const_t<max_type>, aggregate_sig_type, int User::*>>);
         STATIC_REQUIRE(std::is_same_v<aggregate_node::signature_type, aggregate_sig_type>);
-        STATIC_REQUIRE(is_builtin_function_v<aggregate_node>);
+        STATIC_REQUIRE(is_builtin_function_call_v<aggregate_node>);
         STATIC_REQUIRE(is_operator_argument_v<aggregate_node>);
         STATIC_REQUIRE(internal::is_arithmetic_operand_v<aggregate_node>);
 
@@ -248,7 +248,7 @@ TEST_CASE("built-in function static") {
                            builtin_function_call<std::remove_const_t<decltype(internal::acos)>, double(double), int>>);
         STATIC_REQUIRE(std::is_same_v<decltype(acos<std::optional<double>>(1))::return_type, std::optional<double>>);
         STATIC_REQUIRE(std::is_same_v<decltype(acos<float>(&User::id))::signature_type, float(double)>);
-        STATIC_REQUIRE(is_builtin_function_v<decltype(sqlite_orm::acos(1))>);
+        STATIC_REQUIRE(is_builtin_function_call_v<decltype(sqlite_orm::acos(1))>);
 #endif
     }
     SECTION("ported functions") {
@@ -282,13 +282,13 @@ TEST_CASE("built-in function static") {
     SECTION("names shared with the C library") {
         // a built-in whose name is also a global C function is a function template, not an object,
         // so that under `using namespace sqlite_orm;` the two are an overload set rather than an ambiguous lookup
-        STATIC_REQUIRE(is_builtin_function_v<decltype(round(&User::id))>);
-        STATIC_REQUIRE(is_builtin_function_v<decltype(round(&User::id, 2))>);
-        STATIC_REQUIRE(is_builtin_function_v<decltype(time("now"))>);
-        STATIC_REQUIRE(is_builtin_function_v<decltype(strftime("%Y", "now"))>);
-        STATIC_REQUIRE(is_builtin_function_v<decltype(abs(&User::id))>);
+        STATIC_REQUIRE(is_builtin_function_call_v<decltype(round(&User::id))>);
+        STATIC_REQUIRE(is_builtin_function_call_v<decltype(round(&User::id, 2))>);
+        STATIC_REQUIRE(is_builtin_function_call_v<decltype(time("now"))>);
+        STATIC_REQUIRE(is_builtin_function_call_v<decltype(strftime("%Y", "now"))>);
+        STATIC_REQUIRE(is_builtin_function_call_v<decltype(abs(&User::id))>);
 #if SQLITE_VERSION_NUMBER >= 3008003
-        STATIC_REQUIRE(is_builtin_function_v<decltype(printf("%d", &User::id))>);
+        STATIC_REQUIRE(is_builtin_function_call_v<decltype(printf("%d", &User::id))>);
 #endif
         // the C functions keep winning for their own argument types, as they always did
         STATIC_REQUIRE(std::is_same_v<decltype(abs(-1)), int>);

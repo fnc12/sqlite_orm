@@ -271,7 +271,7 @@ TEST_CASE("statement_serializer select constraints") {
             expected = R"(SELECT "users".* FROM "users" NATURAL JOIN "user_props")";
         }
     }
-    SECTION("function_call") {
+    SECTION("app_function_call") {
         struct Func {
             bool operator()(int arg) const {
                 return arg % 2;

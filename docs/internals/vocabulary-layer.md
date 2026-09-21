@@ -178,7 +178,7 @@ each node specializes it **in the node's own header**.
 Classifier/leaf traits plus structural grouping by real SQL grammar production:
 compound-statement, DML-statement, CTE-binding, function-call, alias, and so on —
 `is_column`, `is_base_table`, `is_foreign_key`, `is_compound_operator`,
-`is_builtin_function`, `is_binary_condition`, and many more.
+`is_builtin_function_call`, `is_app_function_call`, `is_binary_condition`, and many more.
 
 ### Semantic
 
@@ -375,13 +375,75 @@ self-check would be.
 
 1. Define the node struct in `dev/schema/` or `dev/ast/`.
 2. In **that same header**, specialize whichever vocabulary axes apply — grammar,
-   semantic, structural, operand. Include the relevant `traits/*_fwd.h` for each.
+   semantic, structural, operand. Include the relevant `traits/*_fwd.h` for each, and
+   write them as described in [How a node specializes a trait](#how-a-node-specializes-a-trait).
 3. Register the header in `dev/node_definitions.h`.
 4. Add tests under `tests/`.
 
 If the node's name is needed by vocabulary files that cannot include its full definition,
 add a bare forward declaration to `vocabulary/node_fwd.h` — the real definition still
 arrives via the manifest.
+
+### How a node specializes a trait
+
+A trait that the node's header *owns* — its primary is the `extern const bool`
+declaration in the `_fwd.h` file, and this node is what it classifies — is written as
+**one closed definition** over a type predicate, never as a partial specialization that
+spells out the node's template-parameter pattern:
+
+```cpp
+template<class T>
+constexpr bool is_app_function_call_v = polyfill::is_specialization_of_v<T, app_function_call>;
+
+template<class T>
+constexpr bool is_builtin_function_call_v = is_base_template_of<builtin_function_call, T>::value;
+
+template<class T>
+constexpr bool is_count_asterisk_v =
+    polyfill::is_specialization_of_v<T, count_asterisk_t> || std::is_same_v<T, count_asterisk_without_type>;
+```
+
+A trait the node merely *joins* — an axis whose primary is already defined `false`, such
+as `is_operator_argument_v` — is specialized with a **SFINAE enabler on the node's own
+grammar trait**, again without restating the pattern:
+
+```cpp
+template<class T>
+constexpr bool is_operator_argument_v<T, std::enable_if_t<is_app_function_call_v<T>>> = true;
+```
+
+The reason is the same in both cases: the node's template-parameter list is an
+implementation detail of the node. Restating it at every specialization site means that
+adding a parameter, a defaulted parameter or a derived node (`builtin_aggregate_function_call`
+derives from `builtin_function_call`) silently breaks or forks the classification.
+`is_specialization_of_v`, `is_base_template_of` and `std::is_same_v` name the node once
+and track it. A pattern partial specialization is acceptable only where those predicates
+cannot express the match — a node with non-type template parameters, such as `limit_t`.
+
+### How consumers match a node
+
+Customization points — `statement_serializer`, `ast_iterator`, `node_tuple`,
+`column_result_t`, and callables handed to `iterate_ast` — **grammar-match** a node and
+**read it through the projections**. They do not pattern-match the concrete node type and
+decompose its template arguments:
+
+```cpp
+// yes
+template<class T>
+struct node_tuple<T, match_if<is_app_function_call, T>> : node_tuple<args_tuple_t<T>> {};
+
+template<class T, satisfies<is_app_function_call, T> = true>
+void operator()(std::true_type, const T& udfCall) const;
+
+// no
+template<class F, class... Args>
+struct node_tuple<app_function_call<F, Args...>, void> : node_tuple_for<Args...> {};
+```
+
+This is the whole point of the layer: a consumer that spells `app_function_call<F, Args...>`
+depends on the node's identity and shape, which is exactly the coupling the vocabulary
+exists to remove. If a consumer needs something the projections do not yet expose, add
+the projection to `vocabulary/projections/` rather than reaching into the node.
 
 ## Open work
 
@@ -417,7 +479,7 @@ Decided, not yet done. The destination is settled in each case; only the work re
 - **Retire the legacy built-in function nodes with C++17.** In C++20 builds every
   built-in is one `inline constexpr` definition of name plus overload set in
   `ast/builtin_function.h` (`"LOWER"_builtin.scalar<std::string(std::string_view)>()`);
-  the resulting call node plugs into `is_builtin_function`, and argument-dependent return
+  the resulting call node plugs into `is_builtin_function_call`, and argument-dependent return
   types are placeholders (`argument<I>`, `common_argument_type<I...>`) substituted by
   `vocabulary/algorithms/argument_placeholders.h` from `column_result_t`. The legacy
   `builtin_function_t` node in `ast/builtin_function.h` and the per-function `*_string`
