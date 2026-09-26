@@ -16,7 +16,6 @@
 * strict tables https://sqlite.org/stricttables.html
 * TEMP schema objects: TEMP tables, triggers and views
 * named constraints: constraint can have name `CREATE TABLE heroes(id INTEGER CONSTRAINT pk PRIMARY KEY)`
-* `FOREIGN KEY ... DEFERRABLE INITIALLY DEFERRED`
 * `INDEXED BY` / `NOT INDEXED` (3.6.4)
 * `RAISE` with an arbitrary expression as the error message (3.47) — the `raise_*` factories take only strings
 * `VACUUM INTO` (3.27), `ANALYZE` (with an optional index argument), `REINDEX` / `REINDEX EXPRESSIONS` (3.53), `EXPLAIN` / `EXPLAIN QUERY PLAN`

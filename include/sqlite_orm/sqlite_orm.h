@@ -25478,6 +25478,21 @@ namespace sqlite_orm::internal {
             if (fk.on_delete) {
                 ss << ' ' << static_cast<std::string>(fk.on_delete) << " " << fk.on_delete._action;
             }
+            //  the enum name is spelled dependently, as the node definitions follow the serializer
+            using fk_enforcement = std::decay_t<decltype(fk._deferrable._enforcement)>;
+            switch (fk._deferrable._enforcement) {
+                case fk_enforcement::deferred:
+                    ss << " DEFERRABLE INITIALLY DEFERRED";
+                    break;
+                case fk_enforcement::immediate:
+                    ss << " DEFERRABLE INITIALLY IMMEDIATE";
+                    break;
+                case fk_enforcement::not_deferrable:
+                    ss << " NOT DEFERRABLE";
+                    break;
+                case fk_enforcement::not_specified:
+                    break;
+            }
             return ss.str();
         }
     };
@@ -30874,6 +30889,29 @@ namespace sqlite_orm::internal {
         }
     };
 
+    enum class foreign_key_enforcement {
+        not_specified,  //  clause absent, which SQLite treats as NOT DEFERRABLE
+        deferred,  //  DEFERRABLE INITIALLY DEFERRED
+        immediate,  //  DEFERRABLE INITIALLY IMMEDIATE
+        not_deferrable,  //  NOT DEFERRABLE
+    };
+
+    struct fk_enforcement_state {
+        foreign_key_enforcement _enforcement = foreign_key_enforcement::not_specified;
+
+        explicit operator bool() const {
+            return _enforcement != foreign_key_enforcement::not_specified;
+        }
+
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        friend bool operator==(const fk_enforcement_state&, const fk_enforcement_state&) = default;
+#else
+        friend bool operator==(const fk_enforcement_state& lhs, const fk_enforcement_state& rhs) {
+            return lhs._enforcement == rhs._enforcement;
+        }
+#endif
+    };
+
     template<class... Cs, class... Rs>
     struct foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> {
         using columns_type = std::tuple<Cs...>;
@@ -30893,13 +30931,44 @@ namespace sqlite_orm::internal {
         references_type _references;
         on_fk_update_delete<foreign_key_t, true> on_update;
         on_fk_update_delete<foreign_key_t, false> on_delete;
+        fk_enforcement_state _deferrable;
 
         static_assert(!std::is_same<source_type, void>::value, "All columns must have the same mapped type");
         static_assert(!std::is_same<target_type, void>::value, "All references must have the same mapped type");
 
+        /**
+         *  `DEFERRABLE INITIALLY DEFERRED`: the constraint is checked at `COMMIT`
+         *  instead of at the end of each statement.
+         */
+        foreign_key_t initially_deferred() const {
+            return this->copy_with_enforcement(foreign_key_enforcement::deferred);
+        }
+
+        /**
+         *  `DEFERRABLE INITIALLY IMMEDIATE`: the default per-statement enforcement, spelled out.
+         */
+        foreign_key_t initially_immediate() const {
+            return this->copy_with_enforcement(foreign_key_enforcement::immediate);
+        }
+
+        /**
+         *  `NOT DEFERRABLE`: the default per-statement enforcement, spelled out.
+         */
+        foreign_key_t not_deferrable() const {
+            return this->copy_with_enforcement(foreign_key_enforcement::not_deferrable);
+        }
+
         friend bool operator==(const foreign_key_t& lhs, const foreign_key_t& rhs) {
             return lhs._columns == rhs._columns && lhs._references == rhs._references &&
-                   lhs.on_update == rhs.on_update && lhs.on_delete == rhs.on_delete;
+                   lhs.on_update == rhs.on_update && lhs.on_delete == rhs.on_delete &&
+                   lhs._deferrable == rhs._deferrable;
+        }
+
+      private:
+        foreign_key_t copy_with_enforcement(foreign_key_enforcement newEnforcement) const {
+            foreign_key_t fk2 = *this;
+            fk2._deferrable._enforcement = newEnforcement;
+            return fk2;
         }
     };
 

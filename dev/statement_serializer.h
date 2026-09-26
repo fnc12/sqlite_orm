@@ -1548,6 +1548,21 @@ namespace sqlite_orm::internal {
             if (fk.on_delete) {
                 ss << ' ' << static_cast<std::string>(fk.on_delete) << " " << fk.on_delete._action;
             }
+            //  the enum name is spelled dependently, as the node definitions follow the serializer
+            using fk_enforcement = std::decay_t<decltype(fk._deferrable._enforcement)>;
+            switch (fk._deferrable._enforcement) {
+                case fk_enforcement::deferred:
+                    ss << " DEFERRABLE INITIALLY DEFERRED";
+                    break;
+                case fk_enforcement::immediate:
+                    ss << " DEFERRABLE INITIALLY IMMEDIATE";
+                    break;
+                case fk_enforcement::not_deferrable:
+                    ss << " NOT DEFERRABLE";
+                    break;
+                case fk_enforcement::not_specified:
+                    break;
+            }
             return ss.str();
         }
     };
