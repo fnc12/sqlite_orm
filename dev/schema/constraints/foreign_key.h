@@ -137,23 +137,6 @@ namespace sqlite_orm::internal {
         not_deferrable,  //  NOT DEFERRABLE
     };
 
-    inline std::ostream& operator<<(std::ostream& os, foreign_key_enforcement enforcement) {
-        switch (enforcement) {
-            case foreign_key_enforcement::deferred:
-                os << "DEFERRABLE INITIALLY DEFERRED";
-                break;
-            case foreign_key_enforcement::immediate:
-                os << "DEFERRABLE INITIALLY IMMEDIATE";
-                break;
-            case foreign_key_enforcement::not_deferrable:
-                os << "NOT DEFERRABLE";
-                break;
-            case foreign_key_enforcement::not_specified:
-                break;
-        }
-        return os;
-    }
-
     struct fk_enforcement_state {
         foreign_key_enforcement _enforcement = foreign_key_enforcement::not_specified;
 
