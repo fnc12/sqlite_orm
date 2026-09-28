@@ -1,9 +1,5 @@
 #pragma once
 
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <cstddef>  //  size_t
-#endif
-
 namespace sqlite_orm::internal::polyfill {
     /*
      *  Fixed per-architecture cache-line sizes used for anti-false-sharing alignment.
