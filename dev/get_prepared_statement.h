@@ -9,10 +9,10 @@
 #include "functional/type_traits.h"
 #include "vocabulary/node_traits.h"  // projections
 #include "vocabulary/node_algorithms.h"  // access_dml_object
-#include "ast/dml/insert.h"
-#include "ast/dml/replace.h"
-#include "ast/dml/update.h"
-#include "ast/dml/remove.h"
+#include "ast/crud/insert.h"
+#include "ast/crud/replace.h"
+#include "ast/crud/update.h"
+#include "ast/crud/remove.h"
 #include "prepared_statement.h"
 #include "ast_iterator.h"
 #include "node_tuple.h"

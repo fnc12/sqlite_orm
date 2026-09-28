@@ -26,9 +26,9 @@
 #include "functional/mpl.h"
 #include "functional/type_traits.h"
 #include "tuple_helper/tuple_filter.h"
-#include "ast/dml/insert.h"  // conflict_action
+#include "ast/crud/insert.h"  // conflict_action
 #include "ast/result_columns.h"
-#include "ast/dml/set.h"
+#include "ast/crud/set.h"
 #include "ast/window_functions.h"
 #include "conditions.h"
 #include "prepared_statement.h"

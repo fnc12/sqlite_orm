@@ -169,7 +169,7 @@ namespace sqlite_orm::internal {
     using is_tokenize = std::bool_constant<is_tokenize_v<T>>;
 }
 
-// DML classifier traits
+// CRUD classifier traits
 namespace sqlite_orm::internal {
     /**
      *  Nodes representing a DML statement - INSERT, REPLACE, UPDATE, DELETE -, one trait per DSL spelling.

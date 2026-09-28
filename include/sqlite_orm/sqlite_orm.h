@@ -2097,7 +2097,7 @@ namespace sqlite_orm::internal {
     using is_tokenize = std::bool_constant<is_tokenize_v<T>>;
 }
 
-// DML classifier traits
+// CRUD classifier traits
 namespace sqlite_orm::internal {
     /**
      *  Nodes representing a DML statement - INSERT, REPLACE, UPDATE, DELETE -, one trait per DSL spelling.
@@ -21935,7 +21935,7 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "ast/dml/insert.h"
+// #include "ast/crud/insert.h"
 
 /** @file The INSERT statement, in each of the DSL spellings sqlite_orm offers for it - against a
  *        mapped object, against a range of them, against an explicit column list, or raw -, plus
@@ -22205,7 +22205,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-// #include "ast/dml/replace.h"
+// #include "ast/crud/replace.h"
 
 /** @file The REPLACE statement, in each of the DSL spellings sqlite_orm offers for it - against a
  *        mapped object, against a range of them, or raw.
@@ -22397,7 +22397,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-// #include "ast/dml/update.h"
+// #include "ast/crud/update.h"
 
 /** @file The UPDATE statement, in both of the DSL spellings sqlite_orm offers for it - against a
  *        mapped object, or raw against a SET clause and conditions.
@@ -22502,7 +22502,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-// #include "ast/dml/remove.h"
+// #include "ast/crud/remove.h"
 
 /** @file The DELETE statement, in both of the DSL spellings sqlite_orm offers for it - `remove`
  *        against the primary key of a mapped object, or `remove_all` raw against conditions.
@@ -22687,11 +22687,11 @@ namespace sqlite_orm::internal {
 
 // #include "tuple_helper/tuple_filter.h"
 
-// #include "ast/dml/insert.h"
+// #include "ast/crud/insert.h"
 // conflict_action
 // #include "ast/result_columns.h"
 
-// #include "ast/dml/set.h"
+// #include "ast/crud/set.h"
 
 /** @file The SET clause of an UPDATE, in both of the DSL spellings sqlite_orm offers for it -
  *        spelled out statically, or assembled at runtime.
@@ -31245,7 +31245,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/cte.h"
 
-// #include "ast/dml/default_values.h"
+// #include "ast/crud/default_values.h"
 
 /** @file The DEFAULT VALUES modifier a raw INSERT or REPLACE takes in place of a row list.
  */
@@ -31278,9 +31278,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-// #include "ast/dml/insert.h"
+// #include "ast/crud/insert.h"
 
-// #include "ast/dml/into.h"
+// #include "ast/crud/into.h"
 
 /** @file The INTO clause naming the table a raw INSERT or REPLACE targets.
  */
@@ -31316,15 +31316,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-// #include "ast/dml/replace.h"
+// #include "ast/crud/replace.h"
 
-// #include "ast/dml/set.h"
+// #include "ast/crud/set.h"
 
-// #include "ast/dml/update.h"
+// #include "ast/crud/update.h"
 
-// #include "ast/dml/remove.h"
+// #include "ast/crud/remove.h"
 
-// #include "ast/dml/upsert_clause.h"
+// #include "ast/crud/upsert_clause.h"
 
 /** @file The ON CONFLICT upsert clause of an INSERT: its conflict target, and the DO NOTHING /
  *        DO UPDATE SET action it resolves the conflict with.
@@ -31913,7 +31913,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 /** @file The VALUES row list, in both of the DSL spellings sqlite_orm offers for it - spelled out
  *        statically, or assembled at runtime.
  *
- *        Note: this header sits outside `ast/dml/`, unlike the other clause nodes a raw INSERT or
+ *        Note: this header sits outside `ast/crud/`, unlike the other clause nodes a raw INSERT or
  *        REPLACE takes, because a VALUES row list is written both as an INSERT's rows and as the
  *        operand of an IN - in either spelling.
  */
@@ -32475,13 +32475,13 @@ namespace sqlite_orm::internal {
 // projections
 // #include "vocabulary/node_algorithms.h"
 // access_dml_object
-// #include "ast/dml/insert.h"
+// #include "ast/crud/insert.h"
 
-// #include "ast/dml/replace.h"
+// #include "ast/crud/replace.h"
 
-// #include "ast/dml/update.h"
+// #include "ast/crud/update.h"
 
-// #include "ast/dml/remove.h"
+// #include "ast/crud/remove.h"
 
 // #include "prepared_statement.h"
 
