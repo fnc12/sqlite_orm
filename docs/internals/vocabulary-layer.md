@@ -433,9 +433,9 @@ are not nodes in this sense.
 
 The one deliberate exception is the built-in window functions of `ast/window_functions.h`.
 Each is a function in its own right, not a member of a grammar production, and is applied
-only as the function of an OVER clause — so it gets no node trait, and no consumer of its
+only as the function of an OVER clause — so it gets no grammar trait, and no consumer of its
 own either: the consumers of the OVER node handle it, telling it apart from an aggregate
-function by the closed predicate `is_builtin_window_function_v`. Each declares its SQL
+function by the semantic trait `is_builtin_window_function`, a closed one. Each declares its SQL
 name, its return type (with the argument placeholders a built-in function uses) and its
 call arguments, so that a single branch in each OVER consumer covers all of them.
 

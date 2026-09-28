@@ -38,4 +38,17 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_object_dml_expression = std::bool_constant<is_object_dml_expression_v<T>>;
+
+    /**
+     *  Nodes that are one of the built-in window functions: ROW_NUMBER(), RANK(), NTILE(N), LAG(expr), ...
+     *
+     *  Each is a function in its own right rather than a member of a grammar production, sharing only the role
+     *  of being applied by an OVER clause - which is what the OVER node's consumers tell apart from an aggregate
+     *  function applied by an OVER clause. Closed: defined once, next to the window functions.
+     */
+    template<class T>
+    extern const bool is_builtin_window_function_v;
+
+    template<class T>
+    using is_builtin_window_function = std::bool_constant<is_builtin_window_function_v<T>>;
 }

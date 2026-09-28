@@ -654,7 +654,7 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
                                                              const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return statement_type::name;
+            return "rank";
         }
     };
 

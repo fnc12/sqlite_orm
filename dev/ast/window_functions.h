@@ -1,5 +1,15 @@
 #pragma once
 
+/** @file The built-in window functions.
+ *
+ *        They are no grammar family of their own - each is a function in its own right, and it is applied
+ *        only as the function of an OVER clause. Hence they get no node trait of their own: the consumers of
+ *        the OVER node handle them, telling them apart from the aggregate functions an OVER clause may apply
+ *        as well by the semantic trait `is_builtin_window_function`. To that end each of them declares its
+ *        SQL name, its return type - which may use the return type placeholders of
+ *        `vocabulary/algorithms/argument_placeholders.h` - and the tuple of its call arguments.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same, std::disjunction
 #include <tuple>  //  std::tuple
@@ -9,18 +19,9 @@
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../vocabulary/node_algorithms.h"  //  argument
+#include "../vocabulary/traits/semantic_traits_fwd.h"  // Included to specialize traits
 #include "window.h"  //  over_t, validate_over_arguments
 
-/*
- *  The built-in window functions.
- *
- *  They are no grammar family of their own - each is a function in its own right, and it is applied
- *  only as the function of an OVER clause. Hence they get no node trait: the consumers of the OVER node
- *  handle them, telling them apart from the aggregate functions an OVER clause may apply as well by
- *  `is_builtin_window_function_v`. To that end each of them declares its SQL name, its return type -
- *  which may use the return type placeholders of `vocabulary/algorithms/argument_placeholders.h` - and
- *  the tuple of its call arguments.
- */
 namespace sqlite_orm::internal {
     struct row_number_t {
         static constexpr std::string_view name = "ROW_NUMBER";
@@ -186,27 +187,19 @@ namespace sqlite_orm::internal {
         }
     };
 
-    /*
-     *  Whether the function an OVER clause applies is one of the built-in window functions above.
-     *
-     *  Note: A closed predicate for the OVER node's consumers, not a node trait - see the file comment.
-     */
-    template<class F>
+    template<class T>
     constexpr bool is_builtin_window_function_v =
-        std::disjunction<std::is_same<F, row_number_t>,
-                         std::is_same<F, rank_t>,
-                         std::is_same<F, dense_rank_t>,
-                         std::is_same<F, percent_rank_t>,
-                         std::is_same<F, cume_dist_t>,
-                         polyfill::is_specialization_of<F, ntile_t>,
-                         polyfill::is_specialization_of<F, lag_t>,
-                         polyfill::is_specialization_of<F, lead_t>,
-                         polyfill::is_specialization_of<F, first_value_t>,
-                         polyfill::is_specialization_of<F, last_value_t>,
-                         polyfill::is_specialization_of<F, nth_value_t>>::value;
-
-    template<class F>
-    using is_builtin_window_function = std::bool_constant<is_builtin_window_function_v<F>>;
+        std::disjunction<std::is_same<T, row_number_t>,
+                         std::is_same<T, rank_t>,
+                         std::is_same<T, dense_rank_t>,
+                         std::is_same<T, percent_rank_t>,
+                         std::is_same<T, cume_dist_t>,
+                         polyfill::is_specialization_of<T, ntile_t>,
+                         polyfill::is_specialization_of<T, lag_t>,
+                         polyfill::is_specialization_of<T, lead_t>,
+                         polyfill::is_specialization_of<T, first_value_t>,
+                         polyfill::is_specialization_of<T, last_value_t>,
+                         polyfill::is_specialization_of<T, nth_value_t>>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

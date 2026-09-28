@@ -25,9 +25,13 @@
 #include "type_printer.h"
 #include "literal.h"
 #include "ast/cross_join.h"
-#include "ast/window_functions.h"
 #include "vocabulary/node_algorithms.h"  // unwrap_expression, is_operand_or_bindable, are_valid_operands
 #include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+
+namespace sqlite_orm::internal {
+    //  forward-declared for the deprecated `order_by(rank())` only, which goes in v1.11
+    struct rank_t;
+}
 
 namespace sqlite_orm::internal {
     /**
@@ -1171,18 +1175,25 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  storage.select(&User::name, order_by(&User::id))
      *  storage.select(as<colalias_a>(&User::name), order_by(get<colalias_a>()))
      */
-    template<class O, internal::satisfies_not<std::is_base_of, integer_printer, type_printer<O>> = true>
+    template<class O,
+             //  note: the deprecated `order_by(rank())` below; goes with it in v1.11
+             std::enable_if_t<!std::is_same<O, internal::rank_t>::value, bool> = true,
+             internal::satisfies_not<std::is_base_of, integer_printer, type_printer<O>> = true>
     internal::order_by_t<O> order_by(O o) {
         static_assert(!internal::is_statement_clause<O>::value,
                       "an ORDER BY term must be an expression, not a statement clause");
         return {std::move(o)};
     }
 
-    /** 
+    /**
      *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
+     *
+     *  Note: A template only because `rank_t` is merely forward-declared here, its definition being
+     *  reachable at the point of the call.
      */
+    template<class Rank, std::enable_if_t<std::is_same<Rank, internal::rank_t>::value, bool> = true>
     [[deprecated("Use the hidden FTS5 rank column instead")]]
-    inline internal::order_by_t<internal::rank_t> order_by(internal::rank_t expression) {
+    internal::order_by_t<Rank> order_by(Rank expression) {
         return {std::move(expression)};
     }
 
