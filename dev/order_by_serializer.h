@@ -11,6 +11,7 @@
 #include "functional/type_traits.h"
 #include "vocabulary/node_fwd.h"  // order_by_base
 #include "vocabulary/node_traits.h"
+#include "ast/order_by.h"  //  order_by_base, dynamic_order_by_entry_t
 
 namespace sqlite_orm::internal {
     template<class T, class SFINAE = void>

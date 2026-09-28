@@ -489,6 +489,55 @@ namespace sqlite_orm::internal {
     using is_match_with_table = std::bool_constant<is_match_with_table_v<T>>;
 
     /**
+     *  Nodes matching an expression against a pattern: expr LIKE pattern [ESCAPE escape], expr GLOB pattern.
+     */
+    template<class T>
+    extern const bool is_like_v;
+
+    template<class T>
+    using is_like = std::bool_constant<is_like_v<T>>;
+
+    template<class T>
+    extern const bool is_glob_v;
+
+    template<class T>
+    using is_glob = std::bool_constant<is_glob_v<T>>;
+
+    /**
+     *  Nodes applying a collating sequence to an expression: expr COLLATE collation-name,
+     *  with a built-in collation or a named, application-defined one.
+     */
+    template<class T>
+    extern const bool is_collate_v;
+
+    template<class T>
+    using is_collate = std::bool_constant<is_collate_v<T>>;
+
+    template<class T>
+    extern const bool is_named_collate_v;
+
+    template<class T>
+    using is_named_collate = std::bool_constant<is_named_collate_v<T>>;
+
+    /**
+     *  Nodes negating a condition: NOT expr.
+     */
+    template<class T>
+    extern const bool is_negated_condition_v;
+
+    template<class T>
+    using is_negated_condition = std::bool_constant<is_negated_condition_v<T>>;
+
+    /**
+     *  Nodes comparing a whole FTS5 table with an expression, of the deprecated `is_equal<Table>(expression)` spelling.
+     */
+    template<class T>
+    extern const bool is_equal_with_table_v;
+
+    template<class T>
+    using is_equal_with_table = std::bool_constant<is_equal_with_table_v<T>>;
+
+    /**
      *  Nodes representing the special keywords yielding the current UTC date/time:
      *  CURRENT_TIME, CURRENT_DATE, CURRENT_TIMESTAMP.
      */

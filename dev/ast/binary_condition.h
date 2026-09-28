@@ -1,80 +1,30 @@
 #pragma once
 
+/** @file The binary conditions: the logical AND and OR, and the comparisons =, !=, IS, IS NOT,
+ *        IS [NOT] DISTINCT FROM, >, >=, <, <= - with their factory functions and operator overloads.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
-#include <type_traits>  //  std::enable_if, std::is_same, std::remove_const
-#include <vector>  //  std::vector
-#include <tuple>  //  std::tuple
+#include <string_view>  //  std::string_view
+#include <type_traits>  //  std::enable_if, std::disjunction, std::conjunction, std::negation
 #include <utility>  //  std::move, std::forward
 #include <sstream>  //  std::stringstream
 #include <ostream>  //  std::flush
-#include <string_view>  //  std::string_view
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
-#include "functional/is_base_template_of.h"
-#include "functional/type_traits.h"
-#include "collate_argument.h"
-#include "schema/constraints/collate.h"  // string_from_collate_argument
-#include "optional_container.h"
-#include "serializer_context.h"
-#include "tags.h"
-#include "table_reference.h"
-#include "alias_traits.h"
-#include "column_pointer.h"
-#include "type_printer.h"
-#include "literal.h"
-#include "ast/cross_join.h"
-#include "ast/window_functions.h"
-#include "vocabulary/node_algorithms.h"  // unwrap_expression, is_operand_or_bindable, are_valid_operands
-#include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/is_base_template_of.h"
+#include "../collate_argument.h"
+#include "../tags.h"
+#include "../table_reference.h"
+#include "../alias_traits.h"
+#include "../operators.h"  //  conc_t
+#include "../vocabulary/node_algorithms.h"  // unwrap_expression, are_valid_operands
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "collate.h"
 
 namespace sqlite_orm::internal {
-    /**
-     *  Collated something
-     */
-    template<class T>
-    struct collate_t : condition_t {
-        T expression;
-        collate_argument argument;
-
-        collate_t(T expression_, collate_argument argument_) :
-            expression(std::move(expression_)), argument(argument_) {}
-    };
-
-    struct named_collate_base {
-        std::string name;
-    };
-
-    /**
-     *  Collated something with custom collate function
-     */
-    template<class T>
-    struct named_collate : named_collate_base {
-        T expression;
-
-        named_collate(T expression_, std::string name_) :
-            named_collate_base{std::move(name_)}, expression(std::move(expression_)) {}
-    };
-
-    struct negated_condition_string {
-        operator std::string() const {
-            return "NOT";
-        }
-    };
-
-    /**
-     *  Result of not operator
-     */
-    template<class C>
-    struct negated_condition_t : condition_t, negated_condition_string {
-        using argument_type = C;
-
-        argument_type c;
-
-        constexpr negated_condition_t(argument_type arg) : c(std::move(arg)) {}
-    };
-
     /**
      *  Base class for binary conditions
      *  L is left argument type
@@ -168,6 +118,9 @@ namespace sqlite_orm::internal {
         }
     };
 
+    /**
+     *  The deprecated comparison of a whole FTS5 table with an expression: table = expression.
+     */
     template<class L, class R>
     struct is_equal_with_table_t : negatable_t {
         using left_type = L;
@@ -177,6 +130,9 @@ namespace sqlite_orm::internal {
 
         is_equal_with_table_t(right_type rhs) : rhs(std::move(rhs)) {}
     };
+
+    template<class T>
+    constexpr bool is_equal_with_table_v = polyfill::is_specialization_of_v<T, is_equal_with_table_t>;
 
     struct is_not_equal_string {
         std::string_view serialize() const {
@@ -365,414 +321,12 @@ namespace sqlite_orm::internal {
             return {*this, collate_argument::rtrim};
         }
     };
-
-    struct order_by_base {
-        std::string _collate_argument;
-        int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
-        int _nulls = 0;  //  1 = nulls first, -1 = nulls last, 0 = unspecified
-    };
-
-    struct order_by_string {
-        operator std::string() const {
-            return "ORDER BY";
-        }
-    };
-
-    /**
-     *  ORDER BY argument holder.
-     */
-    template<class O>
-    struct order_by_t : order_by_base, order_by_string {
-        using expression_type = O;
-
-        expression_type _expression;
-
-        order_by_t(expression_type expression) : order_by_base(), _expression(std::move(expression)) {}
-
-        order_by_t asc() const {
-            auto res = *this;
-            res._order = 1;
-            return res;
-        }
-
-        order_by_t desc() const {
-            auto res = *this;
-            res._order = -1;
-            return res;
-        }
-
-#if SQLITE_VERSION_NUMBER >= 3030000
-        order_by_t nulls_first() const {
-            auto res = *this;
-            res._nulls = 1;
-            return res;
-        }
-
-        order_by_t nulls_last() const {
-            auto res = *this;
-            res._nulls = -1;
-            return res;
-        }
-#endif
-
-        order_by_t collate_binary() const {
-            auto res = *this;
-            res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::binary);
-            return res;
-        }
-
-        order_by_t collate_nocase() const {
-            auto res = *this;
-            res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::nocase);
-            return res;
-        }
-
-        order_by_t collate_rtrim() const {
-            auto res = *this;
-            res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::rtrim);
-            return res;
-        }
-
-        order_by_t collate(std::string name) const {
-            auto res = *this;
-            res._collate_argument = std::move(name);
-            return res;
-        }
-
-        template<class C>
-        order_by_t collate() const {
-            std::stringstream ss;
-            ss << C::name() << std::flush;
-            return this->collate(ss.str());
-        }
-    };
-
-    /**
-     *  ORDER BY pack holder.
-     */
-    template<class... Args>
-    struct multi_order_by_t : order_by_string {
-        using args_type = std::tuple<Args...>;
-
-        args_type args;
-
-        multi_order_by_t(args_type args_) : args{std::move(args_)} {}
-    };
-
-    struct dynamic_order_by_entry_t : order_by_base {
-        std::string name;
-
-        dynamic_order_by_entry_t(decltype(name) name_, std::string collate_argument_, int asc_desc_, int nulls_) :
-            order_by_base{std::move(collate_argument_), asc_desc_, nulls_}, name(std::move(name_)) {}
-    };
-
-    /**
-     *  C - serializer context class
-     */
-    template<class C>
-    struct dynamic_order_by_t : order_by_string {
-        using context_t = C;
-        using entry_t = dynamic_order_by_entry_t;
-        using const_iterator = typename std::vector<entry_t>::const_iterator;
-
-        dynamic_order_by_t(const context_t& context_) : context(context_) {}
-
-        template<class T, satisfies<is_order_by, T> = true>
-        void push_back(T orderBy) {
-            auto newContext = this->context;
-            newContext.omit_table_name = false;
-            auto columnName = serialize(orderBy._expression, newContext);
-            this->entries.emplace_back(std::move(columnName),
-                                       std::move(orderBy._collate_argument),
-                                       orderBy._order,
-                                       orderBy._nulls);
-        }
-
-        const_iterator begin() const {
-            return this->entries.begin();
-        }
-
-        const_iterator end() const {
-            return this->entries.end();
-        }
-
-        void clear() {
-            this->entries.clear();
-        }
-
-      protected:
-        std::vector<entry_t> entries;
-        context_t context;
-    };
-
-    template<class T>
-    constexpr bool is_order_by_v = polyfill::is_specialization_of_v<T, order_by_t>;
-
-    template<class T>
-    constexpr bool is_multi_order_by_v = polyfill::is_specialization_of_v<T, multi_order_by_t>;
-
-    template<class T>
-    constexpr bool is_dynamic_order_by_v = polyfill::is_specialization_of_v<T, dynamic_order_by_t>;
-
-    template<class T>
-    constexpr bool is_any_order_by_v = std::disjunction_v<is_order_by<T>, is_multi_order_by<T>, is_dynamic_order_by<T>>;
-
-    struct like_string {
-        operator std::string() const {
-            return "LIKE";
-        }
-    };
-
-    /**
-     *  LIKE operator object.
-     */
-    template<class A, class T, class E>
-    struct like_t : condition_t, like_string, negatable_t {
-        using arg_t = A;
-        using pattern_t = T;
-        using escape_t = E;
-
-        arg_t _arg;
-        pattern_t _pattern;
-        optional_container<escape_t> _escape;  //  not escape cause escape exists as a function here
-
-        constexpr like_t(arg_t arg_, pattern_t pattern_, optional_container<escape_t> escape_) :
-            _arg(std::move(arg_)), _pattern(std::move(pattern_)), _escape(std::move(escape_)) {}
-
-        template<class C>
-        constexpr like_t<A, T, C> escape(C c) && {
-            return {std::move(this->_arg), std::move(this->_pattern), {std::move(c)}};
-        }
-    };
-
-    struct glob_string {
-        operator std::string() const {
-            return "GLOB";
-        }
-    };
-
-    template<class A, class T>
-    struct glob_t : condition_t, glob_string, negatable_t {
-        using arg_t = A;
-        using pattern_t = T;
-
-        arg_t arg;
-        pattern_t pattern;
-
-        constexpr glob_t(arg_t arg_, pattern_t pattern_) : arg(std::move(arg_)), pattern(std::move(pattern_)) {}
-    };
-
-    /**
-     *  NATURAL JOIN holder.
-     *  T is joined type which represents any mapped table.
-     */
-    template<class T>
-    struct natural_join_t {
-        using type = T;
-    };
-
-    struct left_join_string {
-        operator std::string() const {
-            return "LEFT JOIN";
-        }
-    };
-
-    /**
-     *  LEFT JOIN holder.
-     *  T is joined type which represents any mapped table.
-     *  O is on(...) argument type.
-     */
-    template<class T, class O>
-    struct left_join_t : left_join_string {
-        using type = T;
-        using on_type = O;
-
-        on_type constraint;
-
-        left_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
-    };
-
-    struct join_string {
-        operator std::string() const {
-            return "JOIN";
-        }
-    };
-
-    /**
-     *  Simple JOIN holder.
-     *  T is joined type which represents any mapped table.
-     *  O is on(...) argument type.
-     */
-    template<class T, class O>
-    struct join_t : join_string {
-        using type = T;
-        using on_type = O;
-
-        on_type constraint;
-
-        join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
-    };
-
-    struct left_outer_join_string {
-        operator std::string() const {
-            return "LEFT OUTER JOIN";
-        }
-    };
-
-    /**
-     *  LEFT OUTER JOIN holder.
-     *  T is joined type which represents any mapped table.
-     *  O is on(...) argument type.
-     */
-    template<class T, class O>
-    struct left_outer_join_t : left_outer_join_string {
-        using type = T;
-        using on_type = O;
-
-        on_type constraint;
-
-        left_outer_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
-    };
-
-    struct on_string {
-        operator std::string() const {
-            return "ON";
-        }
-    };
-
-    /**
-     *  on(...) argument holder used for JOIN, LEFT JOIN, LEFT OUTER JOIN and INNER JOIN
-     *  T is on type argument.
-     */
-    template<class T>
-    struct on_t : on_string {
-        using arg_type = T;
-
-        arg_type arg;
-
-        on_t(arg_type arg_) : arg(std::move(arg_)) {}
-    };
-
-    /**
-     *  USING argument holder.
-     */
-    template<class T, class M>
-    struct using_t {
-        column_pointer<T, M> column;
-
-        operator std::string() const {
-            return "USING";
-        }
-    };
-
-    struct inner_join_string {
-        operator std::string() const {
-            return "INNER JOIN";
-        }
-    };
-
-    /**
-     *  INNER JOIN holder.
-     *  T is joined type which represents any mapped table.
-     *  O is on(...) argument type.
-     */
-    template<class T, class O>
-    struct inner_join_t : inner_join_string {
-        using type = T;
-        using on_type = O;
-
-        on_type constraint;
-
-        inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
-    };
-
-    template<class T>
-    using is_constrained_join = polyfill::is_detected<on_type_t, T>;
-
-    template<class T>
-    constexpr bool is_any_join_v = mpl::invoke_t<mpl::disjunction<check_if<is_constrained_join>,
-                                                                  check_if_is_template<cross_join_t>,
-                                                                  check_if_is_template<natural_join_t>>,
-                                                 T>::value;
-
-    template<class... Tables>
-    struct from_t {
-        using tuple_type = std::tuple<Tables...>;
-    };
-
-    template<class T>
-    constexpr bool is_from_v = polyfill::is_specialization_of_v<T, from_t>;
-
-    template<class... TableExpr>
-    struct from2_t {
-        using tuple_type = std::tuple<TableExpr...>;
-
-        tuple_type table_expressions;
-    };
-
-    template<class T>
-    constexpr bool is_from2_v = polyfill::is_specialization_of_v<T, from2_t>;
-
-    template<class T>
-    constexpr bool is_any_from_v = std::disjunction_v<is_from<T>, is_from2<T>>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  Explicit FROM function. Usage:
-     *  `storage.select(&User::id, from<User>());`
-     */
-    template<class... Tables>
-    constexpr internal::from_t<Tables...> from() {
-        static_assert(sizeof...(Tables) > 0);
-        return {};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Explicit FROM function. Usage:
-     *  `storage.select(&User::id, from<"a"_alias.for_<User>>());`
-     */
-    template<orm_refers_to_recordset auto... recordsets>
-    constexpr auto from() {
-        return from<internal::auto_decay_table_ref_t<recordsets>...>();
-    }
-#endif
-
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    /**
-     *  Explicit FROM for an eponymous virtual table used as a table-valued function. Usage:
-     *  `storage.select(asterisk<dbstat>(), from(dbstat_table("main", true)));`
-     */
-    template<class... TableExpr>
-        requires ((orm_refers_to_recordset<TableExpr> || orm_table_valued_expression<TableExpr>) && ...)
-    constexpr internal::from2_t<TableExpr...> from(TableExpr... tableExpressions) {
-        return {{std::move(tableExpressions)...}};
-    }
-#else
-    /**
-     *  Explicit FROM for an eponymous virtual table used as a table-valued function. Usage:
-     *  `storage.select(asterisk<dbstat>(), from(dbstat_table("main", true)));`
-     */
-    template<class... TableExpr>
-    constexpr internal::from2_t<TableExpr...> from(TableExpr... tableExpressions) {
-        static_assert(
-            ((internal::is_referring_to_recordset_v<TableExpr> || internal::is_table_valued_expression_v<TableExpr>) &&
-             ...));
-        return {{std::move(tableExpressions)...}};
-    }
-#endif
-
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
-        template<
-            class T,
-            std::enable_if_t<std::disjunction<is_negatable_operand<T>, is_operator_argument<T>>::value, bool> = true>
-        constexpr negated_condition_t<T> operator!(T arg) {
-            return {std::move(arg)};
-        }
-
         template<class L,
                  class R,
                  std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
@@ -866,6 +420,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
+        //  note: the string concatenation `||` lives next to the logical OR `||` it is told apart from
         template<class L,
                  class R,
                  std::enable_if_t<std::conjunction<std::disjunction<is_chainable_operand<L>,
@@ -880,87 +435,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
     }
-
-    template<class F, class O>
-    internal::using_t<O, F O::*> using_(F O::* field) {
-        return {field};
-    }
-    template<class T, class M>
-    internal::using_t<T, M> using_(internal::column_pointer<T, M> field) {
-        return {std::move(field)};
-    }
-
-    template<class T>
-    internal::on_t<T> on(T t) {
-        return {std::move(t)};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_refers_to_recordset auto alias>
-    auto cross_join() {
-        return cross_join<internal::auto_decay_table_ref_t<alias>>();
-    }
-#endif
-
-    template<class T>
-    internal::natural_join_t<T> natural_join() {
-        return {};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_refers_to_recordset auto alias>
-    auto natural_join() {
-        return natural_join<internal::auto_decay_table_ref_t<alias>>();
-    }
-#endif
-
-    template<class T, class O>
-    internal::left_join_t<T, O> left_join(O o) {
-        return {std::move(o)};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_refers_to_recordset auto alias, class On>
-    auto left_join(On on) {
-        return left_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
-    }
-#endif
-
-    template<class T, class O>
-    internal::join_t<T, O> join(O o) {
-        return {std::move(o)};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_refers_to_recordset auto alias, class On>
-    auto join(On on) {
-        return join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
-    }
-#endif
-
-    template<class T, class O>
-    internal::left_outer_join_t<T, O> left_outer_join(O o) {
-        return {std::move(o)};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_refers_to_recordset auto alias, class On>
-    auto left_outer_join(On on) {
-        return left_outer_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
-    }
-#endif
-
-    template<class T, class O>
-    internal::inner_join_t<T, O> inner_join(O o) {
-        return {std::move(o)};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_refers_to_recordset auto alias, class On>
-    auto inner_join(On on) {
-        return inner_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
-    }
-#endif
 
     template<class L, class R>
     constexpr auto and_(L lhs, R rhs) {
@@ -998,7 +472,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(lhs), std::move(rhs)};
     }
 
-    /** 
+    /**
      *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
      */
     template<class O, class R, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
@@ -1162,104 +636,5 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "le() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
                       "column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(lhs), std::move(rhs)};
-    }
-
-    /**
-     *  ORDER BY column, column alias or expression
-     *  
-     *  Examples:
-     *  storage.select(&User::name, order_by(&User::id))
-     *  storage.select(as<colalias_a>(&User::name), order_by(get<colalias_a>()))
-     */
-    template<class O, internal::satisfies_not<std::is_base_of, integer_printer, type_printer<O>> = true>
-    internal::order_by_t<O> order_by(O o) {
-        static_assert(!internal::is_statement_clause<O>::value,
-                      "an ORDER BY term must be an expression, not a statement clause");
-        return {std::move(o)};
-    }
-
-    /** 
-     *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
-     */
-    [[deprecated("Use the hidden FTS5 rank column instead")]]
-    inline internal::order_by_t<internal::rank_t> order_by(internal::rank_t expression) {
-        return {std::move(expression)};
-    }
-
-    /**
-     *  ORDER BY positional ordinal
-     *  
-     *  Examples:
-     *  storage.select(&User::name, order_by(1))
-     */
-    template<class O, internal::satisfies<std::is_base_of, integer_printer, type_printer<O>> = true>
-    internal::order_by_t<internal::literal_holder<O>> order_by(O o) {
-        return {{std::move(o)}};
-    }
-
-    /**
-     *  ORDER BY column1, column2
-     *  Example: storage.get_all<Singer>(multi_order_by(order_by(&Singer::name).asc(), order_by(&Singer::gender).desc())
-     */
-    template<class... Args>
-    internal::multi_order_by_t<Args...> multi_order_by(Args... args) {
-        //  the grammar production is `ordering-term`, which is narrower than `expr`, hence a positive check
-        static_assert((internal::is_order_by<Args>::value && ...),
-                      "every argument of a multi ORDER BY must be an ORDER BY term");
-        return {{std::forward<Args>(args)...}};
-    }
-
-    /**
-     *  ORDER BY column1, column2
-     *  Difference from `multi_order_by` is that `dynamic_order_by` can be changed at runtime using `push_back` member
-     *  function Example:
-     *  auto orderBy = dynamic_order_by(storage);
-     *  if(someCondition) {
-     *    orderBy.push_back(&User::id);
-     *  } else {
-     *    orderBy.push_back(&User::name);
-     *    orderBy.push_back(&User::birthDate);
-     *  }
-     */
-    template<class S>
-    internal::dynamic_order_by_t<internal::serializer_context<typename S::db_objects_type>>
-    dynamic_order_by(const S& storage) {
-        return {obtain_db_objects(storage)};
-    }
-
-    /**
-     *  X LIKE Y
-     *  Example: storage.select(like(&User::name, "T%"))
-     */
-    template<class A, class T>
-    constexpr internal::like_t<A, T, void> like(A expression, T pattern) {
-        static_assert(internal::is_operand_or_bindable<A>::value,
-                      "the matched expression must be a bindable value or one of sqlite_orm-recognized operands: "
-                      "member pointers, column pointers, c()-wrapped values, aliases or expressions");
-        return {std::move(expression), std::move(pattern), {}};
-    }
-
-    /**
-     *  X LIKE Y ESCAPE Z
-     *  Example: storage.select(like(&User::name, "T%", "%"))
-     */
-    template<class A, class T, class E>
-    constexpr internal::like_t<A, T, E> like(A expression, T pattern, E escape) {
-        static_assert(internal::is_operand_or_bindable<A>::value,
-                      "the matched expression must be a bindable value or one of sqlite_orm-recognized operands: "
-                      "member pointers, column pointers, c()-wrapped values, aliases or expressions");
-        return {std::move(expression), std::move(pattern), {std::move(escape)}};
-    }
-
-    /**
-     *  X GLOB Y
-     *  Example: storage.select(glob(&User::name, "*S"))
-     */
-    template<class A, class T>
-    constexpr internal::glob_t<A, T> glob(A expression, T pattern) {
-        static_assert(internal::is_operand_or_bindable<A>::value,
-                      "the matched expression must be a bindable value or one of sqlite_orm-recognized operands: "
-                      "member pointers, column pointers, c()-wrapped values, aliases or expressions");
-        return {std::move(expression), std::move(pattern)};
     }
 }

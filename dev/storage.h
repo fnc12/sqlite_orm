@@ -39,7 +39,6 @@
 #include "ast/result_columns.h"
 #include "ast/cte.h"
 #include "core_functions.h"
-#include "conditions.h"
 #include "statement_binder.h"
 #include "column_result.h"
 #include "mapped_type_proxy.h"

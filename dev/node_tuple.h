@@ -9,7 +9,7 @@
 
 #include "functional/type_traits.h"
 #include "tuple_helper/tuple_filter.h"
-#include "conditions.h"
+#include "ast/join.h"
 #include "operators.h"
 #include "prepared_statement.h"
 #include "optional_container.h"
@@ -87,8 +87,8 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<T, match_if<is_multi_order_by, T>> : node_tuple<args_type_t<T>> {};
 
-    template<class L, class R>
-    struct node_tuple<is_equal_with_table_t<L, R>, void> : node_tuple<R> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_equal_with_table, T>> : node_tuple<right_type_t<T>> {};
 
     template<class T>
     struct node_tuple<T, match_if<is_binary_condition, T>> : node_tuple_for<left_type_t<T>, right_type_t<T>> {};
@@ -150,25 +150,27 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<optional_container<T>, void> : node_tuple<T> {};
 
-    template<class A, class T, class E>
-    struct node_tuple<like_t<A, T, E>, void> : node_tuple_for<A, T, E> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_like, T>>
+        : node_tuple_for<expression_type_t<T>, pattern_type_t<T>, escape_type_t<T>> {};
 
-    template<class A, class T>
-    struct node_tuple<glob_t<A, T>, void> : node_tuple_for<A, T> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_glob, T>> : node_tuple_for<expression_type_t<T>, pattern_type_t<T>> {};
 
     template<class T>
     struct node_tuple<T, match_if<is_between, T>>
         : node_tuple_for<expression_type_t<T>, lower_type_t<T>, upper_type_t<T>> {};
 
     template<class T>
-    struct node_tuple<named_collate<T>, void> : node_tuple<T> {};
+    struct node_tuple<T, std::enable_if_t<std::disjunction<is_collate<T>, is_named_collate<T>>::value>>
+        : node_tuple<expression_type_t<T>> {};
 
     template<class T>
     struct node_tuple<T, std::enable_if_t<std::disjunction<is_is_null<T>, is_is_not_null<T>>::value>>
         : node_tuple<argument_type_t<T>> {};
 
-    template<class C>
-    struct node_tuple<negated_condition_t<C>, void> : node_tuple<C> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_negated_condition, T>> : node_tuple<argument_type_t<T>> {};
 
     template<class T>
     struct node_tuple<unary_minus_t<T>, void> : node_tuple<T> {};

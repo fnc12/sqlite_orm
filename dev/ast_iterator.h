@@ -10,7 +10,7 @@
 #include "functional/type_traits.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "vocabulary/node_traits.h"
-#include "conditions.h"
+#include "ast/join.h"
 #include "alias.h"
 #include "operators.h"
 #include "prepared_statement.h"
@@ -168,9 +168,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class L, class R>
-    struct ast_iterator<is_equal_with_table_t<L, R>, void> {
-        using node_type = is_equal_with_table_t<L, R>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_equal_with_table, T>> {
+        using node_type = T;
 
         template<class C>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, C& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -368,9 +368,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class A, class T, class E>
-    struct ast_iterator<like_t<A, T, E>, void> {
-        using node_type = like_t<A, T, E>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_like, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& lk, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -382,9 +382,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class A, class T>
-    struct ast_iterator<glob_t<A, T>, void> {
-        using node_type = glob_t<A, T>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_glob, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& lk, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -406,8 +406,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct ast_iterator<named_collate<T>, void> {
-        using node_type = named_collate<T>;
+    struct ast_iterator<T, std::enable_if_t<std::disjunction<is_collate<T>, is_named_collate<T>>::value>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& col, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -415,9 +415,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class C>
-    struct ast_iterator<negated_condition_t<C>, void> {
-        using node_type = negated_condition_t<C>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_negated_condition, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& neg, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -625,16 +625,6 @@ namespace sqlite_orm::internal {
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
             iterate_ast(node.args, lambda);
-        }
-    };
-
-    template<class T>
-    struct ast_iterator<collate_t<T>, void> {
-        using node_type = collate_t<T>;
-
-        template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(node.expression, lambda);
         }
     };
 
