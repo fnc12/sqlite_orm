@@ -23,7 +23,6 @@
 #include "../literal.h"
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
-#include "window_functions.h"  //  rank_t
 
 namespace sqlite_orm::internal {
     struct order_by_base {
@@ -191,14 +190,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert(!internal::is_statement_clause<O>::value,
                       "an ORDER BY term must be an expression, not a statement clause");
         return {std::move(o)};
-    }
-
-    /**
-     *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
-     */
-    [[deprecated("Use the hidden FTS5 rank column instead")]]
-    inline internal::order_by_t<internal::rank_t> order_by(internal::rank_t expression) {
-        return {std::move(expression)};
     }
 
     /**

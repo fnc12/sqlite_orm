@@ -23,15 +23,15 @@ TEST_CASE("window function arguments are validated at compile time") {
         STATIC_REQUIRE_FALSE(internal::is_partition_by_v<int>);
         STATIC_REQUIRE_FALSE(internal::is_window_ref_v<decltype(window("w", order_by(&User::id)))>);
     }
-    SECTION("built-in window functions are told apart from the aggregate functions an OVER clause applies") {
-        STATIC_REQUIRE(internal::is_builtin_window_function_v<decltype(row_number())>);
-        STATIC_REQUIRE(internal::is_builtin_window_function_v<decltype(rank())>);
-        STATIC_REQUIRE(internal::is_builtin_window_function_v<decltype(cume_dist())>);
-        STATIC_REQUIRE(internal::is_builtin_window_function_v<decltype(ntile(4))>);
-        STATIC_REQUIRE(internal::is_builtin_window_function_v<decltype(lag(&User::id, 1, 0))>);
-        STATIC_REQUIRE(internal::is_builtin_window_function_v<decltype(nth_value(&User::id, 2))>);
-        STATIC_REQUIRE_FALSE(internal::is_builtin_window_function_v<decltype(count(&User::id))>);
-        STATIC_REQUIRE_FALSE(internal::is_builtin_window_function_v<decltype(row_number().over())>);
+    SECTION("built-in window functions are built-in function calls") {
+        STATIC_REQUIRE(internal::is_builtin_function_call_v<decltype(row_number())>);
+        STATIC_REQUIRE(internal::is_builtin_function_call_v<decltype(rank())>);
+        STATIC_REQUIRE(internal::is_builtin_function_call_v<decltype(cume_dist())>);
+        STATIC_REQUIRE(internal::is_builtin_function_call_v<decltype(ntile(4))>);
+        STATIC_REQUIRE(internal::is_builtin_function_call_v<decltype(lag(&User::id, 1, 0))>);
+        STATIC_REQUIRE(internal::is_builtin_function_call_v<decltype(nth_value(&User::id, 2))>);
+        //  ... but the OVER clause applying one is not
+        STATIC_REQUIRE_FALSE(internal::is_builtin_function_call_v<decltype(row_number().over())>);
     }
     SECTION("window definition elements are recognized") {
         STATIC_REQUIRE(internal::is_window_defn_element_v<decltype(partition_by(&User::id))>);
