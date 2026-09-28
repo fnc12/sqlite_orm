@@ -7,4 +7,5 @@
 #include "generate_series.h"
 #include "fts5.h"
 #include "fts5_functions.h"
+#include "fts5_deprecations.h"
 #include "rtree.h"
