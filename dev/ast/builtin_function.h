@@ -157,6 +157,22 @@ namespace sqlite_orm::internal {
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
+
+    /*
+     *  A built-in window function, which is applied by an OVER clause.
+     */
+    template<class R, class S, class... Args>
+    struct builtin_window_function_t : builtin_function_t<R, S, Args...> {
+        using super = builtin_function_t<R, S, Args...>;
+
+        using super::super;
+
+        template<class... OverArgs>
+        over_t<builtin_window_function_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
+            return {*this, {std::forward<OverArgs>(overArgs)...}};
+        }
+    };
 }
 #else
 /*
@@ -196,12 +212,19 @@ namespace sqlite_orm::internal {
         using signature_type = Sig;
     };
 
+    template<orm_function_sig Sig>
+    struct window_sig {
+        using signature_type = Sig;
+    };
+
     template<class T>
     constexpr bool is_kinded_signature_v = false;
     template<class Sig>
     constexpr bool is_kinded_signature_v<scalar_sig<Sig>> = true;
     template<class Sig>
     constexpr bool is_kinded_signature_v<aggregate_sig<Sig>> = true;
+    template<class Sig>
+    constexpr bool is_kinded_signature_v<window_sig<Sig>> = true;
 
     /*
      *  Whether a built-in function's signature accepts a call with `Argc` arguments.
@@ -255,6 +278,10 @@ namespace sqlite_orm::internal {
     template<class R, class R0, class... Params>
     struct with_return_type<R, aggregate_sig<R0(Params...)>>
         : std::type_identity<aggregate_sig<std::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+
+    template<class R, class R0, class... Params>
+    struct with_return_type<R, window_sig<R0(Params...)>>
+        : std::type_identity<window_sig<std::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
 
     template<class R, class KindedSig>
     using with_return_type_t = typename with_return_type<R, KindedSig>::type;
@@ -314,6 +341,22 @@ namespace sqlite_orm::internal {
     };
 
     /*
+     *  Represents a call of a built-in window function, which is applied by an OVER clause.
+     */
+    template<class F, class Sig, class... CallArgs>
+    struct builtin_window_function_call : builtin_function_call<F, Sig, CallArgs...> {
+        using super = builtin_function_call<F, Sig, CallArgs...>;
+
+        using super::super;
+
+        template<class... OverArgs>
+        constexpr over_t<builtin_window_function_call, OverArgs...> over(OverArgs... overArgs) const {
+            validate_over_arguments<OverArgs...>();
+            return {*this, {std::forward<OverArgs>(overArgs)...}};
+        }
+    };
+
+    /*
      *  The call node for a matched kinded signature.
      */
     template<class KindedSig, class F, class... CallArgs>
@@ -327,6 +370,10 @@ namespace sqlite_orm::internal {
     struct builtin_function_call_for<aggregate_sig<Sig>, F, CallArgs...>
         : std::type_identity<builtin_aggregate_function_call<F, Sig, CallArgs...>> {};
 
+    template<class Sig, class F, class... CallArgs>
+    struct builtin_function_call_for<window_sig<Sig>, F, CallArgs...>
+        : std::type_identity<builtin_window_function_call<F, Sig, CallArgs...>> {};
+
     template<class KindedSig, class F, class... CallArgs>
     using builtin_function_call_for_t = typename builtin_function_call_for<KindedSig, F, CallArgs...>::type;
 
@@ -334,7 +381,7 @@ namespace sqlite_orm::internal {
      *  Generator of a built-in function call in a sql query expression.
      *
      *  Use the string literal operator template `""_builtin.function<KindedSig...>()`
-     *  - or the single-kind shorthands `.scalar<Sig...>()` and `.aggregate<Sig...>()` -
+     *  - or the single-kind shorthands `.scalar<Sig...>()`, `.aggregate<Sig...>()` and `.window<Sig...>()` -
      *  to define a built-in function by its name and its overload set.
      *
      *  Calling the generator picks the overload by the number of call arguments
@@ -403,6 +450,15 @@ namespace sqlite_orm::internal {
             requires (sizeof...(Sigs) > 0)
         [[nodiscard]] consteval auto aggregate() const {
             return builtin_function<N, aggregate_sig<Sigs>...>{this->cstr};
+        }
+
+        /*
+         *  A window function with the given overload set.
+         */
+        template<orm_function_sig... Sigs>
+            requires (sizeof...(Sigs) > 0)
+        [[nodiscard]] consteval auto window() const {
+            return builtin_function<N, window_sig<Sigs>...>{this->cstr};
         }
     };
 

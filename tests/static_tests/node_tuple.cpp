@@ -575,7 +575,7 @@ TEST_CASE("Node tuple") {
                       "select(columns(cast<int>(&User::id), cast<int>(&User::name)))");
     }
     SECTION("window function") {
-        //  a built-in window function is no node of its own, only its call arguments are
+        //  a built-in window function call contributes its call arguments, like any built-in function call
         using RowNumber = decltype(row_number().over(order_by(&User::id)));
         static_assert(is_same<node_tuple_t<RowNumber>, tuple<decltype(&User::id)>>::value,
                       "row_number().over(order_by(&User::id))");

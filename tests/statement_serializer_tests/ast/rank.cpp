@@ -11,14 +11,18 @@ TEST_CASE("statement_serializer rank") {
     std::string value;
     std::string expected;
     SECTION("rank") {
+        //  the RANK() window function, which is applied by an OVER clause
         auto node = rank();
         value = serialize(node, context);
-        expected = "rank";
+        expected = "RANK()";
     }
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
     SECTION("order by rank") {
+        //  the deprecated spelling of the hidden FTS5 rank column
         auto node = order_by(rank());
         value = serialize(node, context);
         expected = "ORDER BY rank";
     }
+#endif
     REQUIRE(value == expected);
 }
