@@ -35,6 +35,7 @@
 #include "ast/cross_join.h"
 #include "ast/cte.h"
 #include "ast/crud/default_values.h"
+#include "ast/crud/get.h"
 #include "ast/crud/insert.h"
 #include "ast/crud/into.h"
 #include "ast/crud/replace.h"

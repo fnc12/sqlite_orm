@@ -9,6 +9,7 @@
 #include "mapped_iterator.h"
 #include "ast_iterator.h"
 #include "prepared_statement.h"
+#include "ast/crud/get.h"
 #include "connection_holder.h"
 #include "util.h"
 

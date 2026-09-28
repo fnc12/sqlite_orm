@@ -2272,6 +2272,30 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_default_values = std::bool_constant<is_default_values_v<T>>;
+
+    /**
+     *  Nodes reading a mapped object by its primary key: get, get_pointer, get_optional.
+     *
+     *  The three are DSL spellings of the one SELECT by primary key; they differ only in how the object is
+     *  handed out, which each declares as its `result_type`.
+     */
+    template<class T>
+    extern const bool is_any_get_by_id_v;
+
+    template<class T>
+    using is_any_get_by_id = std::bool_constant<is_any_get_by_id_v<T>>;
+
+    /**
+     *  Nodes reading all mapped objects satisfying the given conditions: get_all, get_all_pointer, get_all_optional.
+     *
+     *  The three are DSL spellings of the one SELECT; they differ only in how the objects are handed out,
+     *  which each declares as its `result_type`.
+     */
+    template<class T>
+    extern const bool is_any_get_all_v;
+
+    template<class T>
+    using is_any_get_all = std::bool_constant<is_any_get_all_v<T>>;
 }
 
 // Classifier traits
@@ -3109,7 +3133,7 @@ namespace sqlite_orm::internal {
     using return_type_t = typename T::return_type;
 
     /**
-     *  The C++ type a condition yields.
+     *  The C++ type a node yields: e.g. that of a condition, or how a get statement hands out an object it reads.
      */
     template<typename T>
     using result_type_t = typename T::result_type;
@@ -17057,23 +17081,12 @@ namespace sqlite_orm::internal {
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
 #include <type_traits>  //  std::integral_constant, std::bool_constant
-#include <utility>  //  std::move, std::forward, std::exchange
-#include <tuple>  //  std::tuple, std::tuple_element
-#include <vector>  //  std::vector
-#include <optional>  //  std::optional
+#include <utility>  //  std::move, std::exchange
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/gsl.h"
-
-// #include "functional/type_traits.h"
-
-// #include "functional/mpl.h"
-
-// #include "functional/index_sequence_util.h"
-
-// #include "tuple_helper/tuple_filter.h"
 
 // #include "connection_holder.h"
 
@@ -17541,17 +17554,6 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "ast/select.h"
-// validate_select_clauses
-// #include "table_reference.h"
-
-// #include "mapped_type_proxy.h"
-
-// #include "vocabulary/node_traits.h"
-
-// #include "vocabulary/node_algorithms.h"
-// is_bindable_v
-
 namespace sqlite_orm::internal {
     struct prepared_statement_base {
         orm_gsl::owner<sqlite3_stmt*> stmt = nullptr;
@@ -17652,235 +17654,6 @@ namespace sqlite_orm::internal {
 
     template<class T>
     struct is_prepared_statement : std::bool_constant<is_prepared_statement_v<T>> {};
-
-    /**
-     *  T - type of object to obtain from a database
-     */
-    template<class T, class R, class... Args>
-    struct get_all_t {
-        using type = T;
-        using return_type = R;
-
-        using conditions_type = std::tuple<Args...>;
-
-        conditions_type conditions;
-    };
-
-    template<class T, class R, class... Args>
-    struct get_all_pointer_t {
-        using type = T;
-        using return_type = R;
-
-        using conditions_type = std::tuple<Args...>;
-
-        conditions_type conditions;
-    };
-
-    template<class T, class R, class... Args>
-    struct get_all_optional_t {
-        using type = T;
-        using return_type = R;
-
-        using conditions_type = std::tuple<Args...>;
-
-        conditions_type conditions;
-    };
-
-    template<class T, class... Ids>
-    struct get_t {
-        using type = T;
-        using ids_type = std::tuple<Ids...>;
-
-        ids_type ids;
-    };
-
-    template<class T, class... Ids>
-    struct get_pointer_t {
-        using type = T;
-        using ids_type = std::tuple<Ids...>;
-
-        ids_type ids;
-    };
-
-    template<class T, class... Ids>
-    struct get_optional_t {
-        using type = T;
-        using ids_type = std::tuple<Ids...>;
-
-        ids_type ids;
-    };
-
-    template<class T, class Tpl>
-    constexpr void validate_get_all_conditions() {
-        using from2_index_sequence = filter_tuple_sequence_t<Tpl, is_from2>;
-        if constexpr (from2_index_sequence::size() > 0) {
-            using from_type = std::tuple_element_t<index_sequence_value_at<0>(from2_index_sequence{}), Tpl>;
-            // check whether one of table expressions' type is the same as the requested table type
-            static_assert(mpl::invoke_t<mpl::contains<check_if_projected_is_type<type_t, T>>, from_type>::value,
-                          "Requested object type must be listed in explicit FROM clause");
-        }
-    }
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  Create a get statement.
-     *  T is an object type mapped to a storage.
-     *  Usage: get<User>(5);
-     */
-    template<class T, class... Ids>
-    internal::get_t<T, Ids...> get(Ids... ids) {
-        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
-                      "Only primary key values are accepted as Ids");
-        return {{std::forward<Ids>(ids)...}};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Create a get statement.
-     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
-     *  Usage: get<user_table>(5);
-     */
-    template<orm_table_reference auto table, class... Ids>
-    auto get(Ids... ids) {
-        return get<internal::auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
-    }
-#endif
-
-    /**
-     *  Create a get pointer statement.
-     *  T is an object type mapped to a storage.
-     *  Usage: get_pointer<User>(5);
-     */
-    template<class T, class... Ids>
-    internal::get_pointer_t<T, Ids...> get_pointer(Ids... ids) {
-        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
-                      "Only primary key values are accepted as Ids");
-        return {{std::forward<Ids>(ids)...}};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Create a get pointer statement.
-     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
-     *  Usage: get_pointer<user_table>(5);
-     */
-    template<orm_table_reference auto table, class... Ids>
-    auto get_pointer(Ids... ids) {
-        return get_pointer<internal::auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
-    }
-#endif
-
-    /**
-     *  Create a get optional statement.
-     *  T is an object type mapped to a storage.
-     *  Usage: get_optional<User>(5);
-     */
-    template<class T, class... Ids>
-    internal::get_optional_t<T, Ids...> get_optional(Ids... ids) {
-        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
-                      "Only primary key values are accepted as Ids");
-        return {{std::forward<Ids>(ids)...}};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Create a get optional statement.
-     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
-     *  Usage: get_optional<user_table>(5);
-     */
-    template<orm_table_reference auto table, class... Ids>
-    auto get_optional(Ids... ids) {
-        return get_optional<internal::auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
-    }
-#endif
-
-    /**
-     *  Create a get all statement.
-     *  T is an explicitly specified object mapped to a storage or a table alias.
-     *  R is a container type. std::vector<T> is default
-     *  Usage: storage.prepare(get_all<User>(...));
-     */
-    template<class T, class R = std::vector<internal::mapped_type_proxy_t<T>>, class... Args>
-    internal::get_all_t<T, R, Args...> get_all(Args... conditions) {
-        using conditions_tuple = std::tuple<Args...>;
-        internal::validate_select_clauses<conditions_tuple>();
-        internal::validate_get_all_conditions<T, conditions_tuple>();
-        return {{std::forward<Args>(conditions)...}};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Create a get all statement.
-     *  `mapped` is an explicitly specified table reference or table alias to be extracted.
-     *  `R` is the container return type, which must have a `R::push_back(T&&)` method, and defaults to `std::vector<T>`
-     *  Usage: storage.get_all<sqlite_schema>(...);
-     */
-    template<orm_refers_to_table auto mapped,
-             class R = std::vector<internal::mapped_type_proxy_t<decltype(mapped)>>,
-             class... Args>
-    auto get_all(Args&&... conditions) {
-        return get_all<internal::auto_decay_table_ref_t<mapped>, R>(std::forward<Args>(conditions)...);
-    }
-#endif
-
-    /**
-     *  Create a get all pointer statement.
-     *  T is an object type mapped to a storage.
-     *  R is a container return type. std::vector<std::unique_ptr<T>> is default
-     *  Usage: storage.prepare(get_all_pointer<User>(...));
-     */
-    template<class T, class R = std::vector<std::unique_ptr<T>>, class... Args>
-    internal::get_all_pointer_t<T, R, Args...> get_all_pointer(Args... conditions) {
-        using conditions_tuple = std::tuple<Args...>;
-        internal::validate_select_clauses<conditions_tuple>();
-        internal::validate_get_all_conditions<T, conditions_tuple>();
-        return {{std::forward<Args>(conditions)...}};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Create a get all pointer statement.
-     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
-     *  R is a container return type. std::vector<std::unique_ptr<T>> is default
-     *  Usage: storage.prepare(get_all_pointer<user_table>(...));
-     */
-    template<orm_table_reference auto table,
-             class R = std::vector<internal::auto_decay_table_ref_t<table>>,
-             class... Args>
-    auto get_all_pointer(Args... conditions) {
-        return get_all_pointer<internal::auto_decay_table_ref_t<table>, R>(std::forward<Args>(conditions)...);
-    }
-#endif
-
-    /**
-     *  Create a get all optional statement.
-     *  T is an object type mapped to a storage.
-     *  R is a container return type. std::vector<std::optional<T>> is default
-     *  Usage: storage.get_all_optional<User>(...);
-     */
-    template<class T, class R = std::vector<std::optional<T>>, class... Args>
-    internal::get_all_optional_t<T, R, Args...> get_all_optional(Args... conditions) {
-        using conditions_tuple = std::tuple<Args...>;
-        internal::validate_select_clauses<conditions_tuple>();
-        internal::validate_get_all_conditions<T, conditions_tuple>();
-        return {{std::forward<Args>(conditions)...}};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Create a get all optional statement.
-     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
-     *  R is a container return type. std::vector<std::optional<T>> is default
-     *  Usage: storage.get_all_optional<user_table>(...);
-     */
-    template<orm_table_reference auto table,
-             class R = std::vector<internal::auto_decay_table_ref_t<table>>,
-             class... Args>
-    auto get_all_optional(Args&&... conditions) {
-        return get_all_optional<internal::auto_decay_table_ref_t<table>, R>(std::forward<Args>(conditions)...);
-    }
-#endif
 }
 
 // #include "ast/window_functions.h"
@@ -18154,29 +17927,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class R, class... Args>
-    struct ast_iterator<get_all_t<T, R, Args...>, void> {
-        using node_type = get_all_t<T, R, Args...>;
-
-        template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& get, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(get.conditions, lambda);
-        }
-    };
-
-    template<class T, class... Args>
-    struct ast_iterator<get_all_pointer_t<T, Args...>, void> {
-        using node_type = get_all_pointer_t<T, Args...>;
-
-        template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& get, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(get.conditions, lambda);
-        }
-    };
-
-    template<class T, class... Args>
-    struct ast_iterator<get_all_optional_t<T, Args...>, void> {
-        using node_type = get_all_optional_t<T, Args...>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_any_get_all, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& get, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -18596,6 +18349,297 @@ namespace sqlite_orm::internal {
 }
 
 // #include "prepared_statement.h"
+
+// #include "ast/crud/get.h"
+
+/** @file The statements reading mapped objects: by primary key (get, get_pointer, get_optional),
+ *        and all objects of a table satisfying the given conditions (get_all, get_all_pointer, get_all_optional).
+ *
+ *        The three statements of either group are DSL spellings of one and the same SELECT; they differ only in
+ *        how an object is handed out - as is, owned by a `std::unique_ptr`, or held by a `std::optional`. Each of
+ *        them declares that as its `result_type`: the type of the object read by primary key, or of the elements
+ *        of the container the objects are read into.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::disjunction
+#include <tuple>  //  std::tuple, std::tuple_element
+#include <memory>  //  std::unique_ptr
+#include <optional>  //  std::optional
+#include <vector>  //  std::vector
+#include <utility>  //  std::forward
+#endif
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
+// #include "../../functional/type_traits.h"
+
+// #include "../../functional/mpl.h"
+
+// #include "../../functional/index_sequence_util.h"
+
+// #include "../../tuple_helper/tuple_filter.h"
+
+// #include "../../table_reference.h"
+
+// #include "../../mapped_type_proxy.h"
+
+// #include "../../vocabulary/node_traits.h"
+
+// #include "../../vocabulary/node_algorithms.h"
+//  is_bindable_v
+// #include "../../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../select.h"
+//  validate_select_clauses
+
+namespace sqlite_orm::internal {
+    template<class T, class... Ids>
+    struct get_t {
+        using type = T;
+        using result_type = T;
+        using ids_type = std::tuple<Ids...>;
+
+        ids_type ids;
+    };
+
+    template<class T, class... Ids>
+    struct get_pointer_t {
+        using type = T;
+        using result_type = std::unique_ptr<T>;
+        using ids_type = std::tuple<Ids...>;
+
+        ids_type ids;
+    };
+
+    template<class T, class... Ids>
+    struct get_optional_t {
+        using type = T;
+        using result_type = std::optional<T>;
+        using ids_type = std::tuple<Ids...>;
+
+        ids_type ids;
+    };
+
+    template<class T>
+    constexpr bool is_any_get_by_id_v = std::disjunction<polyfill::is_specialization_of<T, get_t>,
+                                                         polyfill::is_specialization_of<T, get_pointer_t>,
+                                                         polyfill::is_specialization_of<T, get_optional_t>>::value;
+
+    /**
+     *  T - type of object to obtain from a database
+     *  R - container type the objects are read into
+     */
+    template<class T, class R, class... Args>
+    struct get_all_t {
+        using type = T;
+        using result_type = mapped_type_proxy_t<T>;
+        using return_type = R;
+
+        using conditions_type = std::tuple<Args...>;
+
+        conditions_type conditions;
+    };
+
+    template<class T, class R, class... Args>
+    struct get_all_pointer_t {
+        using type = T;
+        using result_type = std::unique_ptr<T>;
+        using return_type = R;
+
+        using conditions_type = std::tuple<Args...>;
+
+        conditions_type conditions;
+    };
+
+    template<class T, class R, class... Args>
+    struct get_all_optional_t {
+        using type = T;
+        using result_type = std::optional<T>;
+        using return_type = R;
+
+        using conditions_type = std::tuple<Args...>;
+
+        conditions_type conditions;
+    };
+
+    template<class T>
+    constexpr bool is_any_get_all_v = std::disjunction<polyfill::is_specialization_of<T, get_all_t>,
+                                                       polyfill::is_specialization_of<T, get_all_pointer_t>,
+                                                       polyfill::is_specialization_of<T, get_all_optional_t>>::value;
+
+    template<class T, class Tpl>
+    constexpr void validate_get_all_conditions() {
+        using from2_index_sequence = filter_tuple_sequence_t<Tpl, is_from2>;
+        if constexpr (from2_index_sequence::size() > 0) {
+            using from_type = std::tuple_element_t<index_sequence_value_at<0>(from2_index_sequence{}), Tpl>;
+            // check whether one of table expressions' type is the same as the requested table type
+            static_assert(mpl::invoke_t<mpl::contains<check_if_projected_is_type<type_t, T>>, from_type>::value,
+                          "Requested object type must be listed in explicit FROM clause");
+        }
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Create a get statement.
+     *  T is an object type mapped to a storage.
+     *  Usage: get<User>(5);
+     */
+    template<class T, class... Ids>
+    internal::get_t<T, Ids...> get(Ids... ids) {
+        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
+                      "Only primary key values are accepted as Ids");
+        return {{std::forward<Ids>(ids)...}};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a get statement.
+     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
+     *  Usage: get<user_table>(5);
+     */
+    template<orm_table_reference auto table, class... Ids>
+    auto get(Ids... ids) {
+        return get<internal::auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
+    }
+#endif
+
+    /**
+     *  Create a get pointer statement.
+     *  T is an object type mapped to a storage.
+     *  Usage: get_pointer<User>(5);
+     */
+    template<class T, class... Ids>
+    internal::get_pointer_t<T, Ids...> get_pointer(Ids... ids) {
+        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
+                      "Only primary key values are accepted as Ids");
+        return {{std::forward<Ids>(ids)...}};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a get pointer statement.
+     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
+     *  Usage: get_pointer<user_table>(5);
+     */
+    template<orm_table_reference auto table, class... Ids>
+    auto get_pointer(Ids... ids) {
+        return get_pointer<internal::auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
+    }
+#endif
+
+    /**
+     *  Create a get optional statement.
+     *  T is an object type mapped to a storage.
+     *  Usage: get_optional<User>(5);
+     */
+    template<class T, class... Ids>
+    internal::get_optional_t<T, Ids...> get_optional(Ids... ids) {
+        static_assert((internal::is_bindable_v<internal::value_unref_type_t<Ids>> && ...),
+                      "Only primary key values are accepted as Ids");
+        return {{std::forward<Ids>(ids)...}};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a get optional statement.
+     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
+     *  Usage: get_optional<user_table>(5);
+     */
+    template<orm_table_reference auto table, class... Ids>
+    auto get_optional(Ids... ids) {
+        return get_optional<internal::auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
+    }
+#endif
+
+    /**
+     *  Create a get all statement.
+     *  T is an explicitly specified object mapped to a storage or a table alias.
+     *  R is a container type. std::vector<T> is default
+     *  Usage: storage.prepare(get_all<User>(...));
+     */
+    template<class T, class R = std::vector<internal::mapped_type_proxy_t<T>>, class... Args>
+    internal::get_all_t<T, R, Args...> get_all(Args... conditions) {
+        using conditions_tuple = std::tuple<Args...>;
+        internal::validate_select_clauses<conditions_tuple>();
+        internal::validate_get_all_conditions<T, conditions_tuple>();
+        return {{std::forward<Args>(conditions)...}};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a get all statement.
+     *  `mapped` is an explicitly specified table reference or table alias to be extracted.
+     *  `R` is the container return type, which must have a `R::push_back(T&&)` method, and defaults to `std::vector<T>`
+     *  Usage: storage.get_all<sqlite_schema>(...);
+     */
+    template<orm_refers_to_table auto mapped,
+             class R = std::vector<internal::mapped_type_proxy_t<decltype(mapped)>>,
+             class... Args>
+    auto get_all(Args&&... conditions) {
+        return get_all<internal::auto_decay_table_ref_t<mapped>, R>(std::forward<Args>(conditions)...);
+    }
+#endif
+
+    /**
+     *  Create a get all pointer statement.
+     *  T is an object type mapped to a storage.
+     *  R is a container return type. std::vector<std::unique_ptr<T>> is default
+     *  Usage: storage.prepare(get_all_pointer<User>(...));
+     */
+    template<class T, class R = std::vector<std::unique_ptr<T>>, class... Args>
+    internal::get_all_pointer_t<T, R, Args...> get_all_pointer(Args... conditions) {
+        using conditions_tuple = std::tuple<Args...>;
+        internal::validate_select_clauses<conditions_tuple>();
+        internal::validate_get_all_conditions<T, conditions_tuple>();
+        return {{std::forward<Args>(conditions)...}};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a get all pointer statement.
+     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
+     *  R is a container return type. std::vector<std::unique_ptr<T>> is default
+     *  Usage: storage.prepare(get_all_pointer<user_table>(...));
+     */
+    template<orm_table_reference auto table,
+             class R = std::vector<internal::auto_decay_table_ref_t<table>>,
+             class... Args>
+    auto get_all_pointer(Args... conditions) {
+        return get_all_pointer<internal::auto_decay_table_ref_t<table>, R>(std::forward<Args>(conditions)...);
+    }
+#endif
+
+    /**
+     *  Create a get all optional statement.
+     *  T is an object type mapped to a storage.
+     *  R is a container return type. std::vector<std::optional<T>> is default
+     *  Usage: storage.get_all_optional<User>(...);
+     */
+    template<class T, class R = std::vector<std::optional<T>>, class... Args>
+    internal::get_all_optional_t<T, R, Args...> get_all_optional(Args... conditions) {
+        using conditions_tuple = std::tuple<Args...>;
+        internal::validate_select_clauses<conditions_tuple>();
+        internal::validate_get_all_conditions<T, conditions_tuple>();
+        return {{std::forward<Args>(conditions)...}};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a get all optional statement.
+     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
+     *  R is a container return type. std::vector<std::optional<T>> is default
+     *  Usage: storage.get_all_optional<user_table>(...);
+     */
+    template<orm_table_reference auto table,
+             class R = std::vector<internal::auto_decay_table_ref_t<table>>,
+             class... Args>
+    auto get_all_optional(Args&&... conditions) {
+        return get_all_optional<internal::auto_decay_table_ref_t<table>, R>(std::forward<Args>(conditions)...);
+    }
+#endif
+}
 
 // #include "connection_holder.h"
 
@@ -21935,6 +21979,8 @@ namespace sqlite_orm::internal {
     };
 }
 
+// #include "ast/crud/get.h"
+
 // #include "ast/crud/insert.h"
 
 /** @file The INSERT statement, in each of the DSL spellings sqlite_orm offers for it - against a
@@ -22891,6 +22937,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "conditions.h"
 
 // #include "prepared_statement.h"
+
+// #include "mapped_type_proxy.h"
 
 // #include "rowid.h"
 
@@ -25480,100 +25528,57 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class Ctx>
-    std::string serialize_get_all_impl(const T& getAll, const Ctx& context) {
-        using table_type = type_t<T>;
-        using mapped_type = mapped_type_proxy_t<table_type>;
-        constexpr bool hasExplicitFrom2 = tuple_has<conditions_type_t<T>, is_from2>::value;
-
-        auto& table = pick_table<mapped_type>(context.db_objects);
-
-        std::stringstream ss;
-        ss << "SELECT " << streaming_table_column_names(table, alias_extractor<table_type>::as_qualifier(table));
-        if constexpr (!hasExplicitFrom2) {
-            ss << " FROM " << streaming_identifier(table.name, alias_extractor<table_type>::as_alias());
-        }
-        ss << streaming_conditions_tuple(getAll.conditions, context);
-        return ss.str();
-    }
-
-    template<class T, class R, class... Args>
-    struct statement_serializer<get_all_optional_t<T, R, Args...>, void> {
-        using statement_type = get_all_optional_t<T, R, Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_any_get_all, T>> {
+        using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& get,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& getAll,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize_get_all_impl(get, context);
-        }
-    };
+            using table_type = type_t<statement_type>;
+            using mapped_type = mapped_type_proxy_t<table_type>;
+            constexpr bool hasExplicitFrom2 = tuple_has<conditions_type_t<statement_type>, is_from2>::value;
 
-    template<class T, class R, class... Args>
-    struct statement_serializer<get_all_pointer_t<T, R, Args...>, void> {
-        using statement_type = get_all_pointer_t<T, R, Args...>;
+            auto& table = pick_table<mapped_type>(context.db_objects);
 
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& get,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize_get_all_impl(get, context);
-        }
-    };
-
-    template<class T, class R, class... Args>
-    struct statement_serializer<get_all_t<T, R, Args...>, void> {
-        using statement_type = get_all_t<T, R, Args...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& get,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize_get_all_impl(get, context);
-        }
-    };
-
-    template<class T, class Ctx>
-    std::string serialize_get_impl(const T&, const Ctx& context) {
-        using primary_type = type_t<T>;
-        auto& table = pick_table<primary_type>(context.db_objects);
-        std::stringstream ss;
-        ss << "SELECT " << streaming_table_column_names(table, std::string{}) << " FROM "
-           << streaming_identifier(table.name) << " WHERE ";
-
-        const auto primaryKeyColumnNames = table.primary_key_column_names();
-#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
-        static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
-        for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {
-            ss << sep[std::exchange(first, false)] << streaming_identifier(pkName) << " = ?";
-        }
-#else
-        for (size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-            if (i > 0) {
-                ss << " AND ";
+            std::stringstream ss;
+            ss << "SELECT " << streaming_table_column_names(table, alias_extractor<table_type>::as_qualifier(table));
+            if constexpr (!hasExplicitFrom2) {
+                ss << " FROM " << streaming_identifier(table.name, alias_extractor<table_type>::as_alias());
             }
-            ss << streaming_identifier(primaryKeyColumnNames[i]) << " = ?";
-        }
-#endif
-        return ss.str();
-    }
-
-    template<class T, class... Ids>
-    struct statement_serializer<get_t<T, Ids...>, void> {
-        using statement_type = get_t<T, Ids...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& get,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize_get_impl(get, context);
+            ss << streaming_conditions_tuple(getAll.conditions, context);
+            return ss.str();
         }
     };
 
-    template<class T, class... Ids>
-    struct statement_serializer<get_pointer_t<T, Ids...>, void> {
-        using statement_type = get_pointer_t<T, Ids...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_any_get_by_id, T>> {
+        using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& /*get*/,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize_get_impl(statement, context);
+            using primary_type = type_t<statement_type>;
+            auto& table = pick_table<primary_type>(context.db_objects);
+            std::stringstream ss;
+            ss << "SELECT " << streaming_table_column_names(table, std::string{}) << " FROM "
+               << streaming_identifier(table.name) << " WHERE ";
+
+            const auto primaryKeyColumnNames = table.primary_key_column_names();
+#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+            static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
+            for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {
+                ss << sep[std::exchange(first, false)] << streaming_identifier(pkName) << " = ?";
+            }
+#else
+            for (size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
+                if (i > 0) {
+                    ss << " AND ";
+                }
+                ss << streaming_identifier(primaryKeyColumnNames[i]) << " = ?";
+            }
+#endif
+            return ss.str();
         }
     };
 
@@ -25597,17 +25602,6 @@ namespace sqlite_orm::internal {
 
             ss << "OR " << idx2str.at(static_cast<int>(statement.action));
             return ss.str();
-        }
-    };
-
-    template<class T, class... Ids>
-    struct statement_serializer<get_optional_t<T, Ids...>, void> {
-        using statement_type = get_optional_t<T, Ids...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& get,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize_get_impl(get, context);
         }
     };
 
@@ -27300,6 +27294,38 @@ namespace sqlite_orm::internal {
         }
     }
 
+    /*
+     *  The object a get statement hands out through its result type:
+     *  the result itself, or the object owned by a `std::unique_ptr` or held by a `std::optional`.
+     */
+    template<class Result>
+    struct result_object : polyfill::type_identity<Result> {};
+
+    template<class O>
+    struct result_object<std::unique_ptr<O>> : polyfill::type_identity<O> {};
+
+    template<class O>
+    struct result_object<std::optional<O>> : polyfill::type_identity<O> {};
+
+    template<class Result>
+    using result_object_t = typename result_object<Result>::type;
+
+    /*
+     *  Put a default-constructed object into the given result - as is, owned by a `std::unique_ptr`
+     *  or held by a `std::optional` -, and return a reference to it.
+     */
+    template<class Result>
+    result_object_t<Result>& emplace_result_object(Result& result) {
+        if constexpr (polyfill::is_specialization_of_v<Result, std::unique_ptr>) {
+            result = std::make_unique<result_object_t<Result>>();
+            return *result;
+        } else if constexpr (polyfill::is_specialization_of_v<Result, std::optional>) {
+            return result.emplace();
+        } else {
+            return result;
+        }
+    }
+
     /**
      *  Storage class itself. Create an instance to use it as an interfacto to sqlite db by calling `make_storage`
      *  function.
@@ -28717,33 +28743,9 @@ namespace sqlite_orm::internal {
             return this->prepare_impl(std::move(statement));
         }
 
-        template<class T, class... Args>
-        prepared_statement_t<get_all_t<T, Args...>> prepare(get_all_t<T, Args...> statement) {
-            return this->prepare_impl(std::move(statement));
-        }
-
-        template<class T, class... Args>
-        prepared_statement_t<get_all_pointer_t<T, Args...>> prepare(get_all_pointer_t<T, Args...> statement) {
-            return this->prepare_impl(std::move(statement));
-        }
-
-        template<class T, class R, class... Args>
-        prepared_statement_t<get_all_optional_t<T, R, Args...>> prepare(get_all_optional_t<T, R, Args...> statement) {
-            return this->prepare_impl(std::move(statement));
-        }
-
-        template<class T, class... Ids>
-        prepared_statement_t<get_t<T, Ids...>> prepare(get_t<T, Ids...> statement) {
-            return this->prepare_impl(std::move(statement));
-        }
-
-        template<class T, class... Ids>
-        prepared_statement_t<get_pointer_t<T, Ids...>> prepare(get_pointer_t<T, Ids...> statement) {
-            return this->prepare_impl(std::move(statement));
-        }
-
-        template<class T, class... Ids>
-        prepared_statement_t<get_optional_t<T, Ids...>> prepare(get_optional_t<T, Ids...> statement) {
+        template<class Get,
+                 std::enable_if_t<std::disjunction_v<is_any_get_by_id<Get>, is_any_get_all<Get>>, bool> = true>
+        prepared_statement_t<Get> prepare(Get statement) {
             return this->prepare_impl(std::move(statement));
         }
 
@@ -28962,50 +28964,35 @@ namespace sqlite_orm::internal {
             this->executor.perform_single_step(stmt);
         }
 
-        template<class T, class... Ids>
-        std::unique_ptr<T> execute(const prepared_statement_t<get_pointer_t<T, Ids...>>& statement) {
+        /*
+         *  Execute a get statement by primary key, handing the object out as the statement's result type says:
+         *  as is (throwing if not found), owned by a `std::unique_ptr` or held by a `std::optional`.
+         */
+        template<class Get, satisfies<is_any_get_by_id, Get> = true>
+        result_type_t<Get> execute(const prepared_statement_t<Get>& statement) {
+            using result_type = result_type_t<Get>;
+            using object_type = result_object_t<result_type>;
+            constexpr bool returnsObject = std::is_same<result_type, object_type>::value;
+            //  an object handed out as is is read into an optional, which tells whether it was found
+            using holder_type = std::conditional_t<returnsObject, std::optional<object_type>, result_type>;
+
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
             iterate_ast(statement.expression.ids, conditional_binder{stmt});
 
-            std::unique_ptr<T> res;
-            this->executor.perform_step(stmt, [&table = this->get_table<T>(), &res](sqlite3_stmt* stmt) {
-                res = std::make_unique<T>();
-                object_from_column_builder<T> builder{*res, stmt};
+            holder_type res;
+            this->executor.perform_step(stmt, [&table = this->get_table<object_type>(), &res](sqlite3_stmt* stmt) {
+                object_from_column_builder<object_type> builder{emplace_result_object(res), stmt};
                 table.for_each_column(builder);
             });
-            return res;
-        }
-
-        template<class T, class... Ids>
-        std::optional<T> execute(const prepared_statement_t<get_optional_t<T, Ids...>>& statement) {
-            sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-
-            iterate_ast(statement.expression.ids, conditional_binder{stmt});
-
-            std::optional<T> res;
-            this->executor.perform_step(stmt, [&table = this->get_table<T>(), &res](sqlite3_stmt* stmt) {
-                object_from_column_builder<T> builder{res.emplace(), stmt};
-                table.for_each_column(builder);
-            });
-            return res;
-        }
-
-        template<class T, class... Ids>
-        T execute(const prepared_statement_t<get_t<T, Ids...>>& statement) {
-            sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-
-            iterate_ast(statement.expression.ids, conditional_binder{stmt});
-
-            std::optional<T> res;
-            this->executor.perform_step(stmt, [&table = this->get_table<T>(), &res](sqlite3_stmt* stmt) {
-                object_from_column_builder<T> builder{res.emplace(), stmt};
-                table.for_each_column(builder);
-            });
-            if (!res.has_value()) {
-                throw std::system_error{orm_error_code::not_found};
+            if constexpr (returnsObject) {
+                if (!res.has_value()) {
+                    throw std::system_error{orm_error_code::not_found};
+                }
+                return std::move(res).value();
+            } else {
+                return res;
             }
-            return std::move(res).value();
         }
 
         template<class Select, satisfies<is_select_expression, Select> = true>
@@ -29018,63 +29005,30 @@ namespace sqlite_orm::internal {
             return this->execute_select<ColResult>(statement);
         }
 
-        template<class T, class R, class... Args, class O = mapped_type_proxy_t<T>>
-        R execute(const prepared_statement_t<get_all_t<T, R, Args...>>& statement) {
+        /*
+         *  Execute a get all statement, reading the objects into the statement's container,
+         *  each handed out as the statement's result type says: as is, owned by a `std::unique_ptr`
+         *  or held by a `std::optional`.
+         */
+        template<class GetAll, satisfies<is_any_get_all, GetAll> = true>
+        return_type_t<GetAll> execute(const prepared_statement_t<GetAll>& statement) {
+            using result_type = result_type_t<GetAll>;
+            using object_type = result_object_t<result_type>;
+            using container_type = return_type_t<GetAll>;
+
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
             iterate_ast(statement.expression, conditional_binder{stmt});
 
-            R res;
-            this->executor.perform_steps(stmt, [&table = this->get_table<O>(), &res](sqlite3_stmt* stmt) {
-                O obj;
-                object_from_column_builder<O> builder{obj, stmt};
+            container_type res;
+            this->executor.perform_steps(stmt, [&table = this->get_table<object_type>(), &res](sqlite3_stmt* stmt) {
+                result_type obj;
+                object_from_column_builder<object_type> builder{emplace_result_object(obj), stmt};
                 table.for_each_column(builder);
                 res.push_back(std::move(obj));
             });
 
-            if constexpr (polyfill::is_specialization_of_v<R, std::vector>) {
-                res.shrink_to_fit();
-            }
-
-            return res;
-        }
-
-        template<class T, class R, class... Args>
-        R execute(const prepared_statement_t<get_all_pointer_t<T, R, Args...>>& statement) {
-            sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-
-            iterate_ast(statement.expression, conditional_binder{stmt});
-
-            R res;
-            this->executor.perform_steps(stmt, [&table = this->get_table<T>(), &res](sqlite3_stmt* stmt) {
-                auto obj = std::make_unique<T>();
-                object_from_column_builder<T> builder{*obj, stmt};
-                table.for_each_column(builder);
-                res.push_back(std::move(obj));
-            });
-
-            if constexpr (polyfill::is_specialization_of_v<R, std::vector>) {
-                res.shrink_to_fit();
-            }
-
-            return res;
-        }
-
-        template<class T, class R, class... Args>
-        R execute(const prepared_statement_t<get_all_optional_t<T, R, Args...>>& statement) {
-            sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-
-            iterate_ast(statement.expression, conditional_binder{stmt});
-
-            R res;
-            this->executor.perform_steps(stmt, [&table = this->get_table<T>(), &res](sqlite3_stmt* stmt) {
-                auto obj = std::make_optional<T>();
-                object_from_column_builder<T> builder{*obj, stmt};
-                table.for_each_column(builder);
-                res.push_back(std::move(obj));
-            });
-
-            if constexpr (polyfill::is_specialization_of_v<R, std::vector>) {
+            if constexpr (polyfill::is_specialization_of_v<container_type, std::vector>) {
                 res.shrink_to_fit();
             }
 
@@ -31278,6 +31232,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
+// #include "ast/crud/get.h"
+
 // #include "ast/crud/insert.h"
 
 // #include "ast/crud/into.h"
@@ -32628,14 +32584,8 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<T, match_if<is_values, T>> : node_tuple<args_tuple_t<T>> {};
 
-    template<class T, class R, class... Args>
-    struct node_tuple<get_all_t<T, R, Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class T, class... Args>
-    struct node_tuple<get_all_pointer_t<T, Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class T, class... Args>
-    struct node_tuple<get_all_optional_t<T, Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_any_get_all, T>> : node_tuple<conditions_type_t<T>> {};
 
     template<class T>
     struct node_tuple<T, match_if<is_update_all, T>> : node_tuple_for<set_type_t<T>, conditions_type_t<T>> {};
@@ -32808,42 +32758,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return std::get<N>(statement.expression.range);
     }
 
-    template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::get_t<T, Ids...>>& statement) {
-        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
-    }
-
-    template<int N, class T, class... Ids>
-    const auto& get(const internal::prepared_statement_t<internal::get_t<T, Ids...>>& statement) {
-        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
-    }
-
-    template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>>& statement) {
-        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
-    }
-
-    template<int N, class T, class... Ids>
-    const auto& get(const internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>>& statement) {
-        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
-    }
-
-    template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::get_optional_t<T, Ids...>>& statement) {
-        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
-    }
-
-    template<int N, class T, class... Ids>
-    const auto& get(const internal::prepared_statement_t<internal::get_optional_t<T, Ids...>>& statement) {
-        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
-    }
-
-    template<int N, class E, internal::satisfies<internal::is_remove, E> = true>
+    //  get and remove by primary key: the primary key values are the bound values
+    template<int N,
+             class E,
+             std::enable_if_t<std::disjunction_v<internal::is_any_get_by_id<E>, internal::is_remove<E>>, bool> = true>
     auto& get(internal::prepared_statement_t<E>& statement) {
         return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
 
-    template<int N, class E, internal::satisfies<internal::is_remove, E> = true>
+    template<int N,
+             class E,
+             std::enable_if_t<std::disjunction_v<internal::is_any_get_by_id<E>, internal::is_remove<E>>, bool> = true>
     const auto& get(const internal::prepared_statement_t<E>& statement) {
         return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
@@ -32873,6 +32798,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<int N,
              class T,
              std::enable_if_t<std::negation_v<std::disjunction<internal::is_object_dml_expression<T>,
+                                                               internal::is_any_get_by_id<T>,
                                                                internal::is_insert_range<T>,
                                                                internal::is_replace_range<T>>>,
                               bool> = true>
@@ -32901,6 +32827,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<int N,
              class T,
              std::enable_if_t<std::negation_v<std::disjunction<internal::is_object_dml_expression<T>,
+                                                               internal::is_any_get_by_id<T>,
                                                                internal::is_insert_range<T>,
                                                                internal::is_replace_range<T>>>,
                               bool> = true>

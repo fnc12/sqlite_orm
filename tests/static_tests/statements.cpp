@@ -1,5 +1,9 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <memory>  //  std::unique_ptr
+#include <optional>  //  std::optional
+#include <tuple>  //  std::tuple
+#include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
 using internal::expression_object_type_t;
@@ -75,6 +79,36 @@ TEST_CASE("statements") {
         STATIC_REQUIRE_FALSE(internal::is_dynamic_set_v<decltype(set(c(&Object::id) = 0))>);
         STATIC_REQUIRE_FALSE(internal::is_into_v<decltype(values(std::make_tuple(0)))>);
         STATIC_REQUIRE_FALSE(internal::is_upsert_clause_v<decltype(into<Object>())>);
+    }
+
+    SECTION("get statements") {
+        using internal::result_type_t;
+
+        //  the spellings of one SELECT by primary key, ...
+        STATIC_REQUIRE(internal::is_any_get_by_id_v<decltype(get<Object>(0))>);
+        STATIC_REQUIRE(internal::is_any_get_by_id_v<decltype(get_pointer<Object>(0))>);
+        STATIC_REQUIRE(internal::is_any_get_by_id_v<decltype(get_optional<Object>(0))>);
+        //  ... and of one SELECT of all objects
+        STATIC_REQUIRE(internal::is_any_get_all_v<decltype(get_all<Object>())>);
+        STATIC_REQUIRE(internal::is_any_get_all_v<decltype(get_all_pointer<Object>())>);
+        STATIC_REQUIRE(internal::is_any_get_all_v<decltype(get_all_optional<Object>())>);
+        STATIC_REQUIRE_FALSE(internal::is_any_get_by_id_v<decltype(get_all<Object>())>);
+        STATIC_REQUIRE_FALSE(internal::is_any_get_all_v<decltype(get<Object>(0))>);
+        STATIC_REQUIRE_FALSE(internal::is_any_get_by_id_v<decltype(remove<Object>(0))>);
+
+        //  they differ only in how an object is handed out
+        STATIC_REQUIRE(std::is_same<result_type_t<decltype(get<Object>(0))>, Object>::value);
+        STATIC_REQUIRE(std::is_same<result_type_t<decltype(get_pointer<Object>(0))>, std::unique_ptr<Object>>::value);
+        STATIC_REQUIRE(std::is_same<result_type_t<decltype(get_optional<Object>(0))>, std::optional<Object>>::value);
+        STATIC_REQUIRE(std::is_same<result_type_t<decltype(get_all<Object>())>, Object>::value);
+        STATIC_REQUIRE(
+            std::is_same<result_type_t<decltype(get_all_pointer<Object>())>, std::unique_ptr<Object>>::value);
+        STATIC_REQUIRE(std::is_same<result_type_t<decltype(get_all_optional<Object>())>, std::optional<Object>>::value);
+
+        //  the container type is not a condition
+        using GetAllPointer = decltype(get_all_pointer<Object>(where(is_equal(&Object::id, 1))));
+        STATIC_REQUIRE(
+            std::is_same<internal::node_tuple_t<GetAllPointer>, std::tuple<decltype(&Object::id), int>>::value);
     }
 
     SECTION("semantic classification") {

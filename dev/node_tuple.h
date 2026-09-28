@@ -132,14 +132,8 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<T, match_if<is_values, T>> : node_tuple<args_tuple_t<T>> {};
 
-    template<class T, class R, class... Args>
-    struct node_tuple<get_all_t<T, R, Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class T, class... Args>
-    struct node_tuple<get_all_pointer_t<T, Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class T, class... Args>
-    struct node_tuple<get_all_optional_t<T, Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_any_get_all, T>> : node_tuple<conditions_type_t<T>> {};
 
     template<class T>
     struct node_tuple<T, match_if<is_update_all, T>> : node_tuple_for<set_type_t<T>, conditions_type_t<T>> {};

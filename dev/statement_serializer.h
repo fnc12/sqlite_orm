@@ -32,6 +32,7 @@
 #include "ast/window_functions.h"
 #include "conditions.h"
 #include "prepared_statement.h"
+#include "mapped_type_proxy.h"
 #include "rowid.h"
 #include "pointer_value.h"
 #include "type_printer.h"
@@ -1917,100 +1918,57 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class Ctx>
-    std::string serialize_get_all_impl(const T& getAll, const Ctx& context) {
-        using table_type = type_t<T>;
-        using mapped_type = mapped_type_proxy_t<table_type>;
-        constexpr bool hasExplicitFrom2 = tuple_has<conditions_type_t<T>, is_from2>::value;
-
-        auto& table = pick_table<mapped_type>(context.db_objects);
-
-        std::stringstream ss;
-        ss << "SELECT " << streaming_table_column_names(table, alias_extractor<table_type>::as_qualifier(table));
-        if constexpr (!hasExplicitFrom2) {
-            ss << " FROM " << streaming_identifier(table.name, alias_extractor<table_type>::as_alias());
-        }
-        ss << streaming_conditions_tuple(getAll.conditions, context);
-        return ss.str();
-    }
-
-    template<class T, class R, class... Args>
-    struct statement_serializer<get_all_optional_t<T, R, Args...>, void> {
-        using statement_type = get_all_optional_t<T, R, Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_any_get_all, T>> {
+        using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& get,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& getAll,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize_get_all_impl(get, context);
-        }
-    };
+            using table_type = type_t<statement_type>;
+            using mapped_type = mapped_type_proxy_t<table_type>;
+            constexpr bool hasExplicitFrom2 = tuple_has<conditions_type_t<statement_type>, is_from2>::value;
 
-    template<class T, class R, class... Args>
-    struct statement_serializer<get_all_pointer_t<T, R, Args...>, void> {
-        using statement_type = get_all_pointer_t<T, R, Args...>;
+            auto& table = pick_table<mapped_type>(context.db_objects);
 
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& get,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize_get_all_impl(get, context);
-        }
-    };
-
-    template<class T, class R, class... Args>
-    struct statement_serializer<get_all_t<T, R, Args...>, void> {
-        using statement_type = get_all_t<T, R, Args...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& get,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize_get_all_impl(get, context);
-        }
-    };
-
-    template<class T, class Ctx>
-    std::string serialize_get_impl(const T&, const Ctx& context) {
-        using primary_type = type_t<T>;
-        auto& table = pick_table<primary_type>(context.db_objects);
-        std::stringstream ss;
-        ss << "SELECT " << streaming_table_column_names(table, std::string{}) << " FROM "
-           << streaming_identifier(table.name) << " WHERE ";
-
-        const auto primaryKeyColumnNames = table.primary_key_column_names();
-#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
-        static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
-        for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {
-            ss << sep[std::exchange(first, false)] << streaming_identifier(pkName) << " = ?";
-        }
-#else
-        for (size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-            if (i > 0) {
-                ss << " AND ";
+            std::stringstream ss;
+            ss << "SELECT " << streaming_table_column_names(table, alias_extractor<table_type>::as_qualifier(table));
+            if constexpr (!hasExplicitFrom2) {
+                ss << " FROM " << streaming_identifier(table.name, alias_extractor<table_type>::as_alias());
             }
-            ss << streaming_identifier(primaryKeyColumnNames[i]) << " = ?";
-        }
-#endif
-        return ss.str();
-    }
-
-    template<class T, class... Ids>
-    struct statement_serializer<get_t<T, Ids...>, void> {
-        using statement_type = get_t<T, Ids...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& get,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize_get_impl(get, context);
+            ss << streaming_conditions_tuple(getAll.conditions, context);
+            return ss.str();
         }
     };
 
-    template<class T, class... Ids>
-    struct statement_serializer<get_pointer_t<T, Ids...>, void> {
-        using statement_type = get_pointer_t<T, Ids...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_any_get_by_id, T>> {
+        using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& /*get*/,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize_get_impl(statement, context);
+            using primary_type = type_t<statement_type>;
+            auto& table = pick_table<primary_type>(context.db_objects);
+            std::stringstream ss;
+            ss << "SELECT " << streaming_table_column_names(table, std::string{}) << " FROM "
+               << streaming_identifier(table.name) << " WHERE ";
+
+            const auto primaryKeyColumnNames = table.primary_key_column_names();
+#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+            static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
+            for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {
+                ss << sep[std::exchange(first, false)] << streaming_identifier(pkName) << " = ?";
+            }
+#else
+            for (size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
+                if (i > 0) {
+                    ss << " AND ";
+                }
+                ss << streaming_identifier(primaryKeyColumnNames[i]) << " = ?";
+            }
+#endif
+            return ss.str();
         }
     };
 
@@ -2034,17 +1992,6 @@ namespace sqlite_orm::internal {
 
             ss << "OR " << idx2str.at(static_cast<int>(statement.action));
             return ss.str();
-        }
-    };
-
-    template<class T, class... Ids>
-    struct statement_serializer<get_optional_t<T, Ids...>, void> {
-        using statement_type = get_optional_t<T, Ids...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& get,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize_get_impl(get, context);
         }
     };
 
