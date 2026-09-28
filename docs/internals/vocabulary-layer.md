@@ -427,17 +427,10 @@ header. A definition that covers derived nodes too sits after the base it names 
 
 Every DSL node gets a trait of its own, or is covered by one of its grammar family —
 `all_t` by `is_rowset_deduplicator`, `union_t`/`except_t`/`intersect_t` by
-`is_compound_operator`. Builder intermediates (`simple_case_builder`, `conflict_target`)
+`is_compound_operator`, the built-in scalar, aggregate and window functions by
+`is_builtin_function_call`. Builder intermediates (`simple_case_builder`, `conflict_target`)
 and element types a node stores but no consumer visits (`then_t`, `dynamic_set_entry`)
 are not nodes in this sense.
-
-The one deliberate exception is the built-in window functions of `ast/window_functions.h`.
-Each is a function in its own right, not a member of a grammar production, and is applied
-only as the function of an OVER clause — so it gets no node trait, and no consumer of its
-own either: the consumers of the OVER node handle it, telling it apart from an aggregate
-function by the closed predicate `is_builtin_window_function_v`. Each declares its SQL
-name, its return type (with the argument placeholders a built-in function uses) and its
-call arguments, so that a single branch in each OVER consumer covers all of them.
 
 ### How consumers match a node
 
