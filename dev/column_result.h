@@ -17,7 +17,6 @@
 #include "vocabulary/node_traits.h"
 #include "vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value
 #include "mapped_type_proxy.h"
-#include "operators.h"
 #include "column_result_proxy.h"
 #include "alias.h"
 #include "cte_types.h"
@@ -166,64 +165,12 @@ namespace sqlite_orm::internal {
     struct column_result_t<DBOs, T, match_if<is_rowset_deduplicator, T>> : column_result_t<DBOs, expression_type_t<T>> {
     };
 
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, conc_t<L, R>, void> {
-        using type = std::string;
-    };
-
+    //  note: an assignment has no result type - it is no column expression
     template<class DBOs, class T>
-    struct column_result_t<DBOs, unary_minus_t<T>, void> {
-        using type = double;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, add_t<L, R>, void> {
-        using type = double;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, sub_t<L, R>, void> {
-        using type = double;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, mul_t<L, R>, void> {
-        using type = double;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, div_t<L, R>, void> {
-        using type = double;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, mod_t<L, R>, void> {
-        using type = double;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, bitwise_shift_left_t<L, R>, void> {
-        using type = int;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, bitwise_shift_right_t<L, R>, void> {
-        using type = int;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, bitwise_and_t<L, R>, void> {
-        using type = int;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, bitwise_or_t<L, R>, void> {
-        using type = int;
-    };
-
-    template<class DBOs, class T>
-    struct column_result_t<DBOs, bitwise_not_t<T>, void> {
-        using type = int;
+    struct column_result_t<DBOs,
+                           T,
+                           std::enable_if_t<std::disjunction<is_binary_operator<T>, is_unary_operator<T>>::value>> {
+        using type = result_type_t<T>;
     };
 
     template<class DBOs, class T>

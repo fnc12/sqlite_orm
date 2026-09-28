@@ -35,7 +35,7 @@
 #include "error_code.h"
 #include "alias.h"
 #include "field_printer.h"
-#include "operators.h"
+#include "ast/operators.h"
 #include "ast/result_columns.h"
 #include "ast/cte.h"
 #include "core_functions.h"

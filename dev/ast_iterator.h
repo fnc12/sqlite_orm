@@ -11,7 +11,6 @@
 #include "tuple_helper/tuple_iteration.h"
 #include "vocabulary/node_traits.h"
 #include "alias.h"
-#include "operators.h"
 #include "prepared_statement.h"
 #include "ast/window_functions.h"
 
@@ -565,8 +564,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct ast_iterator<bitwise_not_t<T>, void> {
-        using node_type = bitwise_not_t<T>;
+    struct ast_iterator<T, match_if<is_unary_operator, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& a, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
