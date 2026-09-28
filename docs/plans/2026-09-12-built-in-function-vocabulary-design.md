@@ -441,7 +441,7 @@ by every consumer. They are built-in functions of a third kind now, next to scal
 Being built-in function calls, they need no handling of their own: `is_builtin_function_call` classifies
 them, and the OVER node's consumers treat the function they apply generically.
 
-The deprecated `order_by(rank())` spelling of the hidden FTS5 rank column moves to `vtabs/fts5.h`, as an
+The deprecated `order_by(rank())` spelling of the hidden FTS5 rank column moves to `vtabs/fts5_deprecations.h`, as an
 overload taking the RANK call and yielding ORDER BY over a tiny internal node serialized as `rank`. A bare
 `rank()` outside of that serializes as `RANK()` now.
 

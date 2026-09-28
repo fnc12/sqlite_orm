@@ -6,7 +6,6 @@
 #include <utility>  //  std::forward, std::move
 #include <vector>
 #include <optional>  //  std::optional
-#include <string_view>  //  std::string_view
 #endif
 #endif
 
@@ -15,9 +14,6 @@
 #include "../schema/virtual_table.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"
-#include "../ast/window_functions.h"  //  rank, for the deprecated `order_by(rank())`
-#include "../conditions.h"  //  order_by_t, for the deprecated `order_by(rank())`
-#include "../statement_serializer.h"  //  statement_serializer, for the deprecated `order_by(rank())`
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 namespace sqlite_orm::internal {
@@ -124,35 +120,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         std::get<eponymous_column_index>(definition.elements).name = tableName;
 
         return {std::move(tableName), std::move(definition)};
-    }
-}
-
-namespace sqlite_orm::internal {
-    /*
-     *  The hidden FTS5 rank column as the deprecated `order_by(rank())` refers to it, i.e. not bound to a table.
-     *  Goes with it in v1.11.
-     */
-    struct fts5_rank_column_t {};
-
-    template<>
-    struct statement_serializer<fts5_rank_column_t, void> {
-        using statement_type = fts5_rank_column_t;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
-                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return "rank";
-        }
-    };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
-     */
-    [[deprecated("Use the hidden FTS5 rank column instead")]]
-    inline internal::order_by_t<internal::fts5_rank_column_t> order_by(decltype(rank()) /*rank*/) {
-        return {internal::fts5_rank_column_t{}};
     }
 }
 #endif
