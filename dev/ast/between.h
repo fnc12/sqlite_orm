@@ -4,8 +4,10 @@
 #include <utility>  //  std::move
 #endif
 
+#include "../functional/cxx_type_traits_polyfill.h"
 #include "../tags.h"
 #include "../vocabulary/node_algorithms.h"  // is_operand_or_bindable
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     /**
@@ -24,6 +26,9 @@ namespace sqlite_orm::internal {
         between_t(expression_type expression_, lower_type lower_, upper_type upper_) :
             expression(std::move(expression_)), lower(std::move(lower_)), upper(std::move(upper_)) {}
     };
+
+    template<class T>
+    constexpr bool is_between_v = polyfill::is_specialization_of_v<T, between_t>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

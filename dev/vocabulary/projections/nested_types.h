@@ -71,6 +71,34 @@ namespace sqlite_orm::internal {
     using expression_type_t = typename T::expression_type;
 
     /**
+     *  The operand a node tests or applies to, other than its primary expression:
+     *  e.g. the right-hand side of an IN or a MATCH, the tested expression of IS [NOT] NULL.
+     */
+    template<typename T>
+    using argument_type_t = typename T::argument_type;
+
+    /**
+     *  The types of the bounds of a BETWEEN range.
+     */
+    template<typename T>
+    using lower_type_t = typename T::lower_type;
+
+    template<typename T>
+    using upper_type_t = typename T::upper_type;
+
+    /**
+     *  The C++ type a CAST converts to.
+     */
+    template<typename T>
+    using to_type_t = typename T::to_type;
+
+    /**
+     *  The mapped object type a node names directly, e.g. the table of a table-wide MATCH.
+     */
+    template<typename T>
+    using mapped_type_t = typename T::mapped_type;
+
+    /**
      *  The types of the operand a CASE expression is tested against, and of its ELSE result.
      */
     template<typename T>
