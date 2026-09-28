@@ -25,8 +25,7 @@
 #include "storage_traits.h"
 #include "schema/algorithms/table_lookup.h"  // schema_pick_table_t
 #include "ast/app_function.h"
-#include "ast/rank.h"
-#include "window_functions.h"
+#include "ast/window_functions.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -144,63 +143,20 @@ namespace sqlite_orm::internal {
     struct column_result_t<DBOs, T, match_if<is_filtered_aggregate_function, T>>
         : column_result_t<DBOs, function_type_t<T>> {};
 
+    /*
+     *  The result of the function an OVER clause applies: a built-in window function is no node of its own,
+     *  its declared return type yields the result, with the return type placeholders resolved like those
+     *  of a built-in function.
+     */
+    template<class DBOs, class F, bool = is_builtin_window_function_v<F>>
+    struct over_function_result : column_result_t<DBOs, F> {};
+
+    template<class DBOs, class F>
+    struct over_function_result<DBOs, F, true>
+        : substitute_arguments<return_type_t<F>, args_tuple_t<F>, mpl::bind_front_fn<argument_result_of_t, DBOs>> {};
+
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_over, T>> : column_result_t<DBOs, function_type_t<T>> {};
-
-    template<class DBOs>
-    struct column_result_t<DBOs, row_number_t, void> {
-        using type = int;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, dense_rank_t, void> {
-        using type = int;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, percent_rank_t, void> {
-        using type = double;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, cume_dist_t, void> {
-        using type = double;
-    };
-
-    template<class DBOs, class... Args>
-    struct column_result_t<DBOs, ntile_t<Args...>, void> {
-        using type = int;
-    };
-
-    template<class DBOs, class X, class... Rest>
-    struct column_result_t<DBOs, lag_t<X, Rest...>, void> {
-        using type = column_result_of_t<DBOs, X>;
-    };
-
-    template<class DBOs, class X, class... Rest>
-    struct column_result_t<DBOs, lead_t<X, Rest...>, void> {
-        using type = column_result_of_t<DBOs, X>;
-    };
-
-    template<class DBOs, class X, class... Rest>
-    struct column_result_t<DBOs, first_value_t<X, Rest...>, void> {
-        using type = column_result_of_t<DBOs, X>;
-    };
-
-    template<class DBOs, class X, class... Rest>
-    struct column_result_t<DBOs, last_value_t<X, Rest...>, void> {
-        using type = column_result_of_t<DBOs, X>;
-    };
-
-    template<class DBOs, class X, class... Rest>
-    struct column_result_t<DBOs, nth_value_t<X, Rest...>, void> {
-        using type = column_result_of_t<DBOs, X>;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, rank_t, void> {
-        using type = int;
-    };
+    struct column_result_t<DBOs, T, match_if<is_over, T>> : over_function_result<DBOs, function_type_t<T>> {};
 
     template<class DBOs>
     struct column_result_t<DBOs, std::nullptr_t, void> {

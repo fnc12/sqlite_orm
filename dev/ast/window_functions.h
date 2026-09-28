@@ -1,15 +1,34 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_same, std::disjunction
 #include <tuple>  //  std::tuple
+#include <string_view>  //  std::string_view
 #include <utility>  //  std::forward, std::move
 #endif
 
-#include "ast/window.h"
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../vocabulary/node_algorithms.h"  //  argument
+#include "window.h"  //  over_t, validate_over_arguments
 
+/*
+ *  The built-in window functions.
+ *
+ *  They are no grammar family of their own - each is a function in its own right, and it is applied
+ *  only as the function of an OVER clause. Hence they get no node trait: the consumers of the OVER node
+ *  handle them, telling them apart from the aggregate functions an OVER clause may apply as well by
+ *  `is_builtin_window_function_v`. To that end each of them declares its SQL name, its return type -
+ *  which may use the return type placeholders of `vocabulary/algorithms/argument_placeholders.h` - and
+ *  the tuple of its call arguments.
+ */
 namespace sqlite_orm::internal {
-
     struct row_number_t {
+        static constexpr std::string_view name = "ROW_NUMBER";
+        using return_type = int;
+        using args_tuple = std::tuple<>;
+
+        SQLITE_ORM_NOUNIQUEADDRESS args_tuple args;
+
         template<class... OverArgs>
         over_t<row_number_t, OverArgs...> over(OverArgs... overArgs) {
             validate_over_arguments<OverArgs...>();
@@ -17,7 +36,31 @@ namespace sqlite_orm::internal {
         }
     };
 
+    /*
+     *  Note: `rank_t` carries a second meaning on its own, outside of an OVER clause: as the bare `rank` it
+     *  serves the deprecated `order_by(rank())` spelling of the hidden FTS5 rank column, and goes with it in v1.11.
+     */
+    struct rank_t {
+        static constexpr std::string_view name = "rank";
+        using return_type = int;
+        using args_tuple = std::tuple<>;
+
+        SQLITE_ORM_NOUNIQUEADDRESS args_tuple args;
+
+        template<class... OverArgs>
+        over_t<rank_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
+            return {*this, {std::forward<OverArgs>(overArgs)...}};
+        }
+    };
+
     struct dense_rank_t {
+        static constexpr std::string_view name = "DENSE_RANK";
+        using return_type = int;
+        using args_tuple = std::tuple<>;
+
+        SQLITE_ORM_NOUNIQUEADDRESS args_tuple args;
+
         template<class... OverArgs>
         over_t<dense_rank_t, OverArgs...> over(OverArgs... overArgs) {
             validate_over_arguments<OverArgs...>();
@@ -26,6 +69,12 @@ namespace sqlite_orm::internal {
     };
 
     struct percent_rank_t {
+        static constexpr std::string_view name = "PERCENT_RANK";
+        using return_type = double;
+        using args_tuple = std::tuple<>;
+
+        SQLITE_ORM_NOUNIQUEADDRESS args_tuple args;
+
         template<class... OverArgs>
         over_t<percent_rank_t, OverArgs...> over(OverArgs... overArgs) {
             validate_over_arguments<OverArgs...>();
@@ -34,6 +83,12 @@ namespace sqlite_orm::internal {
     };
 
     struct cume_dist_t {
+        static constexpr std::string_view name = "CUME_DIST";
+        using return_type = double;
+        using args_tuple = std::tuple<>;
+
+        SQLITE_ORM_NOUNIQUEADDRESS args_tuple args;
+
         template<class... OverArgs>
         over_t<cume_dist_t, OverArgs...> over(OverArgs... overArgs) {
             validate_over_arguments<OverArgs...>();
@@ -43,8 +98,11 @@ namespace sqlite_orm::internal {
 
     template<class... Args>
     struct ntile_t {
-        using args_type = std::tuple<Args...>;
-        args_type args;
+        static constexpr std::string_view name = "NTILE";
+        using return_type = int;
+        using args_tuple = std::tuple<Args...>;
+
+        args_tuple args;
 
         template<class... OverArgs>
         over_t<ntile_t, OverArgs...> over(OverArgs... overArgs) {
@@ -55,8 +113,11 @@ namespace sqlite_orm::internal {
 
     template<class... Args>
     struct lag_t {
-        using args_type = std::tuple<Args...>;
-        args_type args;
+        static constexpr std::string_view name = "LAG";
+        using return_type = argument<0>;
+        using args_tuple = std::tuple<Args...>;
+
+        args_tuple args;
 
         template<class... OverArgs>
         over_t<lag_t, OverArgs...> over(OverArgs... overArgs) {
@@ -67,8 +128,11 @@ namespace sqlite_orm::internal {
 
     template<class... Args>
     struct lead_t {
-        using args_type = std::tuple<Args...>;
-        args_type args;
+        static constexpr std::string_view name = "LEAD";
+        using return_type = argument<0>;
+        using args_tuple = std::tuple<Args...>;
+
+        args_tuple args;
 
         template<class... OverArgs>
         over_t<lead_t, OverArgs...> over(OverArgs... overArgs) {
@@ -79,8 +143,11 @@ namespace sqlite_orm::internal {
 
     template<class... Args>
     struct first_value_t {
-        using args_type = std::tuple<Args...>;
-        args_type args;
+        static constexpr std::string_view name = "FIRST_VALUE";
+        using return_type = argument<0>;
+        using args_tuple = std::tuple<Args...>;
+
+        args_tuple args;
 
         template<class... OverArgs>
         over_t<first_value_t, OverArgs...> over(OverArgs... overArgs) {
@@ -91,8 +158,11 @@ namespace sqlite_orm::internal {
 
     template<class... Args>
     struct last_value_t {
-        using args_type = std::tuple<Args...>;
-        args_type args;
+        static constexpr std::string_view name = "LAST_VALUE";
+        using return_type = argument<0>;
+        using args_tuple = std::tuple<Args...>;
+
+        args_tuple args;
 
         template<class... OverArgs>
         over_t<last_value_t, OverArgs...> over(OverArgs... overArgs) {
@@ -103,8 +173,11 @@ namespace sqlite_orm::internal {
 
     template<class... Args>
     struct nth_value_t {
-        using args_type = std::tuple<Args...>;
-        args_type args;
+        static constexpr std::string_view name = "NTH_VALUE";
+        using return_type = argument<0>;
+        using args_tuple = std::tuple<Args...>;
+
+        args_tuple args;
 
         template<class... OverArgs>
         over_t<nth_value_t, OverArgs...> over(OverArgs... overArgs) {
@@ -112,6 +185,28 @@ namespace sqlite_orm::internal {
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
+
+    /*
+     *  Whether the function an OVER clause applies is one of the built-in window functions above.
+     *
+     *  Note: A closed predicate for the OVER node's consumers, not a node trait - see the file comment.
+     */
+    template<class F>
+    constexpr bool is_builtin_window_function_v =
+        std::disjunction<std::is_same<F, row_number_t>,
+                         std::is_same<F, rank_t>,
+                         std::is_same<F, dense_rank_t>,
+                         std::is_same<F, percent_rank_t>,
+                         std::is_same<F, cume_dist_t>,
+                         polyfill::is_specialization_of<F, ntile_t>,
+                         polyfill::is_specialization_of<F, lag_t>,
+                         polyfill::is_specialization_of<F, lead_t>,
+                         polyfill::is_specialization_of<F, first_value_t>,
+                         polyfill::is_specialization_of<F, last_value_t>,
+                         polyfill::is_specialization_of<F, nth_value_t>>::value;
+
+    template<class F>
+    using is_builtin_window_function = std::bool_constant<is_builtin_window_function_v<F>>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -121,6 +216,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  https://sqlite.org/windowfunctions.html#built-in_window_functions
      */
     inline internal::row_number_t row_number() {
+        return {};
+    }
+
+    /**
+     *  RANK() window function
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline internal::rank_t rank() {
         return {};
     }
 

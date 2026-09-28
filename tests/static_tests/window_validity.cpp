@@ -23,6 +23,16 @@ TEST_CASE("window function arguments are validated at compile time") {
         STATIC_REQUIRE_FALSE(internal::is_partition_by_v<int>);
         STATIC_REQUIRE_FALSE(internal::is_window_ref_v<decltype(window("w", order_by(&User::id)))>);
     }
+    SECTION("built-in window functions are told apart from the aggregate functions an OVER clause applies") {
+        STATIC_REQUIRE(internal::is_builtin_window_function_v<decltype(row_number())>);
+        STATIC_REQUIRE(internal::is_builtin_window_function_v<decltype(rank())>);
+        STATIC_REQUIRE(internal::is_builtin_window_function_v<decltype(cume_dist())>);
+        STATIC_REQUIRE(internal::is_builtin_window_function_v<decltype(ntile(4))>);
+        STATIC_REQUIRE(internal::is_builtin_window_function_v<decltype(lag(&User::id, 1, 0))>);
+        STATIC_REQUIRE(internal::is_builtin_window_function_v<decltype(nth_value(&User::id, 2))>);
+        STATIC_REQUIRE_FALSE(internal::is_builtin_window_function_v<decltype(count(&User::id))>);
+        STATIC_REQUIRE_FALSE(internal::is_builtin_window_function_v<decltype(row_number().over())>);
+    }
     SECTION("window definition elements are recognized") {
         STATIC_REQUIRE(internal::is_window_defn_element_v<decltype(partition_by(&User::id))>);
         STATIC_REQUIRE(internal::is_window_defn_element_v<decltype(order_by(&User::id))>);
@@ -80,7 +90,8 @@ TEST_CASE("window function arguments are validated at compile time") {
                              order_by(&User::name).desc(),
                              groups(current_row(), unbounded_following()));
         std::ignore = window("empty");
-        //  one per header the OVER gate was added to: window_functions.h, ast/rank.h, core_functions.h
+        //  one per kind of function the OVER gate was added to: window functions (ast/window_functions.h),
+        //  and aggregate functions (core_functions.h)
         std::ignore = row_number().over(window_ref("w"));
         std::ignore = rank().over(partition_by(&User::id), order_by(&User::name));
         std::ignore = count(&User::id).over();

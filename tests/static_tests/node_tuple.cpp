@@ -574,6 +574,21 @@ TEST_CASE("Node tuple") {
         static_assert(is_same<Tuple, tuple<decltype(&User::id), decltype(&User::name)>>::value,
                       "select(columns(cast<int>(&User::id), cast<int>(&User::name)))");
     }
+    SECTION("window function") {
+        //  a built-in window function is no node of its own, only its call arguments are
+        using RowNumber = decltype(row_number().over(order_by(&User::id)));
+        static_assert(is_same<node_tuple_t<RowNumber>, tuple<decltype(&User::id)>>::value,
+                      "row_number().over(order_by(&User::id))");
+        using Rank = decltype(rank().over(order_by(&User::id)));
+        static_assert(is_same<node_tuple_t<Rank>, tuple<decltype(&User::id)>>::value,
+                      "rank().over(order_by(&User::id))");
+        using Lag = decltype(lag(&User::name, 1).over(partition_by(&User::id)));
+        static_assert(is_same<node_tuple_t<Lag>, tuple<decltype(&User::name), int, decltype(&User::id)>>::value,
+                      "lag(&User::name, 1).over(partition_by(&User::id))");
+        //  an aggregate function applied by an OVER clause stays a node of its own
+        using Count = decltype(count(&User::id).over());
+        static_assert(is_same<node_tuple_t<Count>, tuple<decltype(&User::id)>>::value, "count(&User::id).over()");
+    }
     SECTION("optional_container") {
         using namespace internal;
         SECTION("int") {
