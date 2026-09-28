@@ -282,6 +282,13 @@ namespace sqlite_orm::internal {
         }
     };
 
+    //  also covers the derived `builtin_aggregate_function_call`
+    template<class T>
+    constexpr bool is_builtin_function_call_v = is_base_template_of<builtin_function_call, T>::value;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_builtin_function_call_v<T>>> = true;
+
     /*
      *  Represents a call of a built-in aggregate function, which may take a FILTER clause
      *  or be turned into a window function with an OVER clause.
@@ -305,12 +312,6 @@ namespace sqlite_orm::internal {
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
-
-    template<class T>
-    constexpr bool is_builtin_function_call_v = is_base_template_of<builtin_function_call, T>::value;
-
-    template<class T>
-    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_builtin_function_call_v<T>>> = true;
 
     /*
      *  The call node for a matched kinded signature.

@@ -78,9 +78,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_quoted_expression_v = polyfill::is_specialization_of<T, quoted_expression_t>::value;
 
     template<class T>
-    constexpr bool
-        is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, quoted_expression_t>::value>> =
-            true;
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_quoted_expression_v<T>>> = true;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

@@ -8793,6 +8793,13 @@ namespace sqlite_orm::internal {
         }
     };
 
+    //  also covers the derived `builtin_aggregate_function_call`
+    template<class T>
+    constexpr bool is_builtin_function_call_v = is_base_template_of<builtin_function_call, T>::value;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_builtin_function_call_v<T>>> = true;
+
     /*
      *  Represents a call of a built-in aggregate function, which may take a FILTER clause
      *  or be turned into a window function with an OVER clause.
@@ -8816,12 +8823,6 @@ namespace sqlite_orm::internal {
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
-
-    template<class T>
-    constexpr bool is_builtin_function_call_v = is_base_template_of<builtin_function_call, T>::value;
-
-    template<class T>
-    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_builtin_function_call_v<T>>> = true;
 
     /*
      *  The call node for a matched kinded signature.
@@ -13600,6 +13601,9 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+//  is_with_clause
+
 namespace sqlite_orm::internal {
     template<class... DBO>
     using db_objects_tuple = std::tuple<DBO...>;
@@ -13616,8 +13620,12 @@ namespace sqlite_orm::internal {
 
     /**
      *  Return passed in DBOs.
+     *
+     *  Note: A WITH clause prepends the database objects of its CTEs, see `cte_storage.h`.
      */
-    template<class DBOs, class E, satisfies<is_db_objects, DBOs> = true>
+    template<class DBOs,
+             class E,
+             std::enable_if_t<std::conjunction_v<is_db_objects<DBOs>, std::negation<is_with_clause<E>>>, bool> = true>
     decltype(auto) db_objects_for_expression(DBOs& dbObjects, const E&) {
         return dbObjects;
     }
@@ -27124,9 +27132,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_quoted_expression_v = polyfill::is_specialization_of<T, quoted_expression_t>::value;
 
     template<class T>
-    constexpr bool
-        is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, quoted_expression_t>::value>> =
-            true;
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_quoted_expression_v<T>>> = true;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -27375,23 +27381,14 @@ namespace sqlite_orm::internal {
      *  can't be resolved. Therefore, at the time of building a CTE table, we are only
      *  interested in the column results of the left-most select expression.
      */
-    template<class Select>
-    decltype(auto) get_cte_driving_subselect(const Select& subSelect);
-
-    /**
-     *  Return given select expression.
-     */
-    template<class Select>
+    template<class Select, satisfies<is_select, Select> = true>
     decltype(auto) get_cte_driving_subselect(const Select& subSelect) {
-        return subSelect;
-    }
-
-    /**
-     *  Return left-most select expression of compound statement.
-     */
-    template<class Compound, class... Args, std::enable_if_t<is_compound_operator_v<Compound>, bool> = true>
-    decltype(auto) get_cte_driving_subselect(const select_t<Compound, Args...>& subSelect) {
-        return std::get<0>(subSelect.col.compound);
+        if constexpr (is_compound_operator_v<return_type_t<Select>>) {
+            // left-most select expression of compound statement
+            return std::get<0>(subSelect.col.compound);
+        } else {
+            return subSelect;
+        }
     }
 
     /**
@@ -27402,86 +27399,61 @@ namespace sqlite_orm::internal {
         return std::make_tuple(get<Idx>(coldef).member_pointer...);
     }
 
-    //  note: the overloads below deliberately take their node by its own template rather than being
-    //  constrained on a classification trait: they are all ordered against the unconstrained
-    //  "any expression" overload, which a trait-constrained overload would be ambiguous with.
-    // any expression -> numeric column alias
-    template<class DBOs,
-             class E,
-             size_t Idx = 0,
-             std::enable_if_t<std::negation_v<polyfill::is_specialization_of<E, std::tuple>>, bool> = true>
-    auto extract_colref_expressions(const DBOs& /*dbObjects*/, const E& /*col*/, std::index_sequence<Idx> = {})
-        -> std::tuple<alias_holder<decltype(n_to_colalias<Idx>())>> {
-        return {};
+    /**
+     *  Return the column reference of a single result column expression, as a 1-tuple.
+     *  `Idx` is the position of the result column, by which an expression without a name of its own is referenced.
+     */
+    template<size_t Idx, class DBOs, class E>
+    auto extract_colref_expression(const DBOs& dbObjects, const E& col) {
+        if constexpr (is_quoted_expression_v<E>) {
+            return extract_colref_expression<Idx>(dbObjects, col._value);
+        } else if constexpr (is_column_pointer_v<E>) {
+            return extract_colref_expression<Idx>(dbObjects, col.field);
+        } else if constexpr (std::is_member_pointer_v<E>) {
+            // field/getter -> field/getter
+            return std::make_tuple(col);
+        } else if constexpr (is_as_node_v<E>) {
+            // aliased expression -> alias_holder
+            return std::tuple<alias_holder<alias_type_t<E>>>{};
+        } else if constexpr (polyfill::is_specialization_of_v<E, alias_holder>) {
+            // colref -> alias_holder
+            return std::tuple<E>{};
+        } else {
+            // any expression -> numeric column alias
+            return std::tuple<alias_holder<decltype(n_to_colalias<Idx>())>>{};
+        }
     }
 
-    // quoted_expression_t<>
-    template<class DBOs, class E, size_t Idx = 0>
-    auto extract_colref_expressions(const DBOs& dbObjects,
-                                    const quoted_expression_t<E>& col,
-                                    std::index_sequence<Idx> s = {}) {
-        return extract_colref_expressions(dbObjects, col._value, s);
+    template<class DBOs, class Tpl, size_t... Idx>
+    auto extract_colref_expressions(const DBOs& dbObjects, const Tpl& cols, std::index_sequence<Idx...>) {
+        return std::tuple_cat(extract_colref_expression<Idx>(dbObjects, std::get<Idx>(cols))...);
     }
 
-    // F O::* (field/getter) -> field/getter
-    template<class DBOs, class F, class O, size_t Idx = 0>
-    auto extract_colref_expressions(const DBOs& /*dbObjects*/, F O::* col, std::index_sequence<Idx> = {}) {
-        return std::make_tuple(col);
+    /**
+     *  Return a tuple of the column references of a select's result columns.
+     */
+    template<class DBOs, class E>
+    auto extract_colref_expressions(const DBOs& dbObjects, const E& col) {
+        static_assert(!is_select_v<E> && !is_compound_operator_v<E>,
+                      "A select statement cannot be a result column of a CTE's select statement");
+
+        if constexpr (is_columns_v<E>) {
+            return extract_colref_expressions(dbObjects,
+                                              col.columns,
+                                              std::make_index_sequence<std::tuple_size_v<columns_type_t<E>>>{});
+        } else if constexpr (is_asterisk_v<E>) {
+            // -> fields
+            using O = type_t<E>;
+            using table_type = schema_pick_table_t<O, DBOs>;
+            using elements_type = elements_type_t<table_type>;
+            using column_idxs = filter_tuple_sequence_t<elements_type, is_column>;
+
+            auto& table = pick_table<O>(dbObjects);
+            return get_table_columns_fields(table.elements, column_idxs{});
+        } else {
+            return extract_colref_expression<0>(dbObjects, col);
+        }
     }
-
-    // as_t<> (aliased expression) -> alias_holder
-    template<class DBOs, class A, class E, size_t Idx = 0>
-    std::tuple<alias_holder<A>>
-    extract_colref_expressions(const DBOs& /*dbObjects*/, const as_t<A, E>& /*col*/, std::index_sequence<Idx> = {}) {
-        return {};
-    }
-
-    // alias_holder<> (colref) -> alias_holder
-    template<class DBOs, class A, size_t Idx = 0>
-    std::tuple<alias_holder<A>> extract_colref_expressions(const DBOs& /*dbObjects*/,
-                                                           const alias_holder<A>& /*col*/,
-                                                           std::index_sequence<Idx> = {}) {
-        return {};
-    }
-
-    // column_pointer<>
-    template<class DBOs, class Moniker, class F, size_t Idx = 0>
-    auto extract_colref_expressions(const DBOs& dbObjects,
-                                    const column_pointer<Moniker, F>& col,
-                                    std::index_sequence<Idx> s = {}) {
-        return extract_colref_expressions(dbObjects, col.field, s);
-    }
-
-    // column expression tuple
-    template<class DBOs, class... Args, size_t... Idx>
-    auto
-    extract_colref_expressions(const DBOs& dbObjects, const std::tuple<Args...>& cols, std::index_sequence<Idx...>) {
-        return std::tuple_cat(
-            extract_colref_expressions(dbObjects, std::get<Idx>(cols), std::index_sequence<Idx>{})...);
-    }
-
-    // columns_t<>
-    template<class DBOs, class... Args>
-    auto extract_colref_expressions(const DBOs& dbObjects, const columns_t<Args...>& cols) {
-        return extract_colref_expressions(dbObjects, cols.columns, std::index_sequence_for<Args...>{});
-    }
-
-    // asterisk_t<> -> fields
-    template<class DBOs, class O>
-    auto extract_colref_expressions(const DBOs& dbObjects, const asterisk_t<O>& /*col*/) {
-        using table_type = schema_pick_table_t<O, DBOs>;
-        using elements_type = elements_type_t<table_type>;
-        using column_idxs = filter_tuple_sequence_t<elements_type, is_column>;
-
-        auto& table = pick_table<O>(dbObjects);
-        return get_table_columns_fields(table.elements, column_idxs{});
-    }
-
-    template<class DBOs, class E, class... Args>
-    void extract_colref_expressions(const DBOs& /*dbObjects*/, const select_t<E, Args...>& /*subSelect*/) = delete;
-
-    template<class DBOs, class Compound, std::enable_if_t<is_compound_operator_v<Compound>, bool> = true>
-    void extract_colref_expressions(const DBOs& /*dbObjects*/, const Compound& /*subSelect*/) = delete;
 
     /*
      *  Depending on ExplicitColRef's type returns either the explicit column reference
@@ -27590,9 +27562,13 @@ namespace sqlite_orm::internal {
     /**
      *  Return new DBOs for CTE expressions.
      */
-    template<class DBOs, class E, class... CTEs, satisfies<is_db_objects, DBOs> = true>
-    decltype(auto) db_objects_for_expression(DBOs& dbObjects, const with_t<E, CTEs...>& e) {
-        return make_recursive_cte_db_objects(dbObjects, e.cte, std::index_sequence_for<CTEs...>{});
+    template<class DBOs,
+             class With,
+             std::enable_if_t<std::conjunction_v<is_db_objects<DBOs>, is_with_clause<With>>, bool> = true>
+    decltype(auto) db_objects_for_expression(DBOs& dbObjects, const With& e) {
+        return make_recursive_cte_db_objects(dbObjects,
+                                             e.cte,
+                                             std::make_index_sequence<std::tuple_size_v<cte_type_t<With>>>{});
     }
 #endif
 }
@@ -32901,23 +32877,19 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
-    template<int N, class It, class L, class O>
-    auto& get(internal::prepared_statement_t<internal::insert_range_t<It, L, O>>& statement) {
+    template<
+        int N,
+        class E,
+        std::enable_if_t<std::disjunction_v<internal::is_insert_range<E>, internal::is_replace_range<E>>, bool> = true>
+    auto& get(internal::prepared_statement_t<E>& statement) {
         return std::get<N>(statement.expression.range);
     }
 
-    template<int N, class It, class L, class O>
-    const auto& get(const internal::prepared_statement_t<internal::insert_range_t<It, L, O>>& statement) {
-        return std::get<N>(statement.expression.range);
-    }
-
-    template<int N, class It, class L, class O>
-    auto& get(internal::prepared_statement_t<internal::replace_range_t<It, L, O>>& statement) {
-        return std::get<N>(statement.expression.range);
-    }
-
-    template<int N, class It, class L, class O>
-    const auto& get(const internal::prepared_statement_t<internal::replace_range_t<It, L, O>>& statement) {
+    template<
+        int N,
+        class E,
+        std::enable_if_t<std::disjunction_v<internal::is_insert_range<E>, internal::is_replace_range<E>>, bool> = true>
+    const auto& get(const internal::prepared_statement_t<E>& statement) {
         return std::get<N>(statement.expression.range);
     }
 
@@ -32951,65 +32923,44 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
 
-    template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::remove_t<T, Ids...>>& statement) {
+    template<int N, class E, internal::satisfies<internal::is_remove, E> = true>
+    auto& get(internal::prepared_statement_t<E>& statement) {
         return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
 
-    template<int N, class T, class... Ids>
-    const auto& get(const internal::prepared_statement_t<internal::remove_t<T, Ids...>>& statement) {
+    template<int N, class E, internal::satisfies<internal::is_remove, E> = true>
+    const auto& get(const internal::prepared_statement_t<E>& statement) {
         return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
 
-    template<int N, class T>
-    auto& get(internal::prepared_statement_t<internal::update_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for update statement");
+    //  insert, insert explicit, replace, update: the object is the only bound value
+    template<int N,
+             class E,
+             std::enable_if_t<
+                 std::conjunction_v<internal::is_object_dml_expression<E>, std::negation<internal::is_remove<E>>>,
+                 bool> = true>
+    auto& get(internal::prepared_statement_t<E>& statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert, replace and update statements");
         return internal::access_dml_object(statement);
     }
 
-    template<int N, class T>
-    const auto& get(const internal::prepared_statement_t<internal::update_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for update statement");
+    template<int N,
+             class E,
+             std::enable_if_t<
+                 std::conjunction_v<internal::is_object_dml_expression<E>, std::negation<internal::is_remove<E>>>,
+                 bool> = true>
+    const auto& get(const internal::prepared_statement_t<E>& statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert, replace and update statements");
         return internal::access_dml_object(statement);
     }
 
-    template<int N, class T, class... Cols>
-    auto& get(internal::prepared_statement_t<internal::insert_explicit<T, Cols...>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return internal::access_dml_object(statement);
-    }
-
-    template<int N, class T, class... Cols>
-    const auto& get(const internal::prepared_statement_t<internal::insert_explicit<T, Cols...>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return internal::access_dml_object(statement);
-    }
-
-    template<int N, class T>
-    auto& get(internal::prepared_statement_t<internal::replace_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
-        return internal::access_dml_object(statement);
-    }
-
-    template<int N, class T>
-    const auto& get(const internal::prepared_statement_t<internal::replace_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
-        return internal::access_dml_object(statement);
-    }
-
-    template<int N, class T>
-    auto& get(internal::prepared_statement_t<internal::insert_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return internal::access_dml_object(statement);
-    }
-
-    template<int N, class T>
-    const auto& get(const internal::prepared_statement_t<internal::insert_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return internal::access_dml_object(statement);
-    }
-
-    template<int N, class T>
+    //  note: the statements above bind their values in a way of their own, hence the exclusion
+    template<int N,
+             class T,
+             std::enable_if_t<std::negation_v<std::disjunction<internal::is_object_dml_expression<T>,
+                                                               internal::is_insert_range<T>,
+                                                               internal::is_replace_range<T>>>,
+                              bool> = true>
     const auto& get(const internal::prepared_statement_t<T>& statement) {
         using namespace ::sqlite_orm::internal;
         using statement_type = polyfill::remove_cvref_t<decltype(statement)>;
@@ -33032,7 +32983,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return forward_lvalue_ref(*result);
     }
 
-    template<int N, class T>
+    template<int N,
+             class T,
+             std::enable_if_t<std::negation_v<std::disjunction<internal::is_object_dml_expression<T>,
+                                                               internal::is_insert_range<T>,
+                                                               internal::is_replace_range<T>>>,
+                              bool> = true>
     auto& get(internal::prepared_statement_t<T>& statement) {
         using namespace ::sqlite_orm::internal;
         using statement_type = std::remove_reference_t<decltype(statement)>;
