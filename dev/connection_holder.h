@@ -10,8 +10,8 @@
 #include <string>  //  std::string
 #endif
 
-#include "functional/cxx_new.h"
 #include "functional/cxx_scope_guard.h"
+#include "functional/interference_size.h"
 #include "functional/gsl.h"
 #include "error_code.h"
 #include "vfs_name.h"
@@ -209,7 +209,7 @@ namespace sqlite_orm::internal {
         }
 
         // note: members of the `control_block` are deliberately put on the same cache-line
-        SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(polyfill::hardware_destructive_interference_size))
+        SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(destructive_interference_size))
         struct control_block {
             // Optional optimization hint that also serves to convey logic.
             // in a test scenario involving a tight retain()/releae() loop from multiple threads the performance gain is outstanding;
@@ -222,7 +222,7 @@ namespace sqlite_orm::internal {
             std::atomic<std::thread::id> initializingThreadId{};
         } _control;
 
-        SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(polyfill::hardware_destructive_interference_size))
+        SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(destructive_interference_size))
         std::mutex _sync;
         const db_arguments dbArgs;
         const std::function<void(sqlite3* db)> _didOpenDb;

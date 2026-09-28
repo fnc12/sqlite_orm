@@ -17237,38 +17237,6 @@ namespace sqlite_orm::internal {
 #include <string>  //  std::string
 #endif
 
-// #include "functional/cxx_new.h"
-
-namespace sqlite_orm::internal::polyfill {
-    /*
-     *  Fixed per-architecture cache-line sizes used for anti-false-sharing alignment.
-     *
-     *  Deliberately not the `std::hardware_*_interference_size` constants: their values follow
-     *  the compiler tuning flags (`-mtune`, `--param destructive-interference-size`), so a type
-     *  layout depending on them can differ between translation units of one program - the very
-     *  hazard GCC's default-on `-Winterference-size` warns about when they are used in a header.
-     *
-     *  The destructive size is an upper bound across the CPUs of an architecture: overestimating
-     *  only costs a little memory, underestimating brings back false sharing.
-     *  - AArch64: 256, GCC's generic value, chosen for the A64FX's 256-byte cache lines.
-     *  - x86-64: 128, because the spatial prefetcher pulls in pairs of 64-byte lines (as folly does).
-     */
-#if defined(__aarch64__) || defined(_M_ARM64)
-    inline constexpr size_t hardware_constructive_interference_size = 64;
-    inline constexpr size_t hardware_destructive_interference_size = 256;
-#elif defined(__x86_64__) || defined(_M_X64)
-    inline constexpr size_t hardware_constructive_interference_size = 64;
-    inline constexpr size_t hardware_destructive_interference_size = 128;
-#else
-    inline constexpr size_t hardware_constructive_interference_size = 64;
-    inline constexpr size_t hardware_destructive_interference_size = 64;
-#endif
-}
-
-namespace sqlite_orm {
-    namespace polyfill = internal::polyfill;
-}
-
 // #include "functional/cxx_scope_guard.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -17291,6 +17259,34 @@ namespace sqlite_orm::internal {
       private:
         F _exitFunction;
     };
+}
+
+// #include "functional/interference_size.h"
+
+namespace sqlite_orm::internal {
+    /*
+     *  Fixed per-architecture interference sizes used for anti-false-sharing alignment.
+     *
+     *  Deliberately not the `std::hardware_*_interference_size` constants: their values follow
+     *  the compiler tuning flags (`-mtune`, `--param destructive-interference-size`), so a type
+     *  layout depending on them can differ between translation units of one program - the very
+     *  hazard GCC's default-on `-Winterference-size` warns about when they are used in a header.
+     *
+     *  The destructive size is an upper bound across the CPUs of an architecture: overestimating
+     *  only costs a little memory, underestimating brings back false sharing.
+     *  - AArch64: 256, GCC's generic value, chosen for the A64FX's 256-byte cache lines.
+     *  - x86-64: 128, because the spatial prefetcher pulls in pairs of 64-byte lines (as folly does).
+     */
+#if defined(__aarch64__) || defined(_M_ARM64)
+    inline constexpr size_t constructive_interference_size = 64;
+    inline constexpr size_t destructive_interference_size = 256;
+#elif defined(__x86_64__) || defined(_M_X64)
+    inline constexpr size_t constructive_interference_size = 64;
+    inline constexpr size_t destructive_interference_size = 128;
+#else
+    inline constexpr size_t constructive_interference_size = 64;
+    inline constexpr size_t destructive_interference_size = 64;
+#endif
 }
 
 // #include "functional/gsl.h"
@@ -17604,7 +17600,7 @@ namespace sqlite_orm::internal {
         }
 
         // note: members of the `control_block` are deliberately put on the same cache-line
-        SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(polyfill::hardware_destructive_interference_size))
+        SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(destructive_interference_size))
         struct control_block {
             // Optional optimization hint that also serves to convey logic.
             // in a test scenario involving a tight retain()/releae() loop from multiple threads the performance gain is outstanding;
@@ -17617,7 +17613,7 @@ namespace sqlite_orm::internal {
             std::atomic<std::thread::id> initializingThreadId{};
         } _control;
 
-        SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(polyfill::hardware_destructive_interference_size))
+        SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(destructive_interference_size))
         std::mutex _sync;
         const db_arguments dbArgs;
         const std::function<void(sqlite3* db)> _didOpenDb;
