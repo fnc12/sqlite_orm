@@ -481,11 +481,6 @@ Decided, not yet done. The destination is settled in each case; only the work re
   `is_printable_v`, `is_integral_fp_c_v`) and belong where they are, or one tier below.
   For those that do qualify, apply the axis table above to pick the file.
 
-- **Consolidate the join nodes.** `cross_join_t` (`ast/cross_join.h`) and `natural_join_t`
-  (`ast/join.h`) have no trait of their own: `is_any_join_v` recognizes them by template
-  name, and their serializer tests `is_specialization_of` directly. They are to get their
-  traits as part of consolidating the join nodes altogether, not piecemeal.
-
 - **`storage_traits.h`.** Its `storage_mapped_columns_impl` and
   `storage_mapped_column_expressions_impl` are closed, single-table, classification-driven
   computations over an already-located DBO — `vocabulary/algorithms/` items, despite the
