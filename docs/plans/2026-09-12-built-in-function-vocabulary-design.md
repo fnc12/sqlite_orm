@@ -426,6 +426,25 @@ back. What that changed for this branch:
   are defined by the mechanism as well, with the same version gates as their
   legacy factories.
 
+## The window kind (2026-09-28)
+
+The built-in window functions (`ast/window_functions.h`) had nodes of their own, each handled separately
+by every consumer. They are built-in functions of a third kind now, next to scalar and aggregate:
+
+- C++20: `window_sig<Sig>` and the builder shorthand `.window<Sig...>()`, e.g.
+  `"LAG"_builtin.window<argument<0>(anything), argument<0>(anything, anything), argument<0>(anything, anything, anything)>()`.
+  The call node `builtin_window_function_call` derives from `builtin_function_call` and offers `.over()`,
+  but not `.filter()` - SQLite accepts FILTER for aggregate window functions only.
+- C++17: the legacy `builtin_window_function_t` derives from `builtin_function_t` likewise, with a name tag
+  per function.
+
+Being built-in function calls, they need no handling of their own: `is_builtin_function_call` classifies
+them, and the OVER node's consumers treat the function they apply generically.
+
+The deprecated `order_by(rank())` spelling of the hidden FTS5 rank column moves to `vtabs/fts5.h`, as an
+overload taking the RANK call and yielding ORDER BY over a tiny internal node serialized as `rank`. A bare
+`rank()` outside of that serializes as `RANK()` now.
+
 ## Follow-ups
 
 - Optional: `as_result<R>(expr)` as the general, callee-independent result

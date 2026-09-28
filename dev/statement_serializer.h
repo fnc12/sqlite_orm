@@ -29,7 +29,6 @@
 #include "ast/dml/insert.h"  // conflict_action
 #include "ast/result_columns.h"
 #include "ast/dml/set.h"
-#include "ast/window_functions.h"
 #include "conditions.h"
 #include "prepared_statement.h"
 #include "rowid.h"
@@ -411,16 +410,8 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            using function_type = function_type_t<statement_type>;
-
             std::stringstream ss;
-            //  a built-in window function is no node of its own, see `ast/window_functions.h`
-            if constexpr (is_builtin_window_function_v<function_type>) {
-                ss << function_type::name << "(" << streaming_expressions_tuple(statement.function.args, context)
-                   << ")";
-            } else {
-                ss << serialize(statement.function, context);
-            }
+            ss << serialize(statement.function, context);
             serialize_over_arguments(ss, statement.arguments, context);
             return ss.str();
         }
@@ -640,21 +631,6 @@ namespace sqlite_orm::internal {
                 throw std::system_error{orm_error_code::column_not_found};
             }
             return ss.str();
-        }
-    };
-
-    /*
-     *  The bare `rank` of the deprecated `order_by(rank())` spelling of the hidden FTS5 rank column.
-     *  Goes with it in v1.11; under an OVER clause `rank_t` is the RANK() window function.
-     */
-    template<>
-    struct statement_serializer<rank_t, void> {
-        using statement_type = rank_t;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
-                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return "rank";
         }
     };
 
