@@ -14857,6 +14857,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 namespace sqlite_orm::internal {
     struct row_number_t {
         static constexpr std::string_view name = "ROW_NUMBER";
+
         using return_type = int;
         using args_tuple = std::tuple<>;
 
@@ -14874,7 +14875,8 @@ namespace sqlite_orm::internal {
      *  serves the deprecated `order_by(rank())` spelling of the hidden FTS5 rank column, and goes with it in v1.11.
      */
     struct rank_t {
-        static constexpr std::string_view name = "rank";
+        static constexpr std::string_view name = "RANK";
+
         using return_type = int;
         using args_tuple = std::tuple<>;
 
@@ -14889,6 +14891,7 @@ namespace sqlite_orm::internal {
 
     struct dense_rank_t {
         static constexpr std::string_view name = "DENSE_RANK";
+
         using return_type = int;
         using args_tuple = std::tuple<>;
 
@@ -14903,6 +14906,7 @@ namespace sqlite_orm::internal {
 
     struct percent_rank_t {
         static constexpr std::string_view name = "PERCENT_RANK";
+
         using return_type = double;
         using args_tuple = std::tuple<>;
 
@@ -14917,6 +14921,7 @@ namespace sqlite_orm::internal {
 
     struct cume_dist_t {
         static constexpr std::string_view name = "CUME_DIST";
+
         using return_type = double;
         using args_tuple = std::tuple<>;
 
@@ -14932,6 +14937,7 @@ namespace sqlite_orm::internal {
     template<class... Args>
     struct ntile_t {
         static constexpr std::string_view name = "NTILE";
+
         using return_type = int;
         using args_tuple = std::tuple<Args...>;
 
@@ -14947,6 +14953,7 @@ namespace sqlite_orm::internal {
     template<class... Args>
     struct lag_t {
         static constexpr std::string_view name = "LAG";
+
         using return_type = argument<0>;
         using args_tuple = std::tuple<Args...>;
 
@@ -14962,6 +14969,7 @@ namespace sqlite_orm::internal {
     template<class... Args>
     struct lead_t {
         static constexpr std::string_view name = "LEAD";
+
         using return_type = argument<0>;
         using args_tuple = std::tuple<Args...>;
 
@@ -14977,6 +14985,7 @@ namespace sqlite_orm::internal {
     template<class... Args>
     struct first_value_t {
         static constexpr std::string_view name = "FIRST_VALUE";
+
         using return_type = argument<0>;
         using args_tuple = std::tuple<Args...>;
 
@@ -14992,6 +15001,7 @@ namespace sqlite_orm::internal {
     template<class... Args>
     struct last_value_t {
         static constexpr std::string_view name = "LAST_VALUE";
+
         using return_type = argument<0>;
         using args_tuple = std::tuple<Args...>;
 
@@ -15007,6 +15017,7 @@ namespace sqlite_orm::internal {
     template<class... Args>
     struct nth_value_t {
         static constexpr std::string_view name = "NTH_VALUE";
+
         using return_type = argument<0>;
         using args_tuple = std::tuple<Args...>;
 
