@@ -10,7 +10,6 @@
 #include "functional/type_traits.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "vocabulary/node_traits.h"
-#include "ast/join.h"
 #include "alias.h"
 #include "operators.h"
 #include "prepared_statement.h"
@@ -465,8 +464,9 @@ namespace sqlite_orm::internal {
         }
     };
 
+    //  a join constrained by ON or USING; CROSS JOIN and NATURAL JOIN are leaves
     template<class Join>
-    struct ast_iterator<Join, match_if<is_constrained_join, Join>> {
+    struct ast_iterator<Join, std::enable_if_t<is_any_join_v<Join> && polyfill::is_detected_v<on_type_t, Join>>> {
         using node_type = Join;
 
         template<class L>
@@ -476,8 +476,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct ast_iterator<on_t<T>, void> {
-        using node_type = on_t<T>;
+    struct ast_iterator<T, match_if<is_on, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& on, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -488,7 +488,7 @@ namespace sqlite_orm::internal {
     // note: not strictly necessary as there's no binding support for USING;
     // we provide it nevertheless, in line with on_t.
     template<class T>
-    struct ast_iterator<T, std::enable_if_t<polyfill::is_specialization_of<T, using_t>::value>> {
+    struct ast_iterator<T, match_if<is_using, T>> {
         using node_type = T;
 
         template<class L>

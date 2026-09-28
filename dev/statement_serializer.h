@@ -29,7 +29,6 @@
 #include "ast/crud/insert.h"  // conflict_action
 #include "ast/result_columns.h"
 #include "ast/crud/set.h"
-#include "ast/join.h"
 #include "schema/constraints/collate.h"  // collate_constraint_t
 #include "prepared_statement.h"
 #include "mapped_type_proxy.h"
@@ -2291,49 +2290,31 @@ namespace sqlite_orm::internal {
     };
 
     template<class Join>
-    struct statement_serializer<
-        Join,
-        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<Join, cross_join_t>,
-                                          polyfill::is_specialization_of<Join, natural_join_t>>::value>> {
-        using statement_type = Join;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& /*join*/,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-            if constexpr (polyfill::is_specialization_of_v<statement_type, cross_join_t>) {
-                ss << "CROSS JOIN";
-            } else if constexpr (polyfill::is_specialization_of_v<statement_type, natural_join_t>) {
-                ss << "NATURAL JOIN";
-            } else {
-                static_assert(polyfill::always_false_v<statement_type>);
-            }
-            ss << " "
-               << streaming_identifier(
-                      lookup_table_name<mapped_type_proxy_t<type_t<statement_type>>>(context.db_objects));
-            return ss.str();
-        }
-    };
-
-    template<class Join>
-    struct statement_serializer<Join, match_if<is_constrained_join, Join>> {
+    struct statement_serializer<Join, match_if<is_any_join, Join>> {
         using statement_type = Join;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& join,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            using table_type = type_t<statement_type>;
+
             std::stringstream ss;
-            ss << static_cast<std::string>(join) << " "
-               << streaming_identifier(lookup_table_name<mapped_type_proxy_t<type_t<Join>>>(context.db_objects),
-                                       alias_extractor<type_t<Join>>::as_alias())
-               << " " << serialize(join.constraint, context);
+            ss << static_cast<std::string>(join) << " ";
+            //  constrained by ON or USING
+            if constexpr (polyfill::is_detected_v<on_type_t, statement_type>) {
+                ss << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
+                                           alias_extractor<table_type>::as_alias())
+                   << " " << serialize(join.constraint, context);
+            } else {
+                ss << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects));
+            }
             return ss.str();
         }
     };
 
     template<class T>
-    struct statement_serializer<on_t<T>, void> {
-        using statement_type = on_t<T>;
+    struct statement_serializer<T, match_if<is_on, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& on,
@@ -2415,9 +2396,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class M>
-    struct statement_serializer<using_t<T, M>, void> {
-        using statement_type = using_t<T, M>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_using, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,

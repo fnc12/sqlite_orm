@@ -73,6 +73,29 @@ TEST_CASE("expression classification") {
                                     std::tuple<decltype(&User::name), std::string, std::string>>::value);
     }
 
+    SECTION("joins") {
+        //  every join is the one join-operator production ...
+        STATIC_REQUIRE(internal::is_any_join_v<decltype(cross_join<User>())>);
+        STATIC_REQUIRE(internal::is_any_join_v<decltype(natural_join<User>())>);
+        STATIC_REQUIRE(internal::is_any_join_v<decltype(join<User>(on(is_equal(&User::id, 1))))>);
+        STATIC_REQUIRE(internal::is_any_join_v<decltype(left_join<User>(on(is_equal(&User::id, 1))))>);
+        STATIC_REQUIRE(internal::is_any_join_v<decltype(left_outer_join<User>(using_(&User::id)))>);
+        STATIC_REQUIRE(internal::is_any_join_v<decltype(inner_join<User>(using_(&User::id)))>);
+        STATIC_REQUIRE_FALSE(internal::is_any_join_v<decltype(on(is_equal(&User::id, 1)))>);
+        STATIC_REQUIRE_FALSE(internal::is_any_join_v<decltype(from<User>())>);
+        //  ... telling the constrained ones apart by their constraint
+        STATIC_REQUIRE(polyfill::is_detected_v<internal::on_type_t, decltype(inner_join<User>(using_(&User::id)))>);
+        STATIC_REQUIRE_FALSE(polyfill::is_detected_v<internal::on_type_t, decltype(cross_join<User>())>);
+
+        STATIC_REQUIRE(internal::is_on_v<decltype(on(is_equal(&User::id, 1)))>);
+        STATIC_REQUIRE(internal::is_using_v<decltype(using_(&User::id))>);
+        STATIC_REQUIRE_FALSE(internal::is_on_v<decltype(using_(&User::id))>);
+        STATIC_REQUIRE_FALSE(internal::is_using_v<decltype(on(is_equal(&User::id, 1)))>);
+
+        using Join = decltype(join<User>(on(is_equal(&User::id, 1))));
+        STATIC_REQUIRE(std::is_same<internal::node_tuple_t<Join>, std::tuple<decltype(&User::id), int>>::value);
+    }
+
     SECTION("rowid") {
         //  every spelling, unqualified or qualified by the table, is the one rowid reference ...
         STATIC_REQUIRE(internal::is_any_rowid_v<decltype(rowid())>);

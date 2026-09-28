@@ -1,29 +1,51 @@
 #pragma once
 
 /** @file The joins of a FROM clause, with their ON and USING constraints.
+ *
+ *        All joins are DSL spellings of the one join-operator production, classified by `is_any_join`: each carries
+ *        its keyword and the joined table as its `type`, and the constrained ones additionally the constraint as
+ *        their `on_type` - which is the only thing telling them apart from CROSS JOIN and NATURAL JOIN.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
+#include <type_traits>  //  std::disjunction
 #include <utility>  //  std::move
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
-#include "../functional/mpl.h"
-#include "../functional/type_traits.h"
 #include "../table_reference.h"
 #include "../column_pointer.h"
-#include "../vocabulary/node_traits.h"  //  on_type_t
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
-#include "cross_join.h"
 
 namespace sqlite_orm::internal {
+    struct cross_join_string {
+        operator std::string() const {
+            return "CROSS JOIN";
+        }
+    };
+
+    /**
+     *  CROSS JOIN holder.
+     *  T is joined type which represents any mapped table.
+     */
+    template<class T>
+    struct cross_join_t : cross_join_string {
+        using type = T;
+    };
+
+    struct natural_join_string {
+        operator std::string() const {
+            return "NATURAL JOIN";
+        }
+    };
+
     /**
      *  NATURAL JOIN holder.
      *  T is joined type which represents any mapped table.
      */
     template<class T>
-    struct natural_join_t {
+    struct natural_join_t : natural_join_string {
         using type = T;
     };
 
@@ -90,37 +112,6 @@ namespace sqlite_orm::internal {
         left_outer_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
     };
 
-    struct on_string {
-        operator std::string() const {
-            return "ON";
-        }
-    };
-
-    /**
-     *  on(...) argument holder used for JOIN, LEFT JOIN, LEFT OUTER JOIN and INNER JOIN
-     *  T is on type argument.
-     */
-    template<class T>
-    struct on_t : on_string {
-        using arg_type = T;
-
-        arg_type arg;
-
-        on_t(arg_type arg_) : arg(std::move(arg_)) {}
-    };
-
-    /**
-     *  USING argument holder.
-     */
-    template<class T, class M>
-    struct using_t {
-        column_pointer<T, M> column;
-
-        operator std::string() const {
-            return "USING";
-        }
-    };
-
     struct inner_join_string {
         operator std::string() const {
             return "INNER JOIN";
@@ -143,13 +134,51 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    using is_constrained_join = polyfill::is_detected<on_type_t, T>;
+    constexpr bool is_any_join_v = std::disjunction<polyfill::is_specialization_of<T, cross_join_t>,
+                                                    polyfill::is_specialization_of<T, natural_join_t>,
+                                                    polyfill::is_specialization_of<T, left_join_t>,
+                                                    polyfill::is_specialization_of<T, join_t>,
+                                                    polyfill::is_specialization_of<T, left_outer_join_t>,
+                                                    polyfill::is_specialization_of<T, inner_join_t>>::value;
+
+    struct on_string {
+        operator std::string() const {
+            return "ON";
+        }
+    };
+
+    /**
+     *  on(...) argument holder used for JOIN, LEFT JOIN, LEFT OUTER JOIN and INNER JOIN
+     *  T is on type argument.
+     */
+    template<class T>
+    struct on_t : on_string {
+        using expression_type = T;
+
+        expression_type arg;
+
+        on_t(expression_type arg_) : arg(std::move(arg_)) {}
+    };
 
     template<class T>
-    constexpr bool is_any_join_v = mpl::invoke_t<mpl::disjunction<check_if<is_constrained_join>,
-                                                                  check_if_is_template<cross_join_t>,
-                                                                  check_if_is_template<natural_join_t>>,
-                                                 T>::value;
+    constexpr bool is_on_v = polyfill::is_specialization_of_v<T, on_t>;
+
+    /**
+     *  USING argument holder.
+     */
+    template<class T, class M>
+    struct using_t {
+        using column_type = column_pointer<T, M>;
+
+        column_type column;
+
+        operator std::string() const {
+            return "USING";
+        }
+    };
+
+    template<class T>
+    constexpr bool is_using_v = polyfill::is_specialization_of_v<T, using_t>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -165,6 +194,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T>
     internal::on_t<T> on(T t) {
         return {std::move(t)};
+    }
+
+    /**
+     *  CROSS JOIN function. Usage:
+     *  `cross_join<User>();`
+     */
+    template<class T>
+    internal::cross_join_t<T> cross_join() {
+        return {};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES

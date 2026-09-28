@@ -21,6 +21,12 @@ namespace sqlite_orm::internal {
     template<typename T>
     using columns_type_t = typename T::columns_type;
 
+    /**
+     *  The type of the single column a node refers to, e.g. that of a USING join constraint.
+     */
+    template<typename T>
+    using column_type_t = typename T::column_type;
+
     template<typename T>
     using columns_tuple_t = typename T::columns_tuple;
 
