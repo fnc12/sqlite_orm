@@ -14,7 +14,7 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/type_traits.h"
 #include "../tuple_helper/tuple_transformer.h"
-#include "../alias.h"
+#include "alias.h"
 #include "../alias_traits.h"
 #include "../cte_moniker.h"
 #include "select.h"

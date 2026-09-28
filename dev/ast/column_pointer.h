@@ -5,13 +5,13 @@
 #include <utility>  // std::move
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
-#include "functional/type_traits.h"
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/type_traits.h"
 #include "table_reference.h"
-#include "alias_traits.h"
-#include "vocabulary/node_traits.h"  //  node projections
-#include "vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
-#include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
+#include "../alias_traits.h"
+#include "../vocabulary/node_traits.h"  //  node projections, is_alias_holder
+#include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
+#include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     /**
@@ -109,7 +109,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         static_assert(is_cte_moniker_v<Moniker>, "`Moniker' must be a CTE moniker");
 
-        if constexpr (polyfill::is_specialization_of_v<F, alias_holder>) {
+        if constexpr (is_alias_holder_v<F>) {
             static_assert(is_column_alias_v<type_t<F>>);
             return column_pointer<Moniker, F>{{}};
         } else if constexpr (is_column_alias_v<F>) {

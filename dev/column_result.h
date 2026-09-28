@@ -18,7 +18,7 @@
 #include "vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value
 #include "mapped_type_proxy.h"
 #include "column_result_proxy.h"
-#include "alias.h"
+#include "ast/alias.h"
 #include "cte_types.h"
 #include "storage_traits.h"
 #include "schema/algorithms/table_lookup.h"  // schema_pick_table_t
@@ -178,28 +178,32 @@ namespace sqlite_orm::internal {
         using type = int64;
     };
 
-    template<class DBOs, class T, class C>
-    struct column_result_t<DBOs, alias_column_t<T, C>, void> : column_result_t<DBOs, C> {};
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_alias_column, T>> : column_result_t<DBOs, column_type_t<T>> {};
 
-    //  note: deliberately matching `column_pointer` by its own template rather than dispatching on
-    //  `is_column_pointer`: the CTE column reference below is a refinement of this specialization, and a
-    //  trait-based primary would be ambiguous with it rather than being ordered before it.
-    template<class DBOs, class T, class F>
-    struct column_result_t<DBOs, column_pointer<T, F>, void> : column_result_t<DBOs, F> {};
+    /*
+     *  The result of a column pointer: that of its field -
+     *  or, for a column alias referenced in a CTE, the type of the column the CTE maps it to.
+     */
+    template<class DBOs, class CP, bool = is_alias_holder_v<field_type_t<CP>>>
+    struct column_pointer_result : column_result_t<DBOs, field_type_t<CP>> {};
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-    template<class DBOs, class Moniker, class ColAlias>
-    struct column_result_t<DBOs, column_pointer<Moniker, alias_holder<ColAlias>>, void> {
-        using table_type = schema_pick_table_t<Moniker, DBOs>;
+    template<class DBOs, class CP>
+    struct column_pointer_result<DBOs, CP, true> {
+        using table_type = schema_pick_table_t<type_t<CP>, DBOs>;
         using cte_mapper_type = cte_mapper_type_t<table_type>;
 
-        // lookup ColAlias in the final column references
-        using colalias_index = find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
+        // lookup the column alias in the final column references
+        using colalias_index = find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, field_type_t<CP>>;
         static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
                       "No such column mapped into the CTE");
         using type = std::tuple_element_t<colalias_index::value, typename cte_mapper_type::fields_type>;
     };
 #endif
+
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_column_pointer, T>> : column_pointer_result<DBOs, T> {};
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_columns, T>> : column_result_t<DBOs, columns_type_t<T>> {};

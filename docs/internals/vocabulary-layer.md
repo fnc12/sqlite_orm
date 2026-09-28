@@ -468,18 +468,17 @@ the projection to `vocabulary/projections/` rather than reaching into the node.
 
 Decided, not yet done. The destination is settled in each case; only the work remains.
 
-- **Lift the remaining traits into the vocabulary layer.** A substantial number of node
-  classification traits are still declared *and* specialized inside their concrete node
-  headers, having never been lifted into the vocabulary layer by forward-declaring a
-  primary template in the appropriate `traits/*_fwd.h`. Examples:
-  `is_alias_v` / `is_column_alias_v` / `is_recordset_alias_v` / `is_table_alias_v`,
-  `is_cte_moniker_v`, `is_table_valued_expression_v`, `is_literal_v`.
+- **Lift the remaining schema-level traits into the vocabulary layer.** Every node below
+  `ast/` is classified through the layer now; outside of it, `is_dbo_name_literal_v`
+  (`schema/dbo_name.h`) and `is_rtree_table_element_or_constraint_v` (`vtabs/rtree.h`) are
+  still defined without a declaration in a `traits/*_fwd.h` file.
 
-  Each needs triage before being moved — not every `is_*_v` in a node header is DSL node
-  classification. Several are language- or binding-level mechanics
+  Not every `is_*_v` qualifies. Language- or binding-level mechanics
   (`is_stateless_deleter_v`, `is_unusable_for_xdestroy_v`, `is_bindable_v`,
-  `is_printable_v`, `is_integral_fp_c_v`) and belong where they are, or one tier below.
-  For those that do qualify, apply the axis table above to pick the file.
+  `is_printable_v`, `is_integral_fp_c_v`) belong where they are, or one tier below; and
+  closed predicates naming concrete nodes for a single consumer - `is_builtin_window_function_v`,
+  `is_builtin_numeric_column_alias_v` - stay next to the nodes they name. For those that do
+  qualify, apply the axis table above to pick the file.
 
 - **`storage_traits.h`.** Its `storage_mapped_columns_impl` and
   `storage_mapped_column_expressions_impl` are closed, single-table, classification-driven

@@ -13,8 +13,8 @@
 #include "../tuple_helper/tuple_filter.h"
 #include "../member_traits/member_traits.h"
 #include "../schema/virtual_table.h"
-#include "../literal.h"
-#include "../table_reference.h"
+#include "../ast/literal.h"
+#include "../ast/table_reference.h"
 
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 namespace sqlite_orm::internal {

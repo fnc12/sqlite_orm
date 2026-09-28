@@ -6,8 +6,10 @@
 #include <tuple>
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
-#include "alias_traits.h"
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../alias_traits.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 #include "literal.h"
 
 namespace sqlite_orm::internal {
@@ -25,9 +27,6 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_table_valued_expression_v = polyfill::is_specialization_of_v<T, table_valued_expression>;
 
-    template<class T>
-    using is_table_valued_expression = std::bool_constant<is_table_valued_expression_v<T>>;
-
     /*
      *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions and virtual tables usable as table-valued functions.
      */
@@ -42,6 +41,9 @@ namespace sqlite_orm::internal {
             return {{{std::move(arguments)}...}};
         }
     };
+
+    template<class T>
+    constexpr bool is_table_reference_v = polyfill::is_specialization_of_v<std::remove_const_t<T>, table_reference>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

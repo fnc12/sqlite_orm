@@ -60,4 +60,22 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_quoted_expression = std::bool_constant<is_quoted_expression_v<T>>;
+
+    /**
+     *  Nodes protecting an otherwise bindable value, so that it is serialized as a literal.
+     */
+    template<class T>
+    extern const bool is_literal_v;
+
+    template<class T>
+    using is_literal = std::bool_constant<is_literal_v<T>>;
+
+    /**
+     *  Nodes lifting a mapped object type into a value: `c<Object>()`.
+     */
+    template<class T>
+    extern const bool is_table_reference_v;
+
+    template<class T>
+    using is_table_reference = std::bool_constant<is_table_reference_v<T>>;
 }

@@ -9,6 +9,8 @@
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/type_traits.h"
+#include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "vocabulary/traits/structural_traits_fwd.h"  //  is_table_reference
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -35,65 +37,47 @@ namespace sqlite_orm::internal {
     using auto_decay_table_ref_t = typename decay_table_ref<decltype(recordset)>::type;
 #endif
 
-    template<class A>
-    inline constexpr bool is_alias_v = std::is_base_of<alias_tag, A>::value;
+    //  note: aliases are user-definable, hence the alias traits are defined here, next to `alias_tag`,
+    //  rather than in the header of a sqlite_orm node
+    template<class T>
+    constexpr bool is_alias_v = std::is_base_of<alias_tag, T>::value;
 
-    template<class A>
-    struct is_alias : std::bool_constant<is_alias_v<A>> {};
+    //  note: the definitions below are written in terms of the variable templates rather than of the `is_*` alias
+    //  templates of the traits - msvc 141 fails to resolve an alias template in the initializer of a variable template
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR];
+    //  and they name their template parameter like the declarations in `grammar_traits_fwd.h` do - msvc 141 resolves
+    //  the initializer of a redeclared variable template with the parameter names of the first declaration
 
     /** @short Alias of a column in a record set, see `orm_column_alias`.
      */
-    template<class A>
-    inline constexpr bool is_column_alias_v =
-        std::conjunction<is_alias<A>, std::negation<polyfill::is_detected<type_t, A>>>::value;
-
-    template<class A>
-    struct is_column_alias : is_alias<A> {};
-
-    template<class O>
-    inline constexpr bool is_table_reference_v =
-        polyfill::is_specialization_of_v<std::remove_const_t<O>, table_reference>;
-
-    template<class R>
-    struct is_table_reference : std::bool_constant<is_table_reference_v<R>> {};
+    template<class T>
+    constexpr bool is_column_alias_v = is_alias_v<T> && !polyfill::is_detected_v<type_t, T>;
 
     /** @short Alias of any type of record set, see `orm_recordset_alias`.
      */
-    template<class A>
-    inline constexpr bool is_recordset_alias_v = std::conjunction<is_alias<A>, polyfill::is_detected<type_t, A>>::value;
-
-    template<class A>
-    struct is_recordset_alias : std::bool_constant<is_recordset_alias_v<A>> {};
+    template<class T>
+    constexpr bool is_recordset_alias_v = is_alias_v<T> && polyfill::is_detected_v<type_t, T>;
 
     /** @short Alias of a concrete table, see `orm_table_alias`.
      */
-    template<class A>
-    inline constexpr bool is_table_alias_v =
-        std::conjunction<is_recordset_alias<A>,
-                         std::negation<std::is_same<polyfill::detected_t<type_t, A>, std::remove_const_t<A>>>>::value;
-
-    template<class A>
-    struct is_table_alias : std::bool_constant<is_table_alias_v<A>> {};
+    template<class T>
+    constexpr bool is_table_alias_v =
+        is_recordset_alias_v<T> && !std::is_same<polyfill::detected_t<type_t, T>, std::remove_const_t<T>>::value;
 
     /** @short Moniker of a CTE, see `orm_cte_moniker`.
      */
-    template<class A>
-    inline constexpr bool is_cte_moniker_v =
+    template<class T>
+    constexpr bool is_cte_moniker_v =
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-        std::conjunction_v<is_recordset_alias<A>,
-                           std::is_same<polyfill::detected_t<type_t, A>, std::remove_const_t<A>>>;
+        is_recordset_alias_v<T> && std::is_same<polyfill::detected_t<type_t, T>, std::remove_const_t<T>>::value;
 #else
         false;
 #endif
 
-    template<class A>
-    using is_cte_moniker = std::bool_constant<is_cte_moniker_v<A>>;
-
     /** @short Referring to a recordset.
      */
     template<class T>
-    inline constexpr bool is_referring_to_recordset_v =
-        std::disjunction_v<is_table_reference<T>, is_recordset_alias<T>>;
+    inline constexpr bool is_referring_to_recordset_v = is_table_reference_v<T> || is_recordset_alias_v<T>;
 
     template<class T>
     using is_referring_to_recordset = std::bool_constant<is_referring_to_recordset_v<T>>;

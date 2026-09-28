@@ -23,7 +23,4 @@ namespace sqlite_orm::internal {
     struct indexed_column_t;
 
     struct order_by_base;
-
-    template<class O>
-    struct order_by_t;
 }

@@ -11,7 +11,7 @@
 #include "tuple_helper/tuple_transformer.h"
 #include "vocabulary/node_traits.h"
 #include "ast/result_columns.h"
-#include "alias.h"
+#include "ast/alias.h"
 #include "storage_traits.h"
 
 namespace sqlite_orm::internal {

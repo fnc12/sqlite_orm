@@ -20,7 +20,7 @@
 #include "../schema/constraints/collate.h"  // string_from_collate_argument
 #include "../serializer_context.h"
 #include "../type_printer.h"
-#include "../literal.h"
+#include "literal.h"
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "window_functions.h"  //  rank_t
