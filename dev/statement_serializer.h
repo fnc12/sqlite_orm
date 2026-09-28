@@ -33,7 +33,6 @@
 #include "conditions.h"
 #include "prepared_statement.h"
 #include "mapped_type_proxy.h"
-#include "rowid.h"
 #include "pointer_value.h"
 #include "type_printer.h"
 #include "field_printer.h"
@@ -659,81 +658,19 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<rowid_t, void> {
-        using statement_type = rowid_t;
+    template<class T>
+    struct statement_serializer<T, match_if<is_any_rowid, T>> {
+        using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return static_cast<std::string>(statement);
-        }
-    };
-
-    template<>
-    struct statement_serializer<oid_t, void> {
-        using statement_type = oid_t;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return static_cast<std::string>(statement);
-        }
-    };
-
-    template<>
-    struct statement_serializer<_rowid_t, void> {
-        using statement_type = _rowid_t;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return static_cast<std::string>(statement);
-        }
-    };
-
-    template<class O>
-    struct statement_serializer<table_rowid_t<O>, void> {
-        using statement_type = table_rowid_t<O>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string
+        operator()(const statement_type& statement, [[maybe_unused]] const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            if (!context.omit_table_name) {
-                ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
-            }
-            ss << static_cast<std::string>(statement);
-            return ss.str();
-        }
-    };
-
-    template<class O>
-    struct statement_serializer<table_oid_t<O>, void> {
-        using statement_type = table_oid_t<O>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-            if (!context.omit_table_name) {
-                ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
-            }
-            ss << static_cast<std::string>(statement);
-            return ss.str();
-        }
-    };
-
-    template<class O>
-    struct statement_serializer<table__rowid_t<O>, void> {
-        using statement_type = table__rowid_t<O>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-            if (!context.omit_table_name) {
-                ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
+            //  qualified by the table
+            if constexpr (polyfill::is_detected_v<type_t, statement_type>) {
+                if (!context.omit_table_name) {
+                    ss << streaming_identifier(lookup_table_name<type_t<statement_type>>(context.db_objects)) << ".";
+                }
             }
             ss << static_cast<std::string>(statement);
             return ss.str();

@@ -8,7 +8,6 @@
 
 #include "mapped_type_proxy.h"
 #include "vocabulary/node_traits.h"
-#include "rowid.h"
 #include "alias.h"
 #include "schema/algorithms/table_lookup.h"  // lookup_table_name
 
@@ -62,9 +61,8 @@ namespace sqlite_orm::internal {
                 this->table_names.emplace(std::move(tableName), alias_extractor<recordset_type>::as_alias());
             }
             // ...
-            else if constexpr (is_object_node_v<ColRef> || polyfill::is_specialization_of_v<ColRef, table_rowid_t> ||
-                               polyfill::is_specialization_of_v<ColRef, table_oid_t> ||
-                               polyfill::is_specialization_of_v<ColRef, table__rowid_t>) {
+            else if constexpr (is_object_node_v<ColRef> ||
+                               (is_any_rowid_v<ColRef> && polyfill::is_detected_v<type_t, ColRef>)) {
                 using table_type = type_t<ColRef>;
                 this->table_names.emplace(lookup_table_name<table_type>(this->db_objects), "");
             }

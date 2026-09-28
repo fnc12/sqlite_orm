@@ -18,7 +18,6 @@
 #include "vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value
 #include "mapped_type_proxy.h"
 #include "operators.h"
-#include "rowid.h"
 #include "column_result_proxy.h"
 #include "alias.h"
 #include "cte_types.h"
@@ -227,33 +226,8 @@ namespace sqlite_orm::internal {
         using type = int;
     };
 
-    template<class DBOs>
-    struct column_result_t<DBOs, rowid_t, void> {
-        using type = int64;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, oid_t, void> {
-        using type = int64;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, _rowid_t, void> {
-        using type = int64;
-    };
-
     template<class DBOs, class T>
-    struct column_result_t<DBOs, table_rowid_t<T>, void> {
-        using type = int64;
-    };
-
-    template<class DBOs, class T>
-    struct column_result_t<DBOs, table_oid_t<T>, void> {
-        using type = int64;
-    };
-
-    template<class DBOs, class T>
-    struct column_result_t<DBOs, table__rowid_t<T>, void> {
+    struct column_result_t<DBOs, T, match_if<is_any_rowid, T>> {
         using type = int64;
     };
 

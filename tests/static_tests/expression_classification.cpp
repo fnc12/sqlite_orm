@@ -48,6 +48,23 @@ TEST_CASE("expression classification") {
         STATIC_REQUIRE_FALSE(internal::is_excluded_v<decltype(&User::name)>);
     }
 
+    SECTION("rowid") {
+        //  every spelling, unqualified or qualified by the table, is the one rowid reference ...
+        STATIC_REQUIRE(internal::is_any_rowid_v<decltype(rowid())>);
+        STATIC_REQUIRE(internal::is_any_rowid_v<decltype(oid())>);
+        STATIC_REQUIRE(internal::is_any_rowid_v<decltype(_rowid_())>);
+        STATIC_REQUIRE(internal::is_any_rowid_v<decltype(rowid<User>())>);
+        STATIC_REQUIRE(internal::is_any_rowid_v<decltype(oid<User>())>);
+        STATIC_REQUIRE(internal::is_any_rowid_v<decltype(_rowid_<User>())>);
+        STATIC_REQUIRE_FALSE(internal::is_any_rowid_v<decltype(&User::id)>);
+        STATIC_REQUIRE_FALSE(internal::is_any_rowid_v<int>);
+        //  a tuple inherits its empty element types, yet is not a rowid
+        STATIC_REQUIRE_FALSE(internal::is_any_rowid_v<std::tuple<internal::rowid_t, internal::oid_t>>);
+        //  ... qualified ones carry the table as their type
+        STATIC_REQUIRE(std::is_same<internal::type_t<decltype(oid<User>())>, User>::value);
+        STATIC_REQUIRE_FALSE(polyfill::is_detected_v<internal::type_t, decltype(oid())>);
+    }
+
     SECTION("operand classification") {
         STATIC_REQUIRE(internal::is_operator_argument_v<decltype(cast<std::string>(&User::id))>);
         STATIC_REQUIRE(internal::is_operator_argument_v<decltype(excluded(&User::name))>);
