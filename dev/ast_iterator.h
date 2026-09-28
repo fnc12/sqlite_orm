@@ -14,7 +14,6 @@
 #include "alias.h"
 #include "operators.h"
 #include "prepared_statement.h"
-#include "ast/window_functions.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -675,12 +674,7 @@ namespace sqlite_orm::internal {
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            //  a built-in window function is no node of its own, only its call arguments are
-            if constexpr (is_builtin_window_function_v<function_type_t<node_type>>) {
-                iterate_ast(node.function.args, lambda);
-            } else {
-                iterate_ast(node.function, lambda);
-            }
+            iterate_ast(node.function, lambda);
             iterate_ast(node.arguments, lambda);
         }
     };
