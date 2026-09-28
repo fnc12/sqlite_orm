@@ -9,19 +9,17 @@ it activates the continuous integration (CI) build systems at Appveyor and Travi
 on a variety of Linux, Windows and MacOS configurations and run all the test suites.  Follow these requirements 
 for a successful pull request:
 
- 1. All significant changes require a [github issue](https://github.com/fnc12/sqlite_orm/issues).  Trivial changes such as fixing a typo or a compiler warning do not.
+ 1. Significant behavioral changes - a new feature, a bug fix, a change of the public API - should be discussed in a [github issue](https://github.com/fnc12/sqlite_orm/issues) first.  Refactorings and trivial changes such as fixing a typo or a compiler warning do not need an issue.
 
- 1. The pull request title must begin with the github issue identifier if it has an associated issue, for example:
+ 1. The pull request title describes the change; it does not carry an issue number.  If the pull request is associated with an issue, link it in the pull request description, preferably through GitHub's "Development" section of the pull request, or with a [closing keyword](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue) such as `Fixes #9999`.
 
-        #9999 : an example pull request title
-        
- 1. Commit messages must be understandable in future by different developers and must be written in english language only:
+ 1. Commit messages must be understandable in future by different developers and must be written in english language only.
      
 Instructions:
 
  1. Create a fork in your GitHub account of http://github.com/fnc12/sqlite_orm
  1. Clone the fork to your development system.
- 1. Create a branch for your changes (best practice is following git flow pattern with issue number as branch name, e.g. feature/9999-some-feature or bugfix/9999-some-bug).
+ 1. Create a branch for your changes (best practice is following git flow pattern, e.g. feature/some-feature or bugfix/some-bug).
  1. Modify the source to include the improvement/bugfix, and:
 
     * Remember to provide *tests* for all submitted changes!
@@ -29,8 +27,8 @@ Instructions:
     * Verify that you follow current code style on sqlite_orm.
     * [*optional*] Verify that your change works on other platforms by adding a GitHub service hook to [Travis CI](http://docs.travis-ci.com/user/getting-started/#Step-one%3A-Sign-in) and [AppVeyor](http://www.appveyor.com/docs).  You can use this technique to run the sqlite_orm CI jobs in your account to check your changes before they are made public.  Every GitHub pull request into sqlite_orm will run the full CI build and test suite on your changes.
 
- 1. Commit and push changes to your branch (please use issue name and description as commit title, e.g. "make it perfect. (fixes #9999)").
- 1. Use GitHub to create a pull request going from your branch to sqlite_orm:dev.  Ensure that the github issue number is at the beginning of the title of your pull request.
+ 1. Commit and push changes to your branch.
+ 1. Use GitHub to create a pull request going from your branch to sqlite_orm:dev, and link the associated issue, if any, as described above.
  1. Wait for other contributors or committers to review your new addition, and for a CI build to complete.
  1. Wait for a owner or collaborators to commit your patch.
 
