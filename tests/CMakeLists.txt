@@ -96,8 +96,6 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(unit_tests PUBLIC
         # disabled due to unit tests testing deprecated features
         -Wno-deprecated-declarations
-        # disabled due to unit tests testing overaligned structs
-        -Wno-interference-size
         # perfectly valid to have missing field initializers in library's test code
         -Wno-missing-field-initializers
         # suppress warnings about unused variables in test code
