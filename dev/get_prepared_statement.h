@@ -19,23 +19,19 @@
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
-    template<int N, class It, class L, class O>
-    auto& get(internal::prepared_statement_t<internal::insert_range_t<It, L, O>>& statement) {
+    template<
+        int N,
+        class E,
+        std::enable_if_t<std::disjunction_v<internal::is_insert_range<E>, internal::is_replace_range<E>>, bool> = true>
+    auto& get(internal::prepared_statement_t<E>& statement) {
         return std::get<N>(statement.expression.range);
     }
 
-    template<int N, class It, class L, class O>
-    const auto& get(const internal::prepared_statement_t<internal::insert_range_t<It, L, O>>& statement) {
-        return std::get<N>(statement.expression.range);
-    }
-
-    template<int N, class It, class L, class O>
-    auto& get(internal::prepared_statement_t<internal::replace_range_t<It, L, O>>& statement) {
-        return std::get<N>(statement.expression.range);
-    }
-
-    template<int N, class It, class L, class O>
-    const auto& get(const internal::prepared_statement_t<internal::replace_range_t<It, L, O>>& statement) {
+    template<
+        int N,
+        class E,
+        std::enable_if_t<std::disjunction_v<internal::is_insert_range<E>, internal::is_replace_range<E>>, bool> = true>
+    const auto& get(const internal::prepared_statement_t<E>& statement) {
         return std::get<N>(statement.expression.range);
     }
 
@@ -69,65 +65,44 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
 
-    template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::remove_t<T, Ids...>>& statement) {
+    template<int N, class E, internal::satisfies<internal::is_remove, E> = true>
+    auto& get(internal::prepared_statement_t<E>& statement) {
         return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
 
-    template<int N, class T, class... Ids>
-    const auto& get(const internal::prepared_statement_t<internal::remove_t<T, Ids...>>& statement) {
+    template<int N, class E, internal::satisfies<internal::is_remove, E> = true>
+    const auto& get(const internal::prepared_statement_t<E>& statement) {
         return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
 
-    template<int N, class T>
-    auto& get(internal::prepared_statement_t<internal::update_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for update statement");
+    //  insert, insert explicit, replace, update: the object is the only bound value
+    template<int N,
+             class E,
+             std::enable_if_t<
+                 std::conjunction_v<internal::is_object_dml_expression<E>, std::negation<internal::is_remove<E>>>,
+                 bool> = true>
+    auto& get(internal::prepared_statement_t<E>& statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert, replace and update statements");
         return internal::access_dml_object(statement);
     }
 
-    template<int N, class T>
-    const auto& get(const internal::prepared_statement_t<internal::update_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for update statement");
+    template<int N,
+             class E,
+             std::enable_if_t<
+                 std::conjunction_v<internal::is_object_dml_expression<E>, std::negation<internal::is_remove<E>>>,
+                 bool> = true>
+    const auto& get(const internal::prepared_statement_t<E>& statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert, replace and update statements");
         return internal::access_dml_object(statement);
     }
 
-    template<int N, class T, class... Cols>
-    auto& get(internal::prepared_statement_t<internal::insert_explicit<T, Cols...>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return internal::access_dml_object(statement);
-    }
-
-    template<int N, class T, class... Cols>
-    const auto& get(const internal::prepared_statement_t<internal::insert_explicit<T, Cols...>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return internal::access_dml_object(statement);
-    }
-
-    template<int N, class T>
-    auto& get(internal::prepared_statement_t<internal::replace_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
-        return internal::access_dml_object(statement);
-    }
-
-    template<int N, class T>
-    const auto& get(const internal::prepared_statement_t<internal::replace_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
-        return internal::access_dml_object(statement);
-    }
-
-    template<int N, class T>
-    auto& get(internal::prepared_statement_t<internal::insert_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return internal::access_dml_object(statement);
-    }
-
-    template<int N, class T>
-    const auto& get(const internal::prepared_statement_t<internal::insert_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return internal::access_dml_object(statement);
-    }
-
-    template<int N, class T>
+    //  note: the statements above bind their values in a way of their own, hence the exclusion
+    template<int N,
+             class T,
+             std::enable_if_t<std::negation_v<std::disjunction<internal::is_object_dml_expression<T>,
+                                                               internal::is_insert_range<T>,
+                                                               internal::is_replace_range<T>>>,
+                              bool> = true>
     const auto& get(const internal::prepared_statement_t<T>& statement) {
         using namespace ::sqlite_orm::internal;
         using statement_type = polyfill::remove_cvref_t<decltype(statement)>;
@@ -150,7 +125,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return forward_lvalue_ref(*result);
     }
 
-    template<int N, class T>
+    template<int N,
+             class T,
+             std::enable_if_t<std::negation_v<std::disjunction<internal::is_object_dml_expression<T>,
+                                                               internal::is_insert_range<T>,
+                                                               internal::is_replace_range<T>>>,
+                              bool> = true>
     auto& get(internal::prepared_statement_t<T>& statement) {
         using namespace ::sqlite_orm::internal;
         using statement_type = std::remove_reference_t<decltype(statement)>;

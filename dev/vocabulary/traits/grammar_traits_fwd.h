@@ -318,6 +318,15 @@ namespace sqlite_orm::internal {
     using is_upsert_clause = std::bool_constant<is_upsert_clause_v<T>>;
 
     /**
+     *  Nodes referencing a column of the row an upsert clause failed to insert: excluded.column.
+     */
+    template<class T>
+    extern const bool is_excluded_v;
+
+    template<class T>
+    using is_excluded = std::bool_constant<is_excluded_v<T>>;
+
+    /**
      *  Nodes carrying the conflict resolution modifier of a raw INSERT:
      *  OR ABORT, OR FAIL, OR IGNORE, OR REPLACE, OR ROLLBACK.
      */
@@ -371,6 +380,111 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_case_expression = std::bool_constant<is_case_expression_v<T>>;
+
+    /**
+     *  Nodes testing an expression against a range: expr BETWEEN lower AND upper.
+     */
+    template<class T>
+    extern const bool is_between_v;
+
+    template<class T>
+    using is_between = std::bool_constant<is_between_v<T>>;
+
+    /**
+     *  Nodes testing an expression for membership in a list of expressions: expr [NOT] IN (...).
+     */
+    template<class T>
+    extern const bool is_in_v;
+
+    template<class T>
+    using is_in = std::bool_constant<is_in_v<T>>;
+
+    /**
+     *  Nodes testing an expression for membership in a container assembled at runtime or in a subselect.
+     */
+    template<class T>
+    extern const bool is_dynamic_in_v;
+
+    template<class T>
+    using is_dynamic_in = std::bool_constant<is_dynamic_in_v<T>>;
+
+    //  the two above are DSL spellings of the one IN production,
+    //  hence grouping them is what corresponds to the SQL grammar
+    template<class T>
+    extern const bool is_any_in_v;
+
+    template<class T>
+    using is_any_in = std::bool_constant<is_any_in_v<T>>;
+
+    /**
+     *  Nodes testing an expression for NULL: expr IS NULL, expr IS NOT NULL.
+     */
+    template<class T>
+    extern const bool is_is_null_v;
+
+    template<class T>
+    using is_is_null = std::bool_constant<is_is_null_v<T>>;
+
+    template<class T>
+    extern const bool is_is_not_null_v;
+
+    template<class T>
+    using is_is_not_null = std::bool_constant<is_is_not_null_v<T>>;
+
+    /**
+     *  Nodes testing a subselect for rows: EXISTS (select-stmt).
+     */
+    template<class T>
+    extern const bool is_exists_v;
+
+    template<class T>
+    using is_exists = std::bool_constant<is_exists_v<T>>;
+
+    /**
+     *  Nodes converting an expression to a storage class: CAST (expr AS type-name).
+     */
+    template<class T>
+    extern const bool is_cast_v;
+
+    template<class T>
+    using is_cast = std::bool_constant<is_cast_v<T>>;
+
+    /**
+     *  Nodes matching a full-text search query against a column or a whole table: expr MATCH query.
+     */
+    template<class T>
+    extern const bool is_match_v;
+
+    template<class T>
+    using is_match = std::bool_constant<is_match_v<T>>;
+
+    template<class T>
+    extern const bool is_match_with_table_v;
+
+    template<class T>
+    using is_match_with_table = std::bool_constant<is_match_with_table_v<T>>;
+
+    /**
+     *  Nodes representing the special keywords yielding the current UTC date/time:
+     *  CURRENT_TIME, CURRENT_DATE, CURRENT_TIMESTAMP.
+     */
+    template<class T>
+    extern const bool is_current_time_v;
+
+    template<class T>
+    using is_current_time = std::bool_constant<is_current_time_v<T>>;
+
+    template<class T>
+    extern const bool is_current_date_v;
+
+    template<class T>
+    using is_current_date = std::bool_constant<is_current_date_v<T>>;
+
+    template<class T>
+    extern const bool is_current_timestamp_v;
+
+    template<class T>
+    using is_current_timestamp = std::bool_constant<is_current_timestamp_v<T>>;
 
     template<class T>
     extern const bool is_with_clause_v;

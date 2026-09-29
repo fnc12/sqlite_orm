@@ -5,6 +5,7 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
@@ -16,8 +17,10 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, excluded_t>::value>> =
-        true;
+    constexpr bool is_excluded_v = polyfill::is_specialization_of_v<T, excluded_t>;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_excluded_v<T>>> = true;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

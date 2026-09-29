@@ -29,12 +29,7 @@
 #include "ast/dml/insert.h"  // conflict_action
 #include "ast/result_columns.h"
 #include "ast/dml/set.h"
-#include "ast/excluded.h"
-#include "ast/match.h"
 #include "ast/rank.h"
-#include "ast/special_keywords.h"
-#include "ast/is_null.h"
-#include "ast/is_not_null.h"
 #include "window_functions.h"
 #include "conditions.h"
 #include "prepared_statement.h"
@@ -231,36 +226,22 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<current_time_t, void> {
-        using statement_type = current_time_t;
+    template<class T>
+    struct statement_serializer<
+        T,
+        std::enable_if_t<std::disjunction<is_current_time<T>, is_current_date<T>, is_current_timestamp<T>>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& /*statement*/,
                                                         const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
-            return "CURRENT_TIME";
-        }
-    };
-
-    template<>
-    struct statement_serializer<current_date_t, void> {
-        using statement_type = current_date_t;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& /*statement*/,
-                                                        const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
-            return "CURRENT_DATE";
-        }
-    };
-
-    template<>
-    struct statement_serializer<current_timestamp_t, void> {
-        using statement_type = current_timestamp_t;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& /*statement*/,
-                                                        const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
-            return "CURRENT_TIMESTAMP";
+            if constexpr (is_current_time_v<statement_type>) {
+                return "CURRENT_TIME";
+            } else if constexpr (is_current_date_v<statement_type>) {
+                return "CURRENT_DATE";
+            } else {
+                return "CURRENT_TIMESTAMP";
+            }
         }
     };
 
@@ -582,8 +563,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<excluded_t<T>, void> {
-        using statement_type = excluded_t<T>;
+    struct statement_serializer<T, match_if<is_excluded, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -631,23 +612,23 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class X>
-    struct statement_serializer<match_with_table_t<T, X>, void> {
-        using statement_type = match_with_table_t<T, X>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_match_with_table, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            auto& table = pick_table<T>(context.db_objects);
+            auto& table = pick_table<mapped_type_t<statement_type>>(context.db_objects);
             std::stringstream ss;
             ss << streaming_identifier(table.name) << " MATCH " << serialize(statement.argument, context);
             return ss.str();
         }
     };
 
-    template<class Field, class X>
-    struct statement_serializer<match_t<Field, X>, void> {
-        using statement_type = match_t<Field, X>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_match, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -926,16 +907,17 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class E>
-    struct statement_serializer<cast_t<T, E>, void> {
-        using statement_type = cast_t<T, E>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_cast, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << "CAST (";
-            ss << serialize(c.expression, context) << " AS " << type_printer<T>().print() << ")";
+            ss << serialize(c.expression, context) << " AS " << type_printer<to_type_t<statement_type>>().print()
+               << ")";
             return ss.str();
         }
     };
@@ -1041,27 +1023,19 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<is_null_t<T>, void> {
-        using statement_type = is_null_t<T>;
+    struct statement_serializer<T, std::enable_if_t<std::disjunction<is_is_null<T>, is_is_not_null<T>>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            ss << serialize(statement.argument, context) << " IS NULL";
-            return ss.str();
-        }
-    };
-
-    template<class T>
-    struct statement_serializer<is_not_null_t<T>, void> {
-        using statement_type = is_not_null_t<T>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-            ss << serialize(statement.argument, context) << " IS NOT NULL";
+            ss << serialize(statement.argument, context);
+            if constexpr (is_is_null_v<statement_type>) {
+                ss << " IS NULL";
+            } else {
+                ss << " IS NOT NULL";
+            }
             return ss.str();
         }
     };
@@ -1188,12 +1162,19 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class L, class C>
+    /*
+     *  Whether the argument of a dynamic IN is a container of values rather than a subselect or other expression.
+     */
+    template<class In>
+    struct is_dynamic_in_list : std::disjunction<polyfill::is_specialization_of<argument_type_t<In>, std::vector>,
+                                                 polyfill::is_specialization_of<argument_type_t<In>, std::list>> {};
+
+    template<class T>
     struct statement_serializer<
-        dynamic_in_t<L, C>,
-        std::enable_if_t<!std::disjunction<polyfill::is_specialization_of<C, std::vector>,
-                                           polyfill::is_specialization_of<C, std::list>>::value>> {
-        using statement_type = dynamic_in_t<L, C>;
+        T,
+        std::enable_if_t<std::conjunction<is_dynamic_in<T>, std::negation<is_dynamic_in_list<T>>>::value>> {
+        using statement_type = T;
+        using argument_type = argument_type_t<statement_type>;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -1207,25 +1188,22 @@ namespace sqlite_orm::internal {
                 ss << "NOT IN";
             }
             ss << " ";
-            if constexpr (is_compound_operator_v<C>) {
+            if constexpr (is_compound_operator_v<argument_type>) {
                 ss << '(';
             }
             auto newContext = context;
             newContext.use_parentheses = true;
             ss << serialize(statement.argument, newContext);
-            if constexpr (is_compound_operator_v<C>) {
+            if constexpr (is_compound_operator_v<argument_type>) {
                 ss << ')';
             }
             return ss.str();
         }
     };
 
-    template<class L, class C>
-    struct statement_serializer<
-        dynamic_in_t<L, C>,
-        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<C, std::vector>,
-                                          polyfill::is_specialization_of<C, std::list>>::value>> {
-        using statement_type = dynamic_in_t<L, C>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<std::conjunction<is_dynamic_in<T>, is_dynamic_in_list<T>>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -1243,9 +1221,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class L, class... Args>
-    struct statement_serializer<in_t<L, Args...>, void> {
-        using statement_type = in_t<L, Args...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_in, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -1259,7 +1237,7 @@ namespace sqlite_orm::internal {
                 ss << "NOT IN";
             }
             ss << " ";
-            using args_type = std::tuple<Args...>;
+            using args_type = argument_type_t<statement_type>;
             constexpr bool theOnlySelect =
                 std::tuple_size<args_type>::value == 1 && is_select<std::tuple_element_t<0, args_type>>::value;
             if constexpr (!theOnlySelect) {
@@ -1306,9 +1284,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class A, class T>
-    struct statement_serializer<between_t<A, T>, void> {
-        using statement_type = between_t<A, T>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_between, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -1324,8 +1302,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<exists_t<T>, void> {
-        using statement_type = exists_t<T>;
+    struct statement_serializer<T, match_if<is_exists, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,

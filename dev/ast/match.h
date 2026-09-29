@@ -4,6 +4,9 @@
 #include <utility>  //  std::move
 #endif
 
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+
 namespace sqlite_orm::internal {
     template<class T, class X>
     struct match_with_table_t {
@@ -13,7 +16,10 @@ namespace sqlite_orm::internal {
         argument_type argument;
     };
 
-    /*  
+    template<class T>
+    constexpr bool is_match_with_table_v = polyfill::is_specialization_of_v<T, match_with_table_t>;
+
+    /*
      *  Alternative equality comparison where the left side is always a field.
      */
     template<class Field, class X>
@@ -24,6 +30,9 @@ namespace sqlite_orm::internal {
         field_type field;
         argument_type argument;
     };
+
+    template<class T>
+    constexpr bool is_match_v = polyfill::is_specialization_of_v<T, match_t>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

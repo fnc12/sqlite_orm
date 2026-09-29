@@ -25,12 +25,6 @@
 #include "storage_traits.h"
 #include "schema/algorithms/table_lookup.h"  // schema_pick_table_t
 #include "ast/app_function.h"
-#include "ast/special_keywords.h"
-#include "ast/cast.h"
-#include "ast/in.h"
-#include "ast/between.h"
-#include "ast/is_null.h"
-#include "ast/is_not_null.h"
 #include "ast/rank.h"
 #include "window_functions.h"
 
@@ -98,43 +92,19 @@ namespace sqlite_orm::internal {
     struct column_result_t<DBOs, std::tuple<Args...>, void> : conc_tuple<tuplify_t<column_result_of_t<DBOs, Args>>...> {
     };
 
-    template<class DBOs, class L, class A>
-    struct column_result_t<DBOs, dynamic_in_t<L, A>, void> {
-        using type = bool;
-    };
-
-    template<class DBOs, class L, class... Args>
-    struct column_result_t<DBOs, in_t<L, Args...>, void> {
-        using type = bool;
-    };
-
-    template<class DBOs, class A, class T>
-    struct column_result_t<DBOs, between_t<A, T>, void> {
+    template<class DBOs, class T>
+    struct column_result_t<
+        DBOs,
+        T,
+        std::enable_if_t<std::disjunction<is_any_in<T>, is_between<T>, is_is_null<T>, is_is_not_null<T>>::value>> {
         using type = bool;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, is_null_t<T>, void> {
-        using type = bool;
-    };
-
-    template<class DBOs, class T>
-    struct column_result_t<DBOs, is_not_null_t<T>, void> {
-        using type = bool;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, current_time_t, void> {
-        using type = std::string;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, current_date_t, void> {
-        using type = std::string;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, current_timestamp_t, void> {
+    struct column_result_t<
+        DBOs,
+        T,
+        std::enable_if_t<std::disjunction<is_current_time<T>, is_current_date<T>, is_current_timestamp<T>>::value>> {
         using type = std::string;
     };
 
@@ -389,9 +359,9 @@ namespace sqlite_orm::internal {
         using type = table_reference<type_t<T>>;
     };
 
-    template<class DBOs, class T, class E>
-    struct column_result_t<DBOs, cast_t<T, E>, void> {
-        using type = T;
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, T, match_if<is_cast, T>> {
+        using type = to_type_t<T>;
     };
 
     template<class DBOs, class T>

@@ -14,6 +14,7 @@
 #endif
 
 #include "../functional/type_traits.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  //  is_with_clause
 
 namespace sqlite_orm::internal {
     template<class... DBO>
@@ -31,8 +32,12 @@ namespace sqlite_orm::internal {
 
     /**
      *  Return passed in DBOs.
+     *
+     *  Note: A WITH clause prepends the database objects of its CTEs, see `cte_storage.h`.
      */
-    template<class DBOs, class E, satisfies<is_db_objects, DBOs> = true>
+    template<class DBOs,
+             class E,
+             std::enable_if_t<std::conjunction_v<is_db_objects<DBOs>, std::negation<is_with_clause<E>>>, bool> = true>
     decltype(auto) db_objects_for_expression(DBOs& dbObjects, const E&) {
         return dbObjects;
     }

@@ -3,12 +3,15 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <initializer_list>  //  std::initializer_list
 #include <tuple>  //  std::tuple
+#include <type_traits>  //  std::disjunction
 #include <utility>  //  std::move
 #include <vector>  //  std::vector
 #endif
 
+#include "../functional/cxx_type_traits_polyfill.h"
 #include "../tags.h"
 #include "../vocabulary/node_algorithms.h"  // is_operand_or_bindable
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
 
@@ -21,22 +24,36 @@ namespace sqlite_orm::internal {
      */
     template<class L, class A>
     struct dynamic_in_t : condition_t, in_base, negatable_t {
-        L left;  //  left expression
-        A argument;  //  in arg
+        using left_type = L;
+        using argument_type = A;
 
-        dynamic_in_t(L left_, A argument_, bool negative_) :
+        left_type left;  //  left expression
+        argument_type argument;  //  in arg
+
+        dynamic_in_t(left_type left_, argument_type argument_, bool negative_) :
             in_base{negative_}, left(std::move(left_)), argument(std::move(argument_)) {}
     };
+
+    template<class T>
+    constexpr bool is_dynamic_in_v = polyfill::is_specialization_of_v<T, dynamic_in_t>;
 
     template<class L, class... Args>
     struct in_t : condition_t, in_base, negatable_t {
-        L left;
-        std::tuple<Args...> argument;
+        using left_type = L;
+        using argument_type = std::tuple<Args...>;
 
-        in_t(L left_, decltype(argument) argument_, bool negative_) :
+        left_type left;
+        argument_type argument;
+
+        in_t(left_type left_, argument_type argument_, bool negative_) :
             in_base{negative_}, left(std::move(left_)), argument(std::move(argument_)) {}
     };
 
+    template<class T>
+    constexpr bool is_in_v = polyfill::is_specialization_of_v<T, in_t>;
+
+    template<class T>
+    constexpr bool is_any_in_v = std::disjunction<is_in<T>, is_dynamic_in<T>>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

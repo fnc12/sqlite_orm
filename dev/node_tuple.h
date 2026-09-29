@@ -13,12 +13,6 @@
 #include "operators.h"
 #include "prepared_statement.h"
 #include "optional_container.h"
-#include "ast/excluded.h"
-#include "ast/match.h"
-#include "ast/cast.h"
-#include "ast/in.h"
-#include "ast/is_null.h"
-#include "ast/is_not_null.h"
 #include "window_functions.h"
 #include "vocabulary/node_traits.h"
 
@@ -66,16 +60,14 @@ namespace sqlite_orm::internal {
     struct node_tuple<T, match_if<is_set, T>> : node_tuple<assigns_type_t<T>> {};
 
     template<class T>
-    struct node_tuple<excluded_t<T>, void> : node_tuple<T> {};
+    struct node_tuple<T, match_if<is_excluded, T>> : node_tuple<expression_type_t<T>> {};
 
     template<class T>
     struct node_tuple<T, std::enable_if_t<is_where<T>::value>> : node_tuple<expression_type_t<T>> {};
 
-    template<class T, class X>
-    struct node_tuple<match_with_table_t<T, X>, void> : node_tuple<X> {};
-
-    template<class Field, class X>
-    struct node_tuple<match_t<Field, X>, void> : node_tuple<X> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<std::disjunction<is_match<T>, is_match_with_table<T>>::value>>
+        : node_tuple<argument_type_t<T>> {};
 
     /**
      *  Column alias
@@ -110,11 +102,8 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<T, std::enable_if_t<is_struct<T>::value>> : node_tuple<columns_type_t<T>> {};
 
-    template<class L, class A>
-    struct node_tuple<dynamic_in_t<L, A>, void> : node_tuple_for<L, A> {};
-
-    template<class L, class... Args>
-    struct node_tuple<in_t<L, Args...>, void> : node_tuple_for<L, Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_any_in, T>> : node_tuple_for<left_type_t<T>, argument_type_t<T>> {};
 
     template<class T>
     struct node_tuple<T, match_if<is_compound_operator, T>> : node_tuple<expressions_tuple_t<T>> {};
@@ -158,11 +147,11 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<T, match_if<is_remove_all, T>> : node_tuple<conditions_type_t<T>> {};
 
-    template<class T, class E>
-    struct node_tuple<cast_t<T, E>, void> : node_tuple<E> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_cast, T>> : node_tuple<expression_type_t<T>> {};
 
     template<class T>
-    struct node_tuple<exists_t<T>, void> : node_tuple<T> {};
+    struct node_tuple<T, match_if<is_exists, T>> : node_tuple<expression_type_t<T>> {};
 
     template<class T>
     struct node_tuple<optional_container<T>, void> : node_tuple<T> {};
@@ -173,17 +162,16 @@ namespace sqlite_orm::internal {
     template<class A, class T>
     struct node_tuple<glob_t<A, T>, void> : node_tuple_for<A, T> {};
 
-    template<class A, class T>
-    struct node_tuple<between_t<A, T>, void> : node_tuple_for<A, T, T> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_between, T>>
+        : node_tuple_for<expression_type_t<T>, lower_type_t<T>, upper_type_t<T>> {};
 
     template<class T>
     struct node_tuple<named_collate<T>, void> : node_tuple<T> {};
 
     template<class T>
-    struct node_tuple<is_null_t<T>, void> : node_tuple<T> {};
-
-    template<class T>
-    struct node_tuple<is_not_null_t<T>, void> : node_tuple<T> {};
+    struct node_tuple<T, std::enable_if_t<std::disjunction<is_is_null<T>, is_is_not_null<T>>::value>>
+        : node_tuple<argument_type_t<T>> {};
 
     template<class C>
     struct node_tuple<negated_condition_t<C>, void> : node_tuple<C> {};

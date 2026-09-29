@@ -46,7 +46,6 @@
 #include "ast/exists.h"
 #include "ast/group_by.h"
 #include "ast/in.h"
-#include "ast/is_not_null.h"
 #include "ast/is_null.h"
 #include "ast/limit.h"
 #include "ast/match.h"

@@ -17,6 +17,9 @@ namespace sqlite_orm::internal {
 
         exists_t(expression_type expression_) : expression(std::move(expression_)) {}
     };
+
+    template<class T>
+    constexpr bool is_exists_v = polyfill::is_specialization_of_v<T, exists_t>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
