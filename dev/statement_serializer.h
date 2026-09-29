@@ -247,7 +247,7 @@ namespace sqlite_orm::internal {
      *  Serializer for literal values.
      */
     template<class T>
-    struct statement_serializer<T, match_specialization_of<T, literal_holder>> {
+    struct statement_serializer<T, match_if<is_literal, T>> {
         using statement_type = T;
 
         template<class Ctx>
