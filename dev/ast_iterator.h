@@ -10,7 +10,7 @@
 #include "functional/type_traits.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "vocabulary/node_traits.h"
-#include "alias.h"
+#include "ast/alias.h"
 #include "prepared_statement.h"
 
 namespace sqlite_orm::internal {
@@ -596,10 +596,9 @@ namespace sqlite_orm::internal {
      *  Column alias or literal: skipped
      */
     template<class T>
-    struct ast_iterator<T,
-                        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<T, alias_holder>,
-                                                          polyfill::is_specialization_of<T, literal_holder>,
-                                                          is_column_alias<T>>::value>> {
+    struct ast_iterator<
+        T,
+        std::enable_if_t<std::disjunction<is_alias_holder<T>, is_literal<T>, is_column_alias<T>>::value>> {
         using node_type = T;
 
         template<class L>

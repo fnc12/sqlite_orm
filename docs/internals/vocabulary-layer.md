@@ -158,6 +158,22 @@ Two rules that repeatedly prevent mistakes:
 - **Openness is about who writes specializations**, not about how complex they are. See
   [Open vs. closed](#open-vs-closed).
 
+Not every `is_*_v` belongs in the layer, and a missing declaration in a `traits/*_fwd.h` file
+is no reason by itself to put one there:
+
+- **Language- or binding-level mechanics** (`is_stateless_deleter_v`,
+  `is_unusable_for_xdestroy_v`, `is_bindable_v`, `is_printable_v`, `is_integral_fp_c_v`)
+  belong where they are, or one tier below.
+- **Definition-time mechanics over something that never becomes a node** stay with the code
+  that consumes them. `is_dbo_name_literal_v` (`schema/dbo_name.h`) recognizes the
+  `_orm_name` reflection annotation, which is read out and filtered away while a table or
+  view definition is built; no serializer or tree walker ever sees it.
+- **Closed predicates naming concrete nodes for a single consumer** -
+  `is_builtin_numeric_column_alias_v` - stay next to the nodes they name.
+- **Admissibility composites** over existing vocabulary are algorithms, not traits: the
+  element-or-constraint checks of the base, FTS5 and RTREE tables live together in
+  `algorithms/ddl_predicates.h`, per the level table above.
+
 ## The trait axes
 
 Four axes are keyed on a DSL node; one is keyed on a raw C++ type.
@@ -460,19 +476,6 @@ the projection to `vocabulary/projections/` rather than reaching into the node.
 ## Open work
 
 Decided, not yet done. The destination is settled in each case; only the work remains.
-
-- **Lift the remaining traits into the vocabulary layer.** A substantial number of node
-  classification traits are still declared *and* specialized inside their concrete node
-  headers, having never been lifted into the vocabulary layer by forward-declaring a
-  primary template in the appropriate `traits/*_fwd.h`. Examples:
-  `is_alias_v` / `is_column_alias_v` / `is_recordset_alias_v` / `is_table_alias_v`,
-  `is_cte_moniker_v`, `is_table_valued_expression_v`, `is_literal_v`.
-
-  Each needs triage before being moved — not every `is_*_v` in a node header is DSL node
-  classification. Several are language- or binding-level mechanics
-  (`is_stateless_deleter_v`, `is_unusable_for_xdestroy_v`, `is_bindable_v`,
-  `is_printable_v`, `is_integral_fp_c_v`) and belong where they are, or one tier below.
-  For those that do qualify, apply the axis table above to pick the file.
 
 - **`storage_traits.h`.** Its `storage_mapped_columns_impl` and
   `storage_mapped_column_expressions_impl` are closed, single-table, classification-driven

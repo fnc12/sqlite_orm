@@ -69,14 +69,9 @@ namespace sqlite_orm::internal {
     /**
      *  Column alias
      */
-    template<class A>
-    struct node_tuple<alias_holder<A>, void> : node_tuple<void> {};
-
-    /**
-     *  Column alias
-     */
-    template<char... C>
-    struct node_tuple<column_alias<C...>, void> : node_tuple<void> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<std::disjunction<is_alias_holder<T>, is_column_alias<T>>::value>>
+        : node_tuple<void> {};
 
     template<class T>
     struct node_tuple<T, match_if<is_order_by, T>> : node_tuple<expression_type_t<T>> {};
@@ -224,8 +219,8 @@ namespace sqlite_orm::internal {
     template<class R>
     struct node_tuple<R, match_if<is_table_reference, R>> : node_tuple<void> {};
 
-    template<class Table, class... Args>
-    struct node_tuple<table_valued_expression<Table, Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_table_valued_expression, T>> : node_tuple<constraints_type_t<T>> {};
 
     template<class T>
     struct node_tuple<T, std::enable_if_t<is_preceding<T>::value>> : node_tuple<expression_type_t<T>> {};

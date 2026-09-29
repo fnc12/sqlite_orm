@@ -16,9 +16,9 @@
 #include "tuple_helper/tuple_traits.h"
 #include "ast/binary_condition.h"
 #include "ast/operators.h"
-#include "column_pointer.h"
-#include "table_reference.h"
-#include "literal.h"  // literal_holder
+#include "ast/column_pointer.h"
+#include "ast/table_reference.h"
+#include "ast/literal.h"  // literal_holder
 #include "alias_traits.h"
 #include "vocabulary/node_traits.h"
 #include "vocabulary/node_algorithms.h"  //  argument, common_argument_type

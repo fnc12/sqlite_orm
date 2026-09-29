@@ -55,72 +55,70 @@ namespace sqlite_orm::internal {
      *  Materialize column pointer:
      *  1. by explicit object type and member pointer.
      *  2. by moniker and member pointer.
-     */
-    template<class O, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
-    constexpr decltype(auto) materialize_column_pointer(const DBOs&, const column_pointer<O, F>& cp) {
-        return cp.field;
-    }
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-    /**
-     *  Materialize column pointer:
      *  3. by moniker and alias_holder<>.
-     *  
-     *  internal note: there's an overload for `find_column_name()` that avoids going through `cte_table<>::find_column_name()`
+     *
+     *  internal note: `find_column_name()` looks up a column alias in a CTE directly, without going through
+     *  `cte_table<>::find_column_name()`
      */
-    template<class Moniker, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
-    constexpr decltype(auto) materialize_column_pointer(const DBOs&,
-                                                        const column_pointer<Moniker, alias_holder<ColAlias>>&) {
-        using table_type = schema_pick_table_t<Moniker, DBOs>;
-        using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
-        using cte_fields_type = typename cte_mapper_type_t<table_type>::fields_type;
+    template<class CP,
+             class DBOs,
+             std::enable_if_t<std::conjunction_v<is_db_objects<DBOs>, is_column_pointer<CP>>, bool> = true>
+    constexpr decltype(auto) materialize_column_pointer(const DBOs&, const CP& cp) {
+        if constexpr (is_alias_holder_v<field_type_t<CP>>) {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+            using table_type = schema_pick_table_t<type_t<CP>, DBOs>;
+            using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
+            using cte_fields_type = typename cte_mapper_type_t<table_type>::fields_type;
 
-        // lookup ColAlias in the final column references
-        using colalias_index = find_tuple_type<cte_colrefs_tuple, alias_holder<ColAlias>>;
-        static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
-                      "No such column mapped into the CTE");
+            // lookup the column alias in the final column references
+            using colalias_index = find_tuple_type<cte_colrefs_tuple, field_type_t<CP>>;
+            static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
+                          "No such column mapped into the CTE");
 
-        return &aliased_field<ColAlias, std::tuple_element_t<colalias_index::value, cte_fields_type>>::field;
-    }
+            return &aliased_field<type_t<field_type_t<CP>>,
+                                  std::tuple_element_t<colalias_index::value, cte_fields_type>>::field;
 #endif
+        } else {
+            return cp.field;
+        }
+    }
 
     /**
      *  Find column name by:
      *  1. by explicit object type and member pointer.
      *  2. by moniker and member pointer.
-     */
-    template<class O, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
-    const std::string* find_column_name(const DBOs& dbObjects, const column_pointer<O, F>& cp) {
-        auto field = materialize_column_pointer(dbObjects, cp);
-        return pick_table<O>(dbObjects).find_column_name(field);
-    }
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-    /**
-     *  Find column name by:
      *  3. by moniker and alias_holder<>.
      */
-    template<class Moniker, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
-    constexpr decltype(auto) find_column_name(const DBOs& dboObjects,
-                                              const column_pointer<Moniker, alias_holder<ColAlias>>&) {
-        using table_type = schema_pick_table_t<Moniker, DBOs>;
-        using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
-        using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
+    template<class CP,
+             class DBOs,
+             std::enable_if_t<std::conjunction_v<is_db_objects<DBOs>, is_column_pointer<CP>>, bool> = true>
+    const std::string* find_column_name(const DBOs& dbObjects, const CP& cp) {
+        if constexpr (is_alias_holder_v<field_type_t<CP>>) {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+            using table_type = schema_pick_table_t<type_t<CP>, DBOs>;
+            using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
+            using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
 
-        // note: even though the columns contain the [`aliased_field<>::*`] we perform the lookup using the column references.
-        // lookup ColAlias in the final column references
-        using colalias_index = find_tuple_type<cte_colrefs_tuple, alias_holder<ColAlias>>;
-        static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
-                      "No such column mapped into the CTE");
+            // note: even though the columns contain the [`aliased_field<>::*`] we perform the lookup using the column references.
+            // lookup the column alias in the final column references
+            using colalias_index = find_tuple_type<cte_colrefs_tuple, field_type_t<CP>>;
+            static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
+                          "No such column mapped into the CTE");
 
-        // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `cte_table<>::find_column_name()` mechanism;
-        //       however we have the column index already.
-        // lookup column in base_table<>'s elements
-        constexpr size_t ColIdx = index_sequence_value_at<colalias_index::value>(column_index_sequence{});
-        auto& table = pick_table<Moniker>(dboObjects);
-        return &std::get<ColIdx>(table.elements).name;
-    }
+            // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `cte_table<>::find_column_name()` mechanism;
+            //       however we have the column index already.
+            // lookup column in base_table<>'s elements
+            constexpr size_t ColIdx = index_sequence_value_at<colalias_index::value>(column_index_sequence{});
+            auto& table = pick_table<type_t<CP>>(dbObjects);
+            return &std::get<ColIdx>(table.elements).name;
+#else
+            return nullptr;
 #endif
+        } else {
+            auto field = materialize_column_pointer(dbObjects, cp);
+            return pick_table<type_t<CP>>(dbObjects).find_column_name(field);
+        }
+    }
 
     /**
      *  Checks whether the column with the specified name has a column-level `UNIQUE` constraint

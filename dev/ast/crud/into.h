@@ -4,7 +4,7 @@
  */
 
 #include "../../functional/cxx_type_traits_polyfill.h"
-#include "../../table_reference.h"
+#include "../table_reference.h"
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {

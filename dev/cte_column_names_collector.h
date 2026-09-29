@@ -15,7 +15,7 @@
 #include "functional/type_traits.h"
 #include "tuple_helper/tuple_transformer.h"
 #include "error_code.h"
-#include "alias.h"
+#include "ast/alias.h"
 #include "vocabulary/node_traits.h"
 #include "vocabulary/node_algorithms.h"  // access_column_expression
 #include "schema/column_identifier.h"
@@ -175,7 +175,7 @@ namespace sqlite_orm::internal {
             iterate_tuple(explicitColRefs, [&idx, &columnNames, &context](auto& colRef) {
                 using ColRef = polyfill::remove_cvref_t<decltype(colRef)>;
 
-                if constexpr (polyfill::is_specialization_of_v<ColRef, alias_holder>) {
+                if constexpr (is_alias_holder_v<ColRef>) {
                     columnNames[idx] = alias_extractor<type_t<ColRef>>::extract();
                 } else if constexpr (std::is_member_pointer<ColRef>::value) {
                     using O = table_type_of_t<ColRef>;

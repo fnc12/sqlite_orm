@@ -13,7 +13,7 @@
 #endif
 
 #include "functional/cstring_literal.h"
-#include "alias.h"
+#include "ast/alias.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm::internal {
