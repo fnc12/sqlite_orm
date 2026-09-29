@@ -192,12 +192,13 @@ Definition-only headers deliberately excluded from the declaration-only umbrella
 
 ### Pull Request Guidelines
 Per `CONTRIBUTING.md`:
-- Create GitHub issue for significant changes (not needed for typos/warnings)
-- PR title must begin with issue number: `#9999 : description`
+- Discuss significant behavioral changes in a GitHub issue first (not needed for refactorings, typos, warnings)
+- PR title describes the change, without an issue number; link an associated issue in the PR description,
+  preferably via GitHub's "Development" section or a closing keyword (`Fixes #9999`)
 - Base PRs against `dev` branch (not `master`)
 - Commit messages in English only
 - Squash commits if adding/removing code within same PR
-- All tests must pass on CI (Travis, AppVeyor, GitHub Actions)
+- All tests must pass on CI (GitHub Actions)
 
 ## Common Patterns
 
