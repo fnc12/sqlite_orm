@@ -32,5 +32,5 @@ namespace sqlite_orm::internal {
 #endif
 
     template<template<typename...> class Base, typename T>
-    inline constexpr bool is_base_template_of_v = is_base_template_of<Base, T>::value;
+    constexpr bool is_base_template_of_v = is_base_template_of<Base, T>::value;
 }

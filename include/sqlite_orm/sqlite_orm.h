@@ -517,7 +517,7 @@ namespace sqlite_orm::internal::polyfill {
     using detected_or_t = typename detected_or<Default, Op, Args...>::type;
 
     template<template<class...> class Op, class... Args>
-    inline constexpr bool is_detected_v = is_detected<Op, Args...>::value;
+    constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 #endif
 
 #if 0  // proposed but not pursued
@@ -526,17 +526,17 @@ namespace sqlite_orm::internal::polyfill {
     // is_specialization_of: https://github.com/cplusplus/papers/issues/812
 
     template<typename Type, template<typename...> class Primary>
-    inline constexpr bool is_specialization_of_v = false;
+    constexpr bool is_specialization_of_v = false;
 
     template<template<typename...> class Primary, class... Types>
-    inline constexpr bool is_specialization_of_v<Primary<Types...>, Primary> = true;
+    constexpr bool is_specialization_of_v<Primary<Types...>, Primary> = true;
 
     template<typename Type, template<typename...> class Primary>
     struct is_specialization_of : std::bool_constant<is_specialization_of_v<Type, Primary>> {};
 #endif
 
     template<typename...>
-    inline constexpr bool always_false_v = false;
+    constexpr bool always_false_v = false;
 
     template<size_t I>
     using index_constant = std::integral_constant<size_t, I>;
@@ -3414,7 +3414,7 @@ namespace sqlite_orm::internal {
     struct is_getter<T, std::void_t<getter_field_type_t<T>>> : std::true_type {};
 
     template<class T>
-    inline constexpr bool is_getter_v = is_getter<T>::value;
+    constexpr bool is_getter_v = is_getter<T>::value;
 
     template<class T, class SFINAE = void>
     struct is_setter : std::false_type {};
@@ -3422,7 +3422,7 @@ namespace sqlite_orm::internal {
     struct is_setter<T, std::void_t<setter_field_type_t<T>>> : std::true_type {};
 
     template<class T>
-    inline constexpr bool is_setter_v = is_setter<T>::value;
+    constexpr bool is_setter_v = is_setter<T>::value;
 
     template<class T>
     struct member_field_type : object_field_type<T>, getter_field_type<T>, setter_field_type<T> {};
@@ -5005,9 +5005,9 @@ namespace sqlite_orm::internal {
     }
 
     template<class T>
-    inline constexpr bool is_builtin_numeric_column_alias_v = false;
+    constexpr bool is_builtin_numeric_column_alias_v = false;
     template<char... C>
-    inline constexpr bool is_builtin_numeric_column_alias_v<column_alias<C...>> = ((C >= '0' && C <= '9') && ...);
+    constexpr bool is_builtin_numeric_column_alias_v<column_alias<C...>> = ((C >= '0' && C <= '9') && ...);
 #endif
 }
 
@@ -5273,7 +5273,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  constexpr orm_table_alias auto z_alias = alias<'z'>.for_<User>();
      */
     template<char A, char... X>
-    inline constexpr internal::recordset_alias_builder<A, X...> alias{};
+    constexpr internal::recordset_alias_builder<A, X...> alias{};
 
     inline namespace literals {
         /** @short Create a table alias.
@@ -6287,7 +6287,7 @@ namespace sqlite_orm::internal {
 #endif
 
     template<template<typename...> class Base, typename T>
-    inline constexpr bool is_base_template_of_v = is_base_template_of<Base, T>::value;
+    constexpr bool is_base_template_of_v = is_base_template_of<Base, T>::value;
 }
 
 // #include "../tuple_helper/tuple_iteration.h"
@@ -12692,7 +12692,7 @@ namespace sqlite_orm::internal {
     };
 #else
     template<typename D>
-    inline constexpr bool is_stateless_deleter_v = std::is_empty_v<D> && std::is_default_constructible_v<D>;
+    constexpr bool is_stateless_deleter_v = std::is_empty_v<D> && std::is_default_constructible_v<D>;
 
     template<typename D, typename SFINAE = void>
     struct is_integral_fp_c : std::false_type {};
@@ -12704,7 +12704,7 @@ namespace sqlite_orm::internal {
                     std::enable_if_t<std::is_function_v<std::remove_pointer_t<typename D::value_type>>>>>
         : std::true_type {};
     template<typename D>
-    inline constexpr bool is_integral_fp_c_v = is_integral_fp_c<D>::value;
+    constexpr bool is_integral_fp_c_v = is_integral_fp_c<D>::value;
 
     template<typename D, typename SFINAE = void>
     struct can_yield_fp : std::false_type {};
@@ -12715,7 +12715,7 @@ namespace sqlite_orm::internal {
                     std::enable_if_t<std::is_function_v<std::remove_pointer_t<decltype(+std::declval<D>())>>>>>
         : std::true_type {};
     template<typename D>
-    inline constexpr bool can_yield_fp_v = can_yield_fp<D>::value;
+    constexpr bool can_yield_fp_v = can_yield_fp<D>::value;
 
     template<typename D, bool = can_yield_fp_v<D>>
     struct yield_fp_of {
@@ -12775,16 +12775,16 @@ namespace sqlite_orm::internal {
     }
 #else
     template<typename D>
-    inline constexpr bool is_unusable_for_xdestroy_v =
+    constexpr bool is_unusable_for_xdestroy_v =
         !is_stateless_deleter_v<D> &&
         (can_yield_fp_v<D> && !std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value);
 
     template<typename D>
-    inline constexpr bool can_yield_xdestroy_v =
+    constexpr bool can_yield_xdestroy_v =
         can_yield_fp_v<D> && std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value;
 
     template<typename D, typename P>
-    inline constexpr bool needs_xdestroy_proxy_v =
+    constexpr bool needs_xdestroy_proxy_v =
         is_stateless_deleter_v<D> &&
         (!can_yield_fp_v<D> || !std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value);
 
@@ -13873,7 +13873,7 @@ namespace sqlite_orm::internal {
 #endif
 
     template<class DBOs, class Lookup>
-    inline constexpr bool is_mapped_v = is_mapped<DBOs, Lookup>::value;
+    constexpr bool is_mapped_v = is_mapped<DBOs, Lookup>::value;
 }
 
 // runtime lookup functions
@@ -14772,7 +14772,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         requires (orm_scalar_udf<UDF> || orm_aggregate_udf<UDF>)
 #endif
-    inline constexpr internal::app_function<UDF> func{};
+    constexpr internal::app_function<UDF> func{};
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     inline namespace literals {
@@ -17255,7 +17255,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_prepared_statement_v = polyfill::is_specialization_of<T, prepared_statement_t>::value;
+    constexpr bool is_prepared_statement_v = polyfill::is_specialization_of<T, prepared_statement_t>::value;
 
     template<class T>
     struct is_prepared_statement : std::bool_constant<is_prepared_statement_v<T>> {};
@@ -18287,7 +18287,7 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
 template<class T, class S, class... Args>
-inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_view<T, S, Args...>> = true;
+constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_view<T, S, Args...>> = true;
 #endif
 
 // #include "result_set_view.h"
@@ -18471,7 +18471,7 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
 template<class Select, class DBOs>
-inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_set_view<Select, DBOs>> = true;
+constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_set_view<Select, DBOs>> = true;
 #endif
 
 // #include "ast_iterator.h"
@@ -26784,9 +26784,9 @@ namespace sqlite_orm::internal {
     struct indirectly_test_preparable;
 
     template<class S, class E, class SFINAE = void>
-    inline constexpr bool is_preparable_statement_v = false;
+    constexpr bool is_preparable_statement_v = false;
     template<class S, class E>
-    inline constexpr bool is_preparable_statement_v<
+    constexpr bool is_preparable_statement_v<
         S,
         E,
         std::void_t<indirectly_test_preparable<decltype(std::declval<S>().prepare(std::declval<E>()))>>> = true;
