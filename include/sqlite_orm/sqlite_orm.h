@@ -3857,6 +3857,11 @@ namespace sqlite_orm::internal {
                                                               T>;
 #endif
 
+#ifdef SQLITE_ENABLE_RTREE
+    template<class T>
+    using is_rtree_table_element_or_constraint = is_column<T>;
+#endif
+
     /**
      *  Whether an index element belongs to the table the index is made for:
      *  an element that names a column must name a column of that table, while
@@ -33824,10 +33829,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ENABLE_RTREE
 namespace sqlite_orm::internal {
-    template<class T>
-    constexpr bool is_rtree_table_element_or_constraint_v =
-        mpl::invoke_t<mpl::disjunction<check_if<is_column>>, T>::value;
-
     struct rtree_module_tag {
         // simplify conceptual/meta programming
         using module_type = rtree_module_tag;
@@ -33857,7 +33858,8 @@ namespace sqlite_orm::internal {
                                  rtree_col_index_sequence,
                                  field_type_t>::value;
 
-        static_assert((is_rtree_table_element_or_constraint_v<Cs> && ...), "Incorrect table elements or constraints");
+        static_assert((is_rtree_table_element_or_constraint<Cs>::value && ...),
+                      "Incorrect table elements or constraints");
         static_assert(nRTreeColumns >= 3 && nRTreeColumns <= 11 && nRTreeColumns % 2 == 1,
                       "An RTREE table must have between 1 and 5 dimensions consisting of min/max-value pair columns");
         static_assert(
