@@ -5,11 +5,11 @@ Thank you for your interest in contributing to the sqlite_orm project!
 ## GitHub pull requests ##
 
 This is the preferred method of submitting changes.  When you submit a pull request through github,
-it activates the continuous integration (CI) build systems at Appveyor and Travis to build your changes
-on a variety of Linux, Windows and MacOS configurations and run all the test suites.  Follow these requirements 
+it activates the continuous integration (CI) workflows on GitHub Actions to build your changes
+on a variety of Linux, Windows and macOS configurations and run all the test suites.  Follow these requirements 
 for a successful pull request:
 
- 1. Significant behavioral changes - a new feature, a bug fix, a change of the public API - should be discussed in a [github issue](https://github.com/fnc12/sqlite_orm/issues) first.  Refactorings and trivial changes such as fixing a typo or a compiler warning do not need an issue.
+ 1. Significant behavioral changes - a new feature, a bug fix, a change of the public API - should be discussed first, in a [github issue](https://github.com/fnc12/sqlite_orm/issues) or a [github discussion](https://github.com/fnc12/sqlite_orm/discussions).  Refactorings and trivial changes such as fixing a typo or a compiler warning do not need an issue.
 
  1. The pull request title describes the change; it does not carry an issue number.  If the pull request is associated with an issue, link it in the pull request description, preferably through GitHub's "Development" section of the pull request, or with a [closing keyword](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue) such as `Fixes #9999`.
 
@@ -25,7 +25,7 @@ Instructions:
     * Remember to provide *tests* for all submitted changes!
     * Use test-driven development (TDD): add a test that will isolate the bug *before* applying the change that fixes it.
     * Verify that you follow current code style on sqlite_orm.
-    * [*optional*] Verify that your change works on other platforms by adding a GitHub service hook to [Travis CI](http://docs.travis-ci.com/user/getting-started/#Step-one%3A-Sign-in) and [AppVeyor](http://www.appveyor.com/docs).  You can use this technique to run the sqlite_orm CI jobs in your account to check your changes before they are made public.  Every GitHub pull request into sqlite_orm will run the full CI build and test suite on your changes.
+    * [*optional*] Verify that your change works on other platforms by enabling [GitHub Actions](https://docs.github.com/en/actions) in your fork, and opening a pull request from your branch to your fork's `dev` branch.  You can use this technique to run the sqlite_orm CI jobs in your account to check your changes before they are made public.  Every GitHub pull request into sqlite_orm will run the full CI build and test suite on your changes.
 
  1. Commit and push changes to your branch.
  1. Use GitHub to create a pull request going from your branch to sqlite_orm:dev, and link the associated issue, if any, as described above.
@@ -66,12 +66,21 @@ If you already have a pull request outstanding, you will need to do a "force pus
 
 A more detailed walkthrough of a squash can be found at [Git Ready](http://gitready.com/advanced/2009/02/10/squashing-commits-with-rebase.html).
 
-### Rebase your pull request ###
+### Update your pull request ###
 
-If your pull request has a conflict with dev, it needs to be rebased:
+If your pull request has a conflict with dev, merge dev into your branch - this is how sqlite_orm itself brings branches up to date:
 
     git checkout feature/9999-make-perfect
-    git rebase upstream dev
+    git fetch upstream
+    git merge upstream/dev
+      (resolve any conflicts, make sure it builds)
+    git push origin feature/9999-make-perfect
+
+If you prefer a linear history, you can rebase instead, which rewrites your commits and so requires a force push:
+
+    git checkout feature/9999-make-perfect
+    git fetch upstream
+    git rebase upstream/dev
       (resolve any conflicts, make sure it builds)
     git push -u origin feature/9999-make-perfect --force
 

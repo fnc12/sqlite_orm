@@ -198,7 +198,7 @@ Per `CONTRIBUTING.md`:
 - Base PRs against `dev` branch (not `master`)
 - Commit messages in English only
 - Squash commits if adding/removing code within same PR
-- All tests must pass on CI (Travis, AppVeyor, GitHub Actions)
+- All tests must pass on CI (GitHub Actions)
 
 ## Common Patterns
 
