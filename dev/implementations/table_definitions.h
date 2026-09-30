@@ -23,10 +23,7 @@ namespace sqlite_orm::internal {
         res.reserve(col_index_sequence_of<elements_type>::size());
         this->for_each_column([&res](auto& column) {
             using field_type = field_type_t<std::remove_reference_t<decltype(column)>>;
-            std::string dft;
-            if (auto d = column.default_value()) {
-                dft = std::move(*d);
-            }
+            std::string dft = column.default_value().value_or(std::string{});
             using constraints_tuple = decltype(column.constraints);
             constexpr bool hasExplicitNull =
                 mpl::invoke_t<mpl::disjunction<check_if_has<is_null_constraint>>, constraints_tuple>::value;
