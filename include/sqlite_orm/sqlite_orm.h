@@ -2438,6 +2438,18 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_current_timestamp = std::bool_constant<is_current_timestamp_v<T>>;
 
+    /**
+     *  Nodes referencing the rowid of a table: ROWID, OID, _ROWID_, each unqualified or qualified by the table.
+     *
+     *  All of them are DSL spellings of the one rowid reference; the table-qualified ones carry the table as their
+     *  `type`, and every node its own spelling.
+     */
+    template<class T>
+    extern const bool is_any_rowid_v;
+
+    template<class T>
+    using is_any_rowid = std::bool_constant<is_any_rowid_v<T>>;
+
     template<class T>
     extern const bool is_with_clause_v;
 
@@ -13627,75 +13639,6 @@ namespace sqlite_orm::internal {
 
 // #include "operators.h"
 
-// #include "rowid.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
-#endif
-
-namespace sqlite_orm::internal {
-    struct rowid_t {
-        operator std::string() const {
-            return "rowid";
-        }
-    };
-
-    struct oid_t {
-        operator std::string() const {
-            return "oid";
-        }
-    };
-
-    struct _rowid_t {
-        operator std::string() const {
-            return "_rowid_";
-        }
-    };
-
-    template<class T>
-    struct table_rowid_t : public rowid_t {
-        using type = T;
-    };
-
-    template<class T>
-    struct table_oid_t : public oid_t {
-        using type = T;
-    };
-    template<class T>
-    struct table__rowid_t : public _rowid_t {
-        using type = T;
-    };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    inline internal::rowid_t rowid() {
-        return {};
-    }
-
-    inline internal::oid_t oid() {
-        return {};
-    }
-
-    inline internal::_rowid_t _rowid_() {
-        return {};
-    }
-
-    template<class T>
-    internal::table_rowid_t<T> rowid() {
-        return {};
-    }
-
-    template<class T>
-    internal::table_oid_t<T> oid() {
-        return {};
-    }
-
-    template<class T>
-    internal::table__rowid_t<T> _rowid_() {
-        return {};
-    }
-}
-
 // #include "column_result_proxy.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -15111,33 +15054,8 @@ namespace sqlite_orm::internal {
         using type = int;
     };
 
-    template<class DBOs>
-    struct column_result_t<DBOs, rowid_t, void> {
-        using type = int64;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, oid_t, void> {
-        using type = int64;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, _rowid_t, void> {
-        using type = int64;
-    };
-
     template<class DBOs, class T>
-    struct column_result_t<DBOs, table_rowid_t<T>, void> {
-        using type = int64;
-    };
-
-    template<class DBOs, class T>
-    struct column_result_t<DBOs, table_oid_t<T>, void> {
-        using type = int64;
-    };
-
-    template<class DBOs, class T>
-    struct column_result_t<DBOs, table__rowid_t<T>, void> {
+    struct column_result_t<DBOs, T, match_if<is_any_rowid, T>> {
         using type = int64;
     };
 
@@ -22496,8 +22414,6 @@ namespace sqlite_orm::internal {
 
 // #include "vocabulary/node_traits.h"
 
-// #include "rowid.h"
-
 // #include "alias.h"
 
 // #include "schema/algorithms/table_lookup.h"
@@ -22553,9 +22469,8 @@ namespace sqlite_orm::internal {
                 this->table_names.emplace(std::move(tableName), alias_extractor<recordset_type>::as_alias());
             }
             // ...
-            else if constexpr (is_object_node_v<ColRef> || polyfill::is_specialization_of_v<ColRef, table_rowid_t> ||
-                               polyfill::is_specialization_of_v<ColRef, table_oid_t> ||
-                               polyfill::is_specialization_of_v<ColRef, table__rowid_t>) {
+            else if constexpr (is_object_node_v<ColRef> ||
+                               (is_any_rowid_v<ColRef> && polyfill::is_detected_v<type_t, ColRef>)) {
                 using table_type = type_t<ColRef>;
                 this->table_names.emplace(lookup_table_name<table_type>(this->db_objects), "");
             }
@@ -22667,8 +22582,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "prepared_statement.h"
 
 // #include "mapped_type_proxy.h"
-
-// #include "rowid.h"
 
 // #include "pointer_value.h"
 
@@ -23974,81 +23887,19 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<rowid_t, void> {
-        using statement_type = rowid_t;
+    template<class T>
+    struct statement_serializer<T, match_if<is_any_rowid, T>> {
+        using statement_type = T;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return static_cast<std::string>(statement);
-        }
-    };
-
-    template<>
-    struct statement_serializer<oid_t, void> {
-        using statement_type = oid_t;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return static_cast<std::string>(statement);
-        }
-    };
-
-    template<>
-    struct statement_serializer<_rowid_t, void> {
-        using statement_type = _rowid_t;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return static_cast<std::string>(statement);
-        }
-    };
-
-    template<class O>
-    struct statement_serializer<table_rowid_t<O>, void> {
-        using statement_type = table_rowid_t<O>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP std::string
+        operator()(const statement_type& statement, [[maybe_unused]] const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            if (!context.omit_table_name) {
-                ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
-            }
-            ss << static_cast<std::string>(statement);
-            return ss.str();
-        }
-    };
-
-    template<class O>
-    struct statement_serializer<table_oid_t<O>, void> {
-        using statement_type = table_oid_t<O>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-            if (!context.omit_table_name) {
-                ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
-            }
-            ss << static_cast<std::string>(statement);
-            return ss.str();
-        }
-    };
-
-    template<class O>
-    struct statement_serializer<table__rowid_t<O>, void> {
-        using statement_type = table__rowid_t<O>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-            if (!context.omit_table_name) {
-                ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
+            //  qualified by the table
+            if constexpr (polyfill::is_detected_v<type_t, statement_type>) {
+                if (!context.omit_table_name) {
+                    ss << streaming_identifier(lookup_table_name<type_t<statement_type>>(context.db_objects)) << ".";
+                }
             }
             ss << static_cast<std::string>(statement);
             return ss.str();
@@ -31418,6 +31269,96 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/offset.h"
 
 // #include "ast/result_columns.h"
+
+// #include "ast/rowid.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#include <type_traits>  //  std::is_same, std::disjunction
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
+/*
+ *  The rowid of a table, in each of its spellings ROWID, OID and _ROWID_, and each of them unqualified or qualified
+ *  by the table - which is the only thing telling the qualified nodes apart, through their `type`.
+ *  Each node carries its own spelling.
+ */
+namespace sqlite_orm::internal {
+    struct rowid_t {
+        operator std::string() const {
+            return "rowid";
+        }
+    };
+
+    struct oid_t {
+        operator std::string() const {
+            return "oid";
+        }
+    };
+
+    struct _rowid_t {
+        operator std::string() const {
+            return "_rowid_";
+        }
+    };
+
+    template<class T>
+    struct table_rowid_t : public rowid_t {
+        using type = T;
+    };
+
+    template<class T>
+    struct table_oid_t : public oid_t {
+        using type = T;
+    };
+    template<class T>
+    struct table__rowid_t : public _rowid_t {
+        using type = T;
+    };
+
+    //  note: names each node rather than testing for the unqualified base nodes -
+    //  a `std::tuple` of such nodes is derived from them too, as it inherits its empty element types
+    template<class T>
+    constexpr bool is_any_rowid_v = std::disjunction<std::is_same<T, rowid_t>,
+                                                     std::is_same<T, oid_t>,
+                                                     std::is_same<T, _rowid_t>,
+                                                     polyfill::is_specialization_of<T, table_rowid_t>,
+                                                     polyfill::is_specialization_of<T, table_oid_t>,
+                                                     polyfill::is_specialization_of<T, table__rowid_t>>::value;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    inline internal::rowid_t rowid() {
+        return {};
+    }
+
+    inline internal::oid_t oid() {
+        return {};
+    }
+
+    inline internal::_rowid_t _rowid_() {
+        return {};
+    }
+
+    template<class T>
+    internal::table_rowid_t<T> rowid() {
+        return {};
+    }
+
+    template<class T>
+    internal::table_oid_t<T> oid() {
+        return {};
+    }
+
+    template<class T>
+    internal::table__rowid_t<T> _rowid_() {
+        return {};
+    }
+}
 
 // #include "ast/rowset_deduplicators.h"
 
