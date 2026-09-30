@@ -52,6 +52,7 @@
 #include "ast/match.h"
 #include "ast/offset.h"
 #include "ast/result_columns.h"
+#include "ast/rowid.h"
 #include "ast/rowset_deduplicators.h"
 #include "ast/select.h"
 #include "ast/special_keywords.h"
@@ -59,4 +60,4 @@
 #include "ast/values.h"
 #include "ast/where.h"
 #include "ast/window.h"
-#include "ast/window_functions.h"
+#include "window_functions.h"

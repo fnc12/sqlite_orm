@@ -510,6 +510,18 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_current_timestamp = std::bool_constant<is_current_timestamp_v<T>>;
 
+    /**
+     *  Nodes referencing the rowid of a table: ROWID, OID, _ROWID_, each unqualified or qualified by the table.
+     *
+     *  All of them are DSL spellings of the one rowid reference; the table-qualified ones carry the table as their
+     *  `type`, and every node its own spelling.
+     */
+    template<class T>
+    extern const bool is_any_rowid_v;
+
+    template<class T>
+    using is_any_rowid = std::bool_constant<is_any_rowid_v<T>>;
+
     template<class T>
     extern const bool is_with_clause_v;
 
