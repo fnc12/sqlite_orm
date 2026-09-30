@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file Out-of-class definitions of the storage members synchronizing a base table's schema, which need the
- *  schema table (`builtin_dbos/sqlite_schema.h`); they also keep the lengthy schema synchronization apart from
+ *  schema table (`builtin/dbos/sqlite_schema.h`); they also keep the lengthy schema synchronization apart from
  *  the storage interface in `storage.h`.
  */
 
@@ -20,7 +20,7 @@
 #include "../storage.h"
 #include "../vocabulary/node_traits.h"
 #include "../schema/column_identifier.h"
-#include "../builtin_dbos/sqlite_schema.h"
+#include "../builtin/dbos/sqlite_schema.h"
 
 namespace sqlite_orm::internal {
     template<class... DBO>

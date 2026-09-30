@@ -6838,7 +6838,7 @@ namespace sqlite_orm::internal {
 #endif
 }
 
-// #include "core_functions.h"
+// #include "builtin/core_functions.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -6851,13 +6851,13 @@ namespace sqlite_orm::internal {
 #include <string_view>  //  std::string_view
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/type_traits.h"
+// #include "../functional/type_traits.h"
 
-// #include "tuple_helper/tuple_traits.h"
+// #include "../tuple_helper/tuple_traits.h"
 
-// #include "conditions.h"
+// #include "../conditions.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -8339,17 +8339,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-// #include "operators.h"
+// #include "../operators.h"
 
-// #include "literal.h"
+// #include "../literal.h"
 // literal_holder
-// #include "alias_traits.h"
+// #include "../alias_traits.h"
 
-// #include "vocabulary/node_traits.h"
+// #include "../vocabulary/node_traits.h"
 
-// #include "vocabulary/node_algorithms.h"
+// #include "../vocabulary/node_algorithms.h"
 //  argument, common_argument_type
-// #include "ast/builtin_function.h"
+// #include "../ast/builtin_function.h"
 
 /** @file The nodes of a call of a built-in SQL function: scalar and aggregate function calls,
  *        an aggregate call with a FILTER clause, and COUNT(*).
@@ -31593,7 +31593,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/window.h"
 
-// #include "window_functions.h"
+// #include "builtin/window_functions.h"
 
 /** @file The built-in window functions: ROW_NUMBER(), RANK(), DENSE_RANK(), PERCENT_RANK(), CUME_DIST(),
  *        NTILE(N), LAG(expr), LEAD(expr), FIRST_VALUE(expr), LAST_VALUE(expr) and NTH_VALUE(expr, N).
@@ -31612,9 +31612,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::forward
 #endif
 
-// #include "vocabulary/node_algorithms.h"
+// #include "../vocabulary/node_algorithms.h"
 //  argument
-// #include "ast/builtin_function.h"
+// #include "../ast/builtin_function.h"
 
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
 namespace sqlite_orm::internal {
@@ -32120,7 +32120,7 @@ namespace sqlite_orm::internal {
 // #include "implementations/storage_definitions.h"
 
 /** @file Out-of-class definitions of the storage members synchronizing a base table's schema, which need the
- *  schema table (`builtin_dbos/sqlite_schema.h`); they also keep the lengthy schema synchronization apart from
+ *  schema table (`builtin/dbos/sqlite_schema.h`); they also keep the lengthy schema synchronization apart from
  *  the storage interface in `storage.h`.
  */
 
@@ -32145,19 +32145,19 @@ namespace sqlite_orm::internal {
 
 // #include "../schema/column_identifier.h"
 
-// #include "../builtin_dbos/sqlite_schema.h"
+// #include "../builtin/dbos/sqlite_schema.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #endif
 
-// #include "../schema/column.h"
+// #include "../../schema/column.h"
 
-// #include "../schema/table.h"
+// #include "../../schema/table.h"
 
-// #include "../table_reference.h"
+// #include "../../table_reference.h"
 
-// #include "../alias.h"
+// #include "../../alias.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
@@ -32784,9 +32784,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
  *        `generate_series`) and the virtual table modules (FTS5, R*Tree).
  */
 
-// #include "sqlite_schema.h"
+// #include "dbos/sqlite_schema.h"
 
-// #include "dbstat.h"
+// #include "dbos/dbstat.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
@@ -32797,17 +32797,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../functional/gsl.h"
+// #include "../../functional/gsl.h"
 
-// #include "../tuple_helper/tuple_filter.h"
+// #include "../../tuple_helper/tuple_filter.h"
 
-// #include "../member_traits/member_traits.h"
+// #include "../../member_traits/member_traits.h"
 
-// #include "../schema/virtual_table.h"
+// #include "../../schema/virtual_table.h"
 
-// #include "../literal.h"
+// #include "../../literal.h"
 
-// #include "../table_reference.h"
+// #include "../../table_reference.h"
 
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 namespace sqlite_orm::internal {
@@ -32929,7 +32929,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
 
-// #include "generate_series.h"
+// #include "dbos/generate_series.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3008012
@@ -32938,11 +32938,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../functional/gsl.h"
+// #include "../../functional/gsl.h"
 
-// #include "../schema/virtual_table.h"
+// #include "../../schema/virtual_table.h"
 
-// #include "../table_reference.h"
+// #include "../../table_reference.h"
 
 #if SQLITE_VERSION_NUMBER >= 3008012
 namespace sqlite_orm::internal {
@@ -33027,7 +33027,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
-// #include "fts5.h"
+// #include "dbos/fts5.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
@@ -33038,15 +33038,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../functional/gsl.h"
+// #include "../../functional/gsl.h"
 
-// #include "../member_traits/member_traits.h"
+// #include "../../member_traits/member_traits.h"
 
-// #include "../schema/virtual_table.h"
+// #include "../../schema/virtual_table.h"
 
-// #include "../vocabulary/node_traits.h"
+// #include "../../vocabulary/node_traits.h"
 
-// #include "../vocabulary/node_algorithms.h"
+// #include "../../vocabulary/node_algorithms.h"
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 namespace sqlite_orm::internal {
@@ -33157,7 +33157,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
-// #include "fts5_functions.h"
+// #include "dbos/fts5_functions.h"
 
 /** @file The FTS5 auxiliary functions `highlight()`, `bm25()` and `snippet()`.
  *
@@ -33178,13 +33178,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #include <sqlite3.h>
 
-// #include "../alias_traits.h"
+// #include "../../alias_traits.h"
 //  is_recordset_alias_v
-// #include "../column_pointer.h"
+// #include "../../column_pointer.h"
 //  column
-// #include "../vocabulary/node_algorithms.h"
+// #include "../../vocabulary/node_algorithms.h"
 //  hidden_column_of_vtab, hidden_field_of_vtab
-// #include "../ast/builtin_function.h"
+// #include "../../ast/builtin_function.h"
 
 // #include "fts5.h"
 
@@ -33423,7 +33423,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
-// #include "fts5_deprecations.h"
+// #include "dbos/fts5_deprecations.h"
 
 /** @file The deprecated `order_by(rank())` spelling of the hidden FTS5 rank column.
  *
@@ -33441,9 +33441,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../window_functions.h"
 //  rank
-// #include "../conditions.h"
+// #include "../../conditions.h"
 //  order_by_t
-// #include "../statement_serializer.h"
+// #include "../../statement_serializer.h"
 //  statement_serializer
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
@@ -33476,7 +33476,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
-// #include "rtree.h"
+// #include "dbos/rtree.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_RTREE
@@ -33487,17 +33487,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../functional/gsl.h"
+// #include "../../functional/gsl.h"
 
-// #include "../functional/mpl.h"
+// #include "../../functional/mpl.h"
 
-// #include "../tuple_helper/tuple_filter.h"
+// #include "../../tuple_helper/tuple_filter.h"
 
-// #include "../vocabulary/node_traits.h"
+// #include "../../vocabulary/node_traits.h"
 
-// #include "../vocabulary/node_algorithms.h"
+// #include "../../vocabulary/node_algorithms.h"
 
-// #include "../schema/virtual_table.h"
+// #include "../../schema/virtual_table.h"
 
 #ifdef SQLITE_ENABLE_RTREE
 namespace sqlite_orm::internal {

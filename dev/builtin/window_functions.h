@@ -17,8 +17,8 @@
 #include <utility>  //  std::forward
 #endif
 
-#include "vocabulary/node_algorithms.h"  //  argument
-#include "ast/builtin_function.h"
+#include "../vocabulary/node_algorithms.h"  //  argument
+#include "../ast/builtin_function.h"
 
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
 namespace sqlite_orm::internal {

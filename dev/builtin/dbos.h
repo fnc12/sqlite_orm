@@ -5,10 +5,10 @@
  *        `generate_series`) and the virtual table modules (FTS5, R*Tree).
  */
 
-#include "sqlite_schema.h"
-#include "dbstat.h"
-#include "generate_series.h"
-#include "fts5.h"
-#include "fts5_functions.h"
-#include "fts5_deprecations.h"
-#include "rtree.h"
+#include "dbos/sqlite_schema.h"
+#include "dbos/dbstat.h"
+#include "dbos/generate_series.h"
+#include "dbos/fts5.h"
+#include "dbos/fts5_functions.h"
+#include "dbos/fts5_deprecations.h"
+#include "dbos/rtree.h"

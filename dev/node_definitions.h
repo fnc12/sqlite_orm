@@ -60,4 +60,4 @@
 #include "ast/values.h"
 #include "ast/where.h"
 #include "ast/window.h"
-#include "window_functions.h"
+#include "builtin/window_functions.h"
