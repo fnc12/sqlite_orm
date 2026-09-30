@@ -109,7 +109,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_prepared_statement_v = polyfill::is_specialization_of<T, prepared_statement_t>::value;
+    constexpr bool is_prepared_statement_v = polyfill::is_specialization_of<T, prepared_statement_t>::value;
 
     template<class T>
     struct is_prepared_statement : std::bool_constant<is_prepared_statement_v<T>> {};

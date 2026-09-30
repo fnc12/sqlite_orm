@@ -77,9 +77,9 @@ namespace sqlite_orm::internal {
     struct indirectly_test_preparable;
 
     template<class S, class E, class SFINAE = void>
-    inline constexpr bool is_preparable_statement_v = false;
+    constexpr bool is_preparable_statement_v = false;
     template<class S, class E>
-    inline constexpr bool is_preparable_statement_v<
+    constexpr bool is_preparable_statement_v<
         S,
         E,
         std::void_t<indirectly_test_preparable<decltype(std::declval<S>().prepare(std::declval<E>()))>>> = true;

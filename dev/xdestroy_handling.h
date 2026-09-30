@@ -56,7 +56,7 @@ namespace sqlite_orm::internal {
     };
 #else
     template<typename D>
-    inline constexpr bool is_stateless_deleter_v = std::is_empty_v<D> && std::is_default_constructible_v<D>;
+    constexpr bool is_stateless_deleter_v = std::is_empty_v<D> && std::is_default_constructible_v<D>;
 
     template<typename D, typename SFINAE = void>
     struct is_integral_fp_c : std::false_type {};
@@ -68,7 +68,7 @@ namespace sqlite_orm::internal {
                     std::enable_if_t<std::is_function_v<std::remove_pointer_t<typename D::value_type>>>>>
         : std::true_type {};
     template<typename D>
-    inline constexpr bool is_integral_fp_c_v = is_integral_fp_c<D>::value;
+    constexpr bool is_integral_fp_c_v = is_integral_fp_c<D>::value;
 
     template<typename D, typename SFINAE = void>
     struct can_yield_fp : std::false_type {};
@@ -79,7 +79,7 @@ namespace sqlite_orm::internal {
                     std::enable_if_t<std::is_function_v<std::remove_pointer_t<decltype(+std::declval<D>())>>>>>
         : std::true_type {};
     template<typename D>
-    inline constexpr bool can_yield_fp_v = can_yield_fp<D>::value;
+    constexpr bool can_yield_fp_v = can_yield_fp<D>::value;
 
     template<typename D, bool = can_yield_fp_v<D>>
     struct yield_fp_of {
@@ -139,16 +139,16 @@ namespace sqlite_orm::internal {
     }
 #else
     template<typename D>
-    inline constexpr bool is_unusable_for_xdestroy_v =
+    constexpr bool is_unusable_for_xdestroy_v =
         !is_stateless_deleter_v<D> &&
         (can_yield_fp_v<D> && !std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value);
 
     template<typename D>
-    inline constexpr bool can_yield_xdestroy_v =
+    constexpr bool can_yield_xdestroy_v =
         can_yield_fp_v<D> && std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value;
 
     template<typename D, typename P>
-    inline constexpr bool needs_xdestroy_proxy_v =
+    constexpr bool needs_xdestroy_proxy_v =
         is_stateless_deleter_v<D> &&
         (!can_yield_fp_v<D> || !std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value);
 

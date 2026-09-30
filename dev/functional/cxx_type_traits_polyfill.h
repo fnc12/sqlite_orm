@@ -70,7 +70,7 @@ namespace sqlite_orm::internal::polyfill {
     using detected_or_t = typename detected_or<Default, Op, Args...>::type;
 
     template<template<class...> class Op, class... Args>
-    inline constexpr bool is_detected_v = is_detected<Op, Args...>::value;
+    constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 #endif
 
 #if 0  // proposed but not pursued
@@ -79,17 +79,17 @@ namespace sqlite_orm::internal::polyfill {
     // is_specialization_of: https://github.com/cplusplus/papers/issues/812
 
     template<typename Type, template<typename...> class Primary>
-    inline constexpr bool is_specialization_of_v = false;
+    constexpr bool is_specialization_of_v = false;
 
     template<template<typename...> class Primary, class... Types>
-    inline constexpr bool is_specialization_of_v<Primary<Types...>, Primary> = true;
+    constexpr bool is_specialization_of_v<Primary<Types...>, Primary> = true;
 
     template<typename Type, template<typename...> class Primary>
     struct is_specialization_of : std::bool_constant<is_specialization_of_v<Type, Primary>> {};
 #endif
 
     template<typename...>
-    inline constexpr bool always_false_v = false;
+    constexpr bool always_false_v = false;
 
     template<size_t I>
     using index_constant = std::integral_constant<size_t, I>;
