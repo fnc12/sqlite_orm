@@ -50,4 +50,8 @@
 * session extension (changesets/patchsets, `sqlite3_changegroup`) — large
 * encryption support via the [SQLite Encryption Extension (SEE)](https://sqlite.org/com/see.html) (`sqlite3_key`/`sqlite3_rekey`), incl. compatible implementations like SQLCipher (`PRAGMA key`) — see #1445
 
+## Internals
+
+* `optional_container` (once #1550 is merged): it is the compile-time optional sub-expression slot of the `case_t`, `limit_t`, `like_t` and trigger nodes, not a generic helper — `node_tuple` pattern-matches it, `ast_iterator` and `statement_serializer` reach into it via `apply()`, and it leaks into constructor signatures. `std::optional` is no replacement, as presence must stay part of the node's type. Candidate: store the sub-expression directly with an empty `absent_t`-like tag for "not present", asked about by a trait (`if constexpr`), `node_tuple<absent_t>` being empty.
+
 Please feel free to add any feature that isn't listed here and not implemented yet.
