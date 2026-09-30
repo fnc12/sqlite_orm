@@ -9,8 +9,7 @@
     "dev/node_algorithm_definitions.h",
     "dev/interface_definitions.h",
     "dev/get_prepared_statement.h",
-    "dev/builtin/core_functions.h",
-    "dev/builtin/window_functions.h",
+    "dev/builtin/functions.h",
     "dev/builtin/dbos.h",
     "dev/carray.h",
     "dev/functional/finish_macros.h"

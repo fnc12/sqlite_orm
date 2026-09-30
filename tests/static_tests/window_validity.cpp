@@ -90,8 +90,8 @@ TEST_CASE("window function arguments are validated at compile time") {
                              order_by(&User::name).desc(),
                              groups(current_row(), unbounded_following()));
         std::ignore = window("empty");
-        //  one per kind of function the OVER gate was added to: window functions (window_functions.h),
-        //  and aggregate functions (core_functions.h)
+        //  one per kind of function the OVER gate was added to: window functions (builtin/functions/window.h),
+        //  and aggregate functions (builtin/functions/core.h)
         std::ignore = row_number().over(window_ref("w"));
         std::ignore = rank().over(partition_by(&User::id), order_by(&User::name));
         std::ignore = count(&User::id).over();

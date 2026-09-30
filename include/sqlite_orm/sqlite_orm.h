@@ -6838,7 +6838,7 @@ namespace sqlite_orm::internal {
 #endif
 }
 
-// #include "builtin/core_functions.h"
+// #include "builtin/functions/core.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -6851,13 +6851,13 @@ namespace sqlite_orm::internal {
 #include <string_view>  //  std::string_view
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "../functional/type_traits.h"
+// #include "../../functional/type_traits.h"
 
-// #include "../tuple_helper/tuple_traits.h"
+// #include "../../tuple_helper/tuple_traits.h"
 
-// #include "../conditions.h"
+// #include "../../conditions.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -8339,22 +8339,22 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-// #include "../operators.h"
+// #include "../../operators.h"
 
-// #include "../literal.h"
+// #include "../../literal.h"
 // literal_holder
-// #include "../alias_traits.h"
+// #include "../../alias_traits.h"
 
-// #include "../vocabulary/node_traits.h"
+// #include "../../vocabulary/node_traits.h"
 
-// #include "../vocabulary/node_algorithms.h"
+// #include "../../vocabulary/node_algorithms.h"
 //  argument, common_argument_type
-// #include "../ast/builtin_function.h"
+// #include "../../ast/builtin_function.h"
 
 /** @file The nodes of a call of a built-in SQL function: scalar and aggregate function calls,
  *        an aggregate call with a FILTER clause, and COUNT(*).
  *        In C++20 builds, also the definition of a built-in function by its name and its overload set,
- *        which generates the call nodes. The functions themselves are in `core_functions.h`.
+ *        which generates the call nodes. The functions themselves are in `builtin/functions/`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -32451,6 +32451,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #pragma once
 
+/** @file Umbrella header for the built-in SQL functions.
+ */
+
+// #include "functions/core.h"
+
+// #include "functions/window.h"
+
 /** @file The built-in window functions: ROW_NUMBER(), RANK(), DENSE_RANK(), PERCENT_RANK(), CUME_DIST(),
  *        NTILE(N), LAG(expr), LEAD(expr), FIRST_VALUE(expr), LAST_VALUE(expr) and NTH_VALUE(expr, N).
  *
@@ -32459,7 +32466,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
  *        factories over `builtin_window_function_t`. Either way their call nodes are built-in function calls,
  *        classified by `is_builtin_function_call` like those of the scalar and aggregate functions.
  *
- *        Like `core_functions.h` for those, this header holds definitions, not nodes, hence it lives outside `ast/`.
+ *        Like `core.h` for those, this header holds definitions, not nodes, hence it lives outside `ast/`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -32468,9 +32475,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::forward
 #endif
 
-// #include "../vocabulary/node_algorithms.h"
+// #include "../../vocabulary/node_algorithms.h"
 //  argument
-// #include "../ast/builtin_function.h"
+// #include "../../ast/builtin_function.h"
 
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
 namespace sqlite_orm::internal {
@@ -32776,6 +32783,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline constexpr orm_builtin_function auto nth_value = internal::nth_value;
 }
 #endif
+
 #pragma once
 
 /** @file Umbrella header for the database objects SQLite provides itself:
@@ -33438,7 +33446,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../window_functions.h"
+// #include "../functions/window.h"
 //  rank
 // #include "../../conditions.h"
 //  order_by_t

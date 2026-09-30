@@ -11,16 +11,16 @@
 #include <string_view>  //  std::string_view
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
-#include "../functional/type_traits.h"
-#include "../tuple_helper/tuple_traits.h"
-#include "../conditions.h"
-#include "../operators.h"
-#include "../literal.h"  // literal_holder
-#include "../alias_traits.h"
-#include "../vocabulary/node_traits.h"
-#include "../vocabulary/node_algorithms.h"  //  argument, common_argument_type
-#include "../ast/builtin_function.h"
+#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/type_traits.h"
+#include "../../tuple_helper/tuple_traits.h"
+#include "../../conditions.h"
+#include "../../operators.h"
+#include "../../literal.h"  // literal_holder
+#include "../../alias_traits.h"
+#include "../../vocabulary/node_traits.h"
+#include "../../vocabulary/node_algorithms.h"  //  argument, common_argument_type
+#include "../../ast/builtin_function.h"
 
 namespace sqlite_orm::internal {
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
