@@ -17,10 +17,10 @@ SQLite ORM light header only library for modern C++. Please read the license pre
 Documentation is found in [docs](docs/home.md).
 
 # Status
-| Branch | Travis | Appveyor |
-| :----- | :----- | :------- |
-| [`master`](https://github.com/fnc12/sqlite_orm/tree/master) | [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=master)](https://travis-ci.org/fnc12/sqlite_orm) | [![Build status](https://ci.appveyor.com/api/projects/status/github/fnc12/sqlite_orm?branch=master&svg=true)](https://ci.appveyor.com/project/fnc12/sqlite-orm/history) | | | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm/) |
-| [`dev`](https://github.com/fnc12/sqlite_orm/tree/dev) | [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=dev)](https://travis-ci.org/fnc12/sqlite_orm) | [![Build status](https://ci.appveyor.com/api/projects/status/github/fnc12/sqlite_orm?branch=dev&svg=true)](https://ci.appveyor.com/project/fnc12/sqlite-orm/history) | | | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm/tree/dev) |
+| Branch | CI | Website |
+| :----- | :- | :------ |
+| [`master`](https://github.com/fnc12/sqlite_orm/tree/master) | [![CI](https://github.com/fnc12/sqlite_orm/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/fnc12/sqlite_orm/actions/workflows/ci.yaml?query=branch%3Amaster) | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm/) |
+| [`dev`](https://github.com/fnc12/sqlite_orm/tree/dev) | [![CI](https://github.com/fnc12/sqlite_orm/actions/workflows/ci.yaml/badge.svg?branch=dev)](https://github.com/fnc12/sqlite_orm/actions/workflows/ci.yaml?query=branch%3Adev) | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm/tree/dev) |
 
 # Advantages
 
