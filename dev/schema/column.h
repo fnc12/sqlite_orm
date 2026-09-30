@@ -4,7 +4,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple
 #include <string>  //  std::string
-#include <memory>  //  std::unique_ptr
+#include <optional>  //  std::optional
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_member_object_pointer, std::is_signed
 #include <utility>  //  std::move
 #endif
@@ -78,9 +78,9 @@ namespace sqlite_orm::internal {
 
         /**
          *  Simplified interface for `DEFAULT` constraint
-         *  @return string representation of default value if it exists otherwise nullptr
+         *  @return string representation of default value if it exists, otherwise an empty optional
          */
-        std::unique_ptr<std::string> default_value() const;
+        std::optional<std::string> default_value() const;
     };
 
     /**

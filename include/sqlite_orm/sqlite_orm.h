@@ -13949,7 +13949,7 @@ namespace sqlite_orm::internal {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple
 #include <string>  //  std::string
-#include <memory>  //  std::unique_ptr
+#include <optional>  //  std::optional
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_member_object_pointer, std::is_signed
 #include <utility>  //  std::move
 #endif
@@ -14086,9 +14086,9 @@ namespace sqlite_orm::internal {
 
         /**
          *  Simplified interface for `DEFAULT` constraint
-         *  @return string representation of default value if it exists otherwise nullptr
+         *  @return string representation of default value if it exists, otherwise an empty optional
          */
-        std::unique_ptr<std::string> default_value() const;
+        std::optional<std::string> default_value() const;
     };
 
     /**
@@ -31670,7 +31670,7 @@ namespace sqlite_orm::internal {
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <memory>  //  std::make_unique
+#include <optional>  //  std::optional
 #endif
 
 // #include "../tuple_helper/tuple_traits.h"
@@ -31708,15 +31708,14 @@ namespace sqlite_orm::internal {
 
 namespace sqlite_orm::internal {
     template<class... Op>
-    std::unique_ptr<std::string> column_constraints<Op...>::default_value() const {
+    std::optional<std::string> column_constraints<Op...>::default_value() const {
         static constexpr size_t default_op_index = find_tuple_element<constraints_type, is_default>::value;
 
-        std::unique_ptr<std::string> value;
         if constexpr (default_op_index != std::tuple_size<constraints_type>::value) {
-            value =
-                std::make_unique<std::string>(serialize_default_value(std::get<default_op_index>(this->constraints)));
+            return serialize_default_value(std::get<default_op_index>(this->constraints));
+        } else {
+            return std::nullopt;
         }
-        return value;
     }
 }
 
@@ -31747,10 +31746,7 @@ namespace sqlite_orm::internal {
         res.reserve(col_index_sequence_of<elements_type>::size());
         this->for_each_column([&res](auto& column) {
             using field_type = field_type_t<std::remove_reference_t<decltype(column)>>;
-            std::string dft;
-            if (auto d = column.default_value()) {
-                dft = std::move(*d);
-            }
+            std::string dft = column.default_value().value_or(std::string{});
             using constraints_tuple = decltype(column.constraints);
             constexpr bool hasExplicitNull =
                 mpl::invoke_t<mpl::disjunction<check_if_has<is_null_constraint>>, constraints_tuple>::value;
