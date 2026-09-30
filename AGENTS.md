@@ -88,7 +88,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 - `dev/schema/triggers.h` - Trigger support
 - `dev/schema/constraints/` - One header per constraint (`primary_key`, `foreign_key`, `check`, ...)
 - `dev/schema/algorithms/` - Algorithms operating across the whole schema, e.g. `sync_order.h`
-- `dev/builtin/` - What SQLite provides itself, as the DSL exposes it: the built-in SQL functions in `functions/` (umbrella `functions.h`, see below), and in `dbos/` (umbrella `dbos.h`) the built-in database objects - the schema table (`sqlite_master`/`sqlite_schema`), the eponymous virtual tables (dbstat, generate_series) and the virtual table modules (fts5, rtree)
+- `dev/builtin/` - The stock instances SQLite provides of the kinds of named objects applications can register more of: the built-in SQL functions in `functions/` (umbrella `functions.h`, see below), the built-in collations (`collations.h`: BINARY, NOCASE, RTRIM), and in `dbos/` (umbrella `dbos.h`) the built-in database objects - the schema table (`sqlite_master`/`sqlite_schema`), the eponymous virtual tables (dbstat, generate_series) and the virtual table modules (fts5, rtree). Enums of grammar keywords or PRAGMA values do not belong here; they stay with their nodes or settings.
 
 **Vocabulary layer** (see [Header layers](#header-layers) below):
 - `dev/vocabulary/traits/` - Open classification traits, specialized at each node's own header

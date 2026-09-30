@@ -9,6 +9,7 @@
     "dev/node_algorithm_definitions.h",
     "dev/interface_definitions.h",
     "dev/get_prepared_statement.h",
+    "dev/builtin/collations.h",
     "dev/builtin/functions.h",
     "dev/builtin/dbos.h",
     "dev/carray.h",

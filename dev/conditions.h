@@ -14,8 +14,7 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/is_base_template_of.h"
 #include "functional/type_traits.h"
-#include "collate_argument.h"
-#include "schema/constraints/collate.h"  // string_from_collate_argument
+#include "builtin/collations.h"  //  collate_argument, collate_argument_to_string
 #include "optional_container.h"
 #include "serializer_context.h"
 #include "tags.h"
@@ -416,19 +415,19 @@ namespace sqlite_orm::internal {
 
         order_by_t collate_binary() const {
             auto res = *this;
-            res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::binary);
+            res._collate_argument = collate_argument_to_string(collate_argument::binary);
             return res;
         }
 
         order_by_t collate_nocase() const {
             auto res = *this;
-            res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::nocase);
+            res._collate_argument = collate_argument_to_string(collate_argument::nocase);
             return res;
         }
 
         order_by_t collate_rtrim() const {
             auto res = *this;
-            res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::rtrim);
+            res._collate_argument = collate_argument_to_string(collate_argument::rtrim);
             return res;
         }
 

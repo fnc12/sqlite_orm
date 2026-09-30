@@ -6876,7 +6876,20 @@ namespace sqlite_orm::internal {
 
 // #include "functional/type_traits.h"
 
-// #include "collate_argument.h"
+// #include "builtin/collations.h"
+
+/** @file SQLite's built-in collating functions: BINARY, NOCASE and RTRIM.
+ *
+ *  Like the built-in functions and database objects, they are the stock instances of a kind of named object
+ *  that applications can register more of (`storage_base::create_collation()`).
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string_view>  //  std::string_view
+#include <system_error>  //  std::system_error
+#endif
+
+// #include "../error_code.h"
 
 namespace sqlite_orm::internal {
     enum class collate_argument {
@@ -6884,58 +6897,20 @@ namespace sqlite_orm::internal {
         nocase,
         rtrim,
     };
-}
 
-// #include "schema/constraints/collate.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_same
-#include <system_error>  //  std::system_error
-#include <string>  //  std::string
-#endif
-
-// #include "../../collate_argument.h"
-
-// #include "../../error_code.h"
-
-// #include "../../vocabulary/traits/grammar_traits_fwd.h"
-// Included to specialize traits
-
-namespace sqlite_orm::internal {
-    struct collate_constraint_t {
-        collate_argument argument = collate_argument::binary;
-
-        static std::string string_from_collate_argument(collate_argument argument) {
-            switch (argument) {
-                case collate_argument::binary:
-                    return "BINARY";
-                case collate_argument::nocase:
-                    return "NOCASE";
-                case collate_argument::rtrim:
-                    return "RTRIM";
-            }
-            throw std::system_error{orm_error_code::invalid_collate_argument_enum};
+    inline std::string_view collate_argument_to_string(collate_argument argument) {
+        switch (argument) {
+            case collate_argument::binary:
+                return "BINARY";
+            case collate_argument::nocase:
+                return "NOCASE";
+            case collate_argument::rtrim:
+                return "RTRIM";
         }
-    };
-
-    template<class T>
-    constexpr bool is_collate_constraint_v = std::is_same<T, collate_constraint_t>::value;
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    constexpr internal::collate_constraint_t collate_nocase() {
-        return {internal::collate_argument::nocase};
-    }
-
-    constexpr internal::collate_constraint_t collate_binary() {
-        return {internal::collate_argument::binary};
-    }
-
-    constexpr internal::collate_constraint_t collate_rtrim() {
-        return {internal::collate_argument::rtrim};
+        throw std::system_error{orm_error_code::invalid_collate_argument_enum};
     }
 }
-// string_from_collate_argument
+//  collate_argument, collate_argument_to_string
 // #include "optional_container.h"
 
 namespace sqlite_orm::internal {
@@ -7500,19 +7475,19 @@ namespace sqlite_orm::internal {
 
         order_by_t collate_binary() const {
             auto res = *this;
-            res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::binary);
+            res._collate_argument = collate_argument_to_string(collate_argument::binary);
             return res;
         }
 
         order_by_t collate_nocase() const {
             auto res = *this;
-            res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::nocase);
+            res._collate_argument = collate_argument_to_string(collate_argument::nocase);
             return res;
         }
 
         order_by_t collate_rtrim() const {
             auto res = *this;
-            res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::rtrim);
+            res._collate_argument = collate_argument_to_string(collate_argument::rtrim);
             return res;
         }
 
@@ -23296,6 +23271,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 // basic_generated_always
+// #include "builtin/collations.h"
+//  collate_argument_to_string
 // #include "vocabulary/node_algorithms.h"
 // unwrap_expression
 // #include "vocabulary/node_traits.h"
@@ -24206,8 +24183,8 @@ namespace sqlite_orm::internal {
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             auto newContext = context;
             newContext.use_parentheses = false;
-            return serialize(statement.expression, newContext) + " COLLATE " +
-                   collate_constraint_t::string_from_collate_argument(statement.argument);
+            return (serialize(statement.expression, newContext) + " COLLATE ")
+                .append(collate_argument_to_string(statement.argument));
         }
     };
 
@@ -24536,7 +24513,7 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return "COLLATE " + statement.string_from_collate_argument(statement.argument);
+            return std::string{"COLLATE "}.append(collate_argument_to_string(statement.argument));
         }
     };
 
@@ -30519,6 +30496,38 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "schema/constraints/collate.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_same
+#endif
+
+// #include "../../builtin/collations.h"
+
+// #include "../../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    struct collate_constraint_t {
+        collate_argument argument = collate_argument::binary;
+    };
+
+    template<class T>
+    constexpr bool is_collate_constraint_v = std::is_same<T, collate_constraint_t>::value;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    constexpr internal::collate_constraint_t collate_nocase() {
+        return {internal::collate_argument::nocase};
+    }
+
+    constexpr internal::collate_constraint_t collate_binary() {
+        return {internal::collate_argument::binary};
+    }
+
+    constexpr internal::collate_constraint_t collate_rtrim() {
+        return {internal::collate_argument::rtrim};
+    }
+}
 
 // #include "ast/quoted_expression.h"
 
