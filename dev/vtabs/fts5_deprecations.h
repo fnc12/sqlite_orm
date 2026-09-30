@@ -14,7 +14,7 @@
 #endif
 #endif
 
-#include "../ast/window_functions.h"  //  rank
+#include "../window_functions.h"  //  rank
 #include "../conditions.h"  //  order_by_t
 #include "../statement_serializer.h"  //  statement_serializer
 

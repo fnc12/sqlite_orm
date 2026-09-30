@@ -31652,7 +31652,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/window.h"
 
-// #include "ast/window_functions.h"
+// #include "window_functions.h"
 
 /** @file The built-in window functions: ROW_NUMBER(), RANK(), DENSE_RANK(), PERCENT_RANK(), CUME_DIST(),
  *        NTILE(N), LAG(expr), LEAD(expr), FIRST_VALUE(expr), LAST_VALUE(expr) and NTH_VALUE(expr, N).
@@ -31661,6 +31661,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
  *        objects of `ast/builtin_function.h` (`"ROW_NUMBER"_builtin.window<int()>()`), in C++17 builds legacy
  *        factories over `builtin_window_function_t`. Either way their call nodes are built-in function calls,
  *        classified by `is_builtin_function_call` like those of the scalar and aggregate functions.
+ *
+ *        Like `core_functions.h` for those, this header holds definitions, not nodes, hence it lives outside `ast/`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -31669,9 +31671,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::forward
 #endif
 
-// #include "../vocabulary/node_algorithms.h"
+// #include "vocabulary/node_algorithms.h"
 //  argument
-// #include "builtin_function.h"
+// #include "ast/builtin_function.h"
 
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
 namespace sqlite_orm::internal {
@@ -33491,7 +33493,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../ast/window_functions.h"
+// #include "../window_functions.h"
 //  rank
 // #include "../conditions.h"
 //  order_by_t
