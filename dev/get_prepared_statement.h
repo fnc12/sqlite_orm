@@ -5,17 +5,14 @@
 #include <tuple>  //  std::get
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
-#include "functional/type_traits.h"
-#include "vocabulary/node_traits.h"  // projections
-#include "vocabulary/node_algorithms.h"  // access_dml_object
-#include "ast/dml/insert.h"
-#include "ast/dml/replace.h"
-#include "ast/dml/update.h"
-#include "ast/dml/remove.h"
-#include "prepared_statement.h"
-#include "ast_iterator.h"
-#include "node_tuple.h"
+#include "functional/cxx_type_traits_polyfill.h"  //  polyfill::remove_cvref_t
+#include "functional/type_traits.h"  //  forward_lvalue_ref
+#include "vocabulary/node_traits.h"  //  traits, projections
+#include "vocabulary/node_algorithms.h"  //  is_bindable, access_dml_object
+#include "statement_binder.h"  //  bindable_filter_t
+#include "prepared_statement.h"  //  prepared_statement_t
+#include "ast_iterator.h"  //  iterate_ast
+#include "node_tuple.h"  //  node_tuple_t
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -35,42 +32,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return std::get<N>(statement.expression.range);
     }
 
-    template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::get_t<T, Ids...>>& statement) {
-        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
-    }
-
-    template<int N, class T, class... Ids>
-    const auto& get(const internal::prepared_statement_t<internal::get_t<T, Ids...>>& statement) {
-        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
-    }
-
-    template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>>& statement) {
-        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
-    }
-
-    template<int N, class T, class... Ids>
-    const auto& get(const internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>>& statement) {
-        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
-    }
-
-    template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::get_optional_t<T, Ids...>>& statement) {
-        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
-    }
-
-    template<int N, class T, class... Ids>
-    const auto& get(const internal::prepared_statement_t<internal::get_optional_t<T, Ids...>>& statement) {
-        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
-    }
-
-    template<int N, class E, internal::satisfies<internal::is_remove, E> = true>
+    //  get and remove by primary key: the primary key values are the bound values
+    template<int N,
+             class E,
+             std::enable_if_t<std::disjunction_v<internal::is_any_get_by_id<E>, internal::is_remove<E>>, bool> = true>
     auto& get(internal::prepared_statement_t<E>& statement) {
         return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
 
-    template<int N, class E, internal::satisfies<internal::is_remove, E> = true>
+    template<int N,
+             class E,
+             std::enable_if_t<std::disjunction_v<internal::is_any_get_by_id<E>, internal::is_remove<E>>, bool> = true>
     const auto& get(const internal::prepared_statement_t<E>& statement) {
         return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
     }
@@ -100,6 +72,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<int N,
              class T,
              std::enable_if_t<std::negation_v<std::disjunction<internal::is_object_dml_expression<T>,
+                                                               internal::is_any_get_by_id<T>,
                                                                internal::is_insert_range<T>,
                                                                internal::is_replace_range<T>>>,
                               bool> = true>
@@ -128,6 +101,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<int N,
              class T,
              std::enable_if_t<std::negation_v<std::disjunction<internal::is_object_dml_expression<T>,
+                                                               internal::is_any_get_by_id<T>,
                                                                internal::is_insert_range<T>,
                                                                internal::is_replace_range<T>>>,
                               bool> = true>

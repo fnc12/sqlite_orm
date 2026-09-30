@@ -284,29 +284,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class R, class... Args>
-    struct ast_iterator<get_all_t<T, R, Args...>, void> {
-        using node_type = get_all_t<T, R, Args...>;
-
-        template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& get, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(get.conditions, lambda);
-        }
-    };
-
-    template<class T, class... Args>
-    struct ast_iterator<get_all_pointer_t<T, Args...>, void> {
-        using node_type = get_all_pointer_t<T, Args...>;
-
-        template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& get, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(get.conditions, lambda);
-        }
-    };
-
-    template<class T, class... Args>
-    struct ast_iterator<get_all_optional_t<T, Args...>, void> {
-        using node_type = get_all_optional_t<T, Args...>;
+    template<class T>
+    struct ast_iterator<T, match_if<is_any_get_all, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& get, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {

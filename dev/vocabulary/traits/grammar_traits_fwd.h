@@ -169,7 +169,7 @@ namespace sqlite_orm::internal {
     using is_tokenize = std::bool_constant<is_tokenize_v<T>>;
 }
 
-// DML classifier traits
+// CRUD classifier traits
 namespace sqlite_orm::internal {
     /**
      *  Nodes representing a DML statement - INSERT, REPLACE, UPDATE, DELETE -, one trait per DSL spelling.
@@ -344,6 +344,30 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_default_values = std::bool_constant<is_default_values_v<T>>;
+
+    /**
+     *  Nodes reading a mapped object by its primary key: get, get_pointer, get_optional.
+     *
+     *  The three are DSL spellings of the one SELECT by primary key; they differ only in how the object is
+     *  handed out, which each declares as its `result_type`.
+     */
+    template<class T>
+    extern const bool is_any_get_by_id_v;
+
+    template<class T>
+    using is_any_get_by_id = std::bool_constant<is_any_get_by_id_v<T>>;
+
+    /**
+     *  Nodes reading all mapped objects satisfying the given conditions: get_all, get_all_pointer, get_all_optional.
+     *
+     *  The three are DSL spellings of the one SELECT; they differ only in how the objects are handed out,
+     *  which each declares as its `result_type`.
+     */
+    template<class T>
+    extern const bool is_any_get_all_v;
+
+    template<class T>
+    using is_any_get_all = std::bool_constant<is_any_get_all_v<T>>;
 }
 
 // Classifier traits

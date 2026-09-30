@@ -173,7 +173,7 @@ namespace sqlite_orm::internal {
     using return_type_t = typename T::return_type;
 
     /**
-     *  The C++ type a condition yields.
+     *  The C++ type a node yields: e.g. that of a condition, or how a get statement hands out an object it reads.
      */
     template<typename T>
     using result_type_t = typename T::result_type;

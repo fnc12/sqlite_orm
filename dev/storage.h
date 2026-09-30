@@ -51,10 +51,11 @@
 #include "result_set_view.h"
 #include "ast_iterator.h"
 #include "storage_base.h"
-#include "ast/dml/insert.h"
-#include "ast/dml/replace.h"
-#include "ast/dml/update.h"
-#include "ast/dml/remove.h"
+#include "ast/crud/get.h"
+#include "ast/crud/insert.h"
+#include "ast/crud/replace.h"
+#include "ast/crud/update.h"
+#include "ast/crud/remove.h"
 #include "prepared_statement.h"
 #include "statement_serializer.h"
 #include "serializer_context.h"
@@ -1509,33 +1510,9 @@ namespace sqlite_orm::internal {
             return this->prepare_impl(std::move(statement));
         }
 
-        template<class T, class... Args>
-        prepared_statement_t<get_all_t<T, Args...>> prepare(get_all_t<T, Args...> statement) {
-            return this->prepare_impl(std::move(statement));
-        }
-
-        template<class T, class... Args>
-        prepared_statement_t<get_all_pointer_t<T, Args...>> prepare(get_all_pointer_t<T, Args...> statement) {
-            return this->prepare_impl(std::move(statement));
-        }
-
-        template<class T, class R, class... Args>
-        prepared_statement_t<get_all_optional_t<T, R, Args...>> prepare(get_all_optional_t<T, R, Args...> statement) {
-            return this->prepare_impl(std::move(statement));
-        }
-
-        template<class T, class... Ids>
-        prepared_statement_t<get_t<T, Ids...>> prepare(get_t<T, Ids...> statement) {
-            return this->prepare_impl(std::move(statement));
-        }
-
-        template<class T, class... Ids>
-        prepared_statement_t<get_pointer_t<T, Ids...>> prepare(get_pointer_t<T, Ids...> statement) {
-            return this->prepare_impl(std::move(statement));
-        }
-
-        template<class T, class... Ids>
-        prepared_statement_t<get_optional_t<T, Ids...>> prepare(get_optional_t<T, Ids...> statement) {
+        template<class Get,
+                 std::enable_if_t<std::disjunction_v<is_any_get_by_id<Get>, is_any_get_all<Get>>, bool> = true>
+        prepared_statement_t<Get> prepare(Get statement) {
             return this->prepare_impl(std::move(statement));
         }
 
@@ -1754,50 +1731,35 @@ namespace sqlite_orm::internal {
             this->executor.perform_single_step(stmt);
         }
 
-        template<class T, class... Ids>
-        std::unique_ptr<T> execute(const prepared_statement_t<get_pointer_t<T, Ids...>>& statement) {
+        /*
+         *  Execute a get statement by primary key, handing the object out as the statement's result type says:
+         *  as is (throwing if not found), owned by a `std::unique_ptr` or held by a `std::optional`.
+         */
+        template<class Get, satisfies<is_any_get_by_id, Get> = true>
+        result_type_t<Get> execute(const prepared_statement_t<Get>& statement) {
+            using result_type = result_type_t<Get>;
+            using object_type = held_object_t<result_type>;
+            constexpr bool returnsObject = std::is_same<result_type, object_type>::value;
+            //  an object handed out as is is read into an optional, which tells whether it was found
+            using holder_type = mpl::conditional_t<returnsObject, std::optional<object_type>, result_type>;
+
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
             iterate_ast(statement.expression.ids, conditional_binder{stmt});
 
-            std::unique_ptr<T> res;
-            this->executor.perform_step(stmt, [&table = this->get_table<T>(), &res](sqlite3_stmt* stmt) {
-                res = std::make_unique<T>();
-                object_from_column_builder<T> builder{*res, stmt};
+            holder_type res;
+            this->executor.perform_step(stmt, [&table = this->get_table<object_type>(), &res](sqlite3_stmt* stmt) {
+                object_from_column_builder<object_type> builder{emplace_held_object(res), stmt};
                 table.for_each_column(builder);
             });
-            return res;
-        }
-
-        template<class T, class... Ids>
-        std::optional<T> execute(const prepared_statement_t<get_optional_t<T, Ids...>>& statement) {
-            sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-
-            iterate_ast(statement.expression.ids, conditional_binder{stmt});
-
-            std::optional<T> res;
-            this->executor.perform_step(stmt, [&table = this->get_table<T>(), &res](sqlite3_stmt* stmt) {
-                object_from_column_builder<T> builder{res.emplace(), stmt};
-                table.for_each_column(builder);
-            });
-            return res;
-        }
-
-        template<class T, class... Ids>
-        T execute(const prepared_statement_t<get_t<T, Ids...>>& statement) {
-            sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-
-            iterate_ast(statement.expression.ids, conditional_binder{stmt});
-
-            std::optional<T> res;
-            this->executor.perform_step(stmt, [&table = this->get_table<T>(), &res](sqlite3_stmt* stmt) {
-                object_from_column_builder<T> builder{res.emplace(), stmt};
-                table.for_each_column(builder);
-            });
-            if (!res.has_value()) {
-                throw std::system_error{orm_error_code::not_found};
+            if constexpr (returnsObject) {
+                if (!res.has_value()) {
+                    throw std::system_error{orm_error_code::not_found};
+                }
+                return std::move(res).value();
+            } else {
+                return res;
             }
-            return std::move(res).value();
         }
 
         template<class Select, satisfies<is_select_expression, Select> = true>
@@ -1810,63 +1772,30 @@ namespace sqlite_orm::internal {
             return this->execute_select<ColResult>(statement);
         }
 
-        template<class T, class R, class... Args, class O = mapped_type_proxy_t<T>>
-        R execute(const prepared_statement_t<get_all_t<T, R, Args...>>& statement) {
+        /*
+         *  Execute a get all statement, reading the objects into the statement's container,
+         *  each handed out as the statement's result type says: as is, owned by a `std::unique_ptr`
+         *  or held by a `std::optional`.
+         */
+        template<class GetAll, satisfies<is_any_get_all, GetAll> = true>
+        return_type_t<GetAll> execute(const prepared_statement_t<GetAll>& statement) {
+            using result_type = result_type_t<GetAll>;
+            using object_type = held_object_t<result_type>;
+            using container_type = return_type_t<GetAll>;
+
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
             iterate_ast(statement.expression, conditional_binder{stmt});
 
-            R res;
-            this->executor.perform_steps(stmt, [&table = this->get_table<O>(), &res](sqlite3_stmt* stmt) {
-                O obj;
-                object_from_column_builder<O> builder{obj, stmt};
+            container_type res;
+            this->executor.perform_steps(stmt, [&table = this->get_table<object_type>(), &res](sqlite3_stmt* stmt) {
+                result_type obj;
+                object_from_column_builder<object_type> builder{emplace_held_object(obj), stmt};
                 table.for_each_column(builder);
                 res.push_back(std::move(obj));
             });
 
-            if constexpr (polyfill::is_specialization_of_v<R, std::vector>) {
-                res.shrink_to_fit();
-            }
-
-            return res;
-        }
-
-        template<class T, class R, class... Args>
-        R execute(const prepared_statement_t<get_all_pointer_t<T, R, Args...>>& statement) {
-            sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-
-            iterate_ast(statement.expression, conditional_binder{stmt});
-
-            R res;
-            this->executor.perform_steps(stmt, [&table = this->get_table<T>(), &res](sqlite3_stmt* stmt) {
-                auto obj = std::make_unique<T>();
-                object_from_column_builder<T> builder{*obj, stmt};
-                table.for_each_column(builder);
-                res.push_back(std::move(obj));
-            });
-
-            if constexpr (polyfill::is_specialization_of_v<R, std::vector>) {
-                res.shrink_to_fit();
-            }
-
-            return res;
-        }
-
-        template<class T, class R, class... Args>
-        R execute(const prepared_statement_t<get_all_optional_t<T, R, Args...>>& statement) {
-            sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-
-            iterate_ast(statement.expression, conditional_binder{stmt});
-
-            R res;
-            this->executor.perform_steps(stmt, [&table = this->get_table<T>(), &res](sqlite3_stmt* stmt) {
-                auto obj = std::make_optional<T>();
-                object_from_column_builder<T> builder{*obj, stmt};
-                table.for_each_column(builder);
-                res.push_back(std::move(obj));
-            });
-
-            if constexpr (polyfill::is_specialization_of_v<R, std::vector>) {
+            if constexpr (polyfill::is_specialization_of_v<container_type, std::vector>) {
                 res.shrink_to_fit();
             }
 
