@@ -14,12 +14,16 @@
 #endif
 
 #include "../functional/type_traits.h"
-#include "../sqlite_schema_table.h"
 #include "../util.h"
 #include "../serializing_util.h"
 #include "../storage.h"
 #include "../vocabulary/node_traits.h"
 #include "../schema/column_identifier.h"
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    //  only named to recognize the schema table below; defined in builtin_dbos/sqlite_schema.h
+    struct sqlite_master;
+}
 
 namespace sqlite_orm::internal {
     template<class... DBO>

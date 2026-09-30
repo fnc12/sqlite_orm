@@ -88,7 +88,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 - `dev/schema/triggers.h` - Trigger support
 - `dev/schema/constraints/` - One header per constraint (`primary_key`, `foreign_key`, `check`, ...)
 - `dev/schema/algorithms/` - Algorithms operating across the whole schema, e.g. `sync_order.h`
-- `dev/vtabs/` - Built-in virtual tables (fts5, rtree, dbstat, generate_series)
+- `dev/builtin_dbos/` - Database objects SQLite provides itself: the schema table (`sqlite_master`/`sqlite_schema`), the eponymous virtual tables (dbstat, generate_series) and the virtual table modules (fts5, rtree)
 
 **Vocabulary layer** (see [Header layers](#header-layers) below):
 - `dev/vocabulary/traits/` - Open classification traits, specialized at each node's own header

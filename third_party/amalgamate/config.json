@@ -9,7 +9,7 @@
     "dev/node_algorithm_definitions.h",
     "dev/interface_definitions.h",
     "dev/get_prepared_statement.h",
-    "dev/vtabs/vtabs.h",
+    "dev/builtin_dbos/builtin_dbos.h",
     "dev/carray.h",
     "dev/functional/finish_macros.h"
   ],
