@@ -25,8 +25,6 @@
 #include "storage_traits.h"
 #include "schema/algorithms/table_lookup.h"  // schema_pick_table_t
 #include "ast/app_function.h"
-#include "ast/rank.h"
-#include "window_functions.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -146,61 +144,6 @@ namespace sqlite_orm::internal {
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_over, T>> : column_result_t<DBOs, function_type_t<T>> {};
-
-    template<class DBOs>
-    struct column_result_t<DBOs, row_number_t, void> {
-        using type = int;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, dense_rank_t, void> {
-        using type = int;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, percent_rank_t, void> {
-        using type = double;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, cume_dist_t, void> {
-        using type = double;
-    };
-
-    template<class DBOs, class... Args>
-    struct column_result_t<DBOs, ntile_t<Args...>, void> {
-        using type = int;
-    };
-
-    template<class DBOs, class X, class... Rest>
-    struct column_result_t<DBOs, lag_t<X, Rest...>, void> {
-        using type = column_result_of_t<DBOs, X>;
-    };
-
-    template<class DBOs, class X, class... Rest>
-    struct column_result_t<DBOs, lead_t<X, Rest...>, void> {
-        using type = column_result_of_t<DBOs, X>;
-    };
-
-    template<class DBOs, class X, class... Rest>
-    struct column_result_t<DBOs, first_value_t<X, Rest...>, void> {
-        using type = column_result_of_t<DBOs, X>;
-    };
-
-    template<class DBOs, class X, class... Rest>
-    struct column_result_t<DBOs, last_value_t<X, Rest...>, void> {
-        using type = column_result_of_t<DBOs, X>;
-    };
-
-    template<class DBOs, class X, class... Rest>
-    struct column_result_t<DBOs, nth_value_t<X, Rest...>, void> {
-        using type = column_result_of_t<DBOs, X>;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, rank_t, void> {
-        using type = int;
-    };
 
     template<class DBOs>
     struct column_result_t<DBOs, std::nullptr_t, void> {

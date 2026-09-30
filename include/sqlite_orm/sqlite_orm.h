@@ -7021,297 +7021,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-// #include "ast/rank.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <utility>  //  std::forward
-#endif
-
-// #include "window.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
-#include <tuple>  //  std::tuple
-#include <type_traits>  //  std::is_same
-#include <utility>  //  std::forward, std::move
-#endif
-
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../vocabulary/traits/grammar_traits_fwd.h"
-// Included to specialize traits
-// #include "../vocabulary/node_algorithms.h"
-// is_statement_clause, is_frame_start_bound_v, is_frame_end_bound_v
-
-namespace sqlite_orm::internal {
-
-    struct unbounded_preceding_t {};
-
-    template<class T>
-    constexpr bool is_unbounded_preceding_v = std::is_same<T, unbounded_preceding_t>::value;
-
-    template<class E>
-    struct preceding_t {
-        using expression_type = E;
-
-        expression_type expression;
-    };
-
-    template<class T>
-    constexpr bool is_preceding_v = polyfill::is_specialization_of_v<T, preceding_t>;
-
-    struct current_row_t {};
-
-    template<class T>
-    constexpr bool is_current_row_v = std::is_same<T, current_row_t>::value;
-
-    template<class E>
-    struct following_t {
-        using expression_type = E;
-
-        expression_type expression;
-    };
-
-    template<class T>
-    constexpr bool is_following_v = polyfill::is_specialization_of_v<T, following_t>;
-
-    struct unbounded_following_t {};
-
-    template<class T>
-    constexpr bool is_unbounded_following_v = std::is_same<T, unbounded_following_t>::value;
-
-    enum class frame_type_t { rows, range, groups };
-    enum class frame_exclude_t { no_others, current_row, group, ties };
-
-    template<class Start, class End>
-    struct frame_spec_t {
-        using start_type = Start;
-        using end_type = End;
-
-        frame_type_t type;
-        start_type start;
-        end_type end;
-        frame_exclude_t exclude = frame_exclude_t::no_others;
-
-        frame_spec_t exclude_current_row() const {
-            auto res = *this;
-            res.exclude = frame_exclude_t::current_row;
-            return res;
-        }
-
-        frame_spec_t exclude_group() const {
-            auto res = *this;
-            res.exclude = frame_exclude_t::group;
-            return res;
-        }
-
-        frame_spec_t exclude_ties() const {
-            auto res = *this;
-            res.exclude = frame_exclude_t::ties;
-            return res;
-        }
-
-        frame_spec_t exclude_no_others() const {
-            auto res = *this;
-            res.exclude = frame_exclude_t::no_others;
-            return res;
-        }
-    };
-
-    template<class T>
-    constexpr bool is_frame_spec_v = polyfill::is_specialization_of_v<T, frame_spec_t>;
-
-    template<class... Args>
-    struct partition_by_t {
-        using args_type = std::tuple<Args...>;
-        args_type arguments;
-    };
-
-    template<class T>
-    constexpr bool is_partition_by_v = polyfill::is_specialization_of_v<T, partition_by_t>;
-
-    struct window_ref_t {
-        std::string name;
-    };
-
-    template<class T>
-    constexpr bool is_window_ref_v = std::is_same<T, window_ref_t>::value;
-
-    template<class F, class... Args>
-    struct over_t {
-        using function_type = F;
-        using args_type = std::tuple<Args...>;
-
-        function_type function;
-        args_type arguments;
-    };
-
-    template<class T>
-    constexpr bool is_over_v = polyfill::is_specialization_of_v<T, over_t>;
-
-    template<class... Args>
-    struct window_defn_t {
-        using args_type = std::tuple<Args...>;
-
-        std::string name;
-        args_type arguments;
-    };
-
-    template<class T>
-    constexpr bool is_window_defn_v = polyfill::is_specialization_of_v<T, window_defn_t>;
-
-    template<class... Args>
-    constexpr void validate_over_arguments() {
-        static_assert(are_valid_over_arguments_v<Args...>,
-                      "an OVER clause takes either a single window_ref(), or the elements of an inline window "
-                      "definition: partition_by(), order_by() and a rows()/range()/groups() frame");
-    }
-
-    template<class... Args>
-    constexpr void validate_window_arguments() {
-        static_assert((is_window_defn_element_v<Args> && ...),
-                      "a window definition takes partition_by(), order_by() and a rows()/range()/groups() frame");
-    }
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-
-    /**
-     *  UNBOUNDED PRECEDING frame boundary.
-     *  https://sqlite.org/windowfunctions.html
-     */
-    inline internal::unbounded_preceding_t unbounded_preceding() {
-        return {};
-    }
-
-    /**
-     *  expr PRECEDING frame boundary.
-     *  https://sqlite.org/windowfunctions.html
-     */
-    template<class E>
-    internal::preceding_t<E> preceding(E expression) {
-        static_assert(!internal::is_statement_clause<E>::value,
-                      "a frame boundary must be an expression, not a statement clause");
-        return {std::move(expression)};
-    }
-
-    /**
-     *  CURRENT ROW frame boundary.
-     *  https://sqlite.org/windowfunctions.html
-     */
-    inline internal::current_row_t current_row() {
-        return {};
-    }
-
-    /**
-     *  expr FOLLOWING frame boundary.
-     *  https://sqlite.org/windowfunctions.html
-     */
-    template<class E>
-    internal::following_t<E> following(E expression) {
-        static_assert(!internal::is_statement_clause<E>::value,
-                      "a frame boundary must be an expression, not a statement clause");
-        return {std::move(expression)};
-    }
-
-    /**
-     *  UNBOUNDED FOLLOWING frame boundary.
-     *  https://sqlite.org/windowfunctions.html
-     */
-    inline internal::unbounded_following_t unbounded_following() {
-        return {};
-    }
-
-    /**
-     *  ROWS BETWEEN start AND end frame specification.
-     *  Example: rows(unbounded_preceding(), current_row())
-     */
-    template<class Start, class End>
-    internal::frame_spec_t<Start, End> rows(Start start, End end) {
-        static_assert(internal::is_frame_start_bound_v<Start>,
-                      "a frame must start with unbounded_preceding(), preceding(), current_row() or following()");
-        static_assert(internal::is_frame_end_bound_v<End>,
-                      "a frame must end with preceding(), current_row(), following() or unbounded_following()");
-        return {internal::frame_type_t::rows, std::move(start), std::move(end)};
-    }
-
-    /**
-     *  RANGE BETWEEN start AND end frame specification.
-     *  Example: range(current_row(), unbounded_following())
-     */
-    template<class Start, class End>
-    internal::frame_spec_t<Start, End> range(Start start, End end) {
-        static_assert(internal::is_frame_start_bound_v<Start>,
-                      "a frame must start with unbounded_preceding(), preceding(), current_row() or following()");
-        static_assert(internal::is_frame_end_bound_v<End>,
-                      "a frame must end with preceding(), current_row(), following() or unbounded_following()");
-        return {internal::frame_type_t::range, std::move(start), std::move(end)};
-    }
-
-    /**
-     *  GROUPS BETWEEN start AND end frame specification.
-     *  Example: groups(unbounded_preceding(), current_row())
-     */
-    template<class Start, class End>
-    internal::frame_spec_t<Start, End> groups(Start start, End end) {
-        static_assert(internal::is_frame_start_bound_v<Start>,
-                      "a frame must start with unbounded_preceding(), preceding(), current_row() or following()");
-        static_assert(internal::is_frame_end_bound_v<End>,
-                      "a frame must end with preceding(), current_row(), following() or unbounded_following()");
-        return {internal::frame_type_t::groups, std::move(start), std::move(end)};
-    }
-
-    /**
-     *  PARTITION BY expression list for window functions.
-     *  Example: partition_by(&Employee::departmentId)
-     */
-    template<class... Args>
-    internal::partition_by_t<Args...> partition_by(Args... args) {
-        static_assert((!internal::is_statement_clause<Args>::value && ...),
-                      "a PARTITION BY term must be an expression, not a statement clause");
-        return {{std::forward<Args>(args)...}};
-    }
-
-    /**
-     *  Reference to a named window definition (OVER window_name).
-     *  Example: row_number().over(window_ref("win"))
-     */
-    inline internal::window_ref_t window_ref(std::string name) {
-        return {std::move(name)};
-    }
-
-    /**
-     *  Named window definition (WINDOW name AS (...)).
-     *  Passed as a condition to select().
-     *  Example: window("win", order_by(&Employee::salary))
-     */
-    template<class... Args>
-    internal::window_defn_t<Args...> window(std::string name, Args... args) {
-        internal::validate_window_arguments<Args...>();
-        return {std::move(name), {std::forward<Args>(args)...}};
-    }
-}
-
-namespace sqlite_orm::internal {
-    struct rank_t {
-        template<class... OverArgs>
-        over_t<rank_t, OverArgs...> over(OverArgs... overArgs) {
-            validate_over_arguments<OverArgs...>();
-            return {*this, {std::forward<OverArgs>(overArgs)...}};
-        }
-    };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  RANK() window function
-     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
-     */
-    inline internal::rank_t rank() {
-        return {};
-    }
-}
-
 // #include "vocabulary/node_algorithms.h"
 // unwrap_expression, is_operand_or_bindable, are_valid_operands
 // #include "vocabulary/traits/grammar_traits_fwd.h"
@@ -8466,14 +8175,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(o)};
     }
 
-    /** 
-     *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
-     */
-    [[deprecated("Use the hidden FTS5 rank column instead")]]
-    inline internal::order_by_t<internal::rank_t> order_by(internal::rank_t expression) {
-        return {std::move(expression)};
-    }
-
     /**
      *  ORDER BY positional ordinal
      *  
@@ -8680,6 +8381,269 @@ namespace sqlite_orm::internal {
 // #include "../vocabulary/traits/operand_traits_fwd.h"
 // Included to specialize traits
 // #include "window.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#include <tuple>  //  std::tuple
+#include <type_traits>  //  std::is_same
+#include <utility>  //  std::forward, std::move
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../vocabulary/node_algorithms.h"
+// is_statement_clause, is_frame_start_bound_v, is_frame_end_bound_v
+
+namespace sqlite_orm::internal {
+
+    struct unbounded_preceding_t {};
+
+    template<class T>
+    constexpr bool is_unbounded_preceding_v = std::is_same<T, unbounded_preceding_t>::value;
+
+    template<class E>
+    struct preceding_t {
+        using expression_type = E;
+
+        expression_type expression;
+    };
+
+    template<class T>
+    constexpr bool is_preceding_v = polyfill::is_specialization_of_v<T, preceding_t>;
+
+    struct current_row_t {};
+
+    template<class T>
+    constexpr bool is_current_row_v = std::is_same<T, current_row_t>::value;
+
+    template<class E>
+    struct following_t {
+        using expression_type = E;
+
+        expression_type expression;
+    };
+
+    template<class T>
+    constexpr bool is_following_v = polyfill::is_specialization_of_v<T, following_t>;
+
+    struct unbounded_following_t {};
+
+    template<class T>
+    constexpr bool is_unbounded_following_v = std::is_same<T, unbounded_following_t>::value;
+
+    enum class frame_type_t { rows, range, groups };
+    enum class frame_exclude_t { no_others, current_row, group, ties };
+
+    template<class Start, class End>
+    struct frame_spec_t {
+        using start_type = Start;
+        using end_type = End;
+
+        frame_type_t type;
+        start_type start;
+        end_type end;
+        frame_exclude_t exclude = frame_exclude_t::no_others;
+
+        frame_spec_t exclude_current_row() const {
+            auto res = *this;
+            res.exclude = frame_exclude_t::current_row;
+            return res;
+        }
+
+        frame_spec_t exclude_group() const {
+            auto res = *this;
+            res.exclude = frame_exclude_t::group;
+            return res;
+        }
+
+        frame_spec_t exclude_ties() const {
+            auto res = *this;
+            res.exclude = frame_exclude_t::ties;
+            return res;
+        }
+
+        frame_spec_t exclude_no_others() const {
+            auto res = *this;
+            res.exclude = frame_exclude_t::no_others;
+            return res;
+        }
+    };
+
+    template<class T>
+    constexpr bool is_frame_spec_v = polyfill::is_specialization_of_v<T, frame_spec_t>;
+
+    template<class... Args>
+    struct partition_by_t {
+        using args_type = std::tuple<Args...>;
+        args_type arguments;
+    };
+
+    template<class T>
+    constexpr bool is_partition_by_v = polyfill::is_specialization_of_v<T, partition_by_t>;
+
+    struct window_ref_t {
+        std::string name;
+    };
+
+    template<class T>
+    constexpr bool is_window_ref_v = std::is_same<T, window_ref_t>::value;
+
+    template<class F, class... Args>
+    struct over_t {
+        using function_type = F;
+        using args_type = std::tuple<Args...>;
+
+        function_type function;
+        args_type arguments;
+    };
+
+    template<class T>
+    constexpr bool is_over_v = polyfill::is_specialization_of_v<T, over_t>;
+
+    template<class... Args>
+    struct window_defn_t {
+        using args_type = std::tuple<Args...>;
+
+        std::string name;
+        args_type arguments;
+    };
+
+    template<class T>
+    constexpr bool is_window_defn_v = polyfill::is_specialization_of_v<T, window_defn_t>;
+
+    template<class... Args>
+    constexpr void validate_over_arguments() {
+        static_assert(are_valid_over_arguments_v<Args...>,
+                      "an OVER clause takes either a single window_ref(), or the elements of an inline window "
+                      "definition: partition_by(), order_by() and a rows()/range()/groups() frame");
+    }
+
+    template<class... Args>
+    constexpr void validate_window_arguments() {
+        static_assert((is_window_defn_element_v<Args> && ...),
+                      "a window definition takes partition_by(), order_by() and a rows()/range()/groups() frame");
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  UNBOUNDED PRECEDING frame boundary.
+     *  https://sqlite.org/windowfunctions.html
+     */
+    inline internal::unbounded_preceding_t unbounded_preceding() {
+        return {};
+    }
+
+    /**
+     *  expr PRECEDING frame boundary.
+     *  https://sqlite.org/windowfunctions.html
+     */
+    template<class E>
+    internal::preceding_t<E> preceding(E expression) {
+        static_assert(!internal::is_statement_clause<E>::value,
+                      "a frame boundary must be an expression, not a statement clause");
+        return {std::move(expression)};
+    }
+
+    /**
+     *  CURRENT ROW frame boundary.
+     *  https://sqlite.org/windowfunctions.html
+     */
+    inline internal::current_row_t current_row() {
+        return {};
+    }
+
+    /**
+     *  expr FOLLOWING frame boundary.
+     *  https://sqlite.org/windowfunctions.html
+     */
+    template<class E>
+    internal::following_t<E> following(E expression) {
+        static_assert(!internal::is_statement_clause<E>::value,
+                      "a frame boundary must be an expression, not a statement clause");
+        return {std::move(expression)};
+    }
+
+    /**
+     *  UNBOUNDED FOLLOWING frame boundary.
+     *  https://sqlite.org/windowfunctions.html
+     */
+    inline internal::unbounded_following_t unbounded_following() {
+        return {};
+    }
+
+    /**
+     *  ROWS BETWEEN start AND end frame specification.
+     *  Example: rows(unbounded_preceding(), current_row())
+     */
+    template<class Start, class End>
+    internal::frame_spec_t<Start, End> rows(Start start, End end) {
+        static_assert(internal::is_frame_start_bound_v<Start>,
+                      "a frame must start with unbounded_preceding(), preceding(), current_row() or following()");
+        static_assert(internal::is_frame_end_bound_v<End>,
+                      "a frame must end with preceding(), current_row(), following() or unbounded_following()");
+        return {internal::frame_type_t::rows, std::move(start), std::move(end)};
+    }
+
+    /**
+     *  RANGE BETWEEN start AND end frame specification.
+     *  Example: range(current_row(), unbounded_following())
+     */
+    template<class Start, class End>
+    internal::frame_spec_t<Start, End> range(Start start, End end) {
+        static_assert(internal::is_frame_start_bound_v<Start>,
+                      "a frame must start with unbounded_preceding(), preceding(), current_row() or following()");
+        static_assert(internal::is_frame_end_bound_v<End>,
+                      "a frame must end with preceding(), current_row(), following() or unbounded_following()");
+        return {internal::frame_type_t::range, std::move(start), std::move(end)};
+    }
+
+    /**
+     *  GROUPS BETWEEN start AND end frame specification.
+     *  Example: groups(unbounded_preceding(), current_row())
+     */
+    template<class Start, class End>
+    internal::frame_spec_t<Start, End> groups(Start start, End end) {
+        static_assert(internal::is_frame_start_bound_v<Start>,
+                      "a frame must start with unbounded_preceding(), preceding(), current_row() or following()");
+        static_assert(internal::is_frame_end_bound_v<End>,
+                      "a frame must end with preceding(), current_row(), following() or unbounded_following()");
+        return {internal::frame_type_t::groups, std::move(start), std::move(end)};
+    }
+
+    /**
+     *  PARTITION BY expression list for window functions.
+     *  Example: partition_by(&Employee::departmentId)
+     */
+    template<class... Args>
+    internal::partition_by_t<Args...> partition_by(Args... args) {
+        static_assert((!internal::is_statement_clause<Args>::value && ...),
+                      "a PARTITION BY term must be an expression, not a statement clause");
+        return {{std::forward<Args>(args)...}};
+    }
+
+    /**
+     *  Reference to a named window definition (OVER window_name).
+     *  Example: row_number().over(window_ref("win"))
+     */
+    inline internal::window_ref_t window_ref(std::string name) {
+        return {std::move(name)};
+    }
+
+    /**
+     *  Named window definition (WINDOW name AS (...)).
+     *  Passed as a condition to select().
+     *  Example: window("win", order_by(&Employee::salary))
+     */
+    template<class... Args>
+    internal::window_defn_t<Args...> window(std::string name, Args... args) {
+        internal::validate_window_arguments<Args...>();
+        return {std::move(name), {std::forward<Args>(args)...}};
+    }
+}
 //  over_t, validate_over_arguments
 
 namespace sqlite_orm::internal {
@@ -8810,6 +8774,22 @@ namespace sqlite_orm::internal {
             return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
+
+    /*
+     *  A built-in window function, which is applied by an OVER clause.
+     */
+    template<class R, class S, class... Args>
+    struct builtin_window_function_t : builtin_function_t<R, S, Args...> {
+        using super = builtin_function_t<R, S, Args...>;
+
+        using super::super;
+
+        template<class... OverArgs>
+        over_t<builtin_window_function_t, OverArgs...> over(OverArgs... overArgs) {
+            validate_over_arguments<OverArgs...>();
+            return {*this, {std::forward<OverArgs>(overArgs)...}};
+        }
+    };
 }
 #else
 /*
@@ -8849,12 +8829,19 @@ namespace sqlite_orm::internal {
         using signature_type = Sig;
     };
 
+    template<orm_function_sig Sig>
+    struct window_sig {
+        using signature_type = Sig;
+    };
+
     template<class T>
     constexpr bool is_kinded_signature_v = false;
     template<class Sig>
     constexpr bool is_kinded_signature_v<scalar_sig<Sig>> = true;
     template<class Sig>
     constexpr bool is_kinded_signature_v<aggregate_sig<Sig>> = true;
+    template<class Sig>
+    constexpr bool is_kinded_signature_v<window_sig<Sig>> = true;
 
     /*
      *  Whether a built-in function's signature accepts a call with `Argc` arguments.
@@ -8908,6 +8895,10 @@ namespace sqlite_orm::internal {
     template<class R, class R0, class... Params>
     struct with_return_type<R, aggregate_sig<R0(Params...)>>
         : std::type_identity<aggregate_sig<std::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+
+    template<class R, class R0, class... Params>
+    struct with_return_type<R, window_sig<R0(Params...)>>
+        : std::type_identity<window_sig<std::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
 
     template<class R, class KindedSig>
     using with_return_type_t = typename with_return_type<R, KindedSig>::type;
@@ -8967,6 +8958,22 @@ namespace sqlite_orm::internal {
     };
 
     /*
+     *  Represents a call of a built-in window function, which is applied by an OVER clause.
+     */
+    template<class F, class Sig, class... CallArgs>
+    struct builtin_window_function_call : builtin_function_call<F, Sig, CallArgs...> {
+        using super = builtin_function_call<F, Sig, CallArgs...>;
+
+        using super::super;
+
+        template<class... OverArgs>
+        constexpr over_t<builtin_window_function_call, OverArgs...> over(OverArgs... overArgs) const {
+            validate_over_arguments<OverArgs...>();
+            return {*this, {std::forward<OverArgs>(overArgs)...}};
+        }
+    };
+
+    /*
      *  The call node for a matched kinded signature.
      */
     template<class KindedSig, class F, class... CallArgs>
@@ -8980,6 +8987,10 @@ namespace sqlite_orm::internal {
     struct builtin_function_call_for<aggregate_sig<Sig>, F, CallArgs...>
         : std::type_identity<builtin_aggregate_function_call<F, Sig, CallArgs...>> {};
 
+    template<class Sig, class F, class... CallArgs>
+    struct builtin_function_call_for<window_sig<Sig>, F, CallArgs...>
+        : std::type_identity<builtin_window_function_call<F, Sig, CallArgs...>> {};
+
     template<class KindedSig, class F, class... CallArgs>
     using builtin_function_call_for_t = typename builtin_function_call_for<KindedSig, F, CallArgs...>::type;
 
@@ -8987,7 +8998,7 @@ namespace sqlite_orm::internal {
      *  Generator of a built-in function call in a sql query expression.
      *
      *  Use the string literal operator template `""_builtin.function<KindedSig...>()`
-     *  - or the single-kind shorthands `.scalar<Sig...>()` and `.aggregate<Sig...>()` -
+     *  - or the single-kind shorthands `.scalar<Sig...>()`, `.aggregate<Sig...>()` and `.window<Sig...>()` -
      *  to define a built-in function by its name and its overload set.
      *
      *  Calling the generator picks the overload by the number of call arguments
@@ -9056,6 +9067,15 @@ namespace sqlite_orm::internal {
             requires (sizeof...(Sigs) > 0)
         [[nodiscard]] consteval auto aggregate() const {
             return builtin_function<N, aggregate_sig<Sigs>...>{this->cstr};
+        }
+
+        /*
+         *  A window function with the given overload set.
+         */
+        template<orm_function_sig... Sigs>
+            requires (sizeof...(Sigs) > 0)
+        [[nodiscard]] consteval auto window() const {
+            return builtin_function<N, window_sig<Sigs>...>{this->cstr};
         }
     };
 
@@ -14829,249 +14849,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-// #include "ast/rank.h"
-
-// #include "window_functions.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple
-#include <utility>  //  std::forward, std::move
-#endif
-
-// #include "ast/window.h"
-
-namespace sqlite_orm::internal {
-
-    struct row_number_t {
-        template<class... OverArgs>
-        over_t<row_number_t, OverArgs...> over(OverArgs... overArgs) {
-            validate_over_arguments<OverArgs...>();
-            return {*this, {std::forward<OverArgs>(overArgs)...}};
-        }
-    };
-
-    struct dense_rank_t {
-        template<class... OverArgs>
-        over_t<dense_rank_t, OverArgs...> over(OverArgs... overArgs) {
-            validate_over_arguments<OverArgs...>();
-            return {*this, {std::forward<OverArgs>(overArgs)...}};
-        }
-    };
-
-    struct percent_rank_t {
-        template<class... OverArgs>
-        over_t<percent_rank_t, OverArgs...> over(OverArgs... overArgs) {
-            validate_over_arguments<OverArgs...>();
-            return {*this, {std::forward<OverArgs>(overArgs)...}};
-        }
-    };
-
-    struct cume_dist_t {
-        template<class... OverArgs>
-        over_t<cume_dist_t, OverArgs...> over(OverArgs... overArgs) {
-            validate_over_arguments<OverArgs...>();
-            return {*this, {std::forward<OverArgs>(overArgs)...}};
-        }
-    };
-
-    template<class... Args>
-    struct ntile_t {
-        using args_type = std::tuple<Args...>;
-        args_type args;
-
-        template<class... OverArgs>
-        over_t<ntile_t, OverArgs...> over(OverArgs... overArgs) {
-            validate_over_arguments<OverArgs...>();
-            return {*this, {std::forward<OverArgs>(overArgs)...}};
-        }
-    };
-
-    template<class... Args>
-    struct lag_t {
-        using args_type = std::tuple<Args...>;
-        args_type args;
-
-        template<class... OverArgs>
-        over_t<lag_t, OverArgs...> over(OverArgs... overArgs) {
-            validate_over_arguments<OverArgs...>();
-            return {*this, {std::forward<OverArgs>(overArgs)...}};
-        }
-    };
-
-    template<class... Args>
-    struct lead_t {
-        using args_type = std::tuple<Args...>;
-        args_type args;
-
-        template<class... OverArgs>
-        over_t<lead_t, OverArgs...> over(OverArgs... overArgs) {
-            validate_over_arguments<OverArgs...>();
-            return {*this, {std::forward<OverArgs>(overArgs)...}};
-        }
-    };
-
-    template<class... Args>
-    struct first_value_t {
-        using args_type = std::tuple<Args...>;
-        args_type args;
-
-        template<class... OverArgs>
-        over_t<first_value_t, OverArgs...> over(OverArgs... overArgs) {
-            validate_over_arguments<OverArgs...>();
-            return {*this, {std::forward<OverArgs>(overArgs)...}};
-        }
-    };
-
-    template<class... Args>
-    struct last_value_t {
-        using args_type = std::tuple<Args...>;
-        args_type args;
-
-        template<class... OverArgs>
-        over_t<last_value_t, OverArgs...> over(OverArgs... overArgs) {
-            validate_over_arguments<OverArgs...>();
-            return {*this, {std::forward<OverArgs>(overArgs)...}};
-        }
-    };
-
-    template<class... Args>
-    struct nth_value_t {
-        using args_type = std::tuple<Args...>;
-        args_type args;
-
-        template<class... OverArgs>
-        over_t<nth_value_t, OverArgs...> over(OverArgs... overArgs) {
-            validate_over_arguments<OverArgs...>();
-            return {*this, {std::forward<OverArgs>(overArgs)...}};
-        }
-    };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-
-    /**
-     *  ROW_NUMBER() window function.
-     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
-     */
-    inline internal::row_number_t row_number() {
-        return {};
-    }
-
-    /**
-     *  DENSE_RANK() window function.
-     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
-     */
-    inline internal::dense_rank_t dense_rank() {
-        return {};
-    }
-
-    /**
-     *  PERCENT_RANK() window function.
-     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
-     */
-    inline internal::percent_rank_t percent_rank() {
-        return {};
-    }
-
-    /**
-     *  CUME_DIST() window function.
-     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
-     */
-    inline internal::cume_dist_t cume_dist() {
-        return {};
-    }
-
-    /**
-     *  NTILE(N) window function.
-     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
-     */
-    template<class N>
-    internal::ntile_t<N> ntile(N n) {
-        return {std::tuple<N>{std::forward<N>(n)}};
-    }
-
-    /**
-     *  LAG(expr) window function.
-     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
-     */
-    template<class E>
-    internal::lag_t<E> lag(E expression) {
-        return {std::tuple<E>{std::forward<E>(expression)}};
-    }
-
-    /**
-     *  LAG(expr, offset) window function.
-     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
-     */
-    template<class E, class O>
-    internal::lag_t<E, O> lag(E expression, O offset) {
-        return {{std::forward<E>(expression), std::forward<O>(offset)}};
-    }
-
-    /**
-     *  LAG(expr, offset, default) window function.
-     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
-     */
-    template<class E, class O, class D>
-    internal::lag_t<E, O, D> lag(E expression, O offset, D defaultValue) {
-        return {{std::forward<E>(expression), std::forward<O>(offset), std::forward<D>(defaultValue)}};
-    }
-
-    /**
-     *  LEAD(expr) window function.
-     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
-     */
-    template<class E>
-    internal::lead_t<E> lead(E expression) {
-        return {std::tuple<E>{std::forward<E>(expression)}};
-    }
-
-    /**
-     *  LEAD(expr, offset) window function.
-     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
-     */
-    template<class E, class O>
-    internal::lead_t<E, O> lead(E expression, O offset) {
-        return {{std::forward<E>(expression), std::forward<O>(offset)}};
-    }
-
-    /**
-     *  LEAD(expr, offset, default) window function.
-     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
-     */
-    template<class E, class O, class D>
-    internal::lead_t<E, O, D> lead(E expression, O offset, D defaultValue) {
-        return {{std::forward<E>(expression), std::forward<O>(offset), std::forward<D>(defaultValue)}};
-    }
-
-    /**
-     *  FIRST_VALUE(expr) window function.
-     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
-     */
-    template<class E>
-    internal::first_value_t<E> first_value(E expression) {
-        return {std::tuple<E>{std::forward<E>(expression)}};
-    }
-
-    /**
-     *  LAST_VALUE(expr) window function.
-     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
-     */
-    template<class E>
-    internal::last_value_t<E> last_value(E expression) {
-        return {std::tuple<E>{std::forward<E>(expression)}};
-    }
-
-    /**
-     *  NTH_VALUE(expr, N) window function.
-     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
-     */
-    template<class E, class N>
-    internal::nth_value_t<E, N> nth_value(E expression, N n) {
-        return {{std::forward<E>(expression), std::forward<N>(n)}};
-    }
-}
-
 namespace sqlite_orm::internal {
     /**
      *  Obtains the result type of expressions that form the columns of a select statement.
@@ -15190,61 +14967,6 @@ namespace sqlite_orm::internal {
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_over, T>> : column_result_t<DBOs, function_type_t<T>> {};
-
-    template<class DBOs>
-    struct column_result_t<DBOs, row_number_t, void> {
-        using type = int;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, dense_rank_t, void> {
-        using type = int;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, percent_rank_t, void> {
-        using type = double;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, cume_dist_t, void> {
-        using type = double;
-    };
-
-    template<class DBOs, class... Args>
-    struct column_result_t<DBOs, ntile_t<Args...>, void> {
-        using type = int;
-    };
-
-    template<class DBOs, class X, class... Rest>
-    struct column_result_t<DBOs, lag_t<X, Rest...>, void> {
-        using type = column_result_of_t<DBOs, X>;
-    };
-
-    template<class DBOs, class X, class... Rest>
-    struct column_result_t<DBOs, lead_t<X, Rest...>, void> {
-        using type = column_result_of_t<DBOs, X>;
-    };
-
-    template<class DBOs, class X, class... Rest>
-    struct column_result_t<DBOs, first_value_t<X, Rest...>, void> {
-        using type = column_result_of_t<DBOs, X>;
-    };
-
-    template<class DBOs, class X, class... Rest>
-    struct column_result_t<DBOs, last_value_t<X, Rest...>, void> {
-        using type = column_result_of_t<DBOs, X>;
-    };
-
-    template<class DBOs, class X, class... Rest>
-    struct column_result_t<DBOs, nth_value_t<X, Rest...>, void> {
-        using type = column_result_of_t<DBOs, X>;
-    };
-
-    template<class DBOs>
-    struct column_result_t<DBOs, rank_t, void> {
-        using type = int;
-    };
 
     template<class DBOs>
     struct column_result_t<DBOs, std::nullptr_t, void> {
@@ -17848,8 +17570,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-// #include "window_functions.h"
-
 namespace sqlite_orm::internal {
     /**
      *  ast_iterator accepts any expression and a callable object
@@ -18551,66 +18271,6 @@ namespace sqlite_orm::internal {
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
             iterate_ast(node.arguments, lambda);
-        }
-    };
-
-    template<class... Args>
-    struct ast_iterator<ntile_t<Args...>, void> {
-        using node_type = ntile_t<Args...>;
-
-        template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(node.args, lambda);
-        }
-    };
-
-    template<class... Args>
-    struct ast_iterator<lag_t<Args...>, void> {
-        using node_type = lag_t<Args...>;
-
-        template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(node.args, lambda);
-        }
-    };
-
-    template<class... Args>
-    struct ast_iterator<lead_t<Args...>, void> {
-        using node_type = lead_t<Args...>;
-
-        template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(node.args, lambda);
-        }
-    };
-
-    template<class... Args>
-    struct ast_iterator<first_value_t<Args...>, void> {
-        using node_type = first_value_t<Args...>;
-
-        template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(node.args, lambda);
-        }
-    };
-
-    template<class... Args>
-    struct ast_iterator<last_value_t<Args...>, void> {
-        using node_type = last_value_t<Args...>;
-
-        template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(node.args, lambda);
-        }
-    };
-
-    template<class... Args>
-    struct ast_iterator<nth_value_t<Args...>, void> {
-        using node_type = nth_value_t<Args...>;
-
-        template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(node.args, lambda);
         }
     };
 }
@@ -22906,10 +22566,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-// #include "ast/rank.h"
-
-// #include "window_functions.h"
-
 // #include "conditions.h"
 
 // #include "prepared_statement.h"
@@ -23861,128 +23517,6 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<row_number_t, void> {
-        using statement_type = row_number_t;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
-                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return "ROW_NUMBER()";
-        }
-    };
-
-    template<>
-    struct statement_serializer<dense_rank_t, void> {
-        using statement_type = dense_rank_t;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
-                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return "DENSE_RANK()";
-        }
-    };
-
-    template<>
-    struct statement_serializer<percent_rank_t, void> {
-        using statement_type = percent_rank_t;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
-                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return "PERCENT_RANK()";
-        }
-    };
-
-    template<>
-    struct statement_serializer<cume_dist_t, void> {
-        using statement_type = cume_dist_t;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type&,
-                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return "CUME_DIST()";
-        }
-    };
-
-    template<class... Args>
-    struct statement_serializer<ntile_t<Args...>, void> {
-        using statement_type = ntile_t<Args...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-            ss << "NTILE(" << streaming_expressions_tuple(statement.args, context) << ")";
-            return ss.str();
-        }
-    };
-
-    template<class... Args>
-    struct statement_serializer<lag_t<Args...>, void> {
-        using statement_type = lag_t<Args...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-            ss << "LAG(" << streaming_expressions_tuple(statement.args, context) << ")";
-            return ss.str();
-        }
-    };
-
-    template<class... Args>
-    struct statement_serializer<lead_t<Args...>, void> {
-        using statement_type = lead_t<Args...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-            ss << "LEAD(" << streaming_expressions_tuple(statement.args, context) << ")";
-            return ss.str();
-        }
-    };
-
-    template<class... Args>
-    struct statement_serializer<first_value_t<Args...>, void> {
-        using statement_type = first_value_t<Args...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-            ss << "FIRST_VALUE(" << streaming_expressions_tuple(statement.args, context) << ")";
-            return ss.str();
-        }
-    };
-
-    template<class... Args>
-    struct statement_serializer<last_value_t<Args...>, void> {
-        using statement_type = last_value_t<Args...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-            ss << "LAST_VALUE(" << streaming_expressions_tuple(statement.args, context) << ")";
-            return ss.str();
-        }
-    };
-
-    template<class... Args>
-    struct statement_serializer<nth_value_t<Args...>, void> {
-        using statement_type = nth_value_t<Args...>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
-            ss << "NTH_VALUE(" << streaming_expressions_tuple(statement.args, context) << ")";
-            return ss.str();
-        }
-    };
-
     template<class T>
     struct statement_serializer<T, std::enable_if_t<is_unbounded_preceding<T>::value>> {
         using statement_type = T;
@@ -24119,14 +23653,7 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            //  `rank_t` carries two meanings. On its own it serializes as the bare `rank`, which serves
-            //  the deprecated `order_by(rank())` spelling of the hidden FTS5 rank column and goes with it
-            //  in v1.11; under an OVER clause it is the RANK() window function, the meaning that stays.
-            if constexpr (std::is_same<function_type_t<statement_type>, rank_t>::value) {
-                ss << "rank()";
-            } else {
-                ss << serialize(statement.function, context);
-            }
+            ss << serialize(statement.function, context);
             serialize_over_arguments(ss, statement.arguments, context);
             return ss.str();
         }
@@ -24346,17 +23873,6 @@ namespace sqlite_orm::internal {
                 throw std::system_error{orm_error_code::column_not_found};
             }
             return ss.str();
-        }
-    };
-
-    template<>
-    struct statement_serializer<rank_t, void> {
-        using statement_type = rank_t;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
-                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return "rank";
         }
     };
 
@@ -31927,8 +31443,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/offset.h"
 
-// #include "ast/rank.h"
-
 // #include "ast/result_columns.h"
 
 // #include "ast/rowset_deduplicators.h"
@@ -32163,6 +31677,332 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "ast/window.h"
+
+// #include "ast/window_functions.h"
+
+/** @file The built-in window functions: ROW_NUMBER(), RANK(), DENSE_RANK(), PERCENT_RANK(), CUME_DIST(),
+ *        NTILE(N), LAG(expr), LEAD(expr), FIRST_VALUE(expr), LAST_VALUE(expr) and NTH_VALUE(expr, N).
+ *
+ *        They are built-in functions of the window kind, applied by an OVER clause: in C++20 builds definition
+ *        objects of `ast/builtin_function.h` (`"ROW_NUMBER"_builtin.window<int()>()`), in C++17 builds legacy
+ *        factories over `builtin_window_function_t`. Either way their call nodes are built-in function calls,
+ *        classified by `is_builtin_function_call` like those of the scalar and aggregate functions.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string_view>  //  std::string_view
+#include <tuple>  //  std::tuple
+#include <utility>  //  std::forward
+#endif
+
+// #include "../vocabulary/node_algorithms.h"
+//  argument
+// #include "builtin_function.h"
+
+#ifndef SQLITE_ORM_WITH_CPP20_ALIASES
+namespace sqlite_orm::internal {
+    /*
+     *  The name tags of the legacy built-in window function nodes.
+     */
+    struct row_number_string {
+        std::string_view serialize() const {
+            return "ROW_NUMBER";
+        }
+    };
+
+    struct rank_string {
+        std::string_view serialize() const {
+            return "RANK";
+        }
+    };
+
+    struct dense_rank_string {
+        std::string_view serialize() const {
+            return "DENSE_RANK";
+        }
+    };
+
+    struct percent_rank_string {
+        std::string_view serialize() const {
+            return "PERCENT_RANK";
+        }
+    };
+
+    struct cume_dist_string {
+        std::string_view serialize() const {
+            return "CUME_DIST";
+        }
+    };
+
+    struct ntile_string {
+        std::string_view serialize() const {
+            return "NTILE";
+        }
+    };
+
+    struct lag_string {
+        std::string_view serialize() const {
+            return "LAG";
+        }
+    };
+
+    struct lead_string {
+        std::string_view serialize() const {
+            return "LEAD";
+        }
+    };
+
+    struct first_value_string {
+        std::string_view serialize() const {
+            return "FIRST_VALUE";
+        }
+    };
+
+    struct last_value_string {
+        std::string_view serialize() const {
+            return "LAST_VALUE";
+        }
+    };
+
+    struct nth_value_string {
+        std::string_view serialize() const {
+            return "NTH_VALUE";
+        }
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  ROW_NUMBER() window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline internal::builtin_window_function_t<int, internal::row_number_string> row_number() {
+        return {std::tuple<>{}};
+    }
+
+    /**
+     *  RANK() window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline internal::builtin_window_function_t<int, internal::rank_string> rank() {
+        return {std::tuple<>{}};
+    }
+
+    /**
+     *  DENSE_RANK() window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline internal::builtin_window_function_t<int, internal::dense_rank_string> dense_rank() {
+        return {std::tuple<>{}};
+    }
+
+    /**
+     *  PERCENT_RANK() window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline internal::builtin_window_function_t<double, internal::percent_rank_string> percent_rank() {
+        return {std::tuple<>{}};
+    }
+
+    /**
+     *  CUME_DIST() window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline internal::builtin_window_function_t<double, internal::cume_dist_string> cume_dist() {
+        return {std::tuple<>{}};
+    }
+
+    /**
+     *  NTILE(N) window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    template<class N>
+    internal::builtin_window_function_t<int, internal::ntile_string, N> ntile(N n) {
+        return {std::tuple<N>{std::forward<N>(n)}};
+    }
+
+    /**
+     *  LAG(expr) window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    template<class E>
+    internal::builtin_window_function_t<internal::argument<0>, internal::lag_string, E> lag(E expression) {
+        return {std::tuple<E>{std::forward<E>(expression)}};
+    }
+
+    /**
+     *  LAG(expr, offset) window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    template<class E, class O>
+    internal::builtin_window_function_t<internal::argument<0>, internal::lag_string, E, O> lag(E expression, O offset) {
+        return {std::tuple<E, O>{std::forward<E>(expression), std::forward<O>(offset)}};
+    }
+
+    /**
+     *  LAG(expr, offset, default) window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    template<class E, class O, class D>
+    internal::builtin_window_function_t<internal::argument<0>, internal::lag_string, E, O, D>
+    lag(E expression, O offset, D defaultValue) {
+        return {
+            std::tuple<E, O, D>{std::forward<E>(expression), std::forward<O>(offset), std::forward<D>(defaultValue)}};
+    }
+
+    /**
+     *  LEAD(expr) window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    template<class E>
+    internal::builtin_window_function_t<internal::argument<0>, internal::lead_string, E> lead(E expression) {
+        return {std::tuple<E>{std::forward<E>(expression)}};
+    }
+
+    /**
+     *  LEAD(expr, offset) window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    template<class E, class O>
+    internal::builtin_window_function_t<internal::argument<0>, internal::lead_string, E, O> lead(E expression,
+                                                                                                 O offset) {
+        return {std::tuple<E, O>{std::forward<E>(expression), std::forward<O>(offset)}};
+    }
+
+    /**
+     *  LEAD(expr, offset, default) window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    template<class E, class O, class D>
+    internal::builtin_window_function_t<internal::argument<0>, internal::lead_string, E, O, D>
+    lead(E expression, O offset, D defaultValue) {
+        return {
+            std::tuple<E, O, D>{std::forward<E>(expression), std::forward<O>(offset), std::forward<D>(defaultValue)}};
+    }
+
+    /**
+     *  FIRST_VALUE(expr) window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    template<class E>
+    internal::builtin_window_function_t<internal::argument<0>, internal::first_value_string, E>
+    first_value(E expression) {
+        return {std::tuple<E>{std::forward<E>(expression)}};
+    }
+
+    /**
+     *  LAST_VALUE(expr) window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    template<class E>
+    internal::builtin_window_function_t<internal::argument<0>, internal::last_value_string, E>
+    last_value(E expression) {
+        return {std::tuple<E>{std::forward<E>(expression)}};
+    }
+
+    /**
+     *  NTH_VALUE(expr, N) window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    template<class E, class N>
+    internal::builtin_window_function_t<internal::argument<0>, internal::nth_value_string, E, N> nth_value(E expression,
+                                                                                                           N n) {
+        return {std::tuple<E, N>{std::forward<E>(expression), std::forward<N>(n)}};
+    }
+}
+#else
+namespace sqlite_orm::internal {
+    /*
+     *  Built-in window function definitions.
+     *
+     *  Defined here, where the internal `""_builtin` literal is found by unqualified lookup,
+     *  and published below in the `sqlite_orm` namespace as copies.
+     */
+    inline constexpr auto row_number = "ROW_NUMBER"_builtin.window<int()>();
+    inline constexpr auto rank = "RANK"_builtin.window<int()>();
+    inline constexpr auto dense_rank = "DENSE_RANK"_builtin.window<int()>();
+    inline constexpr auto percent_rank = "PERCENT_RANK"_builtin.window<double()>();
+    inline constexpr auto cume_dist = "CUME_DIST"_builtin.window<double()>();
+    inline constexpr auto ntile = "NTILE"_builtin.window<int(anything)>();
+    inline constexpr auto lag = "LAG"_builtin.window<argument<0>(anything),
+                                                     argument<0>(anything, anything),
+                                                     argument<0>(anything, anything, anything)>();
+    inline constexpr auto lead = "LEAD"_builtin.window<argument<0>(anything),
+                                                       argument<0>(anything, anything),
+                                                       argument<0>(anything, anything, anything)>();
+    inline constexpr auto first_value = "FIRST_VALUE"_builtin.window<argument<0>(anything)>();
+    inline constexpr auto last_value = "LAST_VALUE"_builtin.window<argument<0>(anything)>();
+    inline constexpr auto nth_value = "NTH_VALUE"_builtin.window<argument<0>(anything, anything)>();
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  ROW_NUMBER() window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline constexpr orm_builtin_function auto row_number = internal::row_number;
+
+    /**
+     *  RANK() window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline constexpr orm_builtin_function auto rank = internal::rank;
+
+    /**
+     *  DENSE_RANK() window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline constexpr orm_builtin_function auto dense_rank = internal::dense_rank;
+
+    /**
+     *  PERCENT_RANK() window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline constexpr orm_builtin_function auto percent_rank = internal::percent_rank;
+
+    /**
+     *  CUME_DIST() window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline constexpr orm_builtin_function auto cume_dist = internal::cume_dist;
+
+    /**
+     *  NTILE(N) window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline constexpr orm_builtin_function auto ntile = internal::ntile;
+
+    /**
+     *  LAG(expr[, offset[, default]]) window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline constexpr orm_builtin_function auto lag = internal::lag;
+
+    /**
+     *  LEAD(expr[, offset[, default]]) window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline constexpr orm_builtin_function auto lead = internal::lead;
+
+    /**
+     *  FIRST_VALUE(expr) window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline constexpr orm_builtin_function auto first_value = internal::first_value;
+
+    /**
+     *  LAST_VALUE(expr) window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline constexpr orm_builtin_function auto last_value = internal::last_value;
+
+    /**
+     *  NTH_VALUE(expr, N) window function.
+     *  https://sqlite.org/windowfunctions.html#built-in_window_functions
+     */
+    inline constexpr orm_builtin_function auto nth_value = internal::nth_value;
+}
+#endif
 
 #pragma once
 
@@ -32647,8 +32487,6 @@ namespace sqlite_orm::internal {
 
 // #include "optional_container.h"
 
-// #include "window_functions.h"
-
 // #include "vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
@@ -32916,44 +32754,6 @@ namespace sqlite_orm::internal {
 
     template<class T>
     struct node_tuple<T, std::enable_if_t<is_window_defn<T>::value>> : node_tuple<args_type_t<T>> {};
-
-    template<>
-    struct node_tuple<row_number_t, void> {
-        using type = std::tuple<>;
-    };
-
-    template<>
-    struct node_tuple<dense_rank_t, void> {
-        using type = std::tuple<>;
-    };
-
-    template<>
-    struct node_tuple<percent_rank_t, void> {
-        using type = std::tuple<>;
-    };
-
-    template<>
-    struct node_tuple<cume_dist_t, void> {
-        using type = std::tuple<>;
-    };
-
-    template<class... Args>
-    struct node_tuple<ntile_t<Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class... Args>
-    struct node_tuple<lag_t<Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class... Args>
-    struct node_tuple<lead_t<Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class... Args>
-    struct node_tuple<first_value_t<Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class... Args>
-    struct node_tuple<last_value_t<Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class... Args>
-    struct node_tuple<nth_value_t<Args...>, void> : node_tuple_for<Args...> {};
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -33731,6 +33531,59 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     constexpr auto highlight(X x, Y y, Z z) {
         //  the hidden column named like the table stands for the table
         return highlight(column<O>(&fts5::hidden::any), std::move(x), std::move(y), std::move(z));
+    }
+}
+#endif
+
+// #include "fts5_deprecations.h"
+
+/** @file The deprecated `order_by(rank())` spelling of the hidden FTS5 rank column.
+ *
+ *        `rank()` is the RANK() window function, and it happened to be the spelling of the hidden FTS5 rank
+ *        column as well, by the bare `rank` it used to serialize to. That dual meaning gets a header of its own,
+ *        which pulls in what it needs rather than having the FTS5 module, the window functions or ORDER BY
+ *        depend on it. Goes as a whole in v1.11.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#include <string_view>  //  std::string_view
+#endif
+#endif
+
+// #include "../ast/window_functions.h"
+//  rank
+// #include "../conditions.h"
+//  order_by_t
+// #include "../statement_serializer.h"
+//  statement_serializer
+
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+namespace sqlite_orm::internal {
+    /*
+     *  The hidden FTS5 rank column as the deprecated `order_by(rank())` refers to it, i.e. not bound to a table.
+     */
+    struct fts5_rank_column_t {};
+
+    template<>
+    struct statement_serializer<fts5_rank_column_t, void> {
+        using statement_type = fts5_rank_column_t;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+            return "rank";
+        }
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
+     */
+    [[deprecated("Use the hidden FTS5 rank column instead")]]
+    inline internal::order_by_t<internal::fts5_rank_column_t> order_by(decltype(rank()) /*rank*/) {
+        return {internal::fts5_rank_column_t{}};
     }
 }
 #endif

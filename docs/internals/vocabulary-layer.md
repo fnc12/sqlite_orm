@@ -427,13 +427,10 @@ header. A definition that covers derived nodes too sits after the base it names 
 
 Every DSL node gets a trait of its own, or is covered by one of its grammar family —
 `all_t` by `is_rowset_deduplicator`, `union_t`/`except_t`/`intersect_t` by
-`is_compound_operator`. Builder intermediates (`simple_case_builder`, `conflict_target`)
+`is_compound_operator`, the built-in scalar, aggregate and window functions by
+`is_builtin_function_call`. Builder intermediates (`simple_case_builder`, `conflict_target`)
 and element types a node stores but no consumer visits (`then_t`, `dynamic_set_entry`)
 are not nodes in this sense.
-
-The one deliberate exception is the built-in window functions — `rank_t` and the nodes
-of `window_functions.h`. Each is a function in its own right, not a member of a grammar
-production, so it gets no node trait and its consumers name it by its type.
 
 ### How consumers match a node
 

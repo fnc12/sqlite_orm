@@ -27,10 +27,10 @@ TEST_CASE("statement_serializer window functions") {
         expected = R"(ROW_NUMBER() OVER (ORDER BY "t1"."b"))";
     }
     SECTION("rank") {
-        // SQL: rank() OVER (ORDER BY b)
+        // SQL: RANK() OVER (ORDER BY b)
         auto expression = rank().over(order_by(&T1::b));
         value = serialize(expression, context);
-        expected = R"(rank() OVER (ORDER BY "t1"."b"))";
+        expected = R"(RANK() OVER (ORDER BY "t1"."b"))";
     }
     SECTION("dense_rank") {
         // SQL: DENSE_RANK() OVER (ORDER BY a)

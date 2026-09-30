@@ -13,7 +13,6 @@
 #include "operators.h"
 #include "prepared_statement.h"
 #include "optional_container.h"
-#include "window_functions.h"
 #include "vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
@@ -281,42 +280,4 @@ namespace sqlite_orm::internal {
 
     template<class T>
     struct node_tuple<T, std::enable_if_t<is_window_defn<T>::value>> : node_tuple<args_type_t<T>> {};
-
-    template<>
-    struct node_tuple<row_number_t, void> {
-        using type = std::tuple<>;
-    };
-
-    template<>
-    struct node_tuple<dense_rank_t, void> {
-        using type = std::tuple<>;
-    };
-
-    template<>
-    struct node_tuple<percent_rank_t, void> {
-        using type = std::tuple<>;
-    };
-
-    template<>
-    struct node_tuple<cume_dist_t, void> {
-        using type = std::tuple<>;
-    };
-
-    template<class... Args>
-    struct node_tuple<ntile_t<Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class... Args>
-    struct node_tuple<lag_t<Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class... Args>
-    struct node_tuple<lead_t<Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class... Args>
-    struct node_tuple<first_value_t<Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class... Args>
-    struct node_tuple<last_value_t<Args...>, void> : node_tuple_for<Args...> {};
-
-    template<class... Args>
-    struct node_tuple<nth_value_t<Args...>, void> : node_tuple_for<Args...> {};
 }
