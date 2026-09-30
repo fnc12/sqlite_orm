@@ -16786,7 +16786,13 @@ namespace sqlite_orm::internal {
 
 // #include "error_code.h"
 
-// #include "vfs_name.h"
+// #include "builtin/vfs.h"
+
+/** @file The names of SQLite's built-in VFSes (OS interface layers), per platform, and the default one.
+ *
+ *  Like the built-in collations, they are the stock instances of a kind of named object that applications
+ *  can register more of (`sqlite3_vfs_register()`); a storage opens its database with any registered one.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string_view>  //  std::string_view
@@ -16847,6 +16853,9 @@ namespace sqlite_orm::internal {
 #include <functional>  //  std::function
 #include <string_view>  //  std::string_view
 #endif
+
+// #include "builtin/vfs.h"
+//  default_vfs_name
 
 namespace sqlite_orm::internal {
     template<typename T>

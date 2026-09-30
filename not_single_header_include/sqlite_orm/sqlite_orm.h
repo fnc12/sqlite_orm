@@ -9,6 +9,7 @@
 #include "../../dev/interface_definitions.h"
 #include "../../dev/get_prepared_statement.h"
 #include "../../dev/builtin/collations.h"
+#include "../../dev/builtin/vfs.h"
 #include "../../dev/builtin/functions.h"
 #include "../../dev/builtin/dbos.h"
 #include "../../dev/carray.h"
