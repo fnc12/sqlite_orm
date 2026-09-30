@@ -16836,7 +16836,7 @@ namespace sqlite_orm::internal {
                 return SQLITE_OPEN_READONLY;
             case db_open_mode::create_readwrite:
                 return SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE;
-        };
+        }
 
         return -1;
     }
@@ -16856,6 +16856,7 @@ namespace sqlite_orm::internal {
 
 // #include "builtin/vfs.h"
 //  default_vfs_name
+// #include "db_open_mode.h"
 
 namespace sqlite_orm::internal {
     template<typename T>
