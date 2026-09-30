@@ -8,6 +8,8 @@
 #include "../../dev/node_algorithm_definitions.h"
 #include "../../dev/interface_definitions.h"
 #include "../../dev/get_prepared_statement.h"
+#include "../../dev/core_functions.h"
+#include "../../dev/window_functions.h"
 #include "../../dev/vtabs/vtabs.h"
 #include "../../dev/carray.h"
 #include "../../dev/functional/finish_macros.h"
