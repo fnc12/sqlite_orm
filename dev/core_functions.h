@@ -14,8 +14,10 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/type_traits.h"
 #include "tuple_helper/tuple_traits.h"
-#include "conditions.h"
+#include "ast/binary_condition.h"
 #include "operators.h"
+#include "column_pointer.h"
+#include "table_reference.h"
 #include "literal.h"  // literal_holder
 #include "alias_traits.h"
 #include "vocabulary/node_traits.h"

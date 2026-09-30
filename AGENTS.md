@@ -69,7 +69,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 
 4. **Statement serialization** (`dev/statement_serializer.h`, `dev/serializer_context.h`): Converts C++ expression objects into SQL strings.
 
-5. **Expression objects** (`dev/conditions.h`, `dev/core_functions.h`, `dev/ast/`): Type-safe representations of SQL operations (WHERE, JOIN, ORDER BY, etc.).
+5. **Expression objects** (`dev/ast/`, `dev/core_functions.h`): Type-safe representations of SQL operations (WHERE, JOIN, ORDER BY, etc.).
 
 ### Key Implementation Files
 
@@ -98,7 +98,8 @@ The library uses a **storage-centric architecture** with compile-time type safet
 - `dev/member_traits/` - Pointer-to-member mechanics; one tier below the DSL
 
 **Query building:**
-- `dev/conditions.h` - WHERE clause conditions
+- `dev/ast/binary_condition.h`, `dev/ast/negated_condition.h`, `dev/ast/like.h`, `dev/ast/collate.h` - Conditions of a WHERE clause and elsewhere
+- `dev/ast/from.h`, `dev/ast/join.h`, `dev/ast/order_by.h` - FROM with its joins, and ORDER BY
 - `dev/core_functions.h` - The built-in SQL functions; their call nodes are in `dev/ast/builtin_function.h`
 - `dev/ast/app_function.h` - Application-defined function calls (`func<UDF>`, `"name"_scalar`) and the UDF classification traits
 - `dev/ast/` - AST nodes for query, DML and operational constructs (`select_t`, `insert_t`, `where`, `window`, ...)

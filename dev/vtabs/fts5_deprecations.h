@@ -15,7 +15,7 @@
 #endif
 
 #include "../ast/window_functions.h"  //  rank
-#include "../conditions.h"  //  order_by_t
+#include "../ast/order_by.h"  //  order_by_t
 #include "../statement_serializer.h"  //  statement_serializer
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)

@@ -1,5 +1,8 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <string>  //  std::string
+#include <tuple>  //  std::tuple
+#include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
 
@@ -46,6 +49,28 @@ TEST_CASE("expression classification") {
         STATIC_REQUIRE_FALSE(internal::is_exists_v<decltype(select(&User::id))>);
         STATIC_REQUIRE_FALSE(internal::is_cast_v<decltype(&User::id)>);
         STATIC_REQUIRE_FALSE(internal::is_excluded_v<decltype(&User::name)>);
+    }
+
+    SECTION("conditions") {
+        STATIC_REQUIRE(internal::is_like_v<decltype(like(&User::name, "a%"))>);
+        STATIC_REQUIRE(internal::is_like_v<decltype(like(&User::name, "a%", "\\"))>);
+        STATIC_REQUIRE(internal::is_glob_v<decltype(glob(&User::name, "a*"))>);
+        STATIC_REQUIRE_FALSE(internal::is_glob_v<decltype(like(&User::name, "a%"))>);
+        STATIC_REQUIRE(internal::is_negated_condition_v<decltype(!is_null(&User::name))>);
+        STATIC_REQUIRE_FALSE(internal::is_negated_condition_v<decltype(is_null(&User::name))>);
+        STATIC_REQUIRE(internal::is_collate_v<decltype(is_equal(&User::name, "a").collate_nocase())>);
+        STATIC_REQUIRE(internal::is_named_collate_v<decltype(is_equal(&User::name, "a").collate("custom"))>);
+        STATIC_REQUIRE_FALSE(internal::is_collate_v<decltype(is_equal(&User::name, "a").collate("custom"))>);
+        STATIC_REQUIRE(internal::is_equal_with_table_v<internal::is_equal_with_table_t<User, std::string>>);
+        STATIC_REQUIRE_FALSE(internal::is_equal_with_table_v<decltype(is_equal(&User::name, "a"))>);
+        STATIC_REQUIRE_FALSE(internal::is_binary_condition_v<internal::is_equal_with_table_t<User, std::string>>);
+
+        //  a collated condition is walked into like any other node, both by the AST iterator and the node tuple
+        using Collated = decltype(is_equal(&User::id, 1).collate_binary());
+        STATIC_REQUIRE(std::is_same<internal::node_tuple_t<Collated>, std::tuple<decltype(&User::id), int>>::value);
+        using LikeEscape = decltype(like(&User::name, std::string("a%"), std::string("\\")));
+        STATIC_REQUIRE(std::is_same<internal::node_tuple_t<LikeEscape>,
+                                    std::tuple<decltype(&User::name), std::string, std::string>>::value);
     }
 
     SECTION("rowid") {
