@@ -25,6 +25,8 @@
 
 * JSON: `->` and `->>` operators (3.38), JSONB function family (3.45+: `jsonb`, `jsonb_extract`, `jsonb_set`, `jsonb_insert`, `jsonb_replace`, `jsonb_remove`, `jsonb_patch`, `jsonb_object`, `jsonb_array`, `jsonb_group_array`, `jsonb_group_object`, `jsonb_array_insert` 3.53)
 * `json_each` and `json_tree` (and `jsonb_each`/`jsonb_tree`, 3.51) table-valued functions
+* the `carray()` table-valued function — its definition goes to `dev/builtin/dbos/carray.h`, and the `"carray"` pointer type and its binding helpers in `dev/carray.h` move along with it, as the table-valued function is what consumes them
+* the PRAGMA table-valued functions `pragma_table_info()` / `pragma_table_xinfo()` — their definitions go to `dev/builtin/dbos/`, and the row types `table_info` / `table_xinfo` in `dev/table_info.h` move along with them
 * planner-hint functions: `likely()`, `unlikely()`, `likelihood()`
 * introspection functions: `sqlite_version()`, `sqlite_source_id()`, `sqlite_compileoption_used()`, `sqlite_compileoption_get()`, `sqlite_offset()`
 * `substring()` alias for `substr()` (3.34)
