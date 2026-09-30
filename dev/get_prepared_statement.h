@@ -5,17 +5,14 @@
 #include <tuple>  //  std::get
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
-#include "functional/type_traits.h"
-#include "vocabulary/node_traits.h"  // projections
-#include "vocabulary/node_algorithms.h"  // access_dml_object
-#include "ast/crud/insert.h"
-#include "ast/crud/replace.h"
-#include "ast/crud/update.h"
-#include "ast/crud/remove.h"
-#include "prepared_statement.h"
-#include "ast_iterator.h"
-#include "node_tuple.h"
+#include "functional/cxx_type_traits_polyfill.h"  //  polyfill::remove_cvref_t
+#include "functional/type_traits.h"  //  forward_lvalue_ref
+#include "vocabulary/node_traits.h"  //  traits, projections
+#include "vocabulary/node_algorithms.h"  //  is_bindable, access_dml_object
+#include "statement_binder.h"  //  bindable_filter_t
+#include "prepared_statement.h"  //  prepared_statement_t
+#include "ast_iterator.h"  //  iterate_ast
+#include "node_tuple.h"  //  node_tuple_t
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
