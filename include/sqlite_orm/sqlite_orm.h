@@ -32041,16 +32041,17 @@ namespace sqlite_orm::internal {
 
 #pragma once
 
-/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializer_context -> db_objects_tuple -> base_table -> column_t)
- *  this file is also used to provide definitions of interface methods 'hitting the database'.
+/** @file Manifest of the out-of-class member definitions in `implementations/`.
+ *
+ *  Each of those files defines members of a schema or storage class whose bodies need headers the declaring
+ *  header should not depend on itself - implementation machinery private to how the member does its work.
+ *  They are included here once, after all declarations.
  */
 
 // #include "implementations/column_definitions.h"
 
-/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializer_context -> db_objects_tuple -> base_table -> column_t)
- *  this file is also used to provide definitions of interface methods 'hitting the database'.
+/** @file Out-of-class definitions of column members, which need the statement serializer's machinery
+ *  (`default_value_extractor.h`) that `schema/column.h` stays free of.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -32106,9 +32107,8 @@ namespace sqlite_orm::internal {
 
 // #include "implementations/table_definitions.h"
 
-/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializer_context -> db_objects_tuple -> base_table -> column_t)
- *  this file is also used to provide definitions of interface methods 'hitting the database'.
+/** @file Out-of-class definitions of table members, which need the column type printer (`type_printer.h`)
+ *  that `schema/table.h` stays free of.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -32176,8 +32176,9 @@ namespace sqlite_orm::internal {
 
 // #include "implementations/storage_definitions.h"
 
-/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  this file is also used to separate implementation details from the main header file.
+/** @file Out-of-class definitions of the storage members synchronizing a base table's schema, which need the
+ *  schema table (`builtin_dbos/sqlite_schema.h`); they also keep the lengthy schema synchronization apart from
+ *  the storage interface in `storage.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

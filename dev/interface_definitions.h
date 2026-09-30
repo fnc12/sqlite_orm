@@ -1,8 +1,10 @@
 #pragma once
 
-/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializer_context -> db_objects_tuple -> base_table -> column_t)
- *  this file is also used to provide definitions of interface methods 'hitting the database'.
+/** @file Manifest of the out-of-class member definitions in `implementations/`.
+ *
+ *  Each of those files defines members of a schema or storage class whose bodies need headers the declaring
+ *  header should not depend on itself - implementation machinery private to how the member does its work.
+ *  They are included here once, after all declarations.
  */
 
 #include "implementations/column_definitions.h"

@@ -1,7 +1,8 @@
 #pragma once
 
-/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  this file is also used to separate implementation details from the main header file.
+/** @file Out-of-class definitions of the storage members synchronizing a base table's schema, which need the
+ *  schema table (`builtin_dbos/sqlite_schema.h`); they also keep the lengthy schema synchronization apart from
+ *  the storage interface in `storage.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
