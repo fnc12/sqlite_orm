@@ -99,7 +99,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 
 **Query building:**
 - `dev/conditions.h` - WHERE clause conditions
-- `dev/builtin/functions/` (umbrella `functions.h`): `core.h`, `window.h` - The built-in SQL functions (scalar and aggregate; window) - definitions, not nodes: their call nodes are in `dev/ast/builtin_function.h`
+- `dev/builtin/functions/` (umbrella `functions.h`): The built-in SQL functions, one header per family as SQLite documents them - `core.h`, `datetime.h`, `aggregate.h`, `math.h`, `json.h`, `window.h` - definitions, not nodes: their call nodes are in `dev/ast/builtin_function.h`
 - `dev/ast/app_function.h` - Application-defined function calls (`func<UDF>`, `"name"_scalar`) and the UDF classification traits
 - `dev/ast/` - AST nodes for query, DML and operational constructs (`select_t`, `insert_t`, `where`, `window`, ...)
 - `dev/ast/crud/` - One header per CRUD statement kind (`get`, `insert`, `replace`, `update`, `remove`), in both their object and their raw DML spellings, plus the clause nodes only they take (`into`, `set`, `default_values`, `upsert_clause`)
