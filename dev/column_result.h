@@ -24,7 +24,7 @@
 #include "storage_traits.h"
 #include "schema/algorithms/table_lookup.h"  // schema_pick_table_t
 #include "ast/app_function.h"
-#include "functional/sqlite3_types.h"  //  int64
+#include "functional/sqlite3/sqlite3_types.h"  //  int64
 
 namespace sqlite_orm::internal {
     /**
