@@ -11,6 +11,7 @@
 #include <string_view>  //  std::string_view
 #endif
 
+#include "../../functional/sqlite3/sqlite3_types.h"  //  int64
 #include "../../ast/builtin_function.h"
 
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -110,7 +111,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  UNIXEPOCH(timestring, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    constexpr internal::builtin_function_t<sqlite_int64, internal::unixepoch_string, Args...> unixepoch(Args... args) {
+    constexpr internal::builtin_function_t<int64, internal::unixepoch_string, Args...> unixepoch(Args... args) {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 #endif
@@ -139,7 +140,7 @@ namespace sqlite_orm::internal {
     inline constexpr auto julianday = "JULIANDAY"_builtin.scalar<double(variadic<anything>)>();
     inline constexpr auto strftime = "STRFTIME"_builtin.scalar<std::string(std::string_view, variadic<anything>)>();
 #if SQLITE_VERSION_NUMBER >= 3038000
-    inline constexpr auto unixepoch = "UNIXEPOCH"_builtin.scalar<sqlite_int64(variadic<anything>)>();
+    inline constexpr auto unixepoch = "UNIXEPOCH"_builtin.scalar<int64(variadic<anything>)>();
 #endif
 #if SQLITE_VERSION_NUMBER >= 3043000
     inline constexpr auto timediff = "TIMEDIFF"_builtin.scalar<std::string(anything, anything)>();

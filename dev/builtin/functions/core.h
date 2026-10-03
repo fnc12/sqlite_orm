@@ -836,7 +836,7 @@ namespace sqlite_orm::internal {
     inline constexpr auto abs = "ABS"_builtin.scalar<std::unique_ptr<double>(anything)>();
     inline constexpr auto lower = "LOWER"_builtin.scalar<std::string(std::string_view)>();
     inline constexpr auto upper = "UPPER"_builtin.scalar<std::string(std::string_view)>();
-    inline constexpr auto last_insert_rowid = "LAST_INSERT_ROWID"_builtin.scalar<sqlite_int64()>();
+    inline constexpr auto last_insert_rowid = "LAST_INSERT_ROWID"_builtin.scalar<int64()>();
     inline constexpr auto total_changes = "TOTAL_CHANGES"_builtin.scalar<int()>();
     inline constexpr auto changes = "CHANGES"_builtin.scalar<int()>();
     inline constexpr auto trim =
@@ -865,7 +865,7 @@ namespace sqlite_orm::internal {
         "SQLITE_COMPILEOPTION_GET"_builtin.scalar<std::unique_ptr<std::string>(int)>();
 #endif
 #ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
-    inline constexpr auto sqlite_offset = "SQLITE_OFFSET"_builtin.scalar<std::unique_ptr<sqlite_int64>(anything)>();
+    inline constexpr auto sqlite_offset = "SQLITE_OFFSET"_builtin.scalar<std::unique_ptr<int64>(anything)>();
 #endif
     inline constexpr auto coalesce =
         "COALESCE"_builtin.scalar<common_argument_type<>(anything, anything, variadic<anything>)>();

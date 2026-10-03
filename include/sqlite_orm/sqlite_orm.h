@@ -10991,7 +10991,6 @@ namespace sqlite_orm::internal {
 
 // #include "schema/column.h"
 
-#include <sqlite3.h>  //  sqlite_int64
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple
 #include <string>  //  std::string
@@ -11004,6 +11003,8 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 
+// #include "../functional/sqlite3/sqlite3_types.h"
+//  int64
 // #include "../tuple_helper/tuple_traits.h"
 
 // #include "../member_traits/member_traits.h"
@@ -11187,19 +11188,19 @@ namespace sqlite_orm::internal {
     template<class F>
     struct check_pkcol<F, std::enable_if_t<std::is_integral<F>::value>> {
         // For 64-bit signed integer type: valid
-        template<class X = F,
-                 std::enable_if_t<sizeof(X) == sizeof(sqlite_int64) &&
-                                      std::is_signed<X>::value == std::is_signed<sqlite_int64>::value,
-                                  bool> = true>
+        template<
+            class X = F,
+            std::enable_if_t<sizeof(X) == sizeof(int64) && std::is_signed<X>::value == std::is_signed<int64>::value,
+                             bool> = true>
         static constexpr void validate_column_primary_key_with_autoincrement() {}
 
         // Design decision for integral types other than 64-bit signed integer:
         // It is the programmer's responsibility to ensure data integrity in the value range of the integral type
         // and in purview of SQLite using a 64-bit signed integer.
-        template<class X = F,
-                 std::enable_if_t<sizeof(X) != sizeof(sqlite_int64) ||
-                                      std::is_signed<X>::value != std::is_signed<sqlite_int64>::value,
-                                  bool> = true>
+        template<
+            class X = F,
+            std::enable_if_t<sizeof(X) != sizeof(int64) || std::is_signed<X>::value != std::is_signed<int64>::value,
+                             bool> = true>
         static constexpr void validate_column_primary_key_with_autoincrement() {}
     };
 
@@ -28706,6 +28707,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <string_view>  //  std::string_view, std::wstring_view
 #endif
 
+// #include "../../functional/sqlite3/sqlite3_types.h"
+//  int64
 // #include "../../functional/gsl.h"
 // orm_gsl::czstring, orm_gsl::cwzstring
 // #include "../../type_printer.h"
@@ -28722,23 +28725,21 @@ namespace sqlite_orm::internal {
 
     // For 64-bit signed integer type: capable
     template<class F>
-    constexpr bool
-        is_rowid_alias_capable_v<F,
-                                 std::enable_if_t<std::is_integral<F>::value &&
-                                                  (sizeof(F) == sizeof(sqlite_int64) &&
-                                                   std::is_signed<F>::value == std::is_signed<sqlite_int64>::value)>> =
-            true;
+    constexpr bool is_rowid_alias_capable_v<
+        F,
+        std::enable_if_t<std::is_integral<F>::value &&
+                         (sizeof(F) == sizeof(int64) && std::is_signed<F>::value == std::is_signed<int64>::value)>> =
+        true;
 
     // Design decision for integral types other than 64-bit signed integer:
     // It is the programmer's responsibility to ensure data integrity in the value range of the integral type
     // and in purview of SQLite using a 64-bit signed integer.
     template<class F>
-    constexpr bool
-        is_rowid_alias_capable_v<F,
-                                 std::enable_if_t<std::is_integral<F>::value &&
-                                                  (sizeof(F) != sizeof(sqlite_int64) ||
-                                                   std::is_signed<F>::value != std::is_signed<sqlite_int64>::value)>> =
-            true;
+    constexpr bool is_rowid_alias_capable_v<
+        F,
+        std::enable_if_t<std::is_integral<F>::value &&
+                         (sizeof(F) != sizeof(int64) || std::is_signed<F>::value != std::is_signed<int64>::value)>> =
+        true;
 
     template<class T>
     constexpr bool is_text_value_v = std::disjunction<std::is_same<T, orm_gsl::czstring>,
@@ -30399,7 +30400,7 @@ namespace sqlite_orm::internal {
     inline constexpr auto abs = "ABS"_builtin.scalar<std::unique_ptr<double>(anything)>();
     inline constexpr auto lower = "LOWER"_builtin.scalar<std::string(std::string_view)>();
     inline constexpr auto upper = "UPPER"_builtin.scalar<std::string(std::string_view)>();
-    inline constexpr auto last_insert_rowid = "LAST_INSERT_ROWID"_builtin.scalar<sqlite_int64()>();
+    inline constexpr auto last_insert_rowid = "LAST_INSERT_ROWID"_builtin.scalar<int64()>();
     inline constexpr auto total_changes = "TOTAL_CHANGES"_builtin.scalar<int()>();
     inline constexpr auto changes = "CHANGES"_builtin.scalar<int()>();
     inline constexpr auto trim =
@@ -30428,7 +30429,7 @@ namespace sqlite_orm::internal {
         "SQLITE_COMPILEOPTION_GET"_builtin.scalar<std::unique_ptr<std::string>(int)>();
 #endif
 #ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
-    inline constexpr auto sqlite_offset = "SQLITE_OFFSET"_builtin.scalar<std::unique_ptr<sqlite_int64>(anything)>();
+    inline constexpr auto sqlite_offset = "SQLITE_OFFSET"_builtin.scalar<std::unique_ptr<int64>(anything)>();
 #endif
     inline constexpr auto coalesce =
         "COALESCE"_builtin.scalar<common_argument_type<>(anything, anything, variadic<anything>)>();
@@ -30818,6 +30819,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <string_view>  //  std::string_view
 #endif
 
+// #include "../../functional/sqlite3/sqlite3_types.h"
+//  int64
 // #include "../../ast/builtin_function.h"
 
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -30917,7 +30920,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  UNIXEPOCH(timestring, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    constexpr internal::builtin_function_t<sqlite_int64, internal::unixepoch_string, Args...> unixepoch(Args... args) {
+    constexpr internal::builtin_function_t<int64, internal::unixepoch_string, Args...> unixepoch(Args... args) {
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 #endif
@@ -30946,7 +30949,7 @@ namespace sqlite_orm::internal {
     inline constexpr auto julianday = "JULIANDAY"_builtin.scalar<double(variadic<anything>)>();
     inline constexpr auto strftime = "STRFTIME"_builtin.scalar<std::string(std::string_view, variadic<anything>)>();
 #if SQLITE_VERSION_NUMBER >= 3038000
-    inline constexpr auto unixepoch = "UNIXEPOCH"_builtin.scalar<sqlite_int64(variadic<anything>)>();
+    inline constexpr auto unixepoch = "UNIXEPOCH"_builtin.scalar<int64(variadic<anything>)>();
 #endif
 #if SQLITE_VERSION_NUMBER >= 3043000
     inline constexpr auto timediff = "TIMEDIFF"_builtin.scalar<std::string(anything, anything)>();
