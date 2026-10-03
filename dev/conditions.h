@@ -16,7 +16,7 @@
 #include "functional/type_traits.h"
 #include "builtin/collations.h"  //  collate_argument, collate_argument_to_string
 #include "optional_container.h"
-#include "serializer_context.h"
+#include "serialization/serializer_context.h"
 #include "tags.h"
 #include "table_reference.h"
 #include "alias_traits.h"

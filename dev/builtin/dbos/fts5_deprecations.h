@@ -16,7 +16,7 @@
 
 #include "../functions/window.h"  //  rank
 #include "../../conditions.h"  //  order_by_t
-#include "../../statement_serializer.h"  //  statement_serializer
+#include "../../serialization/statement_serializer.h"  //  statement_serializer
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 namespace sqlite_orm::internal {

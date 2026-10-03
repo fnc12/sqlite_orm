@@ -20,7 +20,7 @@
 #include "ast/cte.h"
 #include "alias.h"
 #include "cte_types.h"
-#include "cte_column_names_collector.h"
+#include "serialization/cte_column_names_collector.h"
 #include "column_expression.h"
 #include "schema/db_objects.h"
 #include "schema/algorithms/table_lookup.h"
