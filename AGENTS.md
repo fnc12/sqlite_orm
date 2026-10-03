@@ -122,6 +122,19 @@ The library uses a **storage-centric architecture** with compile-time type safet
 amalgamation of `dev/`. Never edit it by hand — change `dev/` and regenerate.
 `not_single_header_include/` holds the non-amalgamated variant.
 
+**The configuration is universally available.** Both variants include
+`dev/functional/config.h` first, and with it the C++ core feature and
+compiler-specific macros (`cxx_universal.h`), the platform macros
+(`platform_definitions.h`), `SQLITE_ORM_EXPORT` and the SQLite
+configuration of `sqlite3_config.h` - the SQLite version and feature macros
+(`SQLITE_VERSION_NUMBER`, `SQLITE_ORM_JSON_SUPPORTED`, ...). Every header in `dev/`
+can rely on them without including `config.h`, and their absence is not to be
+flagged. This covers configuration only: that `sqlite3_config.h` includes
+`<sqlite3.h>` to derive it is an implementation detail. A header that uses the
+SQLite C API - its functions, types or constants such as `SQLITE_OPEN_READONLY` -
+includes `<sqlite3.h>` itself, and a header that uses one of sqlite_orm's own
+public symbols includes the header declaring it.
+
 **Never guard an `#include` of a sqlite_orm header** — not with `#ifdef
 SQLITE_ORM_WITH_CPP20_ALIASES`, not with a SQLite version check, not with
 anything. The amalgamation inlines each header at the place it is *first*
