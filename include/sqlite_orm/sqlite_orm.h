@@ -13923,12 +13923,12 @@ namespace sqlite_orm::internal {
 // the columns of a looked-up table
 namespace sqlite_orm::internal {
     template<class Table>
-    struct schema_mapped_columns_impl {
+    struct schema_mapped_column_field_types_impl {
         using type = column_field_types_t<Table>;
     };
 
     template<>
-    struct schema_mapped_columns_impl<polyfill::nonesuch> {
+    struct schema_mapped_column_field_types_impl<polyfill::nonesuch> {
         using type = std::tuple<>;
     };
 
@@ -13940,15 +13940,16 @@ namespace sqlite_orm::internal {
      *  Lookup - mapped or unmapped data type
      */
     template<class DBOs, class Lookup>
-    struct schema_mapped_columns : schema_mapped_columns_impl<schema_find_table_t<Lookup, DBOs>> {};
+    struct schema_mapped_column_field_types : schema_mapped_column_field_types_impl<schema_find_table_t<Lookup, DBOs>> {
+    };
 
     template<class Table>
-    struct schema_mapped_column_expressions_impl {
+    struct schema_mapped_column_field_expressions_impl {
         using type = column_field_expressions_t<Table>;
     };
 
     template<>
-    struct schema_mapped_column_expressions_impl<polyfill::nonesuch> {
+    struct schema_mapped_column_field_expressions_impl<polyfill::nonesuch> {
         using type = std::tuple<>;
     };
 
@@ -13960,8 +13961,8 @@ namespace sqlite_orm::internal {
      *  Lookup - mapped or unmapped data type
      */
     template<class DBOs, class Lookup>
-    struct schema_mapped_column_expressions : schema_mapped_column_expressions_impl<schema_find_table_t<Lookup, DBOs>> {
-    };
+    struct schema_mapped_column_field_expressions
+        : schema_mapped_column_field_expressions_impl<schema_find_table_t<Lookup, DBOs>> {};
 }
 
 // runtime lookup functions
@@ -13989,7 +13990,7 @@ namespace sqlite_orm::internal {
         }
     }
 }
-// schema_pick_table_t, schema_mapped_columns
+// schema_pick_table_t, schema_mapped_column_field_types
 // #include "ast/app_function.h"
 
 /** @file The node of a call of an application-defined function, and the definition of an application-defined
@@ -14815,7 +14816,7 @@ namespace sqlite_orm::internal {
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_asterisk, T>>
-        : schema_mapped_columns<DBOs, mapped_type_proxy_t<type_t<T>>> {};
+        : schema_mapped_column_field_types<DBOs, mapped_type_proxy_t<type_t<T>>> {};
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_object_node, T>> {
@@ -26389,7 +26390,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "alias.h"
 
 // #include "schema/algorithms/table_lookup.h"
-//  schema_mapped_column_expressions
+//  schema_mapped_column_field_expressions
 
 namespace sqlite_orm::internal {
     template<class DBOs, class E, class SFINAE = void>
@@ -26448,7 +26449,7 @@ namespace sqlite_orm::internal {
         T,
         std::enable_if_t<is_asterisk_v<T> &&
                          std::disjunction_v<std::negation<is_recordset_alias<type_t<T>>>, is_cte_moniker<type_t<T>>>>>
-        : schema_mapped_column_expressions<DBOs, type_t<T>> {};
+        : schema_mapped_column_field_expressions<DBOs, type_t<T>> {};
 
     /**
      *  Resolve all columns of an aliased object.
@@ -26456,7 +26457,7 @@ namespace sqlite_orm::internal {
      */
     template<class DBOs, class T>
     struct column_expression_type<DBOs, T, std::enable_if_t<is_asterisk_v<T> && is_table_alias_v<type_t<T>>>>
-        : tuple_transformer<typename schema_mapped_column_expressions<DBOs, type_t<type_t<T>>>::type,
+        : tuple_transformer<typename schema_mapped_column_field_expressions<DBOs, type_t<type_t<T>>>::type,
                             add_column_alias<type_t<T>>::template apply_t> {};
 
     /**

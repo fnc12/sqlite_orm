@@ -12,7 +12,7 @@
 #include "vocabulary/node_traits.h"
 #include "ast/result_columns.h"
 #include "alias.h"
-#include "schema/algorithms/table_lookup.h"  //  schema_mapped_column_expressions
+#include "schema/algorithms/table_lookup.h"  //  schema_mapped_column_field_expressions
 
 namespace sqlite_orm::internal {
     template<class DBOs, class E, class SFINAE = void>
@@ -71,7 +71,7 @@ namespace sqlite_orm::internal {
         T,
         std::enable_if_t<is_asterisk_v<T> &&
                          std::disjunction_v<std::negation<is_recordset_alias<type_t<T>>>, is_cte_moniker<type_t<T>>>>>
-        : schema_mapped_column_expressions<DBOs, type_t<T>> {};
+        : schema_mapped_column_field_expressions<DBOs, type_t<T>> {};
 
     /**
      *  Resolve all columns of an aliased object.
@@ -79,7 +79,7 @@ namespace sqlite_orm::internal {
      */
     template<class DBOs, class T>
     struct column_expression_type<DBOs, T, std::enable_if_t<is_asterisk_v<T> && is_table_alias_v<type_t<T>>>>
-        : tuple_transformer<typename schema_mapped_column_expressions<DBOs, type_t<type_t<T>>>::type,
+        : tuple_transformer<typename schema_mapped_column_field_expressions<DBOs, type_t<type_t<T>>>::type,
                             add_column_alias<type_t<T>>::template apply_t> {};
 
     /**

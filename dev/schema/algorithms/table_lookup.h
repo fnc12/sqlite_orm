@@ -116,12 +116,12 @@ namespace sqlite_orm::internal {
 // the columns of a looked-up table
 namespace sqlite_orm::internal {
     template<class Table>
-    struct schema_mapped_columns_impl {
+    struct schema_mapped_column_field_types_impl {
         using type = column_field_types_t<Table>;
     };
 
     template<>
-    struct schema_mapped_columns_impl<polyfill::nonesuch> {
+    struct schema_mapped_column_field_types_impl<polyfill::nonesuch> {
         using type = std::tuple<>;
     };
 
@@ -133,15 +133,16 @@ namespace sqlite_orm::internal {
      *  Lookup - mapped or unmapped data type
      */
     template<class DBOs, class Lookup>
-    struct schema_mapped_columns : schema_mapped_columns_impl<schema_find_table_t<Lookup, DBOs>> {};
+    struct schema_mapped_column_field_types : schema_mapped_column_field_types_impl<schema_find_table_t<Lookup, DBOs>> {
+    };
 
     template<class Table>
-    struct schema_mapped_column_expressions_impl {
+    struct schema_mapped_column_field_expressions_impl {
         using type = column_field_expressions_t<Table>;
     };
 
     template<>
-    struct schema_mapped_column_expressions_impl<polyfill::nonesuch> {
+    struct schema_mapped_column_field_expressions_impl<polyfill::nonesuch> {
         using type = std::tuple<>;
     };
 
@@ -153,8 +154,8 @@ namespace sqlite_orm::internal {
      *  Lookup - mapped or unmapped data type
      */
     template<class DBOs, class Lookup>
-    struct schema_mapped_column_expressions : schema_mapped_column_expressions_impl<schema_find_table_t<Lookup, DBOs>> {
-    };
+    struct schema_mapped_column_field_expressions
+        : schema_mapped_column_field_expressions_impl<schema_find_table_t<Lookup, DBOs>> {};
 }
 
 // runtime lookup functions
