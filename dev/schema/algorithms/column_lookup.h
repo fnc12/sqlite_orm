@@ -1,48 +1,28 @@
 #pragma once
 
+/** @file Lookup of a column definition within a tuple of database objects.
+ *
+ *  Schema-level algorithms like `table_lookup.h`: they locate the table definition mapping a column
+ *  expression's object type - or the CTE a moniker names - and find the column within it.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
+#include <tuple>  //  std::tuple_size, std::tuple_element, std::get
 #endif
 
-#include "functional/index_sequence_util.h"
-#include "functional/type_traits.h"
-#include "tuple_helper/tuple_traits.h"
-#include "tuple_helper/tuple_filter.h"
-#include "tuple_helper/tuple_iteration.h"
-#include "vocabulary/node_traits.h"
-#include "cte_types.h"
-#include "schema/db_objects.h"
-#include "schema/algorithms/table_lookup.h"
+#include "../../functional/index_sequence_util.h"
+#include "../../functional/type_traits.h"
+#include "../../tuple_helper/tuple_traits.h"
+#include "../../tuple_helper/tuple_filter.h"
+#include "../../tuple_helper/tuple_iteration.h"
+#include "../../vocabulary/node_traits.h"
+#include "../../vocabulary/node_algorithms.h"  //  col_index_sequence_of, col_index_sequence_with
+#include "../../cte_types.h"
+#include "../db_objects.h"
+#include "table_lookup.h"
 
-// interface functions
 namespace sqlite_orm::internal {
-    template<class DBOs>
-    using tables_index_sequence = filter_tuple_sequence_t<DBOs, is_base_table>;
-
-#ifdef SQLITE_ORM_WITH_VIEW
-    template<class DBOs>
-    using views_index_sequence = filter_tuple_sequence_t<DBOs, is_view>;
-#endif
-
-    template<class DBOs, satisfies<is_db_objects, DBOs> = true>
-    constexpr int foreign_keys_count() {
-        int res = 0;
-        iterate_tuple<DBOs>(tables_index_sequence<DBOs>{}, [&res](const auto* dummy) {
-            using table_type = std::remove_pointer_t<decltype(dummy)>;
-            res += table_type::template count_of<is_foreign_key>();
-        });
-        return res;
-    }
-
-    template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs>>
-    decltype(auto) lookup_table_name(const DBOs& dbObjects) {
-        if constexpr (is_mapped_v<DBOs, Lookup>) {
-            return (pick_table<Lookup>(dbObjects).name);
-        } else {
-            return std::string{};
-        }
-    }
-
     /**
      *  Find column name by its type and member pointer.
      */

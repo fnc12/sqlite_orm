@@ -16,11 +16,13 @@
 #include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if, std::is_same, std::is_void
 #include <tuple>  // std::tuple_size, std::get
 #include <utility>  //  std::index_sequence, std::make_index_sequence
+#include <string>  //  std::string
 #endif
 
 #include "../../functional/cxx_type_traits_polyfill.h"
 #include "../../functional/type_traits.h"
 #include "../../vocabulary/node_traits.h"
+#include "../../vocabulary/node_algorithms.h"  //  column_field_types_t, column_field_expressions_t
 #include "../db_objects.h"
 
 namespace sqlite_orm::internal {
@@ -111,6 +113,50 @@ namespace sqlite_orm::internal {
     constexpr bool is_mapped_v = is_mapped<DBOs, Lookup>::value;
 }
 
+// the columns of a looked-up table
+namespace sqlite_orm::internal {
+    template<class Table>
+    struct schema_mapped_columns_impl {
+        using type = column_field_types_t<Table>;
+    };
+
+    template<>
+    struct schema_mapped_columns_impl<polyfill::nonesuch> {
+        using type = std::tuple<>;
+    };
+
+    /**
+     *  The field types of the columns of the table mapped for the given lookup type, in column order;
+     *  an empty tuple if the lookup type is not mapped.
+     *
+     *  DBOs - db_objects_tuple type
+     *  Lookup - mapped or unmapped data type
+     */
+    template<class DBOs, class Lookup>
+    struct schema_mapped_columns : schema_mapped_columns_impl<schema_find_table_t<Lookup, DBOs>> {};
+
+    template<class Table>
+    struct schema_mapped_column_expressions_impl {
+        using type = column_field_expressions_t<Table>;
+    };
+
+    template<>
+    struct schema_mapped_column_expressions_impl<polyfill::nonesuch> {
+        using type = std::tuple<>;
+    };
+
+    /**
+     *  The member pointers the columns of the table mapped for the given lookup type are mapped by,
+     *  in column order; an empty tuple if the lookup type is not mapped.
+     *
+     *  DBOs - db_objects_tuple type
+     *  Lookup - mapped or unmapped data type
+     */
+    template<class DBOs, class Lookup>
+    struct schema_mapped_column_expressions : schema_mapped_column_expressions_impl<schema_find_table_t<Lookup, DBOs>> {
+    };
+}
+
 // runtime lookup functions
 namespace sqlite_orm::internal {
     /**
@@ -124,6 +170,15 @@ namespace sqlite_orm::internal {
         return std::get<table_type>(dbObjects);
     }
 
+    /**
+     *  The name of the table mapped for the specified lookup type; an empty string if it is not mapped.
+     */
     template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
-    decltype(auto) lookup_table_name(const DBOs& dbObjects);
+    decltype(auto) lookup_table_name(const DBOs& dbObjects) {
+        if constexpr (is_mapped_v<DBOs, Lookup>) {
+            return (pick_table<Lookup>(dbObjects).name);
+        } else {
+            return std::string{};
+        }
+    }
 }

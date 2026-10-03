@@ -21,8 +21,7 @@
 #include "column_result_proxy.h"
 #include "alias.h"
 #include "cte_types.h"
-#include "storage_traits.h"
-#include "schema/algorithms/table_lookup.h"  // schema_pick_table_t
+#include "schema/algorithms/table_lookup.h"  // schema_pick_table_t, schema_mapped_columns
 #include "ast/app_function.h"
 
 namespace sqlite_orm::internal {
@@ -269,7 +268,7 @@ namespace sqlite_orm::internal {
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_asterisk, T>>
-        : storage_traits::storage_mapped_columns<DBOs, mapped_type_proxy_t<type_t<T>>> {};
+        : schema_mapped_columns<DBOs, mapped_type_proxy_t<type_t<T>>> {};
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_object_node, T>> {
