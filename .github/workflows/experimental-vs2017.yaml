@@ -1,4 +1,4 @@
-name: Experimental - VS 2017 (v141)
+name: VS 2017 (v141)
 
 # The GitHub-hosted Windows images carry only the v143 and v142 toolsets. v141 was dropped when the
 # multi-version build tools were removed in May 2024, and actions/runner-images#12764 reports that adding
