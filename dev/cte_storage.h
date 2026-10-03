@@ -275,7 +275,7 @@ namespace sqlite_orm::internal {
             determine_cte_colrefs(dbObjects, subselectColRefs, cte.explicitColumns, index_sequence{});
 
         serializer_context context{dbObjects};
-        std::vector<std::string> columnNames = collect_cte_column_names(subSelect, cte.explicitColumns, context);
+        std::vector<std::string> columnNames = resolve_cte_column_names(subSelect, cte.explicitColumns, context);
 
         using mapper_type = create_cte_mapper_t<cte_moniker_type_t<cte_type>,
                                                 explicit_colrefs_tuple_t<cte_type>,
