@@ -35,11 +35,26 @@ on:
   # `workflow_dispatch` is only offered for workflows that already live on the default branch, which is
   # master, while pull requests here target dev -- so the manual button does not appear when the PR lands,
   # only once this file reaches master. Until then `pull_request` is what exercises the probe. The triggers
-  # otherwise mirror ci.yaml's cadence.
+  # otherwise mirror ci.yaml's, including its `paths-ignore`, so that a change touching only documentation
+  # runs neither.
   workflow_dispatch:
-  pull_request:
   push:
     branches: [dev, master]
+    paths-ignore:
+      - '.git*'
+      - '_config.yml'
+      - 'LICENSE'
+      - '**/*.md'
+      - '*.png'
+      - '*.sh'
+  pull_request:
+    paths-ignore:
+      - '.git*'
+      - '_config.yml'
+      - 'LICENSE'
+      - '**/*.md'
+      - '*.png'
+      - '*.sh'
 
 env:
   VCPKG_COMMIT: 4334d8b4c8916018600212ab4dd4bbdc343065d1  # 2025.09.17
