@@ -1,0 +1,29 @@
+-- The C compiler identification is AppleClang 17.0.0.17000603
+-- The CXX compiler identification is AppleClang 17.0.0.17000603
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- SQLITE_ORM: Build with C++20 features
+-- Configuring sqlite_orm 1.8.0 for AppleClang GNU
+-- Performing Test HAVE_FLAG__ffile_prefix_map__Users_yevgeniyzakharov_Desktop_sources_sqlite_async_sqlite_orm_build__deps_catch2_src__
+-- Performing Test HAVE_FLAG__ffile_prefix_map__Users_yevgeniyzakharov_Desktop_sources_sqlite_async_sqlite_orm_build__deps_catch2_src__ - Success
+-- Found SQLite3: /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include (found version "3.51.0")
+-- 
+-- CMAKE_C_FLAGS: 
+-- CMAKE_CXX_FLAGS: 
+-- CMAKE_EXE_LINKER_FLAGS: 
+-- CMAKE_MODULE_LINKER_FLAGS: 
+-- CMAKE_SHARED_LINKER_FLAGS: 
+-- CMAKE_STATIC_LINKER_FLAGS: 
+-- 
+-- CMAKE_BUILD_TYPE: 
+-- Configuring done (73.5s)
+-- Generating done (0.1s)
+-- Build files have been written to: /Users/yevgeniyzakharov/Desktop/sources/sqlite-async/sqlite_orm/build
