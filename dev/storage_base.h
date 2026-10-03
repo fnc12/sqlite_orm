@@ -36,7 +36,7 @@
 #include "transaction_state.h"
 #include "xdestroy_handling.h"
 #include "udf_proxy.h"
-#include "serializing_util.h"
+#include "serialization/serializing_util.h"
 #include "table_info.h"
 #include "storage_options.h"
 

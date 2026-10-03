@@ -11,15 +11,15 @@
 #include <string_view>  //  std::string_view
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, polyfill::is_detected
-#include "functional/cxx_functional_polyfill.h"  // polyfill::unwrap_reference
-#include "functional/gsl.h"
-#include "functional/type_traits.h"
-#include "tuple_helper/tuple_iteration.h"
-#include "vocabulary/node_traits.h"
-#include "vocabulary/node_fwd.h"  // column_constraints, order_by_t
-#include "schema/column_identifier.h"
-#include "error_code.h"
+#include "../functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, polyfill::is_detected
+#include "../functional/cxx_functional_polyfill.h"  // polyfill::unwrap_reference
+#include "../functional/gsl.h"
+#include "../functional/type_traits.h"
+#include "../tuple_helper/tuple_iteration.h"
+#include "../vocabulary/node_traits.h"
+#include "../vocabulary/node_fwd.h"  // column_constraints, order_by_t
+#include "../schema/column_identifier.h"
+#include "../error_code.h"
 
 namespace sqlite_orm::internal {
     template<class T, class Ctx>

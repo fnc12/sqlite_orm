@@ -9,18 +9,18 @@
 #include <utility>  //  std::move
 #endif
 
-#include "functional/type_traits.h"
-#include "tuple_helper/tuple_traits.h"
-#include "tuple_helper/tuple_iteration.h"
-#include "error_code.h"
-#include "mapped_type_proxy.h"
-#include "alias_traits.h"
-#include "schema/algorithms/table_lookup.h"  //  pick_table
-#include "util.h"  // quote_identifier
-#include "vocabulary/node_traits.h"
-#include "vocabulary/node_algorithms.h"  // access_column_expression
-#include "schema/column_identifier.h"
-#include "schema/table_identifier.h"
+#include "../functional/type_traits.h"
+#include "../tuple_helper/tuple_traits.h"
+#include "../tuple_helper/tuple_iteration.h"
+#include "../error_code.h"
+#include "../mapped_type_proxy.h"
+#include "../alias_traits.h"
+#include "../schema/algorithms/table_lookup.h"  //  pick_table
+#include "../util.h"  // quote_identifier
+#include "../vocabulary/node_traits.h"
+#include "../vocabulary/node_algorithms.h"  // access_column_expression
+#include "../schema/column_identifier.h"
+#include "../schema/table_identifier.h"
 
 namespace sqlite_orm::internal {
     template<class T, class Ctx>
@@ -61,7 +61,7 @@ namespace sqlite_orm::internal {
 
     /** @short Column expression collector.
      */
-    struct column_names_getter {
+    struct column_names_collector {
         /** 
          *  The default implementation simply serializes the passed argument.
          */
@@ -105,8 +105,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T, class Ctx>
-    std::vector<std::string> get_column_names(const T& expression, const Ctx& context) {
-        column_names_getter serializer;
+    std::vector<std::string> collect_column_names(const T& expression, const Ctx& context) {
+        column_names_collector serializer;
         return serializer(access_column_expression(expression), context);
     }
 }

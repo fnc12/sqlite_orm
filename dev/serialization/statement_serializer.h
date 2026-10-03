@@ -19,37 +19,37 @@
 #endif
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, std::disjunction
-#include "functional/cxx_functional_polyfill.h"  // polyfill::identity
-#include "functional/gsl.h"
-#include "functional/always_default.h"
-#include "functional/mpl.h"
-#include "functional/type_traits.h"
-#include "tuple_helper/tuple_filter.h"
-#include "ast/crud/insert.h"  // conflict_action
-#include "ast/result_columns.h"
-#include "ast/crud/set.h"
-#include "conditions.h"
-#include "prepared_statement.h"
-#include "mapped_type_proxy.h"
-#include "pointer_value.h"
-#include "type_printer.h"
-#include "field_printer.h"
-#include "literal.h"
+#include "../functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, std::disjunction
+#include "../functional/cxx_functional_polyfill.h"  // polyfill::identity
+#include "../functional/gsl.h"
+#include "../functional/always_default.h"
+#include "../functional/mpl.h"
+#include "../functional/type_traits.h"
+#include "../tuple_helper/tuple_filter.h"
+#include "../ast/crud/insert.h"  // conflict_action
+#include "../ast/result_columns.h"
+#include "../ast/crud/set.h"
+#include "../conditions.h"
+#include "../prepared_statement.h"
+#include "../mapped_type_proxy.h"
+#include "../pointer_value.h"
+#include "../type_printer.h"
+#include "../field_printer.h"
+#include "../literal.h"
 #include "table_name_collector.h"
-#include "column_names_getter.h"
+#include "column_names_collector.h"
 #include "cte_column_names_collector.h"
 #include "order_by_serializer.h"
 #include "serializing_util.h"
-#include "statement_binder.h"
-#include "util.h"
-#include "error_code.h"
-#include "schema/constraints/primary_key.h"  // conflict_clause_t
-#include "schema/constraints/generated_always.h"  // basic_generated_always
-#include "builtin/collations.h"  //  collate_argument_to_string
-#include "vocabulary/node_algorithms.h"  // unwrap_expression
-#include "vocabulary/node_traits.h"
-#include "vocabulary/node_fwd.h"  // column_constraints
+#include "../statement_binder.h"
+#include "../util.h"
+#include "../error_code.h"
+#include "../schema/constraints/primary_key.h"  // conflict_clause_t
+#include "../schema/constraints/generated_always.h"  // basic_generated_always
+#include "../builtin/collations.h"  //  collate_argument_to_string
+#include "../vocabulary/node_algorithms.h"  // unwrap_expression
+#include "../vocabulary/node_traits.h"
+#include "../vocabulary/node_fwd.h"  // column_constraints
 
 namespace sqlite_orm::internal {
     template<class T, class SFINAE = void>
@@ -751,7 +751,7 @@ namespace sqlite_orm::internal {
             ss << streaming_identifier(alias_extractor<cte_moniker_type_t<CTE>>::extract());
             {
                 std::vector<std::string> columnNames =
-                    collect_cte_column_names(get_cte_driving_subselect(cte.subselect), cte.explicitColumns, context);
+                    resolve_cte_column_names(get_cte_driving_subselect(cte.subselect), cte.explicitColumns, context);
                 ss << '(' << streaming_identifiers(columnNames) << ')';
             }
             ss << " AS" << streaming_constraints_tuple(cte.hints, context) << " ("
@@ -1693,7 +1693,7 @@ namespace sqlite_orm::internal {
             if (context.use_parentheses) {
                 ss << '(';
             }
-            ss << streaming_serialized(get_column_names(statement, subCtx));
+            ss << streaming_serialized(collect_column_names(statement, subCtx));
             if (context.use_parentheses) {
                 ss << ')';
             }
@@ -1935,7 +1935,7 @@ namespace sqlite_orm::internal {
                 }
             }
 
-            ss << streaming_serialized(get_column_names(sel.col, subCtx));
+            ss << streaming_serialized(collect_column_names(sel.col, subCtx));
             using conditions_tuple = conditions_type_t<statement_type>;
             constexpr bool hasExplicitFrom = tuple_has<conditions_tuple, is_any_from>::value;
             if constexpr (!hasExplicitFrom) {

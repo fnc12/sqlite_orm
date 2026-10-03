@@ -11,14 +11,14 @@
 #endif
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
-#include "functional/type_traits.h"
-#include "tuple_helper/tuple_transformer.h"
-#include "error_code.h"
-#include "alias.h"
-#include "vocabulary/node_traits.h"
-#include "vocabulary/node_algorithms.h"  // access_column_expression
-#include "schema/column_identifier.h"
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/type_traits.h"
+#include "../tuple_helper/tuple_transformer.h"
+#include "../error_code.h"
+#include "../alias.h"
+#include "../vocabulary/node_traits.h"
+#include "../vocabulary/node_algorithms.h"  // access_column_expression
+#include "../schema/column_identifier.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm::internal {
@@ -70,7 +70,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T, class Ctx>
-    std::vector<std::string> get_cte_column_names(const T& t, const Ctx& context) {
+    std::vector<std::string> collect_cte_column_names(const T& t, const Ctx& context) {
         cte_column_names_collector<T> collector;
         return collector(access_column_expression(t), context);
     }
@@ -93,7 +93,7 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::vector<std::string> operator()(const expression_type& expression,
                                                                      const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return get_cte_column_names(expression.get(), context);
+            return collect_cte_column_names(expression.get(), context);
         }
     };
 
@@ -157,12 +157,15 @@ namespace sqlite_orm::internal {
         }
     };
 
+    /**
+     *  The column names of a CTE: those collected from its select, overridden by its explicit column list if any.
+     */
     template<typename Ctx, typename E, typename ExplicitColRefs, satisfies<is_select, E> = true>
-    std::vector<std::string> collect_cte_column_names(const E& sel,
+    std::vector<std::string> resolve_cte_column_names(const E& sel,
                                                       [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
                                                       const Ctx& context) {
         // 1. determine column names from subselect
-        std::vector<std::string> columnNames = get_cte_column_names(sel.col, context);
+        std::vector<std::string> columnNames = collect_cte_column_names(sel.col, context);
 
         // 2. override column names from cte expression
         constexpr size_t nExplicitColumns = std::tuple_size_v<ExplicitColRefs>;
