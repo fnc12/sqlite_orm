@@ -37,7 +37,7 @@
 #include "../field_printer.h"
 #include "../literal.h"
 #include "table_name_collector.h"
-#include "column_names_getter.h"
+#include "column_names_collector.h"
 #include "cte_column_names_collector.h"
 #include "order_by_serializer.h"
 #include "serializing_util.h"

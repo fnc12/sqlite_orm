@@ -105,7 +105,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 - `dev/ast/crud/` - One header per CRUD statement kind (`get`, `insert`, `replace`, `update`, `remove`), in both their object and their raw DML spellings, plus the clause nodes only they take (`into`, `set`, `default_values`, `upsert_clause`)
 
 **Serialization:**
-- `dev/serialization/` - The statement serializer and its context, and the helpers it alone uses: streaming utilities (`serializing_util.h`), the ORDER BY serializer, the DEFAULT value extractor, and the collectors walking an expression for what serialization needs (`table_name_collector.h`, `column_names_getter.h`, `cte_column_names_collector.h`). `field_printer.h` and `type_printer.h` stay at the top level: they are public customization points.
+- `dev/serialization/` - The statement serializer and its context, and the helpers it alone uses: streaming utilities (`serializing_util.h`), the ORDER BY serializer, the DEFAULT value extractor, and the collectors walking an expression for what serialization needs (`table_name_collector.h`, `column_names_collector.h`, `cte_column_names_collector.h`). `field_printer.h` and `type_printer.h` stay at the top level: they are public customization points.
 
 **Type binding:**
 - `dev/statement_binder.h` - Binds C++ values to prepared statements

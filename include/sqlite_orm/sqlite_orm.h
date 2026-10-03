@@ -22577,7 +22577,7 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "column_names_getter.h"
+// #include "column_names_collector.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_base_of
@@ -22665,7 +22665,7 @@ namespace sqlite_orm::internal {
 
     /** @short Column expression collector.
      */
-    struct column_names_getter {
+    struct column_names_collector {
         /** 
          *  The default implementation simply serializes the passed argument.
          */
@@ -22710,7 +22710,7 @@ namespace sqlite_orm::internal {
 
     template<class T, class Ctx>
     std::vector<std::string> get_column_names(const T& expression, const Ctx& context) {
-        column_names_getter serializer;
+        column_names_collector serializer;
         return serializer(access_column_expression(expression), context);
     }
 }
