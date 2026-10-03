@@ -101,7 +101,7 @@ if (MSVC)
 
     # note: do not add `/permissive-` for the v141 toolset (MSVC_VERSION < 1920). VS 2017's conformance mode
     # fails to emit some `std::forward_as_tuple` specializations used by the statement serializer, and the
-    # link fails with unresolved externals; see .github/workflows/experimental-vs2017.yaml
+    # link fails with unresolved externals; see .github/workflows/vs2017.yaml
 endif()
 
 ucm_print_flags()
