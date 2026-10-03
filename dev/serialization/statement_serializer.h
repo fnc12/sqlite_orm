@@ -1693,7 +1693,7 @@ namespace sqlite_orm::internal {
             if (context.use_parentheses) {
                 ss << '(';
             }
-            ss << streaming_serialized(get_column_names(statement, subCtx));
+            ss << streaming_serialized(collect_column_names(statement, subCtx));
             if (context.use_parentheses) {
                 ss << ')';
             }
@@ -1935,7 +1935,7 @@ namespace sqlite_orm::internal {
                 }
             }
 
-            ss << streaming_serialized(get_column_names(sel.col, subCtx));
+            ss << streaming_serialized(collect_column_names(sel.col, subCtx));
             using conditions_tuple = conditions_type_t<statement_type>;
             constexpr bool hasExplicitFrom = tuple_has<conditions_tuple, is_any_from>::value;
             if constexpr (!hasExplicitFrom) {

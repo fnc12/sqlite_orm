@@ -105,7 +105,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T, class Ctx>
-    std::vector<std::string> get_column_names(const T& expression, const Ctx& context) {
+    std::vector<std::string> collect_column_names(const T& expression, const Ctx& context) {
         column_names_collector serializer;
         return serializer(access_column_expression(expression), context);
     }
