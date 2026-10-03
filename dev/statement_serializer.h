@@ -46,6 +46,7 @@
 #include "error_code.h"
 #include "schema/constraints/primary_key.h"  // conflict_clause_t
 #include "schema/constraints/generated_always.h"  // basic_generated_always
+#include "builtin/collations.h"  //  collate_argument_to_string
 #include "vocabulary/node_algorithms.h"  // unwrap_expression
 #include "vocabulary/node_traits.h"
 #include "vocabulary/node_fwd.h"  // column_constraints
@@ -953,8 +954,8 @@ namespace sqlite_orm::internal {
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             auto newContext = context;
             newContext.use_parentheses = false;
-            return serialize(statement.expression, newContext) + " COLLATE " +
-                   collate_constraint_t::string_from_collate_argument(statement.argument);
+            return (serialize(statement.expression, newContext) + " COLLATE ")
+                .append(collate_argument_to_string(statement.argument));
         }
     };
 
@@ -1283,7 +1284,7 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return "COLLATE " + statement.string_from_collate_argument(statement.argument);
+            return std::string{"COLLATE "}.append(collate_argument_to_string(statement.argument));
         }
     };
 

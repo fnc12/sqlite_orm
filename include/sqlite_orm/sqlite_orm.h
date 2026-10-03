@@ -6838,7 +6838,7 @@ namespace sqlite_orm::internal {
 #endif
 }
 
-// #include "core_functions.h"
+// #include "builtin/functions/core.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -6851,13 +6851,13 @@ namespace sqlite_orm::internal {
 #include <string_view>  //  std::string_view
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/type_traits.h"
+// #include "../../functional/type_traits.h"
 
-// #include "tuple_helper/tuple_traits.h"
+// #include "../../tuple_helper/tuple_traits.h"
 
-// #include "conditions.h"
+// #include "../../conditions.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -6876,7 +6876,20 @@ namespace sqlite_orm::internal {
 
 // #include "functional/type_traits.h"
 
-// #include "collate_argument.h"
+// #include "builtin/collations.h"
+
+/** @file SQLite's built-in collating functions: BINARY, NOCASE and RTRIM.
+ *
+ *  Like the built-in functions and database objects, they are the stock instances of a kind of named object
+ *  that applications can register more of (`storage_base::create_collation()`).
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string_view>  //  std::string_view
+#include <system_error>  //  std::system_error
+#endif
+
+// #include "../error_code.h"
 
 namespace sqlite_orm::internal {
     enum class collate_argument {
@@ -6884,58 +6897,20 @@ namespace sqlite_orm::internal {
         nocase,
         rtrim,
     };
-}
 
-// #include "schema/constraints/collate.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_same
-#include <system_error>  //  std::system_error
-#include <string>  //  std::string
-#endif
-
-// #include "../../collate_argument.h"
-
-// #include "../../error_code.h"
-
-// #include "../../vocabulary/traits/grammar_traits_fwd.h"
-// Included to specialize traits
-
-namespace sqlite_orm::internal {
-    struct collate_constraint_t {
-        collate_argument argument = collate_argument::binary;
-
-        static std::string string_from_collate_argument(collate_argument argument) {
-            switch (argument) {
-                case collate_argument::binary:
-                    return "BINARY";
-                case collate_argument::nocase:
-                    return "NOCASE";
-                case collate_argument::rtrim:
-                    return "RTRIM";
-            }
-            throw std::system_error{orm_error_code::invalid_collate_argument_enum};
+    inline std::string_view collate_argument_to_string(collate_argument argument) {
+        switch (argument) {
+            case collate_argument::binary:
+                return "BINARY";
+            case collate_argument::nocase:
+                return "NOCASE";
+            case collate_argument::rtrim:
+                return "RTRIM";
         }
-    };
-
-    template<class T>
-    constexpr bool is_collate_constraint_v = std::is_same<T, collate_constraint_t>::value;
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    constexpr internal::collate_constraint_t collate_nocase() {
-        return {internal::collate_argument::nocase};
-    }
-
-    constexpr internal::collate_constraint_t collate_binary() {
-        return {internal::collate_argument::binary};
-    }
-
-    constexpr internal::collate_constraint_t collate_rtrim() {
-        return {internal::collate_argument::rtrim};
+        throw std::system_error{orm_error_code::invalid_collate_argument_enum};
     }
 }
-// string_from_collate_argument
+//  collate_argument, collate_argument_to_string
 // #include "optional_container.h"
 
 namespace sqlite_orm::internal {
@@ -7500,19 +7475,19 @@ namespace sqlite_orm::internal {
 
         order_by_t collate_binary() const {
             auto res = *this;
-            res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::binary);
+            res._collate_argument = collate_argument_to_string(collate_argument::binary);
             return res;
         }
 
         order_by_t collate_nocase() const {
             auto res = *this;
-            res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::nocase);
+            res._collate_argument = collate_argument_to_string(collate_argument::nocase);
             return res;
         }
 
         order_by_t collate_rtrim() const {
             auto res = *this;
-            res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::rtrim);
+            res._collate_argument = collate_argument_to_string(collate_argument::rtrim);
             return res;
         }
 
@@ -8339,22 +8314,22 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-// #include "operators.h"
+// #include "../../operators.h"
 
-// #include "literal.h"
+// #include "../../literal.h"
 // literal_holder
-// #include "alias_traits.h"
+// #include "../../alias_traits.h"
 
-// #include "vocabulary/node_traits.h"
+// #include "../../vocabulary/node_traits.h"
 
-// #include "vocabulary/node_algorithms.h"
+// #include "../../vocabulary/node_algorithms.h"
 //  argument, common_argument_type
-// #include "ast/builtin_function.h"
+// #include "../../ast/builtin_function.h"
 
 /** @file The nodes of a call of a built-in SQL function: scalar and aggregate function calls,
  *        an aggregate call with a FILTER clause, and COUNT(*).
  *        In C++20 builds, also the definition of a built-in function by its name and its overload set,
- *        which generates the call nodes. The functions themselves are in `core_functions.h`.
+ *        which generates the call nodes. The functions themselves are in `builtin/functions/`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -16811,7 +16786,13 @@ namespace sqlite_orm::internal {
 
 // #include "error_code.h"
 
-// #include "vfs_name.h"
+// #include "builtin/vfs.h"
+
+/** @file The names of SQLite's built-in VFSes (OS interface layers), per platform, and the default one.
+ *
+ *  Like the built-in collations, they are the stock instances of a kind of named object that applications
+ *  can register more of (`sqlite3_vfs_register()`); a storage opens its database with any registered one.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string_view>  //  std::string_view
@@ -16855,7 +16836,7 @@ namespace sqlite_orm::internal {
                 return SQLITE_OPEN_READONLY;
             case db_open_mode::create_readwrite:
                 return SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE;
-        };
+        }
 
         return -1;
     }
@@ -16872,6 +16853,10 @@ namespace sqlite_orm::internal {
 #include <functional>  //  std::function
 #include <string_view>  //  std::string_view
 #endif
+
+// #include "builtin/vfs.h"
+//  default_vfs_name
+// #include "db_open_mode.h"
 
 namespace sqlite_orm::internal {
     template<typename T>
@@ -23296,6 +23281,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 // basic_generated_always
+// #include "builtin/collations.h"
+//  collate_argument_to_string
 // #include "vocabulary/node_algorithms.h"
 // unwrap_expression
 // #include "vocabulary/node_traits.h"
@@ -24206,8 +24193,8 @@ namespace sqlite_orm::internal {
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             auto newContext = context;
             newContext.use_parentheses = false;
-            return serialize(statement.expression, newContext) + " COLLATE " +
-                   collate_constraint_t::string_from_collate_argument(statement.argument);
+            return (serialize(statement.expression, newContext) + " COLLATE ")
+                .append(collate_argument_to_string(statement.argument));
         }
     };
 
@@ -24536,7 +24523,7 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return "COLLATE " + statement.string_from_collate_argument(statement.argument);
+            return std::string{"COLLATE "}.append(collate_argument_to_string(statement.argument));
         }
     };
 
@@ -30520,6 +30507,38 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "schema/constraints/collate.h"
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_same
+#endif
+
+// #include "../../builtin/collations.h"
+
+// #include "../../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    struct collate_constraint_t {
+        collate_argument argument = collate_argument::binary;
+    };
+
+    template<class T>
+    constexpr bool is_collate_constraint_v = std::is_same<T, collate_constraint_t>::value;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    constexpr internal::collate_constraint_t collate_nocase() {
+        return {internal::collate_argument::nocase};
+    }
+
+    constexpr internal::collate_constraint_t collate_binary() {
+        return {internal::collate_argument::binary};
+    }
+
+    constexpr internal::collate_constraint_t collate_rtrim() {
+        return {internal::collate_argument::rtrim};
+    }
+}
+
 // #include "ast/quoted_expression.h"
 
 // #include "ast/between.h"
@@ -31656,16 +31675,17 @@ namespace sqlite_orm::internal {
 
 #pragma once
 
-/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializer_context -> db_objects_tuple -> base_table -> column_t)
- *  this file is also used to provide definitions of interface methods 'hitting the database'.
+/** @file Manifest of the out-of-class member definitions in `implementations/`.
+ *
+ *  Each of those files defines members of a schema or storage class whose bodies need headers the declaring
+ *  header should not depend on itself - implementation machinery private to how the member does its work.
+ *  They are included here once, after all declarations.
  */
 
 // #include "implementations/column_definitions.h"
 
-/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializer_context -> db_objects_tuple -> base_table -> column_t)
- *  this file is also used to provide definitions of interface methods 'hitting the database'.
+/** @file Out-of-class definitions of column members, which need the statement serializer's machinery
+ *  (`default_value_extractor.h`) that `schema/column.h` stays free of.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -31720,9 +31740,8 @@ namespace sqlite_orm::internal {
 
 // #include "implementations/table_definitions.h"
 
-/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializer_context -> db_objects_tuple -> base_table -> column_t)
- *  this file is also used to provide definitions of interface methods 'hitting the database'.
+/** @file Out-of-class definitions of table members, which need the column type printer (`type_printer.h`)
+ *  that `schema/table.h` stays free of.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -31787,8 +31806,9 @@ namespace sqlite_orm::internal {
 
 // #include "implementations/storage_definitions.h"
 
-/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  this file is also used to separate implementation details from the main header file.
+/** @file Out-of-class definitions of the storage members synchronizing a base table's schema, which need the
+ *  schema table (`builtin/dbos/sqlite_schema.h`); they also keep the lengthy schema synchronization apart from
+ *  the storage interface in `storage.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -31802,19 +31822,29 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 
-// #include "../sqlite_schema_table.h"
+// #include "../util.h"
+
+// #include "../serializing_util.h"
+
+// #include "../storage.h"
+
+// #include "../vocabulary/node_traits.h"
+
+// #include "../schema/column_identifier.h"
+
+// #include "../builtin/dbos/sqlite_schema.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #endif
 
-// #include "schema/column.h"
+// #include "../../schema/column.h"
 
-// #include "schema/table.h"
+// #include "../../schema/table.h"
 
-// #include "table_reference.h"
+// #include "../../table_reference.h"
 
-// #include "alias.h"
+// #include "../../alias.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
@@ -31856,16 +31886,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline constexpr orm_table_alias auto sqlite_schema = "sqlite_schema"_alias.for_<sqlite_master>();
 #endif
 }
-
-// #include "../util.h"
-
-// #include "../serializing_util.h"
-
-// #include "../storage.h"
-
-// #include "../vocabulary/node_traits.h"
-
-// #include "../schema/column_identifier.h"
 
 namespace sqlite_orm::internal {
     template<class... DBO>
@@ -32446,6 +32466,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #pragma once
 
+/** @file Umbrella header for the built-in SQL functions.
+ */
+
+// #include "functions/core.h"
+
+// #include "functions/window.h"
+
 /** @file The built-in window functions: ROW_NUMBER(), RANK(), DENSE_RANK(), PERCENT_RANK(), CUME_DIST(),
  *        NTILE(N), LAG(expr), LEAD(expr), FIRST_VALUE(expr), LAST_VALUE(expr) and NTH_VALUE(expr, N).
  *
@@ -32454,7 +32481,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
  *        factories over `builtin_window_function_t`. Either way their call nodes are built-in function calls,
  *        classified by `is_builtin_function_call` like those of the scalar and aggregate functions.
  *
- *        Like `core_functions.h` for those, this header holds definitions, not nodes, hence it lives outside `ast/`.
+ *        Like `core.h` for those, this header holds definitions, not nodes, hence it lives outside `ast/`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -32463,9 +32490,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::forward
 #endif
 
-// #include "vocabulary/node_algorithms.h"
+// #include "../../vocabulary/node_algorithms.h"
 //  argument
-// #include "ast/builtin_function.h"
+// #include "../../ast/builtin_function.h"
 
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
 namespace sqlite_orm::internal {
@@ -32771,12 +32798,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline constexpr orm_builtin_function auto nth_value = internal::nth_value;
 }
 #endif
+
 #pragma once
 
-/** @file Umbrella header for all virtual tables.
+/** @file Umbrella header for the database objects SQLite provides itself:
+ *        its schema table (`sqlite_master`/`sqlite_schema`), the eponymous virtual tables (`dbstat`,
+ *        `generate_series`) and the virtual table modules (FTS5, R*Tree).
  */
 
-// #include "dbstat.h"
+// #include "dbos/sqlite_schema.h"
+
+// #include "dbos/dbstat.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
@@ -32787,17 +32819,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../functional/gsl.h"
+// #include "../../functional/gsl.h"
 
-// #include "../tuple_helper/tuple_filter.h"
+// #include "../../tuple_helper/tuple_filter.h"
 
-// #include "../member_traits/member_traits.h"
+// #include "../../member_traits/member_traits.h"
 
-// #include "../schema/virtual_table.h"
+// #include "../../schema/virtual_table.h"
 
-// #include "../literal.h"
+// #include "../../literal.h"
 
-// #include "../table_reference.h"
+// #include "../../table_reference.h"
 
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 namespace sqlite_orm::internal {
@@ -32919,7 +32951,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
 
-// #include "generate_series.h"
+// #include "dbos/generate_series.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3008012
@@ -32928,11 +32960,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../functional/gsl.h"
+// #include "../../functional/gsl.h"
 
-// #include "../schema/virtual_table.h"
+// #include "../../schema/virtual_table.h"
 
-// #include "../table_reference.h"
+// #include "../../table_reference.h"
 
 #if SQLITE_VERSION_NUMBER >= 3008012
 namespace sqlite_orm::internal {
@@ -33017,7 +33049,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
-// #include "fts5.h"
+// #include "dbos/fts5.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
@@ -33028,15 +33060,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../functional/gsl.h"
+// #include "../../functional/gsl.h"
 
-// #include "../member_traits/member_traits.h"
+// #include "../../member_traits/member_traits.h"
 
-// #include "../schema/virtual_table.h"
+// #include "../../schema/virtual_table.h"
 
-// #include "../vocabulary/node_traits.h"
+// #include "../../vocabulary/node_traits.h"
 
-// #include "../vocabulary/node_algorithms.h"
+// #include "../../vocabulary/node_algorithms.h"
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 namespace sqlite_orm::internal {
@@ -33147,7 +33179,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
-// #include "fts5_functions.h"
+// #include "dbos/fts5_functions.h"
 
 /** @file The FTS5 auxiliary functions `highlight()`, `bm25()` and `snippet()`.
  *
@@ -33168,13 +33200,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #include <sqlite3.h>
 
-// #include "../alias_traits.h"
+// #include "../../alias_traits.h"
 //  is_recordset_alias_v
-// #include "../column_pointer.h"
+// #include "../../column_pointer.h"
 //  column
-// #include "../vocabulary/node_algorithms.h"
+// #include "../../vocabulary/node_algorithms.h"
 //  hidden_column_of_vtab, hidden_field_of_vtab
-// #include "../ast/builtin_function.h"
+// #include "../../ast/builtin_function.h"
 
 // #include "fts5.h"
 
@@ -33413,7 +33445,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
-// #include "fts5_deprecations.h"
+// #include "dbos/fts5_deprecations.h"
 
 /** @file The deprecated `order_by(rank())` spelling of the hidden FTS5 rank column.
  *
@@ -33429,11 +33461,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../window_functions.h"
+// #include "../functions/window.h"
 //  rank
-// #include "../conditions.h"
+// #include "../../conditions.h"
 //  order_by_t
-// #include "../statement_serializer.h"
+// #include "../../statement_serializer.h"
 //  statement_serializer
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
@@ -33466,7 +33498,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
-// #include "rtree.h"
+// #include "dbos/rtree.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_RTREE
@@ -33477,17 +33509,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../functional/gsl.h"
+// #include "../../functional/gsl.h"
 
-// #include "../functional/mpl.h"
+// #include "../../functional/mpl.h"
 
-// #include "../tuple_helper/tuple_filter.h"
+// #include "../../tuple_helper/tuple_filter.h"
 
-// #include "../vocabulary/node_traits.h"
+// #include "../../vocabulary/node_traits.h"
 
-// #include "../vocabulary/node_algorithms.h"
+// #include "../../vocabulary/node_algorithms.h"
 
-// #include "../schema/virtual_table.h"
+// #include "../../schema/virtual_table.h"
 
 #ifdef SQLITE_ENABLE_RTREE
 namespace sqlite_orm::internal {

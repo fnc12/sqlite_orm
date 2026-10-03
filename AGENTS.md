@@ -69,7 +69,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 
 4. **Statement serialization** (`dev/statement_serializer.h`, `dev/serializer_context.h`): Converts C++ expression objects into SQL strings.
 
-5. **Expression objects** (`dev/conditions.h`, `dev/core_functions.h`, `dev/ast/`): Type-safe representations of SQL operations (WHERE, JOIN, ORDER BY, etc.).
+5. **Expression objects** (`dev/conditions.h`, `dev/builtin/functions/`, `dev/ast/`): Type-safe representations of SQL operations (WHERE, JOIN, ORDER BY, etc.).
 
 ### Key Implementation Files
 
@@ -88,7 +88,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 - `dev/schema/triggers.h` - Trigger support
 - `dev/schema/constraints/` - One header per constraint (`primary_key`, `foreign_key`, `check`, ...)
 - `dev/schema/algorithms/` - Algorithms operating across the whole schema, e.g. `sync_order.h`
-- `dev/vtabs/` - Built-in virtual tables (fts5, rtree, dbstat, generate_series)
+- `dev/builtin/` - The stock instances SQLite provides of the kinds of named objects applications can register more of: the built-in SQL functions in `functions/` (umbrella `functions.h`, see below), the built-in collations (`collations.h`: BINARY, NOCASE, RTRIM), the names of the built-in VFSes (`vfs.h`), and in `dbos/` (umbrella `dbos.h`) the built-in database objects - the schema table (`sqlite_master`/`sqlite_schema`), the eponymous virtual tables (dbstat, generate_series) and the virtual table modules (fts5, rtree). Enums of grammar keywords or PRAGMA values do not belong here; they stay with their nodes or settings.
 
 **Vocabulary layer** (see [Header layers](#header-layers) below):
 - `dev/vocabulary/traits/` - Open classification traits, specialized at each node's own header
@@ -99,7 +99,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 
 **Query building:**
 - `dev/conditions.h` - WHERE clause conditions
-- `dev/core_functions.h`, `dev/window_functions.h` - The built-in SQL functions (scalar and aggregate; window) - definitions, not nodes: their call nodes are in `dev/ast/builtin_function.h`
+- `dev/builtin/functions/` (umbrella `functions.h`): `core.h`, `window.h` - The built-in SQL functions (scalar and aggregate; window) - definitions, not nodes: their call nodes are in `dev/ast/builtin_function.h`
 - `dev/ast/app_function.h` - Application-defined function calls (`func<UDF>`, `"name"_scalar`) and the UDF classification traits
 - `dev/ast/` - AST nodes for query, DML and operational constructs (`select_t`, `insert_t`, `where`, `window`, ...)
 - `dev/ast/crud/` - One header per CRUD statement kind (`get`, `insert`, `replace`, `update`, `remove`), in both their object and their raw DML spellings, plus the clause nodes only they take (`into`, `set`, `default_values`, `upsert_clause`)

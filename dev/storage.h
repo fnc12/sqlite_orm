@@ -38,7 +38,7 @@
 #include "operators.h"
 #include "ast/result_columns.h"
 #include "ast/cte.h"
-#include "core_functions.h"
+#include "builtin/functions/core.h"
 #include "conditions.h"
 #include "statement_binder.h"
 #include "column_result.h"
