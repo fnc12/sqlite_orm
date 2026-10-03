@@ -22380,14 +22380,124 @@ namespace sqlite_orm::internal {
 #include <tuple>  //  std::tuple, std::tuple_size
 #include <string>  //  std::string
 #include <vector>  //  std::vector
-#include <sstream>  //  std::stringstream
+#include <set>  //  std::set
+#include <utility>  //  std::pair
 #endif
 
 // #include "../../functional/type_traits.h"
 
 // #include "../../tuple_helper/tuple_traits.h"
 
-// #include "../../table_name_collector.h"
+// #include "../../vocabulary/node_traits.h"
+
+// #include "../../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    template<class... Args>
+    struct set_t {
+        using assigns_type = std::tuple<Args...>;
+
+        assigns_type assigns;
+    };
+
+    template<class T>
+    constexpr bool is_set_v = polyfill::is_specialization_of<T, set_t>::value;
+
+    struct dynamic_set_entry {
+        std::string serialized_value;
+    };
+
+    /**
+     *  A SET clause assembled at runtime.
+     *
+     *  Its assignments are of different types, hence each is serialized as it is pushed back. The tables named on
+     *  the left-hand side of the assignments, needed later to serialize an UPDATE, are collected at the same time,
+     *  while the assignment is still at hand.
+     */
+    template<class C>
+    struct dynamic_set_t {
+        using context_t = C;
+        using entry_t = dynamic_set_entry;
+        using const_iterator = typename std::vector<entry_t>::const_iterator;
+        using table_name_set = std::set<std::pair<std::string, std::string>>;
+
+        dynamic_set_t(const context_t& context_) : context(context_) {}
+
+        dynamic_set_t(const dynamic_set_t& other) = default;
+        dynamic_set_t(dynamic_set_t&& other) = default;
+        dynamic_set_t& operator=(const dynamic_set_t& other) = default;
+        dynamic_set_t& operator=(dynamic_set_t&& other) = default;
+
+        /**
+         *  Serializes the assignment and collects the table named on its left-hand side.
+         *  Defined in `implementations/dynamic_set_definitions.h`.
+         */
+        template<class T, satisfies<is_assign, T> = true>
+        void push_back(T assign);
+
+        const_iterator begin() const {
+            return this->entries.begin();
+        }
+
+        const_iterator end() const {
+            return this->entries.end();
+        }
+
+        void clear() {
+            this->entries.clear();
+            this->table_names.clear();
+        }
+
+        std::vector<entry_t> entries;
+        context_t context;
+        table_name_set table_names;
+    };
+
+    template<class T>
+    constexpr bool is_dynamic_set_v = polyfill::is_specialization_of<T, dynamic_set_t>::value;
+
+    template<class T>
+    constexpr bool is_any_set_v = std::disjunction<is_set<T>, is_dynamic_set<T>>::value;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  SET keyword used in UPDATE ... SET queries.
+     *  Args must have `assign_t` type. E.g. set(assign(&User::id, 5)) or set(c(&User::id) = 5)
+     */
+    template<class... Args>
+    internal::set_t<Args...> set(Args... args) {
+        using arg_tuple = std::tuple<Args...>;
+        static_assert(std::tuple_size<arg_tuple>::value == internal::count_tuple<arg_tuple, internal::is_assign>::value,
+                      "set function accepts assign operators only");
+        return {std::make_tuple(std::forward<Args>(args)...)};
+    }
+
+    /**
+     *  SET keyword used in UPDATE ... SET queries. It is dynamic version. It means use can add amount of arguments now known at compilation time but known at runtime.
+     */
+    template<class S>
+    internal::dynamic_set_t<internal::serializer_context<typename S::db_objects_type>> dynamic_set(const S& storage) {
+        return {obtain_db_objects(storage)};
+    }
+}
+
+// #include "conditions.h"
+
+// #include "prepared_statement.h"
+
+// #include "mapped_type_proxy.h"
+
+// #include "pointer_value.h"
+
+// #include "type_printer.h"
+
+// #include "field_printer.h"
+
+// #include "literal.h"
+
+// #include "table_name_collector.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <set>  //  std::set
@@ -22466,117 +22576,6 @@ namespace sqlite_orm::internal {
         }
     };
 }
-
-// #include "../../vocabulary/node_traits.h"
-
-// #include "../../vocabulary/traits/grammar_traits_fwd.h"
-// Included to specialize traits
-
-namespace sqlite_orm::internal {
-    template<class T, class L>
-    void iterate_ast(const T& t, L&& lambda);
-
-    template<class... Args>
-    struct set_t {
-        using assigns_type = std::tuple<Args...>;
-
-        assigns_type assigns;
-    };
-
-    template<class T>
-    constexpr bool is_set_v = polyfill::is_specialization_of<T, set_t>::value;
-
-    struct dynamic_set_entry {
-        std::string serialized_value;
-    };
-
-    template<class C>
-    struct dynamic_set_t {
-        using context_t = C;
-        using entry_t = dynamic_set_entry;
-        using const_iterator = typename std::vector<entry_t>::const_iterator;
-
-        dynamic_set_t(const context_t& context_) : context(context_), collector(this->context.db_objects) {}
-
-        dynamic_set_t(const dynamic_set_t& other) = default;
-        dynamic_set_t(dynamic_set_t&& other) = default;
-        dynamic_set_t& operator=(const dynamic_set_t& other) = default;
-        dynamic_set_t& operator=(dynamic_set_t&& other) = default;
-
-        template<class T, satisfies<is_assign, T> = true>
-        void push_back(T assign) {
-            auto newContext = this->context;
-            newContext.omit_table_name = true;
-            // note: we are only interested in the table name on the left-hand side of the assignment operator expression
-            iterate_ast(assign.lhs, this->collector);
-            std::stringstream ss;
-            ss << serialize(assign.lhs, newContext) << ' ' << assign.serialize() << ' '
-               << serialize(assign.rhs, context);
-            this->entries.push_back({ss.str()});
-        }
-
-        const_iterator begin() const {
-            return this->entries.begin();
-        }
-
-        const_iterator end() const {
-            return this->entries.end();
-        }
-
-        void clear() {
-            this->entries.clear();
-            this->collector.table_names.clear();
-        }
-
-        std::vector<entry_t> entries;
-        context_t context;
-        table_name_collector<typename context_t::db_objects_type> collector;
-    };
-
-    template<class T>
-    constexpr bool is_dynamic_set_v = polyfill::is_specialization_of<T, dynamic_set_t>::value;
-
-    template<class T>
-    constexpr bool is_any_set_v = std::disjunction<is_set<T>, is_dynamic_set<T>>::value;
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  SET keyword used in UPDATE ... SET queries.
-     *  Args must have `assign_t` type. E.g. set(assign(&User::id, 5)) or set(c(&User::id) = 5)
-     */
-    template<class... Args>
-    internal::set_t<Args...> set(Args... args) {
-        using arg_tuple = std::tuple<Args...>;
-        static_assert(std::tuple_size<arg_tuple>::value == internal::count_tuple<arg_tuple, internal::is_assign>::value,
-                      "set function accepts assign operators only");
-        return {std::make_tuple(std::forward<Args>(args)...)};
-    }
-
-    /**
-     *  SET keyword used in UPDATE ... SET queries. It is dynamic version. It means use can add amount of arguments now known at compilation time but known at runtime.
-     */
-    template<class S>
-    internal::dynamic_set_t<internal::serializer_context<typename S::db_objects_type>> dynamic_set(const S& storage) {
-        return {obtain_db_objects(storage)};
-    }
-}
-
-// #include "conditions.h"
-
-// #include "prepared_statement.h"
-
-// #include "mapped_type_proxy.h"
-
-// #include "pointer_value.h"
-
-// #include "type_printer.h"
-
-// #include "field_printer.h"
-
-// #include "literal.h"
-
-// #include "table_name_collector.h"
 
 // #include "column_names_getter.h"
 
@@ -24811,7 +24810,7 @@ namespace sqlite_orm::internal {
 
     template<class Ctx, class T, satisfies<is_dynamic_set, T> = true>
     const std::set<std::pair<std::string, std::string>>& collect_table_names(const T& set, const Ctx&) {
-        return set.collector.table_names;
+        return set.table_names;
     }
 
     template<class Ctx, class T, satisfies<is_select, T> = true>
@@ -31677,8 +31676,8 @@ namespace sqlite_orm::internal {
 
 /** @file Manifest of the out-of-class member definitions in `implementations/`.
  *
- *  Each of those files defines members of a schema or storage class whose bodies need headers the declaring
- *  header should not depend on itself - implementation machinery private to how the member does its work.
+ *  Each of those files defines members of a schema, storage or AST node class whose bodies need headers the
+ *  declaring header should not depend on itself - implementation machinery private to how the member does its work.
  *  They are included here once, after all declarations.
  */
 
@@ -32041,6 +32040,46 @@ namespace sqlite_orm::internal {
             sql = ss.str();
         }
         this->executor.perform_void_exec(db, sql.c_str());
+    }
+}
+
+// #include "implementations/dynamic_set_definitions.h"
+
+/** @file Out-of-class definitions of `dynamic_set_t` members, which need the statement serializer and the AST
+ *  traversal machinery that `ast/crud/set.h` stays free of.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <sstream>  //  std::stringstream
+#endif
+
+// #include "../functional/type_traits.h"
+
+// #include "../vocabulary/node_traits.h"
+
+// #include "../ast_iterator.h"
+
+// #include "../table_name_collector.h"
+
+// #include "../statement_serializer.h"
+
+// #include "../ast/crud/set.h"
+
+namespace sqlite_orm::internal {
+    template<class C>
+    template<class T, satisfies<is_assign, T>>
+    void dynamic_set_t<C>::push_back(T assign) {
+        // note: we are only interested in the table name on the left-hand side of the assignment operator expression
+        table_name_collector<typename context_t::db_objects_type> collector{this->context.db_objects};
+        iterate_ast(assign.lhs, collector);
+        this->table_names.merge(collector.table_names);
+
+        auto lhsContext = this->context;
+        lhsContext.omit_table_name = true;
+        std::stringstream ss;
+        ss << serialize(assign.lhs, lhsContext) << ' ' << assign.serialize() << ' '
+           << serialize(assign.rhs, this->context);
+        this->entries.push_back({ss.str()});
     }
 }
 

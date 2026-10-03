@@ -60,3 +60,24 @@ TEST_CASE("set") {
     }
     REQUIRE(value == expected);
 }
+
+TEST_CASE("dynamic_set collects the tables of its assignments") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    auto storage = make_storage(
+        "",
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
+    using table_name_set = std::set<std::pair<std::string, std::string>>;
+
+    auto expression = dynamic_set(storage);
+    REQUIRE(expression.table_names.empty());
+
+    expression.push_back(assign(&User::id, 5));
+    expression.push_back(assign(&User::name, "ototo"));
+    REQUIRE(expression.table_names == table_name_set{{"users", ""}});
+
+    expression.clear();
+    REQUIRE(expression.table_names.empty());
+}
