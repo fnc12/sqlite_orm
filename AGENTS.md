@@ -76,7 +76,6 @@ The library uses a **storage-centric architecture** with compile-time type safet
 **Storage layer:**
 - `dev/storage.h` - Main storage template with CRUD operations
 - `dev/storage_base.h` - Base class with connection management, transactions, UDFs
-- `dev/storage_impl.h` - Implementation details
 - `dev/connection_holder.h` - RAII wrapper for sqlite3 connections
 
 **Schema definition:**
@@ -87,7 +86,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 - `dev/schema/index.h` - Index support
 - `dev/schema/triggers.h` - Trigger support
 - `dev/schema/constraints/` - One header per constraint (`primary_key`, `foreign_key`, `check`, ...)
-- `dev/schema/algorithms/` - Algorithms operating across the whole schema, e.g. `sync_order.h`
+- `dev/schema/algorithms/` - Algorithms operating across the whole schema, e.g. `sync_order.h`, `table_lookup.h`, `column_lookup.h`
 - `dev/builtin/` - The stock instances SQLite provides of the kinds of named objects applications can register more of: the built-in SQL functions in `functions/` (umbrella `functions.h`, see below), the built-in collations (`collations.h`: BINARY, NOCASE, RTRIM), the names of the built-in VFSes (`vfs.h`), and in `dbos/` (umbrella `dbos.h`) the built-in database objects - the schema table (`sqlite_master`/`sqlite_schema`), the eponymous virtual tables (dbstat, generate_series) and the virtual table modules (fts5, rtree). Enums of grammar keywords or PRAGMA values do not belong here; they stay with their nodes or settings.
 
 **Vocabulary layer** (see [Header layers](#header-layers) below):

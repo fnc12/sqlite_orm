@@ -15,6 +15,12 @@ namespace sqlite_orm::internal {
     template<typename T>
     using field_type_t = typename T::field_type;
 
+    /**
+     *  The member pointer a column is mapped by: a pointer to data member, or a getter.
+     */
+    template<typename T>
+    using member_pointer_type_t = typename T::member_pointer_t;
+
     template<typename T>
     using constraints_type_t = typename T::constraints_type;
 
