@@ -38,7 +38,8 @@
 #include "operators.h"
 #include "ast/result_columns.h"
 #include "ast/cte.h"
-#include "builtin/functions/core.h"
+#include "functional/sqlite3/sqlite3_types.h"  //  int64
+#include "builtin/functions/aggregate.h"
 #include "conditions.h"
 #include "statement_binder.h"
 #include "column_result.h"

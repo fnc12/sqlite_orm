@@ -20,6 +20,7 @@
 #include <tuple>  //  std::apply
 #endif
 
+#include "functional/sqlite3/sqlite3_types.h"  //  int64
 #include "tuple_helper/tuple_iteration.h"
 #include "vocabulary/node_traits.h"  // projections
 #include "pragma.h"
