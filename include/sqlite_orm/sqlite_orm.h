@@ -20494,8 +20494,8 @@ namespace sqlite_orm::internal {
             if constexpr (is_named_collate_v<statement_type>) {
                 return serialize(statement.expression, newContext) + " COLLATE " + statement.name;
             } else {
-                return serialize(statement.expression, newContext) + " COLLATE " +
-                       collate_argument_to_string(statement.argument);
+                return (serialize(statement.expression, newContext) + " COLLATE ")
+                    .append(collate_argument_to_string(statement.argument));
             }
         }
     };
