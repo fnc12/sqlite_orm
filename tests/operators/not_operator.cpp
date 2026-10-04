@@ -61,6 +61,16 @@ TEST_CASE("Not operator") {
         rows = storage.select(&Object::id, where(not like(cast<std::string>(&Object::id), "3")));
         expected.push_back(2);
     }
+    SECTION("quoted value") {
+        //  NOT ? with 0 bound selects every row; were the quoted value left unbound, NOT NULL would select none
+        rows = storage.select(&Object::id, where(not c(0)));
+        expected.push_back(2);
+        expected.push_back(3);
+    }
+    SECTION("quoted operand of a named comparison") {
+        rows = storage.select(&Object::id, where(not less_or_equal(c(&Object::id), c(2))));
+        expected.push_back(3);
+    }
     SECTION("exists") {
         rows = storage.select(&Object::id, where(not exists(select(&Object::id, where(is_equal(&Object::id, 2))))));
     }
