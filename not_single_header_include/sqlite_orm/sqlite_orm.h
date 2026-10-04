@@ -4,6 +4,7 @@
 // Therefore, we include the configuration and all underlying C++ core features to make them universally available.
 #include "../../dev/functional/config.h"
 #include "../../dev/sqlite3/sqlite3_types.h"
+#include "../../dev/serialization/quoting.h"
 #include "../../dev/storage.h"
 #include "../../dev/node_definitions.h"
 #include "../../dev/node_algorithm_definitions.h"

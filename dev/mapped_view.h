@@ -11,7 +11,7 @@
 #include "prepared_statement.h"
 #include "ast/crud/get.h"
 #include "connection_holder.h"
-#include "util.h"
+#include "sqlite3/sqlite3_statements.h"
 
 namespace sqlite_orm::internal {
     /**

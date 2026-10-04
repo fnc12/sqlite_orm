@@ -10,7 +10,7 @@
 #include "statement_finalizer.h"
 #include "row_extractor.h"
 #include "column_result_proxy.h"
-#include "util.h"
+#include "sqlite3/sqlite3_statements.h"
 
 namespace sqlite_orm::internal {
 

@@ -65,7 +65,7 @@
 #include "row_extractor.h"
 #include "schema/constraints/generated_always.h"  // basic_generated_always
 #include "cte_storage.h"
-#include "util.h"
+#include "sqlite3/sqlite3_statements.h"
 #include "serialization/serializing_util.h"
 #include "udf_existence_checker.h"
 

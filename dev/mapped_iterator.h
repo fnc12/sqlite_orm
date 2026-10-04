@@ -13,7 +13,7 @@
 #include "error_code.h"
 #include "object_from_column_builder.h"
 #include "schema/algorithms/table_lookup.h"
-#include "util.h"
+#include "sqlite3/sqlite3_statements.h"
 
 namespace sqlite_orm::internal {
     /*  

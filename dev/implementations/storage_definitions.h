@@ -15,7 +15,7 @@
 #endif
 
 #include "../functional/type_traits.h"
-#include "../util.h"
+#include "../sqlite3/sqlite3_statements.h"
 #include "../serialization/serializing_util.h"
 #include "../storage.h"
 #include "../vocabulary/node_traits.h"
