@@ -1,9 +1,11 @@
 # Binary condition nodes: shared collation, data-driven definitions
 
 Date: 2026-10-04
-Branch base: `refactor/split-conditions` (#1550), which gave the binary conditions their own header,
-`dev/ast/binary_condition.h`. The model for step 3 is `binary_operator` in `dev/ast/operators.h`, as
-`refactor/operators-under-ast` (#1552) leaves it.
+Branch base: `fix/unwrap-quoted-expressions` (#1564), on top of `refactor/split-conditions` (#1550). #1550 gave
+the binary conditions their own header, `dev/ast/binary_condition.h`; #1564 made their named factories unwrap
+`c()`-quoted operands like the overloaded operators, so the factories' return types read
+`is_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>>` - step 3 keeps that. The model for step 3 is
+`binary_operator` in `dev/ast/operators.h`, as `refactor/operators-under-ast` (#1552) leaves it.
 Status: plan; nothing implemented yet.
 
 ## Goal
