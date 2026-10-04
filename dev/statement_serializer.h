@@ -30,7 +30,6 @@
 #include "ast/result_columns.h"
 #include "ast/crud/set.h"
 #include "ast/join.h"
-#include "schema/constraints/collate.h"  // collate_constraint_t
 #include "prepared_statement.h"
 #include "mapped_type_proxy.h"
 #include "pointer_value.h"
@@ -47,6 +46,7 @@
 #include "error_code.h"
 #include "schema/constraints/primary_key.h"  // conflict_clause_t
 #include "schema/constraints/generated_always.h"  // basic_generated_always
+#include "builtin/collations.h"  //  collate_argument_to_string
 #include "vocabulary/node_algorithms.h"  // unwrap_expression
 #include "vocabulary/node_traits.h"
 #include "vocabulary/node_fwd.h"  // column_constraints
@@ -945,7 +945,7 @@ namespace sqlite_orm::internal {
                 return serialize(statement.expression, newContext) + " COLLATE " + statement.name;
             } else {
                 return serialize(statement.expression, newContext) + " COLLATE " +
-                       collate_constraint_t::string_from_collate_argument(statement.argument);
+                       collate_argument_to_string(statement.argument);
             }
         }
     };
@@ -1275,7 +1275,7 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return "COLLATE " + statement.string_from_collate_argument(statement.argument);
+            return std::string{"COLLATE "}.append(collate_argument_to_string(statement.argument));
         }
     };
 
@@ -1563,7 +1563,7 @@ namespace sqlite_orm::internal {
 
     template<class Ctx, class T, satisfies<is_dynamic_set, T> = true>
     const std::set<std::pair<std::string, std::string>>& collect_table_names(const T& set, const Ctx&) {
-        return set.collector.table_names;
+        return set.table_names;
     }
 
     template<class Ctx, class T, satisfies<is_select, T> = true>

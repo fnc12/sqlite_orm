@@ -78,6 +78,7 @@ vocabulary/
     node_algorithms.h       Umbrella, declaration-only: ddl_predicates.h,
                             clause_predicates.h, expression_element_predicates.h,
                             operand_predicates.h, index_filters.h, accessors.h,
+                            field_accessors.h, argument_placeholders.h,
                             field_predicates_fwd.h, field_predicates_concepts.h.
                             Deliberately does NOT include field_predicates.h.
 ```
@@ -250,6 +251,7 @@ Nothing is being composed into a judgment; it is still extraction.
 | `algorithms/operand_predicates.h` | Closed checks of whether a type may appear as an operand of a named expression factory (`eq()`, `and_()`, `add()`, `assign()`, …): `is_referencable_operand`, `is_operand_or_bindable`, `are_valid_operands`. Composes the operand traits with grammar traits and the field-level `is_bindable` — which is why it takes `field_predicates_fwd.h` rather than the definition file. |
 | `algorithms/index_filters.h` | Closed alias templates that scan a node's `Elements` tuple and yield an `index_sequence` of matching positions — **not** a filtered tuple. E.g. `col_index_sequence_of`, `col_index_sequence_with_field_type`. Built on `filter_tuple_sequence_t` + grammar traits + projections. |
 | `algorithms/accessors.h` | Closed runtime and compile-time accessors that retrieve a node's relevant sub-part, or the node itself, uniformly across dissimilar grammar families: `access_main_select`/`main_select_t`, `access_main_dml`/`main_dml_t`, `access_column_expression`, `expression_object_type`/`statement_object_type_t` and `access_dml_object`. This is the concrete payoff of the semantic traits. |
+| `algorithms/field_accessors.h` | The field-level counterpart of `accessors.h`: closed accessors keyed on a raw C++ type rather than a node. `held_object_t` is the object a holder type holds - owned by a `std::unique_ptr`, held by a `std::optional`, or the object itself - and `emplace_held_object` default-constructs it in place. A get statement's result type is such a holder. |
 | `algorithms/argument_placeholders.h` | The return type placeholders of the built-in functions — `argument<I>` for the result of the I-th call argument, `common_argument_type<I...>` for the common type of the given (or, with no index, all) arguments — and `substitute_arguments_t`, which replaces them structurally throughout a declared return type (`std::unique_ptr<argument<0>>`) given the call's argument tuple and a quoted metafunction that resolves one argument. Closed computation over a node's `args_tuple`; who resolves an argument and how — `column_result_t` with the schema at hand — is not its business. |
 | `algorithms/field_predicates_fwd.h` | Declarations of the closed field-level predicates, split off for dependency weight: `is_rowid_alias_capable_v`, `is_bindable_v`, `is_printable_v`, and (C++17 only) `is_hidden_column_of_vtab_v`. |
 | — where their definitions live | `is_rowid_alias_capable_v` is a capability *derived from* the field type, so it is defined in `field_predicates.h` with the other computed predicates. `is_bindable_v` and `is_printable_v` instead test whether a customization point is instantiable for the type, so each stays with the point it tests — `statement_binder.h` and `field_printer.h` respectively, which include the `_fwd` header to define them. |
@@ -500,7 +502,7 @@ Decided, not yet done. The destination is settled in each case; only the work re
   types are placeholders (`argument<I>`, `common_argument_type<I...>`) substituted by
   `vocabulary/algorithms/argument_placeholders.h` from `column_result_t`. The legacy
   `builtin_function_t` node in `ast/builtin_function.h` and the per-function `*_string`
-  tag + factory pairs in `core_functions.h` exist only for C++17 and go when that baseline
+  tag + factory pairs in `builtin/functions/*.h` exist only for C++17 and go when that baseline
   does. Design and decisions are in
   [`docs/plans/2026-09-12-built-in-function-vocabulary-design.md`](../plans/2026-09-12-built-in-function-vocabulary-design.md).
 

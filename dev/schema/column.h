@@ -1,16 +1,16 @@
 #pragma once
 
-#include <sqlite3.h>  //  sqlite_int64
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple
 #include <string>  //  std::string
-#include <memory>  //  std::unique_ptr
+#include <optional>  //  std::optional
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_member_object_pointer, std::is_signed
 #include <utility>  //  std::move
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/type_traits.h"
+#include "../sqlite3/sqlite3_types.h"  //  int64
 #include "../tuple_helper/tuple_traits.h"
 #include "../member_traits/member_traits.h"
 #include "../type_is_nullable.h"
@@ -79,9 +79,9 @@ namespace sqlite_orm::internal {
 
         /**
          *  Simplified interface for `DEFAULT` constraint
-         *  @return string representation of default value if it exists otherwise nullptr
+         *  @return string representation of default value if it exists, otherwise an empty optional
          */
-        std::unique_ptr<std::string> default_value() const;
+        std::optional<std::string> default_value() const;
     };
 
     /**
@@ -134,19 +134,19 @@ namespace sqlite_orm::internal {
     template<class F>
     struct check_pkcol<F, std::enable_if_t<std::is_integral<F>::value>> {
         // For 64-bit signed integer type: valid
-        template<class X = F,
-                 std::enable_if_t<sizeof(X) == sizeof(sqlite_int64) &&
-                                      std::is_signed<X>::value == std::is_signed<sqlite_int64>::value,
-                                  bool> = true>
+        template<
+            class X = F,
+            std::enable_if_t<sizeof(X) == sizeof(int64) && std::is_signed<X>::value == std::is_signed<int64>::value,
+                             bool> = true>
         static constexpr void validate_column_primary_key_with_autoincrement() {}
 
         // Design decision for integral types other than 64-bit signed integer:
         // It is the programmer's responsibility to ensure data integrity in the value range of the integral type
         // and in purview of SQLite using a 64-bit signed integer.
-        template<class X = F,
-                 std::enable_if_t<sizeof(X) != sizeof(sqlite_int64) ||
-                                      std::is_signed<X>::value != std::is_signed<sqlite_int64>::value,
-                                  bool> = true>
+        template<
+            class X = F,
+            std::enable_if_t<sizeof(X) != sizeof(int64) || std::is_signed<X>::value != std::is_signed<int64>::value,
+                             bool> = true>
         static constexpr void validate_column_primary_key_with_autoincrement() {}
     };
 

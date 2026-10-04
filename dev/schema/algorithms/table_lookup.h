@@ -108,7 +108,7 @@ namespace sqlite_orm::internal {
 #endif
 
     template<class DBOs, class Lookup>
-    inline constexpr bool is_mapped_v = is_mapped<DBOs, Lookup>::value;
+    constexpr bool is_mapped_v = is_mapped<DBOs, Lookup>::value;
 }
 
 // runtime lookup functions

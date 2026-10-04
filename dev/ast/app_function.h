@@ -529,7 +529,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         requires (orm_scalar_udf<UDF> || orm_aggregate_udf<UDF>)
 #endif
-    inline constexpr internal::app_function<UDF> func{};
+    constexpr internal::app_function<UDF> func{};
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     inline namespace literals {

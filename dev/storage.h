@@ -38,7 +38,8 @@
 #include "operators.h"
 #include "ast/result_columns.h"
 #include "ast/cte.h"
-#include "core_functions.h"
+#include "sqlite3/sqlite3_types.h"  //  int64
+#include "builtin/functions/aggregate.h"
 #include "statement_binder.h"
 #include "column_result.h"
 #include "mapped_type_proxy.h"
@@ -76,9 +77,9 @@ namespace sqlite_orm::internal {
     struct indirectly_test_preparable;
 
     template<class S, class E, class SFINAE = void>
-    inline constexpr bool is_preparable_statement_v = false;
+    constexpr bool is_preparable_statement_v = false;
     template<class S, class E>
-    inline constexpr bool is_preparable_statement_v<
+    constexpr bool is_preparable_statement_v<
         S,
         E,
         std::void_t<indirectly_test_preparable<decltype(std::declval<S>().prepare(std::declval<E>()))>>> = true;
@@ -89,38 +90,6 @@ namespace sqlite_orm::internal {
             return std::move(std::get<Opt>(options));
         } else {
             return Opt{};
-        }
-    }
-
-    /*
-     *  The object a get statement hands out through its result type:
-     *  the result itself, or the object owned by a `std::unique_ptr` or held by a `std::optional`.
-     */
-    template<class Result>
-    struct result_object : polyfill::type_identity<Result> {};
-
-    template<class O>
-    struct result_object<std::unique_ptr<O>> : polyfill::type_identity<O> {};
-
-    template<class O>
-    struct result_object<std::optional<O>> : polyfill::type_identity<O> {};
-
-    template<class Result>
-    using result_object_t = typename result_object<Result>::type;
-
-    /*
-     *  Put a default-constructed object into the given result - as is, owned by a `std::unique_ptr`
-     *  or held by a `std::optional` -, and return a reference to it.
-     */
-    template<class Result>
-    result_object_t<Result>& emplace_result_object(Result& result) {
-        if constexpr (polyfill::is_specialization_of_v<Result, std::unique_ptr>) {
-            result = std::make_unique<result_object_t<Result>>();
-            return *result;
-        } else if constexpr (polyfill::is_specialization_of_v<Result, std::optional>) {
-            return result.emplace();
-        } else {
-            return result;
         }
     }
 
@@ -1769,10 +1738,10 @@ namespace sqlite_orm::internal {
         template<class Get, satisfies<is_any_get_by_id, Get> = true>
         result_type_t<Get> execute(const prepared_statement_t<Get>& statement) {
             using result_type = result_type_t<Get>;
-            using object_type = result_object_t<result_type>;
+            using object_type = held_object_t<result_type>;
             constexpr bool returnsObject = std::is_same<result_type, object_type>::value;
             //  an object handed out as is is read into an optional, which tells whether it was found
-            using holder_type = std::conditional_t<returnsObject, std::optional<object_type>, result_type>;
+            using holder_type = mpl::conditional_t<returnsObject, std::optional<object_type>, result_type>;
 
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
@@ -1780,7 +1749,7 @@ namespace sqlite_orm::internal {
 
             holder_type res;
             this->executor.perform_step(stmt, [&table = this->get_table<object_type>(), &res](sqlite3_stmt* stmt) {
-                object_from_column_builder<object_type> builder{emplace_result_object(res), stmt};
+                object_from_column_builder<object_type> builder{emplace_held_object(res), stmt};
                 table.for_each_column(builder);
             });
             if constexpr (returnsObject) {
@@ -1811,7 +1780,7 @@ namespace sqlite_orm::internal {
         template<class GetAll, satisfies<is_any_get_all, GetAll> = true>
         return_type_t<GetAll> execute(const prepared_statement_t<GetAll>& statement) {
             using result_type = result_type_t<GetAll>;
-            using object_type = result_object_t<result_type>;
+            using object_type = held_object_t<result_type>;
             using container_type = return_type_t<GetAll>;
 
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
@@ -1821,7 +1790,7 @@ namespace sqlite_orm::internal {
             container_type res;
             this->executor.perform_steps(stmt, [&table = this->get_table<object_type>(), &res](sqlite3_stmt* stmt) {
                 result_type obj;
-                object_from_column_builder<object_type> builder{emplace_result_object(obj), stmt};
+                object_from_column_builder<object_type> builder{emplace_held_object(obj), stmt};
                 table.for_each_column(builder);
                 res.push_back(std::move(obj));
             });
