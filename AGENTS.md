@@ -69,14 +69,13 @@ The library uses a **storage-centric architecture** with compile-time type safet
 
 4. **Statement serialization** (`dev/statement_serializer.h`, `dev/serializer_context.h`): Converts C++ expression objects into SQL strings.
 
-5. **Expression objects** (`dev/ast/`, `dev/core_functions.h`): Type-safe representations of SQL operations (WHERE, JOIN, ORDER BY, etc.).
+5. **Expression objects** (`dev/ast/`, `dev/builtin/functions/`): Type-safe representations of SQL operations (WHERE, JOIN, ORDER BY, etc.).
 
 ### Key Implementation Files
 
 **Storage layer:**
 - `dev/storage.h` - Main storage template with CRUD operations
 - `dev/storage_base.h` - Base class with connection management, transactions, UDFs
-- `dev/storage_impl.h` - Implementation details
 - `dev/connection_holder.h` - RAII wrapper for sqlite3 connections
 
 **Schema definition:**
@@ -87,8 +86,8 @@ The library uses a **storage-centric architecture** with compile-time type safet
 - `dev/schema/index.h` - Index support
 - `dev/schema/triggers.h` - Trigger support
 - `dev/schema/constraints/` - One header per constraint (`primary_key`, `foreign_key`, `check`, ...)
-- `dev/schema/algorithms/` - Algorithms operating across the whole schema, e.g. `sync_order.h`
-- `dev/vtabs/` - Built-in virtual tables (fts5, rtree, dbstat, generate_series)
+- `dev/schema/algorithms/` - Algorithms operating across the whole schema, e.g. `sync_order.h`, `table_lookup.h`, `column_lookup.h`
+- `dev/builtin/` - The stock instances SQLite provides of the kinds of named objects applications can register more of: the built-in SQL functions in `functions/` (umbrella `functions.h`, see below), the built-in collations (`collations.h`: BINARY, NOCASE, RTRIM), the names of the built-in VFSes (`vfs.h`), and in `dbos/` (umbrella `dbos.h`) the built-in database objects - the schema table (`sqlite_master`/`sqlite_schema`), the eponymous virtual tables (dbstat, generate_series) and the virtual table modules (fts5, rtree). Enums of grammar keywords or PRAGMA values do not belong here; they stay with their nodes or settings.
 
 **Vocabulary layer** (see [Header layers](#header-layers) below):
 - `dev/vocabulary/traits/` - Open classification traits, specialized at each node's own header
@@ -100,7 +99,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 **Query building:**
 - `dev/ast/binary_condition.h`, `dev/ast/negated_condition.h`, `dev/ast/like.h`, `dev/ast/collate.h` - Conditions of a WHERE clause and elsewhere
 - `dev/ast/from.h`, `dev/ast/join.h`, `dev/ast/order_by.h` - FROM with its joins, and ORDER BY
-- `dev/core_functions.h` - The built-in SQL functions; their call nodes are in `dev/ast/builtin_function.h`
+- `dev/builtin/functions/` (umbrella `functions.h`): The built-in SQL functions, one header per family as SQLite documents them - `core.h`, `datetime.h`, `aggregate.h`, `math.h`, `json.h`, `window.h` - definitions, not nodes: their call nodes are in `dev/ast/builtin_function.h`
 - `dev/ast/app_function.h` - Application-defined function calls (`func<UDF>`, `"name"_scalar`) and the UDF classification traits
 - `dev/ast/` - AST nodes for query, DML and operational constructs (`select_t`, `insert_t`, `where`, `window`, ...)
 - `dev/ast/crud/` - One header per CRUD statement kind (`get`, `insert`, `replace`, `update`, `remove`), in both their object and their raw DML spellings, plus the clause nodes only they take (`into`, `set`, `default_values`, `upsert_clause`)
@@ -111,6 +110,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 - `dev/field_printer.h` - Serializes field values
 
 **Utilities:**
+- `dev/sqlite3/` - sqlite_orm's interface to the SQLite C library: the configuration derived from `<sqlite3.h>` (`sqlite3_config.h`) and the types republished from it as sqlite_orm's own (`sqlite3_types.h`: `int64`, `uint64`)
 - `dev/prepared_statement.h` - Prepared statement support
 - `dev/ast_iterator.h` - Traverses expression ASTs
 - `dev/transaction_guard.h` - RAII transaction guards
@@ -193,12 +193,13 @@ Definition-only headers deliberately excluded from the declaration-only umbrella
 
 ### Pull Request Guidelines
 Per `CONTRIBUTING.md`:
-- Create GitHub issue for significant changes (not needed for typos/warnings)
-- PR title must begin with issue number: `#9999 : description`
+- Discuss significant behavioral changes in a GitHub issue first (not needed for refactorings, typos, warnings)
+- PR title describes the change, without an issue number; link an associated issue in the PR description,
+  preferably via GitHub's "Development" section or a closing keyword (`Fixes #9999`)
 - Base PRs against `dev` branch (not `master`)
 - Commit messages in English only
 - Squash commits if adding/removing code within same PR
-- All tests must pass on CI (Travis, AppVeyor, GitHub Actions)
+- All tests must pass on CI (GitHub Actions)
 
 ## Common Patterns
 

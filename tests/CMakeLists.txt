@@ -61,7 +61,7 @@ add_executable(unit_tests ${UNIT_TEST_SOURCES} .sqlite3/ext/misc/series.c)
 
 # Build series.c a second time as a run-time loadable extension for the `load extension` tests.
 # Not on Apple platforms, whose system SQLite has the extension loading API omitted
-# [see `SQLITE_ORM_LOAD_EXTENSION_SUPPORTED` in functional/sqlite3_config.h].
+# [see `SQLITE_ORM_LOAD_EXTENSION_SUPPORTED` in sqlite3/sqlite3_config.h].
 if(NOT APPLE)
     add_subdirectory(loadable_extension)
     add_dependencies(unit_tests series_extension)

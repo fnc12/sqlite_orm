@@ -1,8 +1,7 @@
 #pragma once
 
-/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializer_context -> db_objects_tuple -> base_table -> column_t)
- *  this file is also used to provide definitions of interface methods 'hitting the database'.
+/** @file Out-of-class definitions of table members, which need the column type printer (`type_printer.h`)
+ *  that `schema/table.h` stays free of.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -23,10 +22,7 @@ namespace sqlite_orm::internal {
         res.reserve(col_index_sequence_of<elements_type>::size());
         this->for_each_column([&res](auto& column) {
             using field_type = field_type_t<std::remove_reference_t<decltype(column)>>;
-            std::string dft;
-            if (auto d = column.default_value()) {
-                dft = std::move(*d);
-            }
+            std::string dft = column.default_value().value_or(std::string{});
             using constraints_tuple = decltype(column.constraints);
             constexpr bool hasExplicitNull =
                 mpl::invoke_t<mpl::disjunction<check_if_has<is_null_constraint>>, constraints_tuple>::value;

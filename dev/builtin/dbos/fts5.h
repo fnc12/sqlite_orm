@@ -9,11 +9,11 @@
 #endif
 #endif
 
-#include "../functional/gsl.h"
-#include "../member_traits/member_traits.h"
-#include "../schema/virtual_table.h"
-#include "../vocabulary/node_traits.h"
-#include "../vocabulary/node_algorithms.h"
+#include "../../functional/gsl.h"
+#include "../../member_traits/member_traits.h"
+#include "../../schema/virtual_table.h"
+#include "../../vocabulary/node_traits.h"
+#include "../../vocabulary/node_algorithms.h"
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 namespace sqlite_orm::internal {

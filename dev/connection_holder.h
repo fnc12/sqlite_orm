@@ -14,7 +14,7 @@
 #include "functional/interference_size.h"
 #include "functional/gsl.h"
 #include "error_code.h"
-#include "vfs_name.h"
+#include "builtin/vfs.h"
 #include "db_open_mode.h"
 #include "storage_options.h"
 
