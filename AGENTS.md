@@ -99,7 +99,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 
 **Query building:**
 - `dev/conditions.h` - WHERE clause conditions
-- `dev/builtin/functions/` (umbrella `functions.h`): `core.h`, `window.h` - The built-in SQL functions (scalar and aggregate; window) - definitions, not nodes: their call nodes are in `dev/ast/builtin_function.h`
+- `dev/builtin/functions/` (umbrella `functions.h`): The built-in SQL functions, one header per family as SQLite documents them - `core.h`, `datetime.h`, `aggregate.h`, `math.h`, `json.h`, `window.h` - definitions, not nodes: their call nodes are in `dev/ast/builtin_function.h`
 - `dev/ast/app_function.h` - Application-defined function calls (`func<UDF>`, `"name"_scalar`) and the UDF classification traits
 - `dev/ast/` - AST nodes for query, DML and operational constructs (`select_t`, `insert_t`, `where`, `window`, ...)
 - `dev/ast/crud/` - One header per CRUD statement kind (`get`, `insert`, `replace`, `update`, `remove`), in both their object and their raw DML spellings, plus the clause nodes only they take (`into`, `set`, `default_values`, `upsert_clause`)
@@ -113,6 +113,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 - `dev/field_printer.h` - Serializes field values
 
 **Utilities:**
+- `dev/sqlite3/` - sqlite_orm's interface to the SQLite C library: the configuration derived from `<sqlite3.h>` (`sqlite3_config.h`) and the types republished from it as sqlite_orm's own (`sqlite3_types.h`: `int64`, `uint64`)
 - `dev/prepared_statement.h` - Prepared statement support
 - `dev/ast_iterator.h` - Traverses expression ASTs
 - `dev/transaction_guard.h` - RAII transaction guards

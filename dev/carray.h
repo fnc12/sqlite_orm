@@ -11,6 +11,7 @@
 
 #include "functional/gsl.h"
 #include "pointer_value.h"
+#include "sqlite3/sqlite3_types.h"  //  int64
 
 #if SQLITE_VERSION_NUMBER >= 3020000
 SQLITE_ORM_EXPORT namespace sqlite_orm {
