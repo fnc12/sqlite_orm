@@ -1,7 +1,8 @@
 #pragma once
 
-/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  this file is also used to separate implementation details from the main header file.
+/** @file Out-of-class definitions of the storage members synchronizing a base table's schema, which need the
+ *  schema table (`builtin/dbos/sqlite_schema.h`); they also keep the lengthy schema synchronization apart from
+ *  the storage interface in `storage.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -14,12 +15,12 @@
 #endif
 
 #include "../functional/type_traits.h"
-#include "../sqlite_schema_table.h"
 #include "../util.h"
 #include "../serializing_util.h"
 #include "../storage.h"
 #include "../vocabulary/node_traits.h"
 #include "../schema/column_identifier.h"
+#include "../builtin/dbos/sqlite_schema.h"
 
 namespace sqlite_orm::internal {
     template<class... DBO>

@@ -8,20 +8,17 @@
 #include <tuple>  //  std::tuple, std::tuple_size
 #include <string>  //  std::string
 #include <vector>  //  std::vector
-#include <sstream>  //  std::stringstream
+#include <set>  //  std::set
+#include <utility>  //  std::pair
 #endif
 
 #include "../../functional/type_traits.h"
 #include "../../tuple_helper/tuple_traits.h"
-#include "../../table_name_collector.h"
 #include "../../serializer_context.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
-    template<class T, class L>
-    void iterate_ast(const T& t, L&& lambda);
-
     template<class... Args>
     struct set_t {
         using assigns_type = std::tuple<Args...>;
@@ -36,30 +33,33 @@ namespace sqlite_orm::internal {
         std::string serialized_value;
     };
 
+    /**
+     *  A SET clause assembled at runtime.
+     *
+     *  Its assignments are of different types, hence each is serialized as it is pushed back. The tables named on
+     *  the left-hand side of the assignments, needed later to serialize an UPDATE, are collected at the same time,
+     *  while the assignment is still at hand.
+     */
     template<class C>
     struct dynamic_set_t {
         using context_t = C;
         using entry_t = dynamic_set_entry;
         using const_iterator = typename std::vector<entry_t>::const_iterator;
+        using table_name_set = std::set<std::pair<std::string, std::string>>;
 
-        dynamic_set_t(const context_t& context_) : context(context_), collector(this->context.db_objects) {}
+        dynamic_set_t(const context_t& context_) : context(context_) {}
 
         dynamic_set_t(const dynamic_set_t& other) = default;
         dynamic_set_t(dynamic_set_t&& other) = default;
         dynamic_set_t& operator=(const dynamic_set_t& other) = default;
         dynamic_set_t& operator=(dynamic_set_t&& other) = default;
 
+        /**
+         *  Serializes the assignment and collects the table named on its left-hand side.
+         *  Defined in `implementations/dynamic_set_definitions.h`.
+         */
         template<class T, satisfies<is_assign, T> = true>
-        void push_back(T assign) {
-            auto newContext = this->context;
-            newContext.omit_table_name = true;
-            // note: we are only interested in the table name on the left-hand side of the assignment operator expression
-            iterate_ast(assign.lhs, this->collector);
-            std::stringstream ss;
-            ss << serialize(assign.lhs, newContext) << ' ' << assign.serialize() << ' '
-               << serialize(assign.rhs, context);
-            this->entries.push_back({ss.str()});
-        }
+        void push_back(T assign);
 
         const_iterator begin() const {
             return this->entries.begin();
@@ -71,12 +71,12 @@ namespace sqlite_orm::internal {
 
         void clear() {
             this->entries.clear();
-            this->collector.table_names.clear();
+            this->table_names.clear();
         }
 
         std::vector<entry_t> entries;
         context_t context;
-        table_name_collector<typename context_t::db_objects_type> collector;
+        table_name_set table_names;
     };
 
     template<class T>
