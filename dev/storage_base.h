@@ -23,6 +23,7 @@
 #include "sqlite3/sqlite3_types.h"  //  int64
 #include "sqlite3/sqlite3_statements.h"
 #include "sqlite3/sqlite3_errors.h"
+#include "sqlite3/sqlite3_xdestroy.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "vocabulary/node_traits.h"  // projections
 #include "pragma.h"
@@ -37,7 +38,6 @@
 #include "udf_proxy.h"
 #include "arg_values.h"
 #include "transaction_state.h"
-#include "xdestroy_handling.h"
 #include "serialization/quoting.h"
 #include "serialization/serializing_util.h"
 #include "table_info.h"

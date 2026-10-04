@@ -11,6 +11,8 @@
 #include <utility>  //  std::move, std::pair
 #endif
 
+#include "sqlite3/sqlite3_xdestroy.h"  //  xdestroy_fn_t
+
 namespace sqlite_orm::internal {
     /*
      *  Returns properly allocated memory space for the specified application-defined function object

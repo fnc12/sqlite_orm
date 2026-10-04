@@ -11,3 +11,4 @@
 #include "sqlite3/sqlite3_errors.h"
 #include "sqlite3/sqlite3_deleters.h"
 #include "sqlite3/sqlite3_statements.h"
+#include "sqlite3/sqlite3_xdestroy.h"
