@@ -53,5 +53,6 @@
 ## Internals
 
 * `optional_container` (once #1550 is merged): it is the compile-time optional sub-expression slot of the `case_t`, `limit_t`, `like_t` and trigger nodes, not a generic helper — `node_tuple` pattern-matches it, `ast_iterator` and `statement_serializer` reach into it via `apply()`, and it leaks into constructor signatures. `std::optional` is no replacement, as presence must stay part of the node's type. Candidate: store the sub-expression directly with an empty `absent_t`-like tag for "not present", asked about by a trait (`if constexpr`), `node_tuple<absent_t>` being empty.
+* `dynamic_set_t`: an AST node whose type carries the serializer context (`dynamic_set(storage)`), and which serializes each assignment eagerly as it is pushed back - its assignments are of different types, so they cannot be kept as a tuple. Keeping them instead, type-erased, would let a dynamic SET be serialized and bound like any other node, and drop the context from its type.
 
 Please feel free to add any feature that isn't listed here and not implemented yet.
