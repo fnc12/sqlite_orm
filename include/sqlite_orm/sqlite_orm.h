@@ -2998,6 +2998,12 @@ namespace sqlite_orm::internal {
     template<typename T>
     using field_type_t = typename T::field_type;
 
+    /**
+     *  The member pointer a column is mapped by: a pointer to data member, or a getter.
+     */
+    template<typename T>
+    using member_pointer_type_t = typename T::member_pointer_t;
+
     template<typename T>
     using constraints_type_t = typename T::constraints_type;
 
@@ -3591,6 +3597,32 @@ namespace sqlite_orm::internal {
         check_if_is_type<F>::template fn,
         field_type_t,
         filter_tuple_sequence_t<Elements, mpl::disjunction_fn<is_column, is_hidden_column>::template fn>>;
+}
+
+// #include "algorithms/column_field_types.h"
+
+/** @file Closed alias templates computing per-column type tuples of a single table definition.
+ */
+
+// #include "../../tuple_helper/tuple_filter.h"
+
+// #include "../../tuple_helper/tuple_transformer.h"
+
+// #include "../node_traits.h"
+
+namespace sqlite_orm::internal {
+    /**
+     *  The field types of a table definition's columns, in column order.
+     */
+    template<class Table>
+    using column_field_types_t = transform_tuple_t<filter_tuple_t<elements_type_t<Table>, is_column>, field_type_t>;
+
+    /**
+     *  The member pointers a table definition's columns are mapped by, in column order.
+     */
+    template<class Table>
+    using column_field_expressions_t =
+        transform_tuple_t<filter_tuple_t<elements_type_t<Table>, is_column>, member_pointer_type_t>;
 }
 
 // #include "algorithms/ddl_predicates.h"
@@ -10795,21 +10827,36 @@ namespace sqlite_orm::internal {
 }
 #endif
 
-// #include "storage_traits.h"
+// #include "schema/algorithms/table_lookup.h"
+
+/** @file Lookup of a table definition within a tuple of database objects.
+ *
+ *  These are schema-level algorithms: they search *across* the collection of database objects
+ *  to locate the one mapping a given lookup type, as opposed to classifying a node already in hand,
+ *  which is what the vocabulary layer does. They consume the vocabulary layer to do so.
+ *
+ *  "Table" is meant in the wide SQL table sense here, covering base tables, views
+ *  and virtual tables alike. Indexes and triggers are deliberately not covered:
+ *  their `object_type` is void, which `object_type_matches` filters out, so a lookup
+ *  answers whether a type is mapped as a table - not whether it occurs in the schema at all.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple
+#include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if, std::is_same, std::is_void
+#include <tuple>  // std::tuple_size, std::get
+#include <utility>  //  std::index_sequence, std::make_index_sequence
+#include <string>  //  std::string
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "tuple_helper/tuple_filter.h"
+// #include "../../functional/type_traits.h"
 
-// #include "tuple_helper/tuple_transformer.h"
+// #include "../../vocabulary/node_traits.h"
 
-// #include "vocabulary/node_traits.h"
-
-// #include "schema/db_objects.h"
+// #include "../../vocabulary/node_algorithms.h"
+//  column_field_types_t, column_field_expressions_t
+// #include "../db_objects.h"
 
 /** @file The tuple of database objects making up a schema.
  *
@@ -10855,34 +10902,6 @@ namespace sqlite_orm::internal {
         return dbObjects;
     }
 }
-
-// #include "schema/algorithms/table_lookup.h"
-
-/** @file Lookup of a table definition within a tuple of database objects.
- *
- *  These are schema-level algorithms: they search *across* the collection of database objects
- *  to locate the one mapping a given lookup type, as opposed to classifying a node already in hand,
- *  which is what the vocabulary layer does. They consume the vocabulary layer to do so.
- *
- *  "Table" is meant in the wide SQL table sense here, covering base tables, views
- *  and virtual tables alike. Indexes and triggers are deliberately not covered:
- *  their `object_type` is void, which `object_type_matches` filters out, so a lookup
- *  answers whether a type is mapped as a table - not whether it occurs in the schema at all.
- */
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if, std::is_same, std::is_void
-#include <tuple>  // std::tuple_size, std::get
-#include <utility>  //  std::index_sequence, std::make_index_sequence
-#endif
-
-// #include "../../functional/cxx_type_traits_polyfill.h"
-
-// #include "../../functional/type_traits.h"
-
-// #include "../../vocabulary/node_traits.h"
-
-// #include "../db_objects.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -10972,6 +10991,51 @@ namespace sqlite_orm::internal {
     constexpr bool is_mapped_v = is_mapped<DBOs, Lookup>::value;
 }
 
+// the columns of a looked-up table
+namespace sqlite_orm::internal {
+    template<class Table>
+    struct schema_mapped_column_field_types_impl {
+        using type = column_field_types_t<Table>;
+    };
+
+    template<>
+    struct schema_mapped_column_field_types_impl<polyfill::nonesuch> {
+        using type = std::tuple<>;
+    };
+
+    /**
+     *  The field types of the columns of the table mapped for the given lookup type, in column order;
+     *  an empty tuple if the lookup type is not mapped.
+     *
+     *  DBOs - db_objects_tuple type
+     *  Lookup - mapped or unmapped data type
+     */
+    template<class DBOs, class Lookup>
+    struct schema_mapped_column_field_types : schema_mapped_column_field_types_impl<schema_find_table_t<Lookup, DBOs>> {
+    };
+
+    template<class Table>
+    struct schema_mapped_column_field_expressions_impl {
+        using type = column_field_expressions_t<Table>;
+    };
+
+    template<>
+    struct schema_mapped_column_field_expressions_impl<polyfill::nonesuch> {
+        using type = std::tuple<>;
+    };
+
+    /**
+     *  The member pointers the columns of the table mapped for the given lookup type are mapped by,
+     *  in column order; an empty tuple if the lookup type is not mapped.
+     *
+     *  DBOs - db_objects_tuple type
+     *  Lookup - mapped or unmapped data type
+     */
+    template<class DBOs, class Lookup>
+    struct schema_mapped_column_field_expressions
+        : schema_mapped_column_field_expressions_impl<schema_find_table_t<Lookup, DBOs>> {};
+}
+
 // runtime lookup functions
 namespace sqlite_orm::internal {
     /**
@@ -10985,353 +11049,19 @@ namespace sqlite_orm::internal {
         return std::get<table_type>(dbObjects);
     }
 
+    /**
+     *  The name of the table mapped for the specified lookup type; an empty string if it is not mapped.
+     */
     template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
-    decltype(auto) lookup_table_name(const DBOs& dbObjects);
-}
-
-// #include "schema/column.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple
-#include <string>  //  std::string
-#include <optional>  //  std::optional
-#include <type_traits>  //  std::enable_if, std::is_same, std::is_member_object_pointer, std::is_signed
-#include <utility>  //  std::move
-#endif
-
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../functional/type_traits.h"
-
-// #include "../sqlite3/sqlite3_types.h"
-//  int64
-// #include "../tuple_helper/tuple_traits.h"
-
-// #include "../member_traits/member_traits.h"
-
-// #include "../type_is_nullable.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::false_type, std::true_type, std::enable_if
-#include <memory>  //  std::shared_ptr, std::unique_ptr
-#include <optional>  //  std::optional
-#endif
-
-// #include "functional/cxx_type_traits_polyfill.h"
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-
-    /**
-     *  This is class that tells `sqlite_orm` that type is nullable. Nullable types
-     *  are mapped to sqlite database as `NULL` and not-nullable are mapped as `NOT NULL`.
-     *  Default nullability status for all types is `NOT NULL`. So if you want to map
-     *  custom type as `NULL` (for example: boost::optional) you have to create a specialization
-     *  of `type_is_nullable` for your type and derive from `std::true_type`.
-     */
-    template<class T, class SFINAE = void>
-    struct type_is_nullable : std::false_type {
-        SQLITE_ORM_STATIC_CALLOP bool operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {
-            return true;
-        }
-    };
-
-    /**
-     *  This is a specialization for std::shared_ptr, std::unique_ptr, std::optional, which are nullable in sqlite_orm.
-     */
-    template<class T>
-    struct type_is_nullable<
-        T,
-        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<T, std::optional>,
-                                          polyfill::is_specialization_of<T, std::unique_ptr>,
-                                          polyfill::is_specialization_of<T, std::shared_ptr>>::value>>
-        : std::true_type {
-        SQLITE_ORM_STATIC_CALLOP bool operator()(const T& t) SQLITE_ORM_OR_CONST_CALLOP {
-            return static_cast<bool>(t);
-        }
-    };
-}
-
-// #include "column_identifier.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
-#endif
-
-namespace sqlite_orm::internal {
-    struct column_identifier {
-
-        /**
-         *  Column name.
-         */
-        std::string name;
-    };
-}
-
-// #include "../vocabulary/node_algorithms.h"
-
-// #include "../vocabulary/node_traits.h"
-
-// #include "../vocabulary/traits/grammar_traits_fwd.h"
-// Included to specialize traits
-
-namespace sqlite_orm::internal {
-    struct empty_setter {};
-
-    /*
-     *  Encapsulates object member pointers that are used as column fields,
-     *  and whose object is mapped to storage.
-     *  
-     *  G is a member object pointer or member function pointer
-     *  S is a member function pointer or `empty_setter`
-     */
-    template<class G, class S>
-    struct column_field {
-        using member_pointer_t = G;
-        using setter_type = S;
-        using object_type = member_object_type_t<G>;
-        using field_type = member_field_type_t<G>;
-
-        /**
-         *  Member pointer used to read a field value.
-         *  If it is a object member pointer it is also used to write a field value.
-         */
-        const member_pointer_t member_pointer;
-
-        /**
-         *  Setter member function to write a field value
-         */
-        SQLITE_ORM_NOUNIQUEADDRESS
-        const setter_type setter;
-
-        /**
-         *  Simplified interface for `NOT NULL` constraint
-         */
-        constexpr bool is_not_null() const {
-            return !type_is_nullable<field_type>::value;
-        }
-    };
-
-    /*
-     *  Encapsulates a tuple of column constraints.
-     *  
-     *  Op... is a constraints pack, e.g. primary_key_t, unique_t etc
-     */
-    template<class... Op>
-    struct column_constraints {
-        using constraints_type = std::tuple<Op...>;
-
-        SQLITE_ORM_NOUNIQUEADDRESS
-        constraints_type constraints;
-
-        /**
-         *  Checks whether constraints contain specified type.
-         */
-        template<template<class...> class Trait>
-        constexpr static bool is() {
-            return tuple_has<constraints_type, Trait>::value;
-        }
-
-        /**
-         *  Simplified interface for `DEFAULT` constraint
-         *  @return string representation of default value if it exists, otherwise an empty optional
-         */
-        std::optional<std::string> default_value() const;
-    };
-
-    /**
-     *  Column definition.
-     *  
-     *  It is a composition of orthogonal information stored in different base classes.
-     */
-    template<class G, class S, class... Op>
-    struct column_t : column_identifier, column_field<G, S>, column_constraints<Op...> {};
-
-    template<class T>
-    constexpr bool is_column_v = polyfill::is_specialization_of<T, column_t>::value;
-
-    /**
-     *  Definition of a hidden column.
-     *  
-     *  Implementation note: it is a separate type to make coding easier - hidden columns do not participate in normal column handling,
-     *  e.g. they are not counted as columns when constructing objects, and are only needed when finding columns or for table-valued functions.
-     */
-    template<class G, class S, class... Op>
-    struct hidden_column : column_identifier, column_field<G, S>, column_constraints<Op...> {};
-
-    template<class T>
-    constexpr bool is_hidden_column_v = polyfill::is_specialization_of<T, hidden_column>::value;
-
-    template<class T, class SFINAE = void>
-    struct column_field_expression {
-        using type = void;
-    };
-
-    template<class T>
-    struct column_field_expression<T, match_if<is_column, T>> {
-        using type = typename T::member_pointer_t;
-    };
-
-    template<typename T>
-    using column_field_expression_t = typename column_field_expression<T>::type;
-}
-
-namespace sqlite_orm::internal {
-    // Custom type:
-    // It is the programmer's responsibility to ensure data integrity in the value range of the custom type
-    // and in purview of SQLite using a 64-bit signed integer.
-    template<class F, class SFINAE = void>
-    struct check_pkcol {
-        static constexpr void validate_column_primary_key_with_autoincrement() {}
-    };
-
-    // For integer types: further checks
-    template<class F>
-    struct check_pkcol<F, std::enable_if_t<std::is_integral<F>::value>> {
-        // For 64-bit signed integer type: valid
-        template<
-            class X = F,
-            std::enable_if_t<sizeof(X) == sizeof(int64) && std::is_signed<X>::value == std::is_signed<int64>::value,
-                             bool> = true>
-        static constexpr void validate_column_primary_key_with_autoincrement() {}
-
-        // Design decision for integral types other than 64-bit signed integer:
-        // It is the programmer's responsibility to ensure data integrity in the value range of the integral type
-        // and in purview of SQLite using a 64-bit signed integer.
-        template<
-            class X = F,
-            std::enable_if_t<sizeof(X) != sizeof(int64) || std::is_signed<X>::value != std::is_signed<int64>::value,
-                             bool> = true>
-        static constexpr void validate_column_primary_key_with_autoincrement() {}
-    };
-
-    // For non-integer types: static_assert failure
-    template<class F>
-    struct check_pkcol<F, std::enable_if_t<!std::is_base_of<integer_printer, type_printer<F>>::value>> {
-        static constexpr void validate_column_primary_key_with_autoincrement() {
-            static_assert(polyfill::always_false_v<F>,
-                          R"(AUTOINCREMENT is only allowed on an INTEGER PRIMARY KEY as an alias for the "rowid" key)");
-        }
-    };
-
-    template<class G, class... Op>
-    constexpr void validate_column_definition() {
-        using constraints_type = std::tuple<Op...>;
-
-        static_assert((is_column_constraint<Op>::value && ...), "Incorrect column constraints");
-
-        if constexpr (tuple_has<constraints_type, is_autoincrement_pk>::value) {
-            check_pkcol<member_field_type_t<G>>::validate_column_primary_key_with_autoincrement();
+    decltype(auto) lookup_table_name(const DBOs& dbObjects) {
+        if constexpr (is_mapped_v<DBOs, Lookup>) {
+            return (pick_table<Lookup>(dbObjects).name);
+        } else {
+            return std::string{};
         }
     }
-
-    /**
-     *  Factory function for a column definition from a member object pointer for hidden virtual table columns.
-     */
-    template<class M, class... Op, satisfies<std::is_member_object_pointer, M> = true>
-    hidden_column<M, empty_setter, Op...> make_hidden_column(std::string name, M memberPointer, Op... constraints) {
-        static_assert((is_column_constraint<Op>::value && ...), "Incorrect column constraints");
-
-        // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
-        // as this will lead to UB with Clang on MinGW!
-        return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}};
-    }
 }
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  Factory function for a column definition from a member object pointer of the object to be mapped.
-     */
-    template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
-    internal::column_t<M, internal::empty_setter, Op...>
-    make_column(std::string name, M memberPointer, Op... constraints) {
-        internal::validate_column_definition<M, Op...>();
-
-        // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
-        // as this will lead to UB with Clang on MinGW!
-        return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}};
-    }
-
-    /**
-     *  Factory function for a column definition from "setter" and "getter" member function pointers of the object to be mapped.
-     */
-    template<class G,
-             class S,
-             class... Op,
-             internal::satisfies<internal::is_getter, G> = true,
-             internal::satisfies<internal::is_setter, S> = true>
-    internal::column_t<G, S, Op...> make_column(std::string name, S setter, G getter, Op... constraints) {
-        static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
-                      "Getter and setter must get and set same data type");
-        internal::validate_column_definition<G, Op...>();
-
-        // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
-        // as this will lead to UB with Clang on MinGW!
-        return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}};
-    }
-
-    /**
-     *  Factory function for a column definition from "getter" and "setter" member function pointers of the object to be mapped.
-     */
-    template<class G,
-             class S,
-             class... Op,
-             internal::satisfies<internal::is_getter, G> = true,
-             internal::satisfies<internal::is_setter, S> = true>
-    internal::column_t<G, S, Op...> make_column(std::string name, G getter, S setter, Op... constraints) {
-        static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
-                      "Getter and setter must get and set same data type");
-        internal::validate_column_definition<G, Op...>();
-
-        // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
-        // as this will lead to UB with Clang on MinGW!
-        return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}};
-    }
-}
-// column_field_expression_t
-
-namespace sqlite_orm::internal::storage_traits {
-    /**
-     *  DBO - db object (table)
-     */
-    template<class DBO>
-    struct storage_mapped_columns_impl
-        : tuple_transformer<filter_tuple_t<elements_type_t<DBO>, is_column>, field_type_t> {};
-
-    template<>
-    struct storage_mapped_columns_impl<polyfill::nonesuch> {
-        using type = std::tuple<>;
-    };
-
-    /**
-     *  DBOs - db_objects_tuple type
-     *  Lookup - mapped or unmapped data type
-     */
-    template<class DBOs, class Lookup>
-    struct storage_mapped_columns : storage_mapped_columns_impl<schema_find_table_t<Lookup, DBOs>> {};
-
-    /**
-     *  DBO - db object (table)
-     */
-    template<class DBO>
-    struct storage_mapped_column_expressions_impl
-        : tuple_transformer<filter_tuple_t<elements_type_t<DBO>, is_column>, column_field_expression_t> {};
-
-    template<>
-    struct storage_mapped_column_expressions_impl<polyfill::nonesuch> {
-        using type = std::tuple<>;
-    };
-
-    /**
-     *  DBOs - db_objects_tuple type
-     *  Lookup - mapped or unmapped data type
-     */
-    template<class DBOs, class Lookup>
-    struct storage_mapped_column_expressions
-        : storage_mapped_column_expressions_impl<schema_find_table_t<Lookup, DBOs>> {};
-}
-
-// #include "schema/algorithms/table_lookup.h"
-// schema_pick_table_t
+// schema_pick_table_t, schema_mapped_column_field_types
 // #include "ast/app_function.h"
 
 /** @file The node of a call of an application-defined function, and the definition of an application-defined
@@ -12160,7 +11890,7 @@ namespace sqlite_orm::internal {
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_asterisk, T>>
-        : storage_traits::storage_mapped_columns<DBOs, mapped_type_proxy_t<type_t<T>>> {};
+        : schema_mapped_column_field_types<DBOs, mapped_type_proxy_t<type_t<T>>> {};
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_object_node, T>> {
@@ -12446,40 +12176,43 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     };
 }
 
-// #include "storage_impl.h"
+// #include "schema/algorithms/table_filters.h"
+
+/** @file Selection of the base tables or views within a tuple of database objects, and computations over them.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
+#include <type_traits>  //  std::remove_pointer
 #endif
 
-// #include "functional/index_sequence_util.h"
+// #include "../../functional/type_traits.h"
 
-// #include "functional/type_traits.h"
+// #include "../../tuple_helper/tuple_filter.h"
 
-// #include "tuple_helper/tuple_traits.h"
+// #include "../../tuple_helper/tuple_iteration.h"
 
-// #include "tuple_helper/tuple_filter.h"
+// #include "../../vocabulary/node_traits.h"
 
-// #include "tuple_helper/tuple_iteration.h"
+// #include "../db_objects.h"
 
-// #include "vocabulary/node_traits.h"
-
-// #include "cte_types.h"
-
-// #include "schema/db_objects.h"
-
-// #include "schema/algorithms/table_lookup.h"
-
-// interface functions
 namespace sqlite_orm::internal {
+    /**
+     *  The positions of the base tables in a tuple of database objects.
+     */
     template<class DBOs>
     using tables_index_sequence = filter_tuple_sequence_t<DBOs, is_base_table>;
 
 #ifdef SQLITE_ORM_WITH_VIEW
+    /**
+     *  The positions of the views in a tuple of database objects.
+     */
     template<class DBOs>
     using views_index_sequence = filter_tuple_sequence_t<DBOs, is_view>;
 #endif
 
+    /**
+     *  The number of foreign keys over all base tables of a tuple of database objects.
+     */
     template<class DBOs, satisfies<is_db_objects, DBOs> = true>
     constexpr int foreign_keys_count() {
         int res = 0;
@@ -12489,16 +12222,42 @@ namespace sqlite_orm::internal {
         });
         return res;
     }
+}
 
-    template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs>>
-    decltype(auto) lookup_table_name(const DBOs& dbObjects) {
-        if constexpr (is_mapped_v<DBOs, Lookup>) {
-            return (pick_table<Lookup>(dbObjects).name);
-        } else {
-            return std::string{};
-        }
-    }
+// #include "schema/algorithms/column_lookup.h"
 
+/** @file Lookup of a column definition within a tuple of database objects.
+ *
+ *  Schema-level algorithms like `table_lookup.h`: they locate the table definition mapping a column
+ *  expression's object type - or the CTE a moniker names - and find the column within it.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#include <tuple>  //  std::tuple_size, std::tuple_element, std::get
+#endif
+
+// #include "../../functional/index_sequence_util.h"
+
+// #include "../../functional/type_traits.h"
+
+// #include "../../tuple_helper/tuple_traits.h"
+
+// #include "../../tuple_helper/tuple_filter.h"
+
+// #include "../../tuple_helper/tuple_iteration.h"
+
+// #include "../../vocabulary/node_traits.h"
+
+// #include "../../vocabulary/node_algorithms.h"
+//  col_index_sequence_of, col_index_sequence_with
+// #include "../../cte_types.h"
+
+// #include "../db_objects.h"
+
+// #include "table_lookup.h"
+
+namespace sqlite_orm::internal {
     /**
      *  Find column name by its type and member pointer.
      */
@@ -15668,6 +15427,20 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 // #include "vocabulary/node_fwd.h"
 // column_constraints, order_by_t
 // #include "schema/column_identifier.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#endif
+
+namespace sqlite_orm::internal {
+    struct column_identifier {
+
+        /**
+         *  Column name.
+         */
+        std::string name;
+    };
+}
 
 // #include "error_code.h"
 
@@ -22849,6 +22622,276 @@ namespace sqlite_orm::internal {
 
 // #include "schema/column.h"
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>  //  std::tuple
+#include <string>  //  std::string
+#include <optional>  //  std::optional
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_member_object_pointer, std::is_signed
+#include <utility>  //  std::move
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../functional/type_traits.h"
+
+// #include "../sqlite3/sqlite3_types.h"
+//  int64
+// #include "../tuple_helper/tuple_traits.h"
+
+// #include "../member_traits/member_traits.h"
+
+// #include "../type_is_nullable.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::false_type, std::true_type, std::enable_if
+#include <memory>  //  std::shared_ptr, std::unique_ptr
+#include <optional>  //  std::optional
+#endif
+
+// #include "functional/cxx_type_traits_polyfill.h"
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  This is class that tells `sqlite_orm` that type is nullable. Nullable types
+     *  are mapped to sqlite database as `NULL` and not-nullable are mapped as `NOT NULL`.
+     *  Default nullability status for all types is `NOT NULL`. So if you want to map
+     *  custom type as `NULL` (for example: boost::optional) you have to create a specialization
+     *  of `type_is_nullable` for your type and derive from `std::true_type`.
+     */
+    template<class T, class SFINAE = void>
+    struct type_is_nullable : std::false_type {
+        SQLITE_ORM_STATIC_CALLOP bool operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {
+            return true;
+        }
+    };
+
+    /**
+     *  This is a specialization for std::shared_ptr, std::unique_ptr, std::optional, which are nullable in sqlite_orm.
+     */
+    template<class T>
+    struct type_is_nullable<
+        T,
+        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<T, std::optional>,
+                                          polyfill::is_specialization_of<T, std::unique_ptr>,
+                                          polyfill::is_specialization_of<T, std::shared_ptr>>::value>>
+        : std::true_type {
+        SQLITE_ORM_STATIC_CALLOP bool operator()(const T& t) SQLITE_ORM_OR_CONST_CALLOP {
+            return static_cast<bool>(t);
+        }
+    };
+}
+
+// #include "column_identifier.h"
+
+// #include "../vocabulary/node_algorithms.h"
+
+// #include "../vocabulary/node_traits.h"
+
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    struct empty_setter {};
+
+    /*
+     *  Encapsulates object member pointers that are used as column fields,
+     *  and whose object is mapped to storage.
+     *  
+     *  G is a member object pointer or member function pointer
+     *  S is a member function pointer or `empty_setter`
+     */
+    template<class G, class S>
+    struct column_field {
+        using member_pointer_t = G;
+        using setter_type = S;
+        using object_type = member_object_type_t<G>;
+        using field_type = member_field_type_t<G>;
+
+        /**
+         *  Member pointer used to read a field value.
+         *  If it is a object member pointer it is also used to write a field value.
+         */
+        const member_pointer_t member_pointer;
+
+        /**
+         *  Setter member function to write a field value
+         */
+        SQLITE_ORM_NOUNIQUEADDRESS
+        const setter_type setter;
+
+        /**
+         *  Simplified interface for `NOT NULL` constraint
+         */
+        constexpr bool is_not_null() const {
+            return !type_is_nullable<field_type>::value;
+        }
+    };
+
+    /*
+     *  Encapsulates a tuple of column constraints.
+     *  
+     *  Op... is a constraints pack, e.g. primary_key_t, unique_t etc
+     */
+    template<class... Op>
+    struct column_constraints {
+        using constraints_type = std::tuple<Op...>;
+
+        SQLITE_ORM_NOUNIQUEADDRESS
+        constraints_type constraints;
+
+        /**
+         *  Checks whether constraints contain specified type.
+         */
+        template<template<class...> class Trait>
+        constexpr static bool is() {
+            return tuple_has<constraints_type, Trait>::value;
+        }
+
+        /**
+         *  Simplified interface for `DEFAULT` constraint
+         *  @return string representation of default value if it exists, otherwise an empty optional
+         */
+        std::optional<std::string> default_value() const;
+    };
+
+    /**
+     *  Column definition.
+     *  
+     *  It is a composition of orthogonal information stored in different base classes.
+     */
+    template<class G, class S, class... Op>
+    struct column_t : column_identifier, column_field<G, S>, column_constraints<Op...> {};
+
+    template<class T>
+    constexpr bool is_column_v = polyfill::is_specialization_of<T, column_t>::value;
+
+    /**
+     *  Definition of a hidden column.
+     *  
+     *  Implementation note: it is a separate type to make coding easier - hidden columns do not participate in normal column handling,
+     *  e.g. they are not counted as columns when constructing objects, and are only needed when finding columns or for table-valued functions.
+     */
+    template<class G, class S, class... Op>
+    struct hidden_column : column_identifier, column_field<G, S>, column_constraints<Op...> {};
+
+    template<class T>
+    constexpr bool is_hidden_column_v = polyfill::is_specialization_of<T, hidden_column>::value;
+}
+
+namespace sqlite_orm::internal {
+    // Custom type:
+    // It is the programmer's responsibility to ensure data integrity in the value range of the custom type
+    // and in purview of SQLite using a 64-bit signed integer.
+    template<class F, class SFINAE = void>
+    struct check_pkcol {
+        static constexpr void validate_column_primary_key_with_autoincrement() {}
+    };
+
+    // For integer types: further checks
+    template<class F>
+    struct check_pkcol<F, std::enable_if_t<std::is_integral<F>::value>> {
+        // For 64-bit signed integer type: valid
+        template<
+            class X = F,
+            std::enable_if_t<sizeof(X) == sizeof(int64) && std::is_signed<X>::value == std::is_signed<int64>::value,
+                             bool> = true>
+        static constexpr void validate_column_primary_key_with_autoincrement() {}
+
+        // Design decision for integral types other than 64-bit signed integer:
+        // It is the programmer's responsibility to ensure data integrity in the value range of the integral type
+        // and in purview of SQLite using a 64-bit signed integer.
+        template<
+            class X = F,
+            std::enable_if_t<sizeof(X) != sizeof(int64) || std::is_signed<X>::value != std::is_signed<int64>::value,
+                             bool> = true>
+        static constexpr void validate_column_primary_key_with_autoincrement() {}
+    };
+
+    // For non-integer types: static_assert failure
+    template<class F>
+    struct check_pkcol<F, std::enable_if_t<!std::is_base_of<integer_printer, type_printer<F>>::value>> {
+        static constexpr void validate_column_primary_key_with_autoincrement() {
+            static_assert(polyfill::always_false_v<F>,
+                          R"(AUTOINCREMENT is only allowed on an INTEGER PRIMARY KEY as an alias for the "rowid" key)");
+        }
+    };
+
+    template<class G, class... Op>
+    constexpr void validate_column_definition() {
+        using constraints_type = std::tuple<Op...>;
+
+        static_assert((is_column_constraint<Op>::value && ...), "Incorrect column constraints");
+
+        if constexpr (tuple_has<constraints_type, is_autoincrement_pk>::value) {
+            check_pkcol<member_field_type_t<G>>::validate_column_primary_key_with_autoincrement();
+        }
+    }
+
+    /**
+     *  Factory function for a column definition from a member object pointer for hidden virtual table columns.
+     */
+    template<class M, class... Op, satisfies<std::is_member_object_pointer, M> = true>
+    hidden_column<M, empty_setter, Op...> make_hidden_column(std::string name, M memberPointer, Op... constraints) {
+        static_assert((is_column_constraint<Op>::value && ...), "Incorrect column constraints");
+
+        // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
+        // as this will lead to UB with Clang on MinGW!
+        return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}};
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Factory function for a column definition from a member object pointer of the object to be mapped.
+     */
+    template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
+    internal::column_t<M, internal::empty_setter, Op...>
+    make_column(std::string name, M memberPointer, Op... constraints) {
+        internal::validate_column_definition<M, Op...>();
+
+        // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
+        // as this will lead to UB with Clang on MinGW!
+        return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}};
+    }
+
+    /**
+     *  Factory function for a column definition from "setter" and "getter" member function pointers of the object to be mapped.
+     */
+    template<class G,
+             class S,
+             class... Op,
+             internal::satisfies<internal::is_getter, G> = true,
+             internal::satisfies<internal::is_setter, S> = true>
+    internal::column_t<G, S, Op...> make_column(std::string name, S setter, G getter, Op... constraints) {
+        static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
+                      "Getter and setter must get and set same data type");
+        internal::validate_column_definition<G, Op...>();
+
+        // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
+        // as this will lead to UB with Clang on MinGW!
+        return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}};
+    }
+
+    /**
+     *  Factory function for a column definition from "getter" and "setter" member function pointers of the object to be mapped.
+     */
+    template<class G,
+             class S,
+             class... Op,
+             internal::satisfies<internal::is_getter, G> = true,
+             internal::satisfies<internal::is_setter, S> = true>
+    internal::column_t<G, S, Op...> make_column(std::string name, G getter, S setter, Op... constraints) {
+        static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
+                      "Getter and setter must get and set same data type");
+        internal::validate_column_definition<G, Op...>();
+
+        // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
+        // as this will lead to UB with Clang on MinGW!
+        return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}};
+    }
+}
+
 // #include "schema/table_base.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -23422,7 +23465,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "alias.h"
 
-// #include "storage_traits.h"
+// #include "schema/algorithms/table_lookup.h"
+//  schema_mapped_column_field_expressions
 
 namespace sqlite_orm::internal {
     template<class DBOs, class E, class SFINAE = void>
@@ -23481,7 +23525,7 @@ namespace sqlite_orm::internal {
         T,
         std::enable_if_t<is_asterisk_v<T> &&
                          std::disjunction_v<std::negation<is_recordset_alias<type_t<T>>>, is_cte_moniker<type_t<T>>>>>
-        : storage_traits::storage_mapped_column_expressions<DBOs, type_t<T>> {};
+        : schema_mapped_column_field_expressions<DBOs, type_t<T>> {};
 
     /**
      *  Resolve all columns of an aliased object.
@@ -23489,7 +23533,7 @@ namespace sqlite_orm::internal {
      */
     template<class DBOs, class T>
     struct column_expression_type<DBOs, T, std::enable_if_t<is_asterisk_v<T> && is_table_alias_v<type_t<T>>>>
-        : tuple_transformer<typename storage_traits::storage_mapped_column_expressions<DBOs, type_t<type_t<T>>>::type,
+        : tuple_transformer<typename schema_mapped_column_field_expressions<DBOs, type_t<type_t<T>>>::type,
                             add_column_alias<type_t<T>>::template apply_t> {};
 
     /**
