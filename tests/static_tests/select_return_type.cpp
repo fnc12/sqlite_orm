@@ -42,14 +42,27 @@ TEST_CASE("Select return types") {
         STATIC_REQUIRE(storage_columns_count<decltype(storage), Visit>::value == 0);
         STATIC_REQUIRE(storage_columns_count<decltype(storage2), Visit>::value == 2);
 
-        //  test storage mapped columns
-        using MappedUserColumnsTypes = storage_mapped_columns<decltype(storage)::db_objects_type, User>::type;
+        //  test schema mapped column field types
+        using MappedUserColumnsTypes =
+            internal::schema_mapped_column_field_types<decltype(storage)::db_objects_type, User>::type;
         STATIC_REQUIRE(std::is_same<MappedUserColumnsTypes, std::tuple<int>>::value);
 
-        using MappedVisitColumnsEmpty = storage_mapped_columns<decltype(storage)::db_objects_type, Visit>::type;
+        using MappedVisitColumnsEmpty =
+            internal::schema_mapped_column_field_types<decltype(storage)::db_objects_type, Visit>::type;
         STATIC_REQUIRE(std::is_same<MappedVisitColumnsEmpty, std::tuple<>>::value);
 
-        using MappedVisitColumnTypes = storage_mapped_columns<decltype(storage2)::db_objects_type, Visit>::type;
+        using MappedVisitColumnTypes =
+            internal::schema_mapped_column_field_types<decltype(storage2)::db_objects_type, Visit>::type;
         STATIC_REQUIRE(std::is_same<MappedVisitColumnTypes, std::tuple<int, std::string>>::value);
+
+        //  test schema mapped column field expressions
+        using MappedVisitColumnExpressionsEmpty =
+            internal::schema_mapped_column_field_expressions<decltype(storage)::db_objects_type, Visit>::type;
+        STATIC_REQUIRE(std::is_same<MappedVisitColumnExpressionsEmpty, std::tuple<>>::value);
+
+        using MappedVisitColumnExpressions =
+            internal::schema_mapped_column_field_expressions<decltype(storage2)::db_objects_type, Visit>::type;
+        STATIC_REQUIRE(std::is_same<MappedVisitColumnExpressions,
+                                    std::tuple<decltype(&Visit::id), decltype(&Visit::date)>>::value);
     }
 }

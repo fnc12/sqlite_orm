@@ -106,19 +106,6 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_hidden_column_v = polyfill::is_specialization_of<T, hidden_column>::value;
-
-    template<class T, class SFINAE = void>
-    struct column_field_expression {
-        using type = void;
-    };
-
-    template<class T>
-    struct column_field_expression<T, match_if<is_column, T>> {
-        using type = typename T::member_pointer_t;
-    };
-
-    template<typename T>
-    using column_field_expression_t = typename column_field_expression<T>::type;
 }
 
 namespace sqlite_orm::internal {
