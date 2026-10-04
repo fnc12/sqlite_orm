@@ -500,7 +500,7 @@ Decided, not yet done. The destination is settled in each case; only the work re
   types are placeholders (`argument<I>`, `common_argument_type<I...>`) substituted by
   `vocabulary/algorithms/argument_placeholders.h` from `column_result_t`. The legacy
   `builtin_function_t` node in `ast/builtin_function.h` and the per-function `*_string`
-  tag + factory pairs in `builtin/functions/core.h` exist only for C++17 and go when that baseline
+  tag + factory pairs in `builtin/functions/*.h` exist only for C++17 and go when that baseline
   does. Design and decisions are in
   [`docs/plans/2026-09-12-built-in-function-vocabulary-design.md`](../plans/2026-09-12-built-in-function-vocabulary-design.md).
 

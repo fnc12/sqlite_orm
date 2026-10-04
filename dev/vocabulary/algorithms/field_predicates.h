@@ -9,6 +9,7 @@
 #include <string_view>  //  std::string_view, std::wstring_view
 #endif
 
+#include "../../sqlite3/sqlite3_types.h"  //  int64
 #include "../../functional/gsl.h"  // orm_gsl::czstring, orm_gsl::cwzstring
 #include "../../type_printer.h"
 #include "field_predicates_fwd.h"  // Included to specialize field predicates
@@ -22,23 +23,21 @@ namespace sqlite_orm::internal {
 
     // For 64-bit signed integer type: capable
     template<class F>
-    constexpr bool
-        is_rowid_alias_capable_v<F,
-                                 std::enable_if_t<std::is_integral<F>::value &&
-                                                  (sizeof(F) == sizeof(sqlite_int64) &&
-                                                   std::is_signed<F>::value == std::is_signed<sqlite_int64>::value)>> =
-            true;
+    constexpr bool is_rowid_alias_capable_v<
+        F,
+        std::enable_if_t<std::is_integral<F>::value &&
+                         (sizeof(F) == sizeof(int64) && std::is_signed<F>::value == std::is_signed<int64>::value)>> =
+        true;
 
     // Design decision for integral types other than 64-bit signed integer:
     // It is the programmer's responsibility to ensure data integrity in the value range of the integral type
     // and in purview of SQLite using a 64-bit signed integer.
     template<class F>
-    constexpr bool
-        is_rowid_alias_capable_v<F,
-                                 std::enable_if_t<std::is_integral<F>::value &&
-                                                  (sizeof(F) != sizeof(sqlite_int64) ||
-                                                   std::is_signed<F>::value != std::is_signed<sqlite_int64>::value)>> =
-            true;
+    constexpr bool is_rowid_alias_capable_v<
+        F,
+        std::enable_if_t<std::is_integral<F>::value &&
+                         (sizeof(F) != sizeof(int64) || std::is_signed<F>::value != std::is_signed<int64>::value)>> =
+        true;
 
     template<class T>
     constexpr bool is_text_value_v = std::disjunction<std::is_same<T, orm_gsl::czstring>,
