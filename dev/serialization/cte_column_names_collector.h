@@ -48,114 +48,80 @@ namespace sqlite_orm::internal {
         }
     }
 
-    template<class T, class SFINAE = void>
+    /**
+     *  Collects the column names of a CTE's select: an alias' name, a column's name, or an empty name
+     *  for an unaliased expression, to be numbered later on.
+     */
     struct cte_column_names_collector {
-        using expression_type = T;
-
-        // Compound statements are never passed in by db_objects_for_expression()
-        static_assert(!is_compound_operator_v<T>);
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::vector<std::string> operator()(const expression_type& t,
+        template<class E, class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::vector<std::string> operator()(const E& expression,
                                                                      const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            auto newContext = context;
-            newContext.omit_table_name = true;
-            std::string columnName = serialize(t, newContext);
-            if (columnName.empty()) {
-                throw std::system_error{orm_error_code::column_not_found};
+            // Compound statements are never passed in by db_objects_for_expression()
+            static_assert(!is_compound_operator_v<E>);
+
+            // ...
+            if constexpr (polyfill::is_specialization_of_v<E, std::reference_wrapper>) {
+                return operator()(access_column_expression(expression.get()), context);
             }
-            unquote_or_erase(columnName);
-            return {std::move(columnName)};
+            // ...
+            else if constexpr (is_asterisk_v<E>) {
+                auto& table = pick_table<type_t<E>>(context.db_objects);
+
+                using table_type = polyfill::remove_cvref_t<decltype(table)>;
+                using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
+                return create_from_tuple<std::vector<std::string>>(table.elements,
+                                                                   column_index_sequence{},
+                                                                   &column_identifier::name);
+            }
+            // No CTE for object expressions.
+            else if constexpr (is_object_node_v<E>) {
+                static_assert(polyfill::always_false_v<E>, "Selecting an object in a subselect is not allowed");
+            }
+            // No CTE for object expressions.
+            else if constexpr (is_struct_v<E>) {
+                static_assert(polyfill::always_false_v<E>, "Repacking columns in a subselect is not allowed");
+            }
+            // ...
+            else if constexpr (is_columns_v<E>) {
+                std::vector<std::string> columnNames;
+                columnNames.reserve(size_t(expression.count));
+                iterate_tuple(expression.columns, [&columnNames, &context](auto& column) {
+                    columnNames.push_back(column_name(column, context));
+                });
+                return columnNames;
+            }
+            // ...
+            else {
+                return {column_name(expression, context)};
+            }
+        }
+
+      private:
+        /**
+         *  The name of a single result column: an alias' name, or the unquoted serialization of the expression
+         *  if it is a column, otherwise empty.
+         */
+        template<class E, class Ctx>
+        static std::string column_name(const E& expression, const Ctx& context) {
+            if constexpr (is_as_node_v<E>) {
+                return alias_extractor<alias_type_t<E>>::extract();
+            } else {
+                auto newContext = context;
+                newContext.omit_table_name = true;
+                std::string columnName = serialize(expression, newContext);
+                if (columnName.empty()) {
+                    throw std::system_error{orm_error_code::column_not_found};
+                }
+                unquote_or_erase(columnName);
+                return columnName;
+            }
         }
     };
 
     template<class T, class Ctx>
     std::vector<std::string> collect_cte_column_names(const T& t, const Ctx& context) {
-        cte_column_names_collector<T> collector;
-        return collector(access_column_expression(t), context);
+        return cte_column_names_collector{}(access_column_expression(t), context);
     }
-
-    template<class As>
-    struct cte_column_names_collector<As, match_if<is_as_node, As>> {
-        using expression_type = As;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
-        operator()(const expression_type& /*expression*/, const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
-            return {alias_extractor<alias_type_t<As>>::extract()};
-        }
-    };
-
-    template<class Wrapper>
-    struct cte_column_names_collector<Wrapper, match_specialization_of<Wrapper, std::reference_wrapper>> {
-        using expression_type = Wrapper;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::vector<std::string> operator()(const expression_type& expression,
-                                                                     const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return collect_cte_column_names(expression.get(), context);
-        }
-    };
-
-    template<class Asterisk>
-    struct cte_column_names_collector<Asterisk, match_if<is_asterisk, Asterisk>> {
-        using expression_type = Asterisk;
-        using recordset_type = type_t<Asterisk>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::vector<std::string> operator()(const expression_type&,
-                                                                     const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            auto& table = pick_table<recordset_type>(context.db_objects);
-
-            using table_type = polyfill::remove_cvref_t<decltype(table)>;
-            using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
-            return create_from_tuple<std::vector<std::string>>(table.elements,
-                                                               column_index_sequence{},
-                                                               &column_identifier::name);
-        }
-    };
-
-    // No CTE for object expressions.
-    template<class Object>
-    struct cte_column_names_collector<Object, match_if<is_object_node, Object>> {
-        static_assert(polyfill::always_false_v<Object>, "Selecting an object in a subselect is not allowed");
-    };
-
-    // No CTE for object expressions.
-    template<class Object>
-    struct cte_column_names_collector<Object, match_if<is_struct, Object>> {
-        static_assert(polyfill::always_false_v<Object>, "Repacking columns in a subselect is not allowed");
-    };
-
-    template<class Columns>
-    struct cte_column_names_collector<Columns, match_if<is_columns, Columns>> {
-        using expression_type = Columns;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::vector<std::string> operator()(const expression_type& cols,
-                                                                     const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::vector<std::string> columnNames;
-            columnNames.reserve(size_t(cols.count));
-            auto newContext = context;
-            newContext.omit_table_name = true;
-            iterate_tuple(cols.columns, [&columnNames, &newContext](auto& m) {
-                using value_type = polyfill::remove_cvref_t<decltype(m)>;
-
-                if constexpr (is_as_node_v<value_type>) {
-                    columnNames.push_back(alias_extractor<alias_type_t<value_type>>::extract());
-                } else {
-                    std::string columnName = serialize(m, newContext);
-                    if (!columnName.empty()) {
-                        columnNames.push_back(std::move(columnName));
-                    } else {
-                        throw std::system_error{orm_error_code::column_not_found};
-                    }
-                    unquote_or_erase(columnNames.back());
-                }
-            });
-            return columnNames;
-        }
-    };
 
     /**
      *  The column names of a CTE: those collected from its select, overridden by its explicit column list if any.
@@ -164,7 +130,7 @@ namespace sqlite_orm::internal {
     std::vector<std::string> resolve_cte_column_names(const E& sel,
                                                       [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
                                                       const Ctx& context) {
-        // 1. determine column names from subselect
+        // 1. collect the column names of the subselect
         std::vector<std::string> columnNames = collect_cte_column_names(sel.col, context);
 
         // 2. override column names from cte expression
