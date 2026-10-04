@@ -37,7 +37,7 @@
 #include "../field_printer.h"
 #include "../literal.h"
 #include "table_name_collector.h"
-#include "column_names_collector.h"
+#include "column_expressions_collector.h"
 #include "cte_column_names_collector.h"
 #include "order_by_serializer.h"
 #include "serializing_util.h"
@@ -1693,7 +1693,7 @@ namespace sqlite_orm::internal {
             if (context.use_parentheses) {
                 ss << '(';
             }
-            ss << streaming_serialized(collect_column_names(statement, subCtx));
+            ss << streaming_serialized(collect_column_expressions(statement, subCtx));
             if (context.use_parentheses) {
                 ss << ')';
             }
@@ -1935,7 +1935,7 @@ namespace sqlite_orm::internal {
                 }
             }
 
-            ss << streaming_serialized(collect_column_names(sel.col, subCtx));
+            ss << streaming_serialized(collect_column_expressions(sel.col, subCtx));
             using conditions_tuple = conditions_type_t<statement_type>;
             constexpr bool hasExplicitFrom = tuple_has<conditions_tuple, is_any_from>::value;
             if constexpr (!hasExplicitFrom) {

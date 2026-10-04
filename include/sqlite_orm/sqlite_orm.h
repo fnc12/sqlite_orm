@@ -19427,7 +19427,7 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "column_names_collector.h"
+// #include "column_expressions_collector.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_base_of
@@ -19481,8 +19481,9 @@ namespace sqlite_orm::internal {
     auto serialize(const T& t, const Ctx& context);
 
     template<class T, class Ctx>
-    std::vector<std::string>&
-    collect_table_column_names(std::vector<std::string>& collectedExpressions, bool definedOrder, const Ctx& context) {
+    std::vector<std::string>& collect_table_column_expressions(std::vector<std::string>& collectedExpressions,
+                                                               bool definedOrder,
+                                                               const Ctx& context) {
         if (definedOrder) {
             auto& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
             collectedExpressions.reserve(collectedExpressions.size() + table.template count_of<is_column>());
@@ -19515,7 +19516,7 @@ namespace sqlite_orm::internal {
 
     /** @short Column expression collector.
      */
-    struct column_names_collector {
+    struct column_expressions_collector {
         /** 
          *  The default implementation simply serializes the passed argument.
          */
@@ -19527,9 +19528,9 @@ namespace sqlite_orm::internal {
             }
             // ...
             else if constexpr (is_asterisk_v<E> || is_object_node_v<E>) {
-                return collect_table_column_names<type_t<E>>(this->collectedExpressions,
-                                                             expression.defined_order,
-                                                             context);
+                return collect_table_column_expressions<type_t<E>>(this->collectedExpressions,
+                                                                   expression.defined_order,
+                                                                   context);
             }
             // ...
             else if constexpr (is_columns_v<E> || is_struct_v<E>) {
@@ -19559,9 +19560,9 @@ namespace sqlite_orm::internal {
     };
 
     template<class T, class Ctx>
-    std::vector<std::string> collect_column_names(const T& expression, const Ctx& context) {
-        column_names_collector serializer;
-        return serializer(access_column_expression(expression), context);
+    std::vector<std::string> collect_column_expressions(const T& expression, const Ctx& context) {
+        column_expressions_collector collector;
+        return collector(access_column_expression(expression), context);
     }
 }
 
@@ -21750,7 +21751,7 @@ namespace sqlite_orm::internal {
             if (context.use_parentheses) {
                 ss << '(';
             }
-            ss << streaming_serialized(collect_column_names(statement, subCtx));
+            ss << streaming_serialized(collect_column_expressions(statement, subCtx));
             if (context.use_parentheses) {
                 ss << ')';
             }
@@ -21992,7 +21993,7 @@ namespace sqlite_orm::internal {
                 }
             }
 
-            ss << streaming_serialized(collect_column_names(sel.col, subCtx));
+            ss << streaming_serialized(collect_column_expressions(sel.col, subCtx));
             using conditions_tuple = conditions_type_t<statement_type>;
             constexpr bool hasExplicitFrom = tuple_has<conditions_tuple, is_any_from>::value;
             if constexpr (!hasExplicitFrom) {
