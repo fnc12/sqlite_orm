@@ -1572,7 +1572,7 @@ namespace sqlite_orm::internal {
 
     template<class Ctx, class T, satisfies<is_dynamic_set, T> = true>
     const std::set<std::pair<std::string, std::string>>& collect_table_names(const T& set, const Ctx&) {
-        return set.collector.table_names;
+        return set.table_names;
     }
 
     template<class Ctx, class T, satisfies<is_select, T> = true>
