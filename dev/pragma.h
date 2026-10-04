@@ -11,7 +11,6 @@
 #endif
 
 #include "functional/gsl.h"
-#include "error_code.h"
 #include "row_extractor.h"
 #include "journal_mode.h"
 #include "locking_mode.h"

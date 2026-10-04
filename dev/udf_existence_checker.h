@@ -10,6 +10,7 @@
 #include "error_code.h"
 #include "conditions.h"
 #include "storage_base.h"
+#include "sqlite3/sqlite3_errors.h"
 
 namespace sqlite_orm::internal {
     /*

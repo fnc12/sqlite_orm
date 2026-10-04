@@ -25,6 +25,7 @@
 #include "arithmetic_tag.h"
 #include "xdestroy_handling.h"
 #include "pointer_value.h"
+#include "sqlite3/sqlite3_errors.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 

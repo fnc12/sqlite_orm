@@ -13,7 +13,7 @@
 #endif
 
 #include "../functional/gsl.h"
-#include "../error_code.h"
+#include "sqlite3_errors.h"
 
 namespace sqlite_orm::internal {
     // Wrapper to reduce boiler-plate code

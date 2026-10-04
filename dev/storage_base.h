@@ -41,6 +41,8 @@
 #include "serialization/serializing_util.h"
 #include "table_info.h"
 #include "storage_options.h"
+#include "sqlite3/sqlite3_errors.h"
+#include "error_code.h"
 
 namespace sqlite_orm::internal {
     /**

@@ -6,6 +6,8 @@
 #include "../../dev/sqlite3/sqlite3_types.h"
 #include "../../dev/serialization/quoting.h"
 #include "../../dev/sqlite3/sqlite3_deleters.h"
+#include "../../dev/sqlite3/sqlite3_errors.h"
+#include "../../dev/error_code.h"
 #include "../../dev/storage.h"
 #include "../../dev/node_definitions.h"
 #include "../../dev/node_algorithm_definitions.h"

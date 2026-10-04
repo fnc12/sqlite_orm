@@ -11,8 +11,6 @@
 #include <utility>  //  std::move, std::pair
 #endif
 
-#include "error_code.h"
-
 namespace sqlite_orm::internal {
     /*
      *  Returns properly allocated memory space for the specified application-defined function object
