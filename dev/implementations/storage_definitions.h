@@ -16,12 +16,12 @@
 
 #include "../functional/type_traits.h"
 #include "../sqlite3/sqlite3_statements.h"
+#include "../sqlite3/sqlite3_errors.h"
 #include "../serialization/serializing_util.h"
 #include "../storage.h"
 #include "../vocabulary/node_traits.h"
 #include "../schema/column_identifier.h"
 #include "../builtin/dbos/sqlite_schema.h"
-#include "../sqlite3/sqlite3_errors.h"
 
 namespace sqlite_orm::internal {
     template<class... DBO>

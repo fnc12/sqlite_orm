@@ -21,6 +21,8 @@
 #endif
 
 #include "sqlite3/sqlite3_types.h"  //  int64
+#include "sqlite3/sqlite3_statements.h"
+#include "sqlite3/sqlite3_errors.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "vocabulary/node_traits.h"  // projections
 #include "pragma.h"
@@ -32,16 +34,14 @@
 #include "backup.h"
 #include "ast/app_function.h"
 #include "values_to_tuple.h"
+#include "udf_proxy.h"
 #include "arg_values.h"
-#include "serialization/quoting.h"
-#include "sqlite3/sqlite3_statements.h"
 #include "transaction_state.h"
 #include "xdestroy_handling.h"
-#include "udf_proxy.h"
+#include "serialization/quoting.h"
 #include "serialization/serializing_util.h"
 #include "table_info.h"
 #include "storage_options.h"
-#include "sqlite3/sqlite3_errors.h"
 #include "error_code.h"
 
 namespace sqlite_orm::internal {

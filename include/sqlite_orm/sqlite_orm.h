@@ -7304,6 +7304,8 @@ namespace sqlite_orm::internal {
 
 // #include "sqlite3/sqlite3_types.h"
 //  int64
+// #include "sqlite3/sqlite3_statements.h"
+
 // #include "builtin/functions/aggregate.h"
 
 /** @file The built-in aggregate functions https://www.sqlite.org/lang_aggfunc.html: COUNT(), TOTAL(), SUM(),
@@ -13399,6 +13401,8 @@ namespace sqlite_orm::internal {
 
 // #include "sqlite3/sqlite3_deleters.h"
 //  statement_finalizer
+// #include "sqlite3/sqlite3_statements.h"
+
 // #include "error_code.h"
 
 // #include "object_from_column_builder.h"
@@ -13484,8 +13488,6 @@ namespace sqlite_orm::internal {
 }
 
 // #include "schema/algorithms/table_lookup.h"
-
-// #include "sqlite3/sqlite3_statements.h"
 
 namespace sqlite_orm::internal {
     /*  
@@ -15247,11 +15249,11 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_v
 
 // #include "sqlite3/sqlite3_deleters.h"
 //  statement_finalizer
+// #include "sqlite3/sqlite3_statements.h"
+
 // #include "row_extractor.h"
 
 // #include "column_result_proxy.h"
-
-// #include "sqlite3/sqlite3_statements.h"
 
 namespace sqlite_orm::internal {
 
@@ -15435,6 +15437,10 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 
 // #include "sqlite3/sqlite3_types.h"
 //  int64
+// #include "sqlite3/sqlite3_statements.h"
+
+// #include "sqlite3/sqlite3_errors.h"
+
 // #include "tuple_helper/tuple_iteration.h"
 
 // #include "vocabulary/node_traits.h"
@@ -16778,43 +16784,6 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "arg_values.h"
-
-// #include "serialization/quoting.h"
-
-// #include "sqlite3/sqlite3_statements.h"
-
-// #include "transaction_state.h"
-
-#include <sqlite3.h>
-
-#if SQLITE_VERSION_NUMBER >= 3034000
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-
-    /**
-     *  Transaction state of a database connection, as reported by `sqlite3_txn_state()`.
-     */
-    enum class transaction_state {
-        /**
-         *  no transaction is currently pending
-         */
-        none = SQLITE_TXN_NONE,
-
-        /**
-         *  currently executing a read transaction
-         */
-        read = SQLITE_TXN_READ,
-
-        /**
-         *  currently executing a write transaction
-         */
-        write = SQLITE_TXN_WRITE,
-    };
-}
-#endif
-
-// #include "xdestroy_handling.h"
-
 // #include "udf_proxy.h"
 
 #include <sqlite3.h>
@@ -17040,13 +17009,46 @@ namespace sqlite_orm::internal {
     }
 }
 
+// #include "arg_values.h"
+
+// #include "transaction_state.h"
+
+#include <sqlite3.h>
+
+#if SQLITE_VERSION_NUMBER >= 3034000
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  Transaction state of a database connection, as reported by `sqlite3_txn_state()`.
+     */
+    enum class transaction_state {
+        /**
+         *  no transaction is currently pending
+         */
+        none = SQLITE_TXN_NONE,
+
+        /**
+         *  currently executing a read transaction
+         */
+        read = SQLITE_TXN_READ,
+
+        /**
+         *  currently executing a write transaction
+         */
+        write = SQLITE_TXN_WRITE,
+    };
+}
+#endif
+
+// #include "xdestroy_handling.h"
+
+// #include "serialization/quoting.h"
+
 // #include "serialization/serializing_util.h"
 
 // #include "table_info.h"
 
 // #include "storage_options.h"
-
-// #include "sqlite3/sqlite3_errors.h"
 
 // #include "error_code.h"
 
@@ -22633,6 +22635,8 @@ namespace sqlite_orm::internal {
     };
 }
 
+// #include "serialization/serializing_util.h"
+
 // #include "serialization/serializer_context.h"
 
 // #include "object_from_column_builder.h"
@@ -23897,10 +23901,6 @@ namespace sqlite_orm::internal {
     }
 #endif
 }
-
-// #include "sqlite3/sqlite3_statements.h"
-
-// #include "serialization/serializing_util.h"
 
 // #include "udf_existence_checker.h"
 
@@ -28984,6 +28984,8 @@ namespace sqlite_orm::internal {
 
 // #include "../sqlite3/sqlite3_statements.h"
 
+// #include "../sqlite3/sqlite3_errors.h"
+
 // #include "../serialization/serializing_util.h"
 
 // #include "../storage.h"
@@ -29046,8 +29048,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline constexpr orm_table_alias auto sqlite_schema = "sqlite_schema"_alias.for_<sqlite_master>();
 #endif
 }
-
-// #include "../sqlite3/sqlite3_errors.h"
 
 namespace sqlite_orm::internal {
     template<class... DBO>
