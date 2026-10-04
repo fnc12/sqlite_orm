@@ -1,14 +1,15 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <utility>  //  std::move
+#include <type_traits>  //  std::enable_if, std::disjunction
+#include <utility>  //  std::move, std::forward
 #include <string_view>  //  std::string_view
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
-#include "vocabulary/node_algorithms.h"  // is_operand_or_bindable, are_valid_operands
+#include "vocabulary/node_algorithms.h"  // is_operand_or_bindable, are_valid_operands, unwrap_expression
 #include "tags.h"
 
 namespace sqlite_orm::internal {
@@ -325,5 +326,122 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "the assignment target must be one of sqlite_orm-recognized operands: member pointers, column "
                       "pointers, c()-wrapped values, aliases or expressions");
         return {std::move(lhs), std::move(rhs)};
+    }
+
+    // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
+    // to facilitate ADL (Argument Dependent Lookup)
+    namespace internal {
+        template<
+            class T,
+            std::enable_if_t<std::disjunction<is_arithmetic_operand<T>, is_operator_argument<T>>::value, bool> = true>
+        constexpr unary_minus_t<unwrap_expression_t<T>> operator-(T arg) {
+            return {unwrap_expression(std::forward<T>(arg))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr add_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator+(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr sub_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator-(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr mul_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator*(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr div_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator/(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr mod_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator%(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+
+        template<
+            class T,
+            std::enable_if_t<std::disjunction<is_arithmetic_operand<T>, is_operator_argument<T>>::value, bool> = true>
+        constexpr bitwise_not_t<unwrap_expression_t<T>> operator~(T arg) {
+            return {unwrap_expression(std::forward<T>(arg))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr bitwise_shift_left_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<<(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr bitwise_shift_right_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>>(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr bitwise_and_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator&(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr bitwise_or_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator|(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
     }
 }
