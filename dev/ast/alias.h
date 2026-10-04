@@ -193,9 +193,9 @@ namespace sqlite_orm::internal {
     }
 
     template<class T>
-    inline constexpr bool is_builtin_numeric_column_alias_v = false;
+    constexpr bool is_builtin_numeric_column_alias_v = false;
     template<char... C>
-    inline constexpr bool is_builtin_numeric_column_alias_v<column_alias<C...>> = ((C >= '0' && C <= '9') && ...);
+    constexpr bool is_builtin_numeric_column_alias_v<column_alias<C...>> = ((C >= '0' && C <= '9') && ...);
 #endif
 }
 
@@ -461,7 +461,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  constexpr orm_table_alias auto z_alias = alias<'z'>.for_<User>();
      */
     template<char A, char... X>
-    inline constexpr internal::recordset_alias_builder<A, X...> alias{};
+    constexpr internal::recordset_alias_builder<A, X...> alias{};
 
     inline namespace literals {
         /** @short Create a table alias.

@@ -3,7 +3,7 @@
 /** @file The nodes of a call of a built-in SQL function: scalar and aggregate function calls,
  *        an aggregate call with a FILTER clause, and COUNT(*).
  *        In C++20 builds, also the definition of a built-in function by its name and its overload set,
- *        which generates the call nodes. The functions themselves are in `core_functions.h`.
+ *        which generates the call nodes. The functions themselves are in `builtin/functions/`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

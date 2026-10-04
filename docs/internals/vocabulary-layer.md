@@ -78,6 +78,7 @@ vocabulary/
     node_algorithms.h       Umbrella, declaration-only: ddl_predicates.h,
                             clause_predicates.h, expression_element_predicates.h,
                             operand_predicates.h, index_filters.h, accessors.h,
+                            field_accessors.h, argument_placeholders.h,
                             field_predicates_fwd.h, field_predicates_concepts.h.
                             Deliberately does NOT include field_predicates.h.
 ```
@@ -264,8 +265,10 @@ Nothing is being composed into a judgment; it is still extraction.
 | `algorithms/clause_predicates.h` | Closed checks of whether a node is an admissible statement-level clause, and of the canonical order clauses must appear in. One file across statement kinds, because each is just an ordered list of clause traits fed to the same `clause_rank_v` / `clauses_are_correctly_ordered_v` mechanism: SELECT takes all seven, DELETE takes WHERE/ORDER BY/LIMIT, UPDATE adds FROM and its joins as of SQLite 3.33.0. `is_statement_clause` is their union. Whether a clause holds an expression rather than another clause is not checked here — the clause factories enforce that on the argument they are handed. |
 | `algorithms/expression_element_predicates.h` | Closed checks of whether a node is an admissible element of a compound expression construct, sectioned by construct. Today, both sections are the window productions: `is_window_defn_element_v`, gating `window()`, and the `are_valid_over_arguments_v` pack check gating every `over()`, and `is_frame_start_bound_v` / `is_frame_end_bound_v` for which end of a frame a boundary node may occupy, since every boundary node is a boundary but not at both ends. Whether an element holds an expression rather than a clause is not checked here — the element factories enforce that on the argument they are handed. |
 | `algorithms/operand_predicates.h` | Closed checks of whether a type may appear as an operand of a named expression factory (`eq()`, `and_()`, `add()`, `assign()`, …): `is_referencable_operand`, `is_operand_or_bindable`, `are_valid_operands`. Composes the operand traits with grammar traits and the field-level `is_bindable` — which is why it takes `field_predicates_fwd.h` rather than the definition file. |
+| `algorithms/column_field_types.h` | Closed alias templates computing a type tuple over the columns of a single table definition, in column order: `column_field_types_t` (their field types) and `column_field_expressions_t` (the member pointers they are mapped by). Locating the table for a lookup type first is schema-wide, done by `schema_mapped_column_field_types` / `schema_mapped_column_field_expressions` in `schema/algorithms/table_lookup.h`. |
 | `algorithms/index_filters.h` | Closed alias templates that scan a node's `Elements` tuple and yield an `index_sequence` of matching positions — **not** a filtered tuple. E.g. `col_index_sequence_of`, `col_index_sequence_with_field_type`. Built on `filter_tuple_sequence_t` + grammar traits + projections. |
 | `algorithms/accessors.h` | Closed runtime and compile-time accessors that retrieve a node's relevant sub-part, or the node itself, uniformly across dissimilar grammar families: `access_main_select`/`main_select_t`, `access_main_dml`/`main_dml_t`, `access_column_expression`, `expression_object_type`/`statement_object_type_t` and `access_dml_object`. This is the concrete payoff of the semantic traits. |
+| `algorithms/field_accessors.h` | The field-level counterpart of `accessors.h`: closed accessors keyed on a raw C++ type rather than a node. `held_object_t` is the object a holder type holds - owned by a `std::unique_ptr`, held by a `std::optional`, or the object itself - and `emplace_held_object` default-constructs it in place. A get statement's result type is such a holder. |
 | `algorithms/argument_placeholders.h` | The return type placeholders of the built-in functions — `argument<I>` for the result of the I-th call argument, `common_argument_type<I...>` for the common type of the given (or, with no index, all) arguments — and `substitute_arguments_t`, which replaces them structurally throughout a declared return type (`std::unique_ptr<argument<0>>`) given the call's argument tuple and a quoted metafunction that resolves one argument. Closed computation over a node's `args_tuple`; who resolves an argument and how — `column_result_t` with the schema at hand — is not its business. |
 | `algorithms/field_predicates_fwd.h` | Declarations of the closed field-level predicates, split off for dependency weight: `is_rowid_alias_capable_v`, `is_bindable_v`, `is_printable_v`, and (C++17 only) `is_hidden_column_of_vtab_v`. |
 | — where their definitions live | `is_rowid_alias_capable_v` is a capability *derived from* the field type, so it is defined in `field_predicates.h` with the other computed predicates. `is_bindable_v` and `is_printable_v` instead test whether a customization point is instantiable for the type, so each stays with the point it tests — `statement_binder.h` and `field_printer.h` respectively, which include the `_fwd` header to define them. |
@@ -355,7 +358,14 @@ than classifying a node already in hand.
 `schema/algorithms/table_lookup.h` is the other example: `schema_find_table` /
 `schema_pick_table` / `enable_found_table` / `pick_table`, searching a `db_objects_tuple`
 for the database object mapping a given lookup type. "Table" is meant in the wide SQL table
-sense there, covering base tables, views and virtual tables alike.
+sense there, covering base tables, views and virtual tables alike. Built on that lookup are
+`lookup_table_name`, and `schema_mapped_column_field_types` / `schema_mapped_column_field_expressions`, which
+feed the table found into the vocabulary algorithms of `column_field_types.h`.
+
+Alongside them, `schema/algorithms/column_lookup.h` finds a column's name across the schema
+(`find_column_name`, `materialize_column_pointer` for CTE column aliases, `is_column_unique`),
+and `schema/algorithms/table_filters.h` selects the base tables or views of a schema
+(`tables_index_sequence`, `views_index_sequence`) and computes over them (`foreign_keys_count`).
 
 Note the naming. These algorithms operate on the **schema** — the mapped database objects —
 not on the `storage_t` object, so they are named `schema_*`. Apply the same reasoning to
@@ -477,16 +487,6 @@ the projection to `vocabulary/projections/` rather than reaching into the node.
 
 Decided, not yet done. The destination is settled in each case; only the work remains.
 
-- **`storage_traits.h`.** Its `storage_mapped_columns_impl` and
-  `storage_mapped_column_expressions_impl` are closed, single-table, classification-driven
-  computations over an already-located DBO — `vocabulary/algorithms/` items, despite the
-  "traits" in the filename. They should move, and the file should be renamed to something
-  that says what it computes (`column_field_types.h`, or similar).
-
-  **Naming:** drop `storage` in favour of `schema` when these move. These algorithms
-  operate on the schema — the mapped database objects — not on the `storage_t` object.
-  `storage_mapped_columns` → `schema_mapped_columns`, and so on.
-
 - **`type_printer` / `integer_printer`.** A genuine open per-raw-type customization point,
   the same shape as the field traits, but still in its current public, pre-existing
   location. Real work, not urgent.
@@ -498,7 +498,7 @@ Decided, not yet done. The destination is settled in each case; only the work re
   types are placeholders (`argument<I>`, `common_argument_type<I...>`) substituted by
   `vocabulary/algorithms/argument_placeholders.h` from `column_result_t`. The legacy
   `builtin_function_t` node in `ast/builtin_function.h` and the per-function `*_string`
-  tag + factory pairs in `core_functions.h` exist only for C++17 and go when that baseline
+  tag + factory pairs in `builtin/functions/*.h` exist only for C++17 and go when that baseline
   does. Design and decisions are in
   [`docs/plans/2026-09-12-built-in-function-vocabulary-design.md`](../plans/2026-09-12-built-in-function-vocabulary-design.md).
 

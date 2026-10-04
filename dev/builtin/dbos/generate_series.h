@@ -7,9 +7,9 @@
 #endif
 #endif
 
-#include "../functional/gsl.h"
-#include "../schema/virtual_table.h"
-#include "../ast/table_reference.h"
+#include "../../functional/gsl.h"
+#include "../../schema/virtual_table.h"
+#include "../../ast/table_reference.h"
 
 #if SQLITE_VERSION_NUMBER >= 3008012
 namespace sqlite_orm::internal {

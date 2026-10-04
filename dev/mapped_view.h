@@ -58,5 +58,5 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
 template<class T, class S, class... Args>
-inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_view<T, S, Args...>> = true;
+constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_view<T, S, Args...>> = true;
 #endif

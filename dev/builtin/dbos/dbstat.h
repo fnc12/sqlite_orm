@@ -9,12 +9,12 @@
 #endif
 #endif
 
-#include "../functional/gsl.h"
-#include "../tuple_helper/tuple_filter.h"
-#include "../member_traits/member_traits.h"
-#include "../schema/virtual_table.h"
-#include "../ast/literal.h"
-#include "../ast/table_reference.h"
+#include "../../functional/gsl.h"
+#include "../../tuple_helper/tuple_filter.h"
+#include "../../member_traits/member_traits.h"
+#include "../../schema/virtual_table.h"
+#include "../../ast/literal.h"
+#include "../../ast/table_reference.h"
 
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 namespace sqlite_orm::internal {

@@ -79,5 +79,5 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
 template<class Select, class DBOs>
-inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_set_view<Select, DBOs>> = true;
+constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_set_view<Select, DBOs>> = true;
 #endif

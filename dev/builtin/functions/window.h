@@ -7,6 +7,9 @@
  *        objects of `ast/builtin_function.h` (`"ROW_NUMBER"_builtin.window<int()>()`), in C++17 builds legacy
  *        factories over `builtin_window_function_t`. Either way their call nodes are built-in function calls,
  *        classified by `is_builtin_function_call` like those of the scalar and aggregate functions.
+ *
+ *        Like the headers of the scalar and aggregate functions, this header holds definitions, not nodes, hence it
+ *        lives outside `ast/`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -15,8 +18,8 @@
 #include <utility>  //  std::forward
 #endif
 
-#include "../vocabulary/node_algorithms.h"  //  argument
-#include "builtin_function.h"
+#include "../../vocabulary/node_algorithms.h"  //  argument
+#include "../../ast/builtin_function.h"
 
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
 namespace sqlite_orm::internal {
