@@ -39,10 +39,12 @@ TEST_CASE("quoted operands") {
             is_same<decltype(greater_or_equal(c(&User::id), 5)), decltype(greater_or_equal(&User::id, 5))>::value);
         STATIC_REQUIRE(is_same<decltype(is(c(&User::id), 5)), decltype(is(&User::id, 5))>::value);
         STATIC_REQUIRE(is_same<decltype(is_not(c(&User::id), 5)), decltype(is_not(&User::id, 5))>::value);
+#if SQLITE_VERSION_NUMBER >= 3039000
         STATIC_REQUIRE(
             is_same<decltype(is_distinct_from(c(&User::id), 5)), decltype(is_distinct_from(&User::id, 5))>::value);
         STATIC_REQUIRE(is_same<decltype(is_not_distinct_from(c(&User::id), 5)),
                                decltype(is_not_distinct_from(&User::id, 5))>::value);
+#endif
     }
     SECTION("logical") {
         STATIC_REQUIRE(is_same<decltype(and_(c(&User::id), c(5))), decltype(and_(&User::id, 5))>::value);
