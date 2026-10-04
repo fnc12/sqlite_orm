@@ -23,7 +23,7 @@
 #include "../../vocabulary/node_traits.h"  //  is_into, is_column_pointer
 #include "../../vocabulary/node_algorithms.h"  //  argument, common_argument_type
 #include "../../ast/builtin_function.h"
-#include "../../functional/sqlite3/sqlite3_types.h"  //  int64
+#include "../../sqlite3/sqlite3_types.h"  //  int64
 
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
 namespace sqlite_orm::internal {

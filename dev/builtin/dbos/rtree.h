@@ -15,7 +15,7 @@
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/node_algorithms.h"
 #include "../../schema/virtual_table.h"
-#include "../../functional/sqlite3/sqlite3_types.h"  //  int64
+#include "../../sqlite3/sqlite3_types.h"  //  int64
 
 #ifdef SQLITE_ENABLE_RTREE
 namespace sqlite_orm::internal {

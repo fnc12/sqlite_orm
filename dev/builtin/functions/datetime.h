@@ -11,7 +11,7 @@
 #include <string_view>  //  std::string_view
 #endif
 
-#include "../../functional/sqlite3/sqlite3_types.h"  //  int64
+#include "../../sqlite3/sqlite3_types.h"  //  int64
 #include "../../ast/builtin_function.h"
 
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES

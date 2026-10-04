@@ -110,6 +110,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 - `dev/field_printer.h` - Serializes field values
 
 **Utilities:**
+- `dev/sqlite3/` - sqlite_orm's interface to the SQLite C library: the configuration derived from `<sqlite3.h>` (`sqlite3_config.h`) and the types republished from it as sqlite_orm's own (`sqlite3_types.h`: `int64`, `uint64`)
 - `dev/prepared_statement.h` - Prepared statement support
 - `dev/ast_iterator.h` - Traverses expression ASTs
 - `dev/transaction_guard.h` - RAII transaction guards

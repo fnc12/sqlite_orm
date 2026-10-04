@@ -10,7 +10,7 @@
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/type_traits.h"
-#include "../functional/sqlite3/sqlite3_types.h"  //  int64
+#include "../sqlite3/sqlite3_types.h"  //  int64
 #include "../tuple_helper/tuple_traits.h"
 #include "../member_traits/member_traits.h"
 #include "../type_is_nullable.h"

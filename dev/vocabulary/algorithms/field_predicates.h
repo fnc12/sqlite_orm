@@ -9,7 +9,7 @@
 #include <string_view>  //  std::string_view, std::wstring_view
 #endif
 
-#include "../../functional/sqlite3/sqlite3_types.h"  //  int64
+#include "../../sqlite3/sqlite3_types.h"  //  int64
 #include "../../functional/gsl.h"  // orm_gsl::czstring, orm_gsl::cwzstring
 #include "../../type_printer.h"
 #include "field_predicates_fwd.h"  // Included to specialize field predicates

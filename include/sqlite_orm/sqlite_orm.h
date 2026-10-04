@@ -301,7 +301,7 @@ using std::nullptr_t;
 #endif
 
 // pull in SQLite3 configuration early, such that version and feature macros are globally available in sqlite_orm
-// #include "sqlite3/sqlite3_config.h"
+// #include "../sqlite3/sqlite3_config.h"
 
 #include <sqlite3.h>
 
@@ -6967,7 +6967,7 @@ namespace sqlite_orm::internal {
 #endif
 }
 
-// #include "functional/sqlite3/sqlite3_types.h"
+// #include "sqlite3/sqlite3_types.h"
 //  int64
 // #include "builtin/functions/aggregate.h"
 
@@ -11003,7 +11003,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 
-// #include "../functional/sqlite3/sqlite3_types.h"
+// #include "../sqlite3/sqlite3_types.h"
 //  int64
 // #include "../tuple_helper/tuple_traits.h"
 
@@ -11913,7 +11913,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-// #include "functional/sqlite3/sqlite3_types.h"
+// #include "sqlite3/sqlite3_types.h"
 //  int64
 
 namespace sqlite_orm::internal {
@@ -15608,7 +15608,7 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 #include <tuple>  //  std::apply
 #endif
 
-// #include "functional/sqlite3/sqlite3_types.h"
+// #include "sqlite3/sqlite3_types.h"
 //  int64
 // #include "tuple_helper/tuple_iteration.h"
 
@@ -28706,7 +28706,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <string_view>  //  std::string_view, std::wstring_view
 #endif
 
-// #include "../../functional/sqlite3/sqlite3_types.h"
+// #include "../../sqlite3/sqlite3_types.h"
 //  int64
 // #include "../../functional/gsl.h"
 // orm_gsl::czstring, orm_gsl::cwzstring
@@ -29625,7 +29625,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 //  argument, common_argument_type
 // #include "../../ast/builtin_function.h"
 
-// #include "../../functional/sqlite3/sqlite3_types.h"
+// #include "../../sqlite3/sqlite3_types.h"
 //  int64
 
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -30858,7 +30858,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <string_view>  //  std::string_view
 #endif
 
-// #include "../../functional/sqlite3/sqlite3_types.h"
+// #include "../../sqlite3/sqlite3_types.h"
 //  int64
 // #include "../../ast/builtin_function.h"
 
@@ -33705,7 +33705,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../schema/virtual_table.h"
 
-// #include "../../functional/sqlite3/sqlite3_types.h"
+// #include "../../sqlite3/sqlite3_types.h"
 //  int64
 
 #ifdef SQLITE_ENABLE_RTREE
@@ -33791,7 +33791,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "pointer_value.h"
 
-// #include "functional/sqlite3/sqlite3_types.h"
+// #include "sqlite3/sqlite3_types.h"
 //  int64
 
 #if SQLITE_VERSION_NUMBER >= 3020000
