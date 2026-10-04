@@ -488,6 +488,53 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #pragma once
 
+/** @file Deleters of what the SQLite C library allocates, for use with `std::unique_ptr`, and the
+ *        `statement_finalizer` guard built on one of them.
+ *
+ *        A deleter is the C library's release function as a function constant; under clang-cl
+ *        (`SQLITE_ORM_CLANG_MSVC`) it is a function object calling it instead.
+ */
+
+#include <sqlite3.h>
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <memory>  //  std::unique_ptr
+#include <type_traits>  //  std::integral_constant
+#endif
+
+namespace sqlite_orm::internal {
+#ifndef SQLITE_ORM_CLANG_MSVC
+    /**
+     *  Finalizes a statement.
+     */
+    using statement_deleter = std::integral_constant<decltype(&sqlite3_finalize), sqlite3_finalize>;
+
+    /**
+     *  Frees memory allocated by SQLite, e.g. the result of `sqlite3_expanded_sql()`.
+     */
+    using sqlite3_memory_deleter = std::integral_constant<decltype(&sqlite3_free), sqlite3_free>;
+#else
+    struct statement_deleter {
+        SQLITE_ORM_STATIC_CALLOP void operator()(sqlite3_stmt* stmt) SQLITE_ORM_OR_CONST_CALLOP noexcept {
+            sqlite3_finalize(stmt);
+        }
+    };
+
+    struct sqlite3_memory_deleter {
+        SQLITE_ORM_STATIC_CALLOP void operator()(void* mem) SQLITE_ORM_OR_CONST_CALLOP noexcept {
+            sqlite3_free(mem);
+        }
+    };
+#endif
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Guard class which finalizes `sqlite3_stmt` in dtor
+     */
+    using statement_finalizer = std::unique_ptr<sqlite3_stmt, internal::statement_deleter>;
+}
+#pragma once
+
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::unique_ptr/shared_ptr, std::make_unique
@@ -13144,37 +13191,8 @@ namespace sqlite_orm::internal {
 #include <functional>  //  std::bind, std::ref
 #endif
 
-// #include "statement_finalizer.h"
-
-#include <sqlite3.h>
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <memory>  // std::unique_ptr
-#include <type_traits>  // std::integral_constant
-#endif
-
-#ifdef SQLITE_ORM_CLANG_MSVC
-namespace sqlite_orm::internal {
-    struct statement_deleter {
-        SQLITE_ORM_STATIC_CALLOP void operator()(sqlite3_stmt* stmt) SQLITE_ORM_OR_CONST_CALLOP noexcept {
-            sqlite3_finalize(stmt);
-        }
-    };
-}
-#endif
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-
-#ifndef SQLITE_ORM_CLANG_MSVC
-    /**
-     *  Guard class which finalizes `sqlite3_stmt` in dtor
-     */
-    using statement_finalizer =
-        std::unique_ptr<sqlite3_stmt, std::integral_constant<decltype(&sqlite3_finalize), sqlite3_finalize>>;
-#else
-    using statement_finalizer = std::unique_ptr<sqlite3_stmt, internal::statement_deleter>;
-#endif
-}
-
+// #include "sqlite3/sqlite3_deleters.h"
+//  statement_finalizer
 // #include "error_code.h"
 
 // #include "object_from_column_builder.h"
@@ -13565,6 +13583,8 @@ namespace sqlite_orm::internal {
 
 // #include "functional/gsl.h"
 
+// #include "sqlite3/sqlite3_deleters.h"
+//  sqlite3_memory_deleter
 // #include "connection_holder.h"
 
 #include <sqlite3.h>
@@ -14063,16 +14083,7 @@ namespace sqlite_orm::internal {
 #if SQLITE_VERSION_NUMBER >= 3014000
         std::string expanded_sql() const {
             // note: must check return value due to SQLITE_OMIT_TRACE
-#ifndef SQLITE_ORM_CLANG_MSVC
-            using char_ptr = std::unique_ptr<char[], std::integral_constant<decltype(&sqlite3_free), sqlite3_free>>;
-#else
-            struct sqlite3_memory_deleter {
-                SQLITE_ORM_STATIC_CALLOP void operator()(void* mem) SQLITE_ORM_OR_CONST_CALLOP noexcept {
-                    sqlite3_free(mem);
-                }
-            };
             using char_ptr = std::unique_ptr<char[], sqlite3_memory_deleter>;
-#endif
 
             if (char_ptr sql{sqlite3_expanded_sql(this->stmt)}) {
                 return sql.get();
@@ -15125,6 +15136,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "sqlite3/sqlite3_statements.h"
 
+// #include "sqlite3/sqlite3_deleters.h"
+//  statement_finalizer
+
 namespace sqlite_orm::internal {
     /**
      *  A C++ view over a result set of objects mapped as tables, returned by `storage_t::iterate<>()`.
@@ -15194,8 +15208,8 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_v
 #include <functional>  //  std::reference_wrapper
 #endif
 
-// #include "statement_finalizer.h"
-
+// #include "sqlite3/sqlite3_deleters.h"
+//  statement_finalizer
 // #include "row_extractor.h"
 
 // #include "column_result_proxy.h"
@@ -15288,6 +15302,8 @@ namespace sqlite_orm::internal {
 
 // #include "sqlite3/sqlite3_statements.h"
 
+// #include "sqlite3/sqlite3_deleters.h"
+//  statement_finalizer
 // #include "vocabulary/node_traits.h"
 // projections
 // #include "schema/db_objects.h"

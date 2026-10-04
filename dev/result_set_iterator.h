@@ -7,7 +7,7 @@
 #include <functional>  //  std::reference_wrapper
 #endif
 
-#include "statement_finalizer.h"
+#include "sqlite3/sqlite3_deleters.h"  //  statement_finalizer
 #include "row_extractor.h"
 #include "column_result_proxy.h"
 #include "sqlite3/sqlite3_statements.h"

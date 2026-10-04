@@ -6,6 +6,7 @@
     "dev/functional/config.h",
     "dev/sqlite3/sqlite3_types.h",
     "dev/serialization/quoting.h",
+    "dev/sqlite3/sqlite3_deleters.h",
     "dev/storage.h",
     "dev/node_definitions.h",
     "dev/node_algorithm_definitions.h",

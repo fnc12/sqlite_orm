@@ -9,7 +9,7 @@
 #include <functional>  //  std::bind, std::ref
 #endif
 
-#include "statement_finalizer.h"
+#include "sqlite3/sqlite3_deleters.h"  //  statement_finalizer
 #include "error_code.h"
 #include "object_from_column_builder.h"
 #include "schema/algorithms/table_lookup.h"

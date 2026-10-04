@@ -12,6 +12,7 @@
 #include "ast/crud/get.h"
 #include "connection_holder.h"
 #include "sqlite3/sqlite3_statements.h"
+#include "sqlite3/sqlite3_deleters.h"  //  statement_finalizer
 
 namespace sqlite_orm::internal {
     /**
