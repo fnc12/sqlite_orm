@@ -425,6 +425,16 @@ namespace sqlite_orm {
 }
 #pragma once
 
+/** @file Umbrella header for sqlite_orm's interface to the SQLite C library, the headers in `sqlite3/`.
+ *
+ *        Deliberately not named `sqlite3.h`: the amalgamation resolves `#include <sqlite3.h>` against `dev/`
+ *        as well, and would inline this header in place of SQLite's.
+ */
+
+// #include "sqlite3/sqlite3_config.h"
+
+// #include "sqlite3/sqlite3_types.h"
+
 /** @file The types of the SQLite C API that sqlite_orm republishes, under the names it publishes them by.
  */
 
@@ -434,106 +444,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     using int64 = sqlite_int64;
     using uint64 = sqlite_uint64;
 }
-#pragma once
 
-/** @file Quoting and escaping of SQL text: identifiers, string and blob literals.
- */
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
-#include <utility>  //  std::move
-#endif
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-
-    /** 
-     *  Escape the provided character in the given string by doubling it.
-     *  @param str A copy of the original string
-     *  @param char2Escape The character to escape
-     */
-    inline std::string sql_escape(std::string str, char char2Escape) {
-        for (size_t pos = 0; (pos = str.find(char2Escape, pos)) != str.npos; pos += 2) {
-            str.replace(pos, 1, 2, char2Escape);
-        }
-
-        return str;
-    }
-
-    /** 
-     *  Quote the given string value using single quotes,
-     *  escape containing single quotes by doubling them.
-     */
-    inline std::string quote_string_literal(std::string v) {
-        constexpr char quoteChar = '\'';
-        return quoteChar + sql_escape(std::move(v), quoteChar) + quoteChar;
-    }
-
-    /** 
-     *  Quote the given string value using single quotes,
-     *  escape containing single quotes by doubling them.
-     */
-    inline std::string quote_blob_literal(std::string v) {
-        constexpr char quoteChar = '\'';
-        return std::string{'x', quoteChar} + std::move(v) + quoteChar;
-    }
-
-    /** 
-     *  Quote the given identifier using double quotes,
-     *  escape containing double quotes by doubling them.
-     */
-    inline std::string quote_identifier(std::string identifier) {
-        constexpr char quoteChar = '"';
-        return quoteChar + sql_escape(std::move(identifier), quoteChar) + quoteChar;
-    }
-}
-#pragma once
-
-/** @file Deleters of what the SQLite C library allocates, for use with `std::unique_ptr`, and the
- *        `statement_finalizer` guard built on one of them.
- *
- *        A deleter is the C library's release function as a function constant; under clang-cl
- *        (`SQLITE_ORM_CLANG_MSVC`) it is a function object calling it instead.
- */
-
-#include <sqlite3.h>
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <memory>  //  std::unique_ptr
-#include <type_traits>  //  std::integral_constant
-#endif
-
-namespace sqlite_orm::internal {
-#ifndef SQLITE_ORM_CLANG_MSVC
-    /**
-     *  Finalizes a statement.
-     */
-    using statement_deleter = std::integral_constant<decltype(&sqlite3_finalize), sqlite3_finalize>;
-
-    /**
-     *  Frees memory allocated by SQLite, e.g. the result of `sqlite3_expanded_sql()`.
-     */
-    using sqlite3_memory_deleter = std::integral_constant<decltype(&sqlite3_free), sqlite3_free>;
-#else
-    struct statement_deleter {
-        SQLITE_ORM_STATIC_CALLOP void operator()(sqlite3_stmt* stmt) SQLITE_ORM_OR_CONST_CALLOP noexcept {
-            sqlite3_finalize(stmt);
-        }
-    };
-
-    struct sqlite3_memory_deleter {
-        SQLITE_ORM_STATIC_CALLOP void operator()(void* mem) SQLITE_ORM_OR_CONST_CALLOP noexcept {
-            sqlite3_free(mem);
-        }
-    };
-#endif
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  Guard class which finalizes `sqlite3_stmt` in dtor
-     */
-    using statement_finalizer = std::unique_ptr<sqlite3_stmt, internal::statement_deleter>;
-}
-#pragma once
+// #include "sqlite3/sqlite3_errors.h"
 
 /** @file SQLite's result codes as `std::error_code`s - `sqlite_errc` and its `std::error_category` - and the
  *        translation of a failing C library call into a `std::system_error`.
@@ -618,6 +530,309 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         throw sqlite_to_system_error(sqlite3_db_handle(stmt));
     }
 }
+
+// #include "sqlite3/sqlite3_deleters.h"
+
+/** @file Deleters of what the SQLite C library allocates, for use with `std::unique_ptr`, and the
+ *        `statement_finalizer` guard built on one of them.
+ *
+ *        A deleter is the C library's release function as a function constant; under clang-cl
+ *        (`SQLITE_ORM_CLANG_MSVC`) it is a function object calling it instead.
+ */
+
+#include <sqlite3.h>
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <memory>  //  std::unique_ptr
+#include <type_traits>  //  std::integral_constant
+#endif
+
+namespace sqlite_orm::internal {
+#ifndef SQLITE_ORM_CLANG_MSVC
+    /**
+     *  Finalizes a statement.
+     */
+    using statement_deleter = std::integral_constant<decltype(&sqlite3_finalize), sqlite3_finalize>;
+
+    /**
+     *  Frees memory allocated by SQLite, e.g. the result of `sqlite3_expanded_sql()`.
+     */
+    using sqlite3_memory_deleter = std::integral_constant<decltype(&sqlite3_free), sqlite3_free>;
+#else
+    struct statement_deleter {
+        SQLITE_ORM_STATIC_CALLOP void operator()(sqlite3_stmt* stmt) SQLITE_ORM_OR_CONST_CALLOP noexcept {
+            sqlite3_finalize(stmt);
+        }
+    };
+
+    struct sqlite3_memory_deleter {
+        SQLITE_ORM_STATIC_CALLOP void operator()(void* mem) SQLITE_ORM_OR_CONST_CALLOP noexcept {
+            sqlite3_free(mem);
+        }
+    };
+#endif
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Guard class which finalizes `sqlite3_stmt` in dtor
+     */
+    using statement_finalizer = std::unique_ptr<sqlite3_stmt, internal::statement_deleter>;
+}
+
+// #include "sqlite3/sqlite3_statements.h"
+
+/** @file Execution of statements through the SQLite C library: preparing, stepping and resetting statements,
+ *        with or without the query hooks of a storage.
+ */
+
+#include <sqlite3.h>
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#include <utility>  //  std::move
+#include <functional>  //  std::function
+#include <string_view>  //  std::string_view
+#endif
+
+// #include "../functional/gsl.h"
+
+/** @file A subset of the Guidelines Support Library (GSL) as it is useful for this library.
+ *  
+ *  At the time of writing, the use of these symbols serves only to express the logical intention, because:
+ *  1. Each facility lives in the nested namespace `orm_gsl` because `gsl` may conflict with other GSL implementations [like ms-gsl or gsl-lite].
+ *  2. Tools like Clang-Tidy are currently hard-wired to the `gsl` namespace to check the guidelines.
+ *  3. There is no way to attach an attribute to tell Clang-Tidy that it is a "GSL" symbol.
+ *  
+ *  This might seem frustrating at first, but things are constantly evolving and need time, and many facilities found their way into the STL.
+ *  There's an ongoing discussion about this limitation on the guidelines repository:
+ *  https://github.com/isocpp/CppCoreGuidelines/issues/144
+ *  https://github.com/isocpp/CppCoreGuidelines/issues/1519
+ *  
+ *  However, these symbols are very valuable as we can "grep" for them and easily update things in the future.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::is_pointer
+#endif
+
+namespace sqlite_orm {
+
+    // span
+    namespace orm_gsl {
+
+        inline constexpr size_t dynamic_extent = size_t(-1);
+
+    }
+
+    // C-style string types
+    namespace orm_gsl {
+        //
+        // These are "tag" typedefs for C-style strings (i.e. null-terminated character arrays)
+        // that allow static analysis to help find bugs.
+        //
+        // There are no additional features/semantics that we can find a way to add inside the
+        // type system for these types that will not either incur significant runtime costs or
+        // (sometimes needlessly) break existing programs when introduced.
+        //
+
+        template<typename Char, size_t Extent = dynamic_extent>
+        using basic_zstring = Char*;
+
+        using czstring = basic_zstring<const char, dynamic_extent>;
+
+        using cwzstring = basic_zstring<const wchar_t, dynamic_extent>;
+
+        using cu16zstring = basic_zstring<const char16_t, dynamic_extent>;
+
+        using cu32zstring = basic_zstring<const char32_t, dynamic_extent>;
+
+        using zstring = basic_zstring<char, dynamic_extent>;
+
+        using wzstring = basic_zstring<wchar_t, dynamic_extent>;
+
+        using u16zstring = basic_zstring<char16_t, dynamic_extent>;
+
+        using u32zstring = basic_zstring<char32_t, dynamic_extent>;
+
+    }
+
+    // pointers
+    namespace orm_gsl {
+
+        //
+        // owner
+        //
+        // `orm_gsl::owner<T>` is designed as a safety mechanism for code that must deal directly with raw pointers that own memory.
+        // Ideally such code should be restricted to the implementation of low-level abstractions.
+        //
+        // T must be a pointer type
+        //
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+        template<class T>
+            requires std::is_pointer_v<T>
+        using owner = T;
+#else
+        template<class T, typename = std::enable_if_t<std::is_pointer<T>::value>>
+        using owner = T;
+#endif
+
+    }
+}
+
+// #include "sqlite3_errors.h"
+
+namespace sqlite_orm::internal {
+    // Wrapper to reduce boiler-plate code
+    inline sqlite3_stmt* reset_stmt(sqlite3_stmt* stmt) {
+        sqlite3_reset(stmt);
+        return stmt;
+    }
+
+    inline sqlite3_stmt* prepare_stmt(sqlite3* db, std::string_view query) {
+        sqlite3_stmt* stmt;
+        const int rc = sqlite3_prepare_v2(db, query.data(), int(query.size()), &stmt, nullptr);
+        if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+            throw_translated_sqlite_error(rc);
+        }
+        return stmt;
+    }
+
+    template<int expected = SQLITE_DONE>
+    void perform_single_step(sqlite3_stmt* stmt) {
+        const int rc = sqlite3_step(stmt);
+        if (rc != expected) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+            throw_translated_sqlite_error(rc);
+        }
+    }
+
+    template<class L>
+    void perform_step(sqlite3_stmt* stmt, L&& lambda) {
+        switch (SQLITE_ORM_SWITCH_MAYBE_UNUSED int rc = sqlite3_step(stmt)) {
+            case SQLITE_ROW: {
+                lambda(stmt);
+            } break;
+            case SQLITE_DONE:
+                return;
+            default:
+                SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+                    throw_translated_sqlite_error(stmt);
+                }
+        }
+    }
+
+    template<class L>
+    void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
+        for (;;) {
+            switch (SQLITE_ORM_SWITCH_MAYBE_UNUSED int rc = sqlite3_step(stmt)) {
+                case SQLITE_ROW: {
+                    lambda(stmt);
+                } break;
+                case SQLITE_DONE:
+                    return;
+                default:
+                    SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+                        throw_translated_sqlite_error(stmt);
+                    }
+            }
+        }
+    }
+
+    struct sqlite_executor {
+        std::function<void(std::string_view sql)> will_run_query;
+        std::function<void(std::string_view sql)> did_run_query;
+
+        void perform_void_exec(sqlite3* db, orm_gsl::czstring sql) const {
+            if (this->will_run_query) {
+                this->will_run_query(sql);
+            }
+
+            const int rc = sqlite3_exec(db, sql, nullptr, nullptr, nullptr);
+            if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+                throw_translated_sqlite_error(rc);
+            }
+
+            if (this->did_run_query) {
+                this->did_run_query(sql);
+            }
+        }
+
+        void perform_exec(sqlite3* db,
+                          orm_gsl::czstring sql,
+                          int (*callback)(void*, int, orm_gsl::zstring*, orm_gsl::zstring*),
+                          void* user_data) const {
+            if (this->will_run_query) {
+                this->will_run_query(sql);
+            }
+
+            const int rc = sqlite3_exec(db, sql, callback, user_data, nullptr);
+            if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+                throw_translated_sqlite_error(rc);
+            }
+
+            if (this->did_run_query) {
+                this->did_run_query(sql);
+            }
+        }
+
+        void perform_exec(sqlite3* db,
+                          const std::string& query,
+                          int (*callback)(void*, int, orm_gsl::zstring*, orm_gsl::zstring*),
+                          void* user_data) const {
+            return perform_exec(db, query.c_str(), callback, user_data);
+        }
+
+        template<int expected = SQLITE_DONE>
+        void perform_single_step(sqlite3_stmt* stmt) const {
+            orm_gsl::czstring sql = nullptr;
+            if (this->will_run_query || this->did_run_query) {
+                sql = sqlite3_sql(stmt);
+            }
+            if (this->will_run_query) {
+                this->will_run_query(sql);
+            }
+
+            internal::perform_single_step<expected>(stmt);
+
+            if (this->did_run_query) {
+                this->did_run_query(sql);
+            }
+        }
+
+        template<class L>
+        void perform_step(sqlite3_stmt* stmt, L&& lambda) const {
+            orm_gsl::czstring sql = nullptr;
+            if (this->will_run_query || this->did_run_query) {
+                sql = sqlite3_sql(stmt);
+            }
+            if (this->will_run_query) {
+                this->will_run_query(sql);
+            }
+
+            internal::perform_step(stmt, lambda);
+
+            if (this->did_run_query) {
+                this->did_run_query(sql);
+            }
+        }
+
+        template<class L>
+        void perform_steps(sqlite3_stmt* stmt, L&& lambda) const {
+            orm_gsl::czstring sql = nullptr;
+            if (this->will_run_query || this->did_run_query) {
+                sql = sqlite3_sql(stmt);
+            }
+            if (this->will_run_query) {
+                this->will_run_query(sql);
+            }
+
+            internal::perform_steps(stmt, lambda);
+
+            if (this->did_run_query) {
+                this->did_run_query(sql);
+            }
+        }
+    };
+}
+
 #pragma once
 
 /** @file sqlite_orm's own error codes, `orm_error_code`, and their `std::error_category`.
@@ -719,6 +934,58 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     inline std::error_code make_error_code(orm_error_code ev) noexcept {
         return {static_cast<int>(ev), get_orm_error_category()};
+    }
+}
+#pragma once
+
+/** @file Quoting and escaping of SQL text: identifiers, string and blob literals.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#include <utility>  //  std::move
+#endif
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /** 
+     *  Escape the provided character in the given string by doubling it.
+     *  @param str A copy of the original string
+     *  @param char2Escape The character to escape
+     */
+    inline std::string sql_escape(std::string str, char char2Escape) {
+        for (size_t pos = 0; (pos = str.find(char2Escape, pos)) != str.npos; pos += 2) {
+            str.replace(pos, 1, 2, char2Escape);
+        }
+
+        return str;
+    }
+
+    /** 
+     *  Quote the given string value using single quotes,
+     *  escape containing single quotes by doubling them.
+     */
+    inline std::string quote_string_literal(std::string v) {
+        constexpr char quoteChar = '\'';
+        return quoteChar + sql_escape(std::move(v), quoteChar) + quoteChar;
+    }
+
+    /** 
+     *  Quote the given string value using single quotes,
+     *  escape containing single quotes by doubling them.
+     */
+    inline std::string quote_blob_literal(std::string v) {
+        constexpr char quoteChar = '\'';
+        return std::string{'x', quoteChar} + std::move(v) + quoteChar;
+    }
+
+    /** 
+     *  Quote the given identifier using double quotes,
+     *  escape containing double quotes by doubling them.
+     */
+    inline std::string quote_identifier(std::string identifier) {
+        constexpr char quoteChar = '"';
+        return quoteChar + sql_escape(std::move(identifier), quoteChar) + quoteChar;
     }
 }
 #pragma once
@@ -907,89 +1174,6 @@ namespace sqlite_orm {
 }
 //  polyfill::identity
 // #include "functional/gsl.h"
-
-/** @file A subset of the Guidelines Support Library (GSL) as it is useful for this library.
- *  
- *  At the time of writing, the use of these symbols serves only to express the logical intention, because:
- *  1. Each facility lives in the nested namespace `orm_gsl` because `gsl` may conflict with other GSL implementations [like ms-gsl or gsl-lite].
- *  2. Tools like Clang-Tidy are currently hard-wired to the `gsl` namespace to check the guidelines.
- *  3. There is no way to attach an attribute to tell Clang-Tidy that it is a "GSL" symbol.
- *  
- *  This might seem frustrating at first, but things are constantly evolving and need time, and many facilities found their way into the STL.
- *  There's an ongoing discussion about this limitation on the guidelines repository:
- *  https://github.com/isocpp/CppCoreGuidelines/issues/144
- *  https://github.com/isocpp/CppCoreGuidelines/issues/1519
- *  
- *  However, these symbols are very valuable as we can "grep" for them and easily update things in the future.
- */
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_pointer
-#endif
-
-namespace sqlite_orm {
-
-    // span
-    namespace orm_gsl {
-
-        inline constexpr size_t dynamic_extent = size_t(-1);
-
-    }
-
-    // C-style string types
-    namespace orm_gsl {
-        //
-        // These are "tag" typedefs for C-style strings (i.e. null-terminated character arrays)
-        // that allow static analysis to help find bugs.
-        //
-        // There are no additional features/semantics that we can find a way to add inside the
-        // type system for these types that will not either incur significant runtime costs or
-        // (sometimes needlessly) break existing programs when introduced.
-        //
-
-        template<typename Char, size_t Extent = dynamic_extent>
-        using basic_zstring = Char*;
-
-        using czstring = basic_zstring<const char, dynamic_extent>;
-
-        using cwzstring = basic_zstring<const wchar_t, dynamic_extent>;
-
-        using cu16zstring = basic_zstring<const char16_t, dynamic_extent>;
-
-        using cu32zstring = basic_zstring<const char32_t, dynamic_extent>;
-
-        using zstring = basic_zstring<char, dynamic_extent>;
-
-        using wzstring = basic_zstring<wchar_t, dynamic_extent>;
-
-        using u16zstring = basic_zstring<char16_t, dynamic_extent>;
-
-        using u32zstring = basic_zstring<char32_t, dynamic_extent>;
-
-    }
-
-    // pointers
-    namespace orm_gsl {
-
-        //
-        // owner
-        //
-        // `orm_gsl::owner<T>` is designed as a safety mechanism for code that must deal directly with raw pointers that own memory.
-        // Ideally such code should be restricted to the implementation of low-level abstractions.
-        //
-        // T must be a pointer type
-        //
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-        template<class T>
-            requires std::is_pointer_v<T>
-        using owner = T;
-#else
-        template<class T, typename = std::enable_if_t<std::is_pointer<T>::value>>
-        using owner = T;
-#endif
-
-    }
-}
 
 // #include "functional/mpl.h"
 
@@ -13302,175 +13486,6 @@ namespace sqlite_orm::internal {
 // #include "schema/algorithms/table_lookup.h"
 
 // #include "sqlite3/sqlite3_statements.h"
-
-/** @file Execution of statements through the SQLite C library: preparing, stepping and resetting statements,
- *        with or without the query hooks of a storage.
- */
-
-#include <sqlite3.h>
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
-#include <utility>  //  std::move
-#include <functional>  //  std::function
-#include <string_view>  //  std::string_view
-#endif
-
-// #include "../functional/gsl.h"
-
-// #include "sqlite3_errors.h"
-
-namespace sqlite_orm::internal {
-    // Wrapper to reduce boiler-plate code
-    inline sqlite3_stmt* reset_stmt(sqlite3_stmt* stmt) {
-        sqlite3_reset(stmt);
-        return stmt;
-    }
-
-    inline sqlite3_stmt* prepare_stmt(sqlite3* db, std::string_view query) {
-        sqlite3_stmt* stmt;
-        const int rc = sqlite3_prepare_v2(db, query.data(), int(query.size()), &stmt, nullptr);
-        if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
-            throw_translated_sqlite_error(rc);
-        }
-        return stmt;
-    }
-
-    template<int expected = SQLITE_DONE>
-    void perform_single_step(sqlite3_stmt* stmt) {
-        const int rc = sqlite3_step(stmt);
-        if (rc != expected) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
-            throw_translated_sqlite_error(rc);
-        }
-    }
-
-    template<class L>
-    void perform_step(sqlite3_stmt* stmt, L&& lambda) {
-        switch (SQLITE_ORM_SWITCH_MAYBE_UNUSED int rc = sqlite3_step(stmt)) {
-            case SQLITE_ROW: {
-                lambda(stmt);
-            } break;
-            case SQLITE_DONE:
-                return;
-            default:
-                SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
-                    throw_translated_sqlite_error(stmt);
-                }
-        }
-    }
-
-    template<class L>
-    void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
-        for (;;) {
-            switch (SQLITE_ORM_SWITCH_MAYBE_UNUSED int rc = sqlite3_step(stmt)) {
-                case SQLITE_ROW: {
-                    lambda(stmt);
-                } break;
-                case SQLITE_DONE:
-                    return;
-                default:
-                    SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
-                        throw_translated_sqlite_error(stmt);
-                    }
-            }
-        }
-    }
-
-    struct sqlite_executor {
-        std::function<void(std::string_view sql)> will_run_query;
-        std::function<void(std::string_view sql)> did_run_query;
-
-        void perform_void_exec(sqlite3* db, orm_gsl::czstring sql) const {
-            if (this->will_run_query) {
-                this->will_run_query(sql);
-            }
-
-            const int rc = sqlite3_exec(db, sql, nullptr, nullptr, nullptr);
-            if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
-                throw_translated_sqlite_error(rc);
-            }
-
-            if (this->did_run_query) {
-                this->did_run_query(sql);
-            }
-        }
-
-        void perform_exec(sqlite3* db,
-                          orm_gsl::czstring sql,
-                          int (*callback)(void*, int, orm_gsl::zstring*, orm_gsl::zstring*),
-                          void* user_data) const {
-            if (this->will_run_query) {
-                this->will_run_query(sql);
-            }
-
-            const int rc = sqlite3_exec(db, sql, callback, user_data, nullptr);
-            if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
-                throw_translated_sqlite_error(rc);
-            }
-
-            if (this->did_run_query) {
-                this->did_run_query(sql);
-            }
-        }
-
-        void perform_exec(sqlite3* db,
-                          const std::string& query,
-                          int (*callback)(void*, int, orm_gsl::zstring*, orm_gsl::zstring*),
-                          void* user_data) const {
-            return perform_exec(db, query.c_str(), callback, user_data);
-        }
-
-        template<int expected = SQLITE_DONE>
-        void perform_single_step(sqlite3_stmt* stmt) const {
-            orm_gsl::czstring sql = nullptr;
-            if (this->will_run_query || this->did_run_query) {
-                sql = sqlite3_sql(stmt);
-            }
-            if (this->will_run_query) {
-                this->will_run_query(sql);
-            }
-
-            internal::perform_single_step<expected>(stmt);
-
-            if (this->did_run_query) {
-                this->did_run_query(sql);
-            }
-        }
-
-        template<class L>
-        void perform_step(sqlite3_stmt* stmt, L&& lambda) const {
-            orm_gsl::czstring sql = nullptr;
-            if (this->will_run_query || this->did_run_query) {
-                sql = sqlite3_sql(stmt);
-            }
-            if (this->will_run_query) {
-                this->will_run_query(sql);
-            }
-
-            internal::perform_step(stmt, lambda);
-
-            if (this->did_run_query) {
-                this->did_run_query(sql);
-            }
-        }
-
-        template<class L>
-        void perform_steps(sqlite3_stmt* stmt, L&& lambda) const {
-            orm_gsl::czstring sql = nullptr;
-            if (this->will_run_query || this->did_run_query) {
-                sql = sqlite3_sql(stmt);
-            }
-            if (this->will_run_query) {
-                this->will_run_query(sql);
-            }
-
-            internal::perform_steps(stmt, lambda);
-
-            if (this->did_run_query) {
-                this->did_run_query(sql);
-            }
-        }
-    };
-}
 
 namespace sqlite_orm::internal {
     /*  

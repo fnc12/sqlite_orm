@@ -4,21 +4,25 @@
   "sources": [
     "dev/functional/start_macros.h",
     "dev/functional/config.h",
-    "dev/sqlite3/sqlite3_types.h",
-    "dev/serialization/quoting.h",
-    "dev/sqlite3/sqlite3_deleters.h",
-    "dev/sqlite3/sqlite3_errors.h",
+
+    "dev/sqlite3_interface.h",
+
     "dev/error_code.h",
+    "dev/serialization/quoting.h",
+
     "dev/storage.h",
     "dev/node_definitions.h",
     "dev/node_algorithm_definitions.h",
     "dev/interface_definitions.h",
     "dev/get_prepared_statement.h",
+
     "dev/builtin/collations.h",
     "dev/builtin/vfs.h",
     "dev/builtin/functions.h",
     "dev/builtin/dbos.h",
+
     "dev/carray.h",
+
     "dev/functional/finish_macros.h"
   ],
   "include_paths": [ "dev" ]
