@@ -29,7 +29,7 @@
 #include "ast/crud/insert.h"  // conflict_action
 #include "ast/result_columns.h"
 #include "ast/crud/set.h"
-#include "conditions.h"
+#include "ast/join.h"
 #include "prepared_statement.h"
 #include "mapped_type_proxy.h"
 #include "pointer_value.h"
@@ -654,15 +654,15 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class L, class R>
-    struct statement_serializer<is_equal_with_table_t<L, R>, void> {
-        using statement_type = is_equal_with_table_t<L, R>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_equal_with_table, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            const auto tableName = lookup_table_name<L>(context.db_objects);
+            const auto tableName = lookup_table_name<left_type_t<statement_type>>(context.db_objects);
             ss << streaming_identifier(tableName);
             ss << " = ";
             ss << serialize(statement.rhs, context);
@@ -868,8 +868,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<negated_condition_t<T>, void> {
-        using statement_type = negated_condition_t<T>;
+    struct statement_serializer<T, match_if<is_negated_condition, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
@@ -878,8 +878,8 @@ namespace sqlite_orm::internal {
             auto subCtx = context;
             subCtx.use_parentheses = true;
             // parentheses for sub-trees to ensure the order of precedence
-            constexpr bool parenthesize = is_binary_condition<typename statement_type::argument_type>::value ||
-                                          is_binary_operator<typename statement_type::argument_type>::value;
+            constexpr bool parenthesize = is_binary_condition<argument_type_t<statement_type>>::value ||
+                                          is_binary_operator<argument_type_t<statement_type>>::value;
 
             std::stringstream ss;
             ss << static_cast<std::string>(expression) << " ";
@@ -933,29 +933,20 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<named_collate<T>, void> {
-        using statement_type = named_collate<T>;
+    struct statement_serializer<T, std::enable_if_t<std::disjunction<is_collate<T>, is_named_collate<T>>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             auto newContext = context;
             newContext.use_parentheses = false;
-            return serialize(statement.expression, newContext) + " COLLATE " + statement.name;
-        }
-    };
-
-    template<class T>
-    struct statement_serializer<collate_t<T>, void> {
-        using statement_type = collate_t<T>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            auto newContext = context;
-            newContext.use_parentheses = false;
-            return (serialize(statement.expression, newContext) + " COLLATE ")
-                .append(collate_argument_to_string(statement.argument));
+            if constexpr (is_named_collate_v<statement_type>) {
+                return serialize(statement.expression, newContext) + " COLLATE " + statement.name;
+            } else {
+                return (serialize(statement.expression, newContext) + " COLLATE ")
+                    .append(collate_argument_to_string(statement.argument));
+            }
         }
     };
 
@@ -1048,9 +1039,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class A, class T, class E>
-    struct statement_serializer<like_t<A, T, E>, void> {
-        using statement_type = like_t<A, T, E>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_like, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
@@ -1066,9 +1057,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class A, class T>
-    struct statement_serializer<glob_t<A, T>, void> {
-        using statement_type = glob_t<A, T>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_glob, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,

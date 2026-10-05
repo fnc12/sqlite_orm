@@ -14,6 +14,7 @@
 
 #include "../../functional/type_traits.h"
 #include "../../tuple_helper/tuple_traits.h"
+#include "../../serializer_context.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
