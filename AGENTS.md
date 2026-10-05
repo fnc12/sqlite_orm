@@ -67,7 +67,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 
 3. **Type system** (`dev/functional/type_traits.h`, `dev/type_printer.h`): Extensive compile-time type introspection to deduce types from member pointers and validate queries at compile time.
 
-4. **Statement serialization** (`dev/statement_serializer.h`, `dev/serializer_context.h`): Converts C++ expression objects into SQL strings.
+4. **Statement serialization** (`dev/serialization/statement_serializer.h`, `dev/serialization/serializer_context.h`): Converts C++ expression objects into SQL strings.
 
 5. **Expression objects** (`dev/ast/`, `dev/builtin/functions/`): Type-safe representations of SQL operations (WHERE, JOIN, ORDER BY, etc.).
 
@@ -103,6 +103,9 @@ The library uses a **storage-centric architecture** with compile-time type safet
 - `dev/ast/app_function.h` - Application-defined function calls (`func<UDF>`, `"name"_scalar`) and the UDF classification traits
 - `dev/ast/` - AST nodes for query, DML and operational constructs (`select_t`, `insert_t`, `where`, `window`, ...)
 - `dev/ast/crud/` - One header per CRUD statement kind (`get`, `insert`, `replace`, `update`, `remove`), in both their object and their raw DML spellings, plus the clause nodes only they take (`into`, `set`, `default_values`, `upsert_clause`)
+
+**Serialization:**
+- `dev/serialization/` - The statement serializer and its context, and the helpers it alone uses: streaming utilities (`serializing_util.h`), the ORDER BY serializer, the DEFAULT value extractor, and the collectors walking an expression for what serialization needs (`table_name_collector.h`, `column_expressions_collector.h`, `cte_column_names_collector.h`). `field_printer.h` and `type_printer.h` stay at the top level: they are public customization points.
 
 **Type binding:**
 - `dev/statement_binder.h` - Binds C++ values to prepared statements

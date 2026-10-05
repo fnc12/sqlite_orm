@@ -20,7 +20,7 @@
 #include "ast/cte.h"
 #include "alias.h"
 #include "cte_types.h"
-#include "cte_column_names_collector.h"
+#include "serialization/cte_column_names_collector.h"
 #include "column_expression.h"
 #include "schema/db_objects.h"
 #include "schema/algorithms/table_lookup.h"
@@ -275,7 +275,7 @@ namespace sqlite_orm::internal {
             determine_cte_colrefs(dbObjects, subselectColRefs, cte.explicitColumns, index_sequence{});
 
         serializer_context context{dbObjects};
-        std::vector<std::string> columnNames = collect_cte_column_names(subSelect, cte.explicitColumns, context);
+        std::vector<std::string> columnNames = resolve_cte_column_names(subSelect, cte.explicitColumns, context);
 
         using mapper_type = create_cte_mapper_t<cte_moniker_type_t<cte_type>,
                                                 explicit_colrefs_tuple_t<cte_type>,

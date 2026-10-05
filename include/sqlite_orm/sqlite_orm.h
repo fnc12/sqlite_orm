@@ -13959,7 +13959,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "connection_holder.h"
 
-// #include "serializer_context.h"
+// #include "serialization/serializer_context.h"
 
 namespace sqlite_orm::internal {
     struct serializer_context_base {
@@ -14142,7 +14142,7 @@ namespace sqlite_orm::internal {
 
 // #include "connection_holder.h"
 
-// #include "serializer_context.h"
+// #include "serialization/serializer_context.h"
 
 // #include "util.h"
 
@@ -14270,7 +14270,7 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 
 // #include "util.h"
 
-// #include "serializing_util.h"
+// #include "serialization/serializing_util.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::index_sequence, std::remove_cvref
@@ -14283,21 +14283,21 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 #include <string_view>  //  std::string_view
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 // std::remove_cvref, polyfill::is_detected
-// #include "functional/cxx_functional_polyfill.h"
+// #include "../functional/cxx_functional_polyfill.h"
 // polyfill::unwrap_reference
-// #include "functional/gsl.h"
+// #include "../functional/gsl.h"
 
-// #include "functional/type_traits.h"
+// #include "../functional/type_traits.h"
 
-// #include "tuple_helper/tuple_iteration.h"
+// #include "../tuple_helper/tuple_iteration.h"
 
-// #include "vocabulary/node_traits.h"
+// #include "../vocabulary/node_traits.h"
 
-// #include "vocabulary/node_fwd.h"
+// #include "../vocabulary/node_fwd.h"
 // column_constraints, order_by_t
-// #include "schema/column_identifier.h"
+// #include "../schema/column_identifier.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -14313,7 +14313,7 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "error_code.h"
+// #include "../error_code.h"
 
 namespace sqlite_orm::internal {
     template<class T, class Ctx>
@@ -15847,7 +15847,7 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "serializing_util.h"
+// #include "serialization/serializing_util.h"
 
 // #include "table_info.h"
 
@@ -18034,7 +18034,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "prepared_statement.h"
 
-// #include "statement_serializer.h"
+// #include "serialization/statement_serializer.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref, std::disjunction
@@ -18055,13 +18055,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 // std::remove_cvref, std::disjunction
-// #include "functional/cxx_functional_polyfill.h"
+// #include "../functional/cxx_functional_polyfill.h"
 // polyfill::identity
-// #include "functional/gsl.h"
+// #include "../functional/gsl.h"
 
-// #include "functional/always_default.h"
+// #include "../functional/always_default.h"
 
 namespace sqlite_orm::internal {
     /*  
@@ -18081,17 +18081,17 @@ namespace sqlite_orm::internal {
     constexpr always_default_of<R> always_default{};
 }
 
-// #include "functional/mpl.h"
+// #include "../functional/mpl.h"
 
-// #include "functional/type_traits.h"
+// #include "../functional/type_traits.h"
 
-// #include "tuple_helper/tuple_filter.h"
+// #include "../tuple_helper/tuple_filter.h"
 
-// #include "ast/crud/insert.h"
+// #include "../ast/crud/insert.h"
 // conflict_action
-// #include "ast/result_columns.h"
+// #include "../ast/result_columns.h"
 
-// #include "ast/crud/set.h"
+// #include "../ast/crud/set.h"
 
 /** @file The SET clause of an UPDATE, in both of the DSL spellings sqlite_orm offers for it -
  *        spelled out statically, or assembled at runtime.
@@ -18109,7 +18109,7 @@ namespace sqlite_orm::internal {
 
 // #include "../../tuple_helper/tuple_traits.h"
 
-// #include "../../serializer_context.h"
+// #include "../../serialization/serializer_context.h"
 
 // #include "../../vocabulary/node_traits.h"
 
@@ -18206,15 +18206,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-// #include "ast/join.h"
+// #include "../ast/join.h"
 
-// #include "prepared_statement.h"
+// #include "../prepared_statement.h"
 
-// #include "mapped_type_proxy.h"
+// #include "../mapped_type_proxy.h"
 
-// #include "pointer_value.h"
+// #include "../pointer_value.h"
 
-// #include "type_printer.h"
+// #include "../type_printer.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -18299,9 +18299,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     struct type_printer<std::vector<char>, void> : blob_printer {};
 }
 
-// #include "field_printer.h"
+// #include "../field_printer.h"
 
-// #include "literal.h"
+// #include "../literal.h"
 
 // #include "table_name_collector.h"
 
@@ -18311,13 +18311,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::pair, std::move
 #endif
 
-// #include "mapped_type_proxy.h"
+// #include "../mapped_type_proxy.h"
 
-// #include "vocabulary/node_traits.h"
+// #include "../vocabulary/node_traits.h"
 
-// #include "alias.h"
+// #include "../alias.h"
 
-// #include "schema/algorithms/table_lookup.h"
+// #include "../schema/algorithms/table_lookup.h"
 // lookup_table_name
 
 namespace sqlite_orm::internal {
@@ -18383,7 +18383,7 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "column_names_getter.h"
+// #include "column_expressions_collector.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_base_of
@@ -18394,29 +18394,29 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::move
 #endif
 
-// #include "functional/type_traits.h"
+// #include "../functional/type_traits.h"
 
-// #include "tuple_helper/tuple_traits.h"
+// #include "../tuple_helper/tuple_traits.h"
 
-// #include "tuple_helper/tuple_iteration.h"
+// #include "../tuple_helper/tuple_iteration.h"
 
-// #include "error_code.h"
+// #include "../error_code.h"
 
-// #include "mapped_type_proxy.h"
+// #include "../mapped_type_proxy.h"
 
-// #include "alias_traits.h"
+// #include "../alias_traits.h"
 
-// #include "schema/algorithms/table_lookup.h"
+// #include "../schema/algorithms/table_lookup.h"
 //  pick_table
-// #include "util.h"
+// #include "../util.h"
 // quote_identifier
-// #include "vocabulary/node_traits.h"
+// #include "../vocabulary/node_traits.h"
 
-// #include "vocabulary/node_algorithms.h"
+// #include "../vocabulary/node_algorithms.h"
 // access_column_expression
-// #include "schema/column_identifier.h"
+// #include "../schema/column_identifier.h"
 
-// #include "schema/table_identifier.h"
+// #include "../schema/table_identifier.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -18437,8 +18437,9 @@ namespace sqlite_orm::internal {
     auto serialize(const T& t, const Ctx& context);
 
     template<class T, class Ctx>
-    std::vector<std::string>&
-    collect_table_column_names(std::vector<std::string>& collectedExpressions, bool definedOrder, const Ctx& context) {
+    std::vector<std::string>& collect_table_column_expressions(std::vector<std::string>& collectedExpressions,
+                                                               bool definedOrder,
+                                                               const Ctx& context) {
         if (definedOrder) {
             auto& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
             collectedExpressions.reserve(collectedExpressions.size() + table.template count_of<is_column>());
@@ -18471,7 +18472,7 @@ namespace sqlite_orm::internal {
 
     /** @short Column expression collector.
      */
-    struct column_names_getter {
+    struct column_expressions_collector {
         /** 
          *  The default implementation simply serializes the passed argument.
          */
@@ -18483,9 +18484,9 @@ namespace sqlite_orm::internal {
             }
             // ...
             else if constexpr (is_asterisk_v<E> || is_object_node_v<E>) {
-                return collect_table_column_names<type_t<E>>(this->collectedExpressions,
-                                                             expression.defined_order,
-                                                             context);
+                return collect_table_column_expressions<type_t<E>>(this->collectedExpressions,
+                                                                   expression.defined_order,
+                                                                   context);
             }
             // ...
             else if constexpr (is_columns_v<E> || is_struct_v<E>) {
@@ -18515,9 +18516,9 @@ namespace sqlite_orm::internal {
     };
 
     template<class T, class Ctx>
-    std::vector<std::string> get_column_names(const T& expression, const Ctx& context) {
-        column_names_getter serializer;
-        return serializer(access_column_expression(expression), context);
+    std::vector<std::string> collect_column_expressions(const T& expression, const Ctx& context) {
+        column_expressions_collector collector;
+        return collector(access_column_expression(expression), context);
     }
 }
 
@@ -18534,21 +18535,21 @@ namespace sqlite_orm::internal {
 #endif
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/type_traits.h"
+// #include "../functional/type_traits.h"
 
-// #include "tuple_helper/tuple_transformer.h"
+// #include "../tuple_helper/tuple_transformer.h"
 
-// #include "error_code.h"
+// #include "../error_code.h"
 
-// #include "alias.h"
+// #include "../alias.h"
 
-// #include "vocabulary/node_traits.h"
+// #include "../vocabulary/node_traits.h"
 
-// #include "vocabulary/node_algorithms.h"
+// #include "../vocabulary/node_algorithms.h"
 // access_column_expression
-// #include "schema/column_identifier.h"
+// #include "../schema/column_identifier.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm::internal {
@@ -18578,121 +18579,90 @@ namespace sqlite_orm::internal {
         }
     }
 
-    template<class T, class SFINAE = void>
+    /**
+     *  Collects the column names of a CTE's select: an alias' name, a column's name, or an empty name
+     *  for an unaliased expression, to be numbered later on.
+     */
     struct cte_column_names_collector {
-        using expression_type = T;
-
-        // Compound statements are never passed in by db_objects_for_expression()
-        static_assert(!is_compound_operator_v<T>);
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::vector<std::string> operator()(const expression_type& t,
+        template<class E, class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::vector<std::string> operator()(const E& expression,
                                                                      const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            auto newContext = context;
-            newContext.omit_table_name = true;
-            std::string columnName = serialize(t, newContext);
-            if (columnName.empty()) {
-                throw std::system_error{orm_error_code::column_not_found};
+            // Compound statements are never passed in by db_objects_for_expression()
+            static_assert(!is_compound_operator_v<E>);
+
+            // ...
+            if constexpr (polyfill::is_specialization_of_v<E, std::reference_wrapper>) {
+                return operator()(access_column_expression(expression.get()), context);
             }
-            unquote_or_erase(columnName);
-            return {std::move(columnName)};
+            // ...
+            else if constexpr (is_asterisk_v<E>) {
+                auto& table = pick_table<type_t<E>>(context.db_objects);
+
+                using table_type = polyfill::remove_cvref_t<decltype(table)>;
+                using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
+                return create_from_tuple<std::vector<std::string>>(table.elements,
+                                                                   column_index_sequence{},
+                                                                   &column_identifier::name);
+            }
+            // No CTE for object expressions.
+            else if constexpr (is_object_node_v<E>) {
+                static_assert(polyfill::always_false_v<E>, "Selecting an object in a subselect is not allowed");
+            }
+            // No CTE for object expressions.
+            else if constexpr (is_struct_v<E>) {
+                static_assert(polyfill::always_false_v<E>, "Repacking columns in a subselect is not allowed");
+            }
+            // ...
+            else if constexpr (is_columns_v<E>) {
+                std::vector<std::string> columnNames;
+                columnNames.reserve(size_t(expression.count));
+                iterate_tuple(expression.columns, [&columnNames, &context](auto& column) {
+                    columnNames.push_back(column_name(column, context));
+                });
+                return columnNames;
+            }
+            // ...
+            else {
+                return {column_name(expression, context)};
+            }
+        }
+
+      private:
+        /**
+         *  The name of a single result column: an alias' name, or the unquoted serialization of the expression
+         *  if it is a column, otherwise empty.
+         */
+        template<class E, class Ctx>
+        static std::string column_name(const E& expression, const Ctx& context) {
+            if constexpr (is_as_node_v<E>) {
+                return alias_extractor<alias_type_t<E>>::extract();
+            } else {
+                auto newContext = context;
+                newContext.omit_table_name = true;
+                std::string columnName = serialize(expression, newContext);
+                if (columnName.empty()) {
+                    throw std::system_error{orm_error_code::column_not_found};
+                }
+                unquote_or_erase(columnName);
+                return columnName;
+            }
         }
     };
 
     template<class T, class Ctx>
-    std::vector<std::string> get_cte_column_names(const T& t, const Ctx& context) {
-        cte_column_names_collector<T> collector;
-        return collector(access_column_expression(t), context);
+    std::vector<std::string> collect_cte_column_names(const T& t, const Ctx& context) {
+        return cte_column_names_collector{}(access_column_expression(t), context);
     }
 
-    template<class As>
-    struct cte_column_names_collector<As, match_if<is_as_node, As>> {
-        using expression_type = As;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
-        operator()(const expression_type& /*expression*/, const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
-            return {alias_extractor<alias_type_t<As>>::extract()};
-        }
-    };
-
-    template<class Wrapper>
-    struct cte_column_names_collector<Wrapper, match_specialization_of<Wrapper, std::reference_wrapper>> {
-        using expression_type = Wrapper;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::vector<std::string> operator()(const expression_type& expression,
-                                                                     const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return get_cte_column_names(expression.get(), context);
-        }
-    };
-
-    template<class Asterisk>
-    struct cte_column_names_collector<Asterisk, match_if<is_asterisk, Asterisk>> {
-        using expression_type = Asterisk;
-        using recordset_type = type_t<Asterisk>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::vector<std::string> operator()(const expression_type&,
-                                                                     const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            auto& table = pick_table<recordset_type>(context.db_objects);
-
-            using table_type = polyfill::remove_cvref_t<decltype(table)>;
-            using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
-            return create_from_tuple<std::vector<std::string>>(table.elements,
-                                                               column_index_sequence{},
-                                                               &column_identifier::name);
-        }
-    };
-
-    // No CTE for object expressions.
-    template<class Object>
-    struct cte_column_names_collector<Object, match_if<is_object_node, Object>> {
-        static_assert(polyfill::always_false_v<Object>, "Selecting an object in a subselect is not allowed");
-    };
-
-    // No CTE for object expressions.
-    template<class Object>
-    struct cte_column_names_collector<Object, match_if<is_struct, Object>> {
-        static_assert(polyfill::always_false_v<Object>, "Repacking columns in a subselect is not allowed");
-    };
-
-    template<class Columns>
-    struct cte_column_names_collector<Columns, match_if<is_columns, Columns>> {
-        using expression_type = Columns;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::vector<std::string> operator()(const expression_type& cols,
-                                                                     const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::vector<std::string> columnNames;
-            columnNames.reserve(size_t(cols.count));
-            auto newContext = context;
-            newContext.omit_table_name = true;
-            iterate_tuple(cols.columns, [&columnNames, &newContext](auto& m) {
-                using value_type = polyfill::remove_cvref_t<decltype(m)>;
-
-                if constexpr (is_as_node_v<value_type>) {
-                    columnNames.push_back(alias_extractor<alias_type_t<value_type>>::extract());
-                } else {
-                    std::string columnName = serialize(m, newContext);
-                    if (!columnName.empty()) {
-                        columnNames.push_back(std::move(columnName));
-                    } else {
-                        throw std::system_error{orm_error_code::column_not_found};
-                    }
-                    unquote_or_erase(columnNames.back());
-                }
-            });
-            return columnNames;
-        }
-    };
-
+    /**
+     *  The column names of a CTE: those collected from its select, overridden by its explicit column list if any.
+     */
     template<typename Ctx, typename E, typename ExplicitColRefs, satisfies<is_select, E> = true>
-    std::vector<std::string> collect_cte_column_names(const E& sel,
+    std::vector<std::string> resolve_cte_column_names(const E& sel,
                                                       [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
                                                       const Ctx& context) {
-        // 1. determine column names from subselect
-        std::vector<std::string> columnNames = get_cte_column_names(sel.col, context);
+        // 1. collect the column names of the subselect
+        std::vector<std::string> columnNames = collect_cte_column_names(sel.col, context);
 
         // 2. override column names from cte expression
         constexpr size_t nExplicitColumns = std::tuple_size_v<ExplicitColRefs>;
@@ -18764,15 +18734,15 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::exchange
 #endif
 
-// #include "functional/gsl.h"
+// #include "../functional/gsl.h"
 
-// #include "functional/type_traits.h"
+// #include "../functional/type_traits.h"
 
-// #include "vocabulary/node_fwd.h"
+// #include "../vocabulary/node_fwd.h"
 // order_by_base
-// #include "vocabulary/node_traits.h"
+// #include "../vocabulary/node_traits.h"
 
-// #include "ast/order_by.h"
+// #include "../ast/order_by.h"
 
 /** @file The ORDER BY clause, in each of the DSL spellings sqlite_orm offers for it - a single ordering term,
  *        a static list of ordering terms, or a list assembled at runtime.
@@ -18827,7 +18797,7 @@ namespace sqlite_orm::internal {
     }
 }
 //  collate_argument, collate_argument_to_string
-// #include "../serializer_context.h"
+// #include "../serialization/serializer_context.h"
 
 // #include "../type_printer.h"
 
@@ -19129,13 +19099,13 @@ namespace sqlite_orm::internal {
 
 // #include "serializing_util.h"
 
-// #include "statement_binder.h"
+// #include "../statement_binder.h"
 
-// #include "util.h"
+// #include "../util.h"
 
-// #include "error_code.h"
+// #include "../error_code.h"
 
-// #include "schema/constraints/primary_key.h"
+// #include "../schema/constraints/primary_key.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_base_of
@@ -19298,7 +19268,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 // conflict_clause_t
-// #include "schema/constraints/generated_always.h"
+// #include "../schema/constraints/generated_always.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
@@ -19363,13 +19333,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 // basic_generated_always
-// #include "builtin/collations.h"
+// #include "../builtin/collations.h"
 //  collate_argument_to_string
-// #include "vocabulary/node_algorithms.h"
+// #include "../vocabulary/node_algorithms.h"
 // unwrap_expression
-// #include "vocabulary/node_traits.h"
+// #include "../vocabulary/node_traits.h"
 
-// #include "vocabulary/node_fwd.h"
+// #include "../vocabulary/node_fwd.h"
 // column_constraints
 
 namespace sqlite_orm::internal {
@@ -20072,7 +20042,7 @@ namespace sqlite_orm::internal {
             ss << streaming_identifier(alias_extractor<cte_moniker_type_t<CTE>>::extract());
             {
                 std::vector<std::string> columnNames =
-                    collect_cte_column_names(get_cte_driving_subselect(cte.subselect), cte.explicitColumns, context);
+                    resolve_cte_column_names(get_cte_driving_subselect(cte.subselect), cte.explicitColumns, context);
                 ss << '(' << streaming_identifiers(columnNames) << ')';
             }
             ss << " AS" << streaming_constraints_tuple(cte.hints, context) << " ("
@@ -21005,7 +20975,7 @@ namespace sqlite_orm::internal {
             if (context.use_parentheses) {
                 ss << '(';
             }
-            ss << streaming_serialized(get_column_names(statement, subCtx));
+            ss << streaming_serialized(collect_column_expressions(statement, subCtx));
             if (context.use_parentheses) {
                 ss << ')';
             }
@@ -21247,7 +21217,7 @@ namespace sqlite_orm::internal {
                 }
             }
 
-            ss << streaming_serialized(get_column_names(sel.col, subCtx));
+            ss << streaming_serialized(collect_column_expressions(sel.col, subCtx));
             using conditions_tuple = conditions_type_t<statement_type>;
             constexpr bool hasExplicitFrom = tuple_has<conditions_tuple, is_any_from>::value;
             if constexpr (!hasExplicitFrom) {
@@ -21819,7 +21789,7 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "serializer_context.h"
+// #include "serialization/serializer_context.h"
 
 // #include "object_from_column_builder.h"
 
@@ -23347,7 +23317,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "cte_types.h"
 
-// #include "cte_column_names_collector.h"
+// #include "serialization/cte_column_names_collector.h"
 
 // #include "column_expression.h"
 
@@ -23719,7 +23689,7 @@ namespace sqlite_orm::internal {
             determine_cte_colrefs(dbObjects, subselectColRefs, cte.explicitColumns, index_sequence{});
 
         serializer_context context{dbObjects};
-        std::vector<std::string> columnNames = collect_cte_column_names(subSelect, cte.explicitColumns, context);
+        std::vector<std::string> columnNames = resolve_cte_column_names(subSelect, cte.explicitColumns, context);
 
         using mapper_type = create_cte_mapper_t<cte_moniker_type_t<cte_type>,
                                                 explicit_colrefs_tuple_t<cte_type>,
@@ -23767,7 +23737,7 @@ namespace sqlite_orm::internal {
 
 // #include "util.h"
 
-// #include "serializing_util.h"
+// #include "serialization/serializing_util.h"
 
 // #include "udf_existence_checker.h"
 
@@ -29013,17 +28983,17 @@ namespace sqlite_orm::internal {
 
 // #include "../vocabulary/node_traits.h"
 
-// #include "../default_value_extractor.h"
+// #include "../serialization/default_value_extractor.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #endif
 
-// #include "schema/constraints/default.h"
+// #include "../schema/constraints/default.h"
 
 // #include "serializer_context.h"
 
-// #include "schema/db_objects.h"
+// #include "../schema/db_objects.h"
 
 namespace sqlite_orm::internal {
     template<class T, class Ctx>
@@ -29141,7 +29111,7 @@ namespace sqlite_orm::internal {
 
 // #include "../util.h"
 
-// #include "../serializing_util.h"
+// #include "../serialization/serializing_util.h"
 
 // #include "../storage.h"
 
@@ -29377,9 +29347,9 @@ namespace sqlite_orm::internal {
 
 // #include "../ast_iterator.h"
 
-// #include "../table_name_collector.h"
+// #include "../serialization/table_name_collector.h"
 
-// #include "../statement_serializer.h"
+// #include "../serialization/statement_serializer.h"
 
 // #include "../ast/crud/set.h"
 
@@ -33912,7 +33882,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 //  rank
 // #include "../../ast/order_by.h"
 //  order_by_t
-// #include "../../statement_serializer.h"
+// #include "../../serialization/statement_serializer.h"
 //  statement_serializer
 
 namespace sqlite_orm::internal {
