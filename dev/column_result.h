@@ -286,18 +286,10 @@ namespace sqlite_orm::internal {
         using type = return_type_t<T>;
     };
 
-    template<class DBOs, class A, class T, class E>
-    struct column_result_t<DBOs, like_t<A, T, E>, void> {
-        using type = bool;
-    };
-
-    template<class DBOs, class A, class T>
-    struct column_result_t<DBOs, glob_t<A, T>, void> {
-        using type = bool;
-    };
-
-    template<class DBOs, class C>
-    struct column_result_t<DBOs, negated_condition_t<C>, void> {
+    template<class DBOs, class T>
+    struct column_result_t<DBOs,
+                           T,
+                           std::enable_if_t<std::disjunction<is_like<T>, is_glob<T>, is_negated_condition<T>>::value>> {
         using type = bool;
     };
 

@@ -6,9 +6,8 @@
 #endif
 
 #include "functional/type_traits.h"  //  satisfies
-#include "vocabulary/node_traits.h"  //  is_app_function_call
+#include "vocabulary/node_traits.h"  //  is_app_function_call, is_named_collate
 #include "error_code.h"
-#include "conditions.h"
 #include "storage_base.h"
 #include "sqlite3/sqlite3_errors.h"
 
@@ -35,7 +34,8 @@ namespace sqlite_orm::internal {
         }
 
         // examine `named_collate` node expressions
-        void operator()(std::true_type, const named_collate_base& collateCall) const {
+        template<class T, satisfies<is_named_collate, T> = true>
+        void operator()(std::true_type, const T& collateCall) const {
             if (_collatingFunctions.find(collateCall.name) == _collatingFunctions.end()) SQLITE_ORM_CPP_UNLIKELY {
 #if SQLITE_VERSION_NUMBER >= 3008008
                 throw std::system_error{sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ), std::string(collateCall.name)};

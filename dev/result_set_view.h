@@ -13,6 +13,7 @@
 #include "result_set_iterator.h"
 #include "ast_iterator.h"
 #include "connection_holder.h"
+#include "serialization/serializer_context.h"
 #include "sqlite3/sqlite3_statements.h"
 #include "sqlite3/sqlite3_deleters.h"  //  statement_finalizer
 #include "vocabulary/node_traits.h"  // projections

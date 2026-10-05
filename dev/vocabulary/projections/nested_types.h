@@ -93,6 +93,15 @@ namespace sqlite_orm::internal {
     using upper_type_t = typename T::upper_type;
 
     /**
+     *  The types of the pattern of a LIKE or GLOB, and of the escape character of a LIKE (`void` if there is none).
+     */
+    template<typename T>
+    using pattern_type_t = typename T::pattern_type;
+
+    template<typename T>
+    using escape_type_t = typename T::escape_type;
+
+    /**
      *  The C++ type a CAST converts to.
      */
     template<typename T>

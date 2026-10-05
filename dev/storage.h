@@ -41,7 +41,6 @@
 #include "sqlite3/sqlite3_types.h"  //  int64
 #include "sqlite3/sqlite3_statements.h"
 #include "builtin/functions/aggregate.h"
-#include "conditions.h"
 #include "statement_binder.h"
 #include "column_result.h"
 #include "mapped_type_proxy.h"
