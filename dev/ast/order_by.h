@@ -17,7 +17,7 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/type_traits.h"
 #include "../builtin/collations.h"  //  collate_argument, collate_argument_to_string
-#include "../serializer_context.h"
+#include "../serialization/serializer_context.h"
 #include "../type_printer.h"
 #include "literal.h"
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause

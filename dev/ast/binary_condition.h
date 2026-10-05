@@ -118,22 +118,6 @@ namespace sqlite_orm::internal {
         }
     };
 
-    /**
-     *  The deprecated comparison of a whole FTS5 table with an expression: table = expression.
-     */
-    template<class L, class R>
-    struct is_equal_with_table_t : negatable_t {
-        using left_type = L;
-        using right_type = R;
-
-        right_type rhs;
-
-        is_equal_with_table_t(right_type rhs) : rhs(std::move(rhs)) {}
-    };
-
-    template<class T>
-    constexpr bool is_equal_with_table_v = polyfill::is_specialization_of_v<T, is_equal_with_table_t>;
-
     struct is_not_equal_string {
         std::string_view serialize() const {
             return "!=";
@@ -470,16 +454,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "eq() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
                       "column pointers, c()-wrapped values, aliases or expressions");
         return {std::move(lhs), std::move(rhs)};
-    }
-
-    /**
-     *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
-     */
-    template<class O, class R, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
-    [[deprecated("Use the usual `is_equal` function to compare the hidden FTS5 'any' field or a field of your FTS "
-                 "table instead")]]
-    constexpr internal::is_equal_with_table_t<O, R> is_equal(R rhs) {
-        return {std::move(rhs)};
     }
 
     template<class L, class R>

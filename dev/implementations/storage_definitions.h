@@ -16,7 +16,7 @@
 
 #include "../functional/type_traits.h"
 #include "../util.h"
-#include "../serializing_util.h"
+#include "../serialization/serializing_util.h"
 #include "../storage.h"
 #include "../vocabulary/node_traits.h"
 #include "../schema/column_identifier.h"
