@@ -8,7 +8,7 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/cxx_utility_polyfill.h"  //  polyfill::forward_like
 #include "in.h"
-#include "../conditions.h"
+#include "binary_condition.h"  //  and_condition_t, or_condition_t
 #include "../operators.h"
 #include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits

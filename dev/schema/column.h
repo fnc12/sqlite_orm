@@ -14,6 +14,7 @@
 #include "../tuple_helper/tuple_traits.h"
 #include "../member_traits/member_traits.h"
 #include "../type_is_nullable.h"
+#include "../type_printer.h"  //  type_printer, integer_printer
 #include "column_identifier.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_traits.h"
