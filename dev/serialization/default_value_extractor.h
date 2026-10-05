@@ -4,9 +4,9 @@
 #include <string>  //  std::string
 #endif
 
-#include "schema/constraints/default.h"
+#include "../schema/constraints/default.h"
 #include "serializer_context.h"
-#include "schema/db_objects.h"
+#include "../schema/db_objects.h"
 
 namespace sqlite_orm::internal {
     template<class T, class Ctx>

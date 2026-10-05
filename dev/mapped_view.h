@@ -11,7 +11,7 @@
 #include "prepared_statement.h"
 #include "ast/crud/get.h"
 #include "connection_holder.h"
-#include "serializer_context.h"
+#include "serialization/serializer_context.h"
 #include "util.h"
 
 namespace sqlite_orm::internal {
