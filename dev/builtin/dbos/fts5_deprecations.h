@@ -32,7 +32,7 @@
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../functions/window.h"  //  rank
 #include "../../ast/order_by.h"  //  order_by_t
-#include "../../statement_serializer.h"  //  statement_serializer
+#include "../../serialization/statement_serializer.h"  //  statement_serializer
 
 namespace sqlite_orm::internal {
     /**
