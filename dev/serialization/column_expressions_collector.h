@@ -9,26 +9,27 @@
 #include <utility>  //  std::move
 #endif
 
-#include "functional/type_traits.h"
-#include "tuple_helper/tuple_traits.h"
-#include "tuple_helper/tuple_iteration.h"
-#include "error_code.h"
-#include "mapped_type_proxy.h"
-#include "alias_traits.h"
-#include "schema/algorithms/table_lookup.h"  //  pick_table
-#include "util.h"  // quote_identifier
-#include "vocabulary/node_traits.h"
-#include "vocabulary/node_algorithms.h"  // access_column_expression
-#include "schema/column_identifier.h"
-#include "schema/table_identifier.h"
+#include "../functional/type_traits.h"
+#include "../tuple_helper/tuple_traits.h"
+#include "../tuple_helper/tuple_iteration.h"
+#include "../error_code.h"
+#include "../mapped_type_proxy.h"
+#include "../alias_traits.h"
+#include "../schema/algorithms/table_lookup.h"  //  pick_table
+#include "../util.h"  // quote_identifier
+#include "../vocabulary/node_traits.h"
+#include "../vocabulary/node_algorithms.h"  // access_column_expression
+#include "../schema/column_identifier.h"
+#include "../schema/table_identifier.h"
 
 namespace sqlite_orm::internal {
     template<class T, class Ctx>
     auto serialize(const T& t, const Ctx& context);
 
     template<class T, class Ctx>
-    std::vector<std::string>&
-    collect_table_column_names(std::vector<std::string>& collectedExpressions, bool definedOrder, const Ctx& context) {
+    std::vector<std::string>& collect_table_column_expressions(std::vector<std::string>& collectedExpressions,
+                                                               bool definedOrder,
+                                                               const Ctx& context) {
         if (definedOrder) {
             auto& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
             collectedExpressions.reserve(collectedExpressions.size() + table.template count_of<is_column>());
@@ -61,7 +62,7 @@ namespace sqlite_orm::internal {
 
     /** @short Column expression collector.
      */
-    struct column_names_getter {
+    struct column_expressions_collector {
         /** 
          *  The default implementation simply serializes the passed argument.
          */
@@ -73,9 +74,9 @@ namespace sqlite_orm::internal {
             }
             // ...
             else if constexpr (is_asterisk_v<E> || is_object_node_v<E>) {
-                return collect_table_column_names<type_t<E>>(this->collectedExpressions,
-                                                             expression.defined_order,
-                                                             context);
+                return collect_table_column_expressions<type_t<E>>(this->collectedExpressions,
+                                                                   expression.defined_order,
+                                                                   context);
             }
             // ...
             else if constexpr (is_columns_v<E> || is_struct_v<E>) {
@@ -105,8 +106,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T, class Ctx>
-    std::vector<std::string> get_column_names(const T& expression, const Ctx& context) {
-        column_names_getter serializer;
-        return serializer(access_column_expression(expression), context);
+    std::vector<std::string> collect_column_expressions(const T& expression, const Ctx& context) {
+        column_expressions_collector collector;
+        return collector(access_column_expression(expression), context);
     }
 }

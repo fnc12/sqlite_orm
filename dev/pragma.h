@@ -17,7 +17,7 @@
 #include "locking_mode.h"
 #include "connection_holder.h"
 #include "util.h"
-#include "serializing_util.h"
+#include "serialization/serializing_util.h"
 
 namespace sqlite_orm::internal {
     struct storage_base;
