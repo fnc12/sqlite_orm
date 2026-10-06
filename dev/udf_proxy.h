@@ -11,7 +11,7 @@
 #include <utility>  //  std::move, std::pair
 #endif
 
-#include "error_code.h"
+#include "sqlite3/sqlite3_xdestroy.h"  //  xdestroy_fn_t
 
 namespace sqlite_orm::internal {
     /*

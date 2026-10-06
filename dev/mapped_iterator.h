@@ -9,11 +9,11 @@
 #include <functional>  //  std::bind, std::ref
 #endif
 
-#include "statement_finalizer.h"
+#include "sqlite3/sqlite3_deleters.h"  //  statement_finalizer
+#include "sqlite3/sqlite3_statements.h"
 #include "error_code.h"
 #include "object_from_column_builder.h"
 #include "schema/algorithms/table_lookup.h"
-#include "util.h"
 
 namespace sqlite_orm::internal {
     /*  
