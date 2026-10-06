@@ -39,6 +39,7 @@
 #include "ast/result_columns.h"
 #include "ast/cte.h"
 #include "sqlite3/sqlite3_types.h"  //  int64
+#include "sqlite3/sqlite3_statements.h"
 #include "builtin/functions/aggregate.h"
 #include "statement_binder.h"
 #include "column_result.h"
@@ -59,13 +60,12 @@
 #include "ast/crud/remove.h"
 #include "prepared_statement.h"
 #include "serialization/statement_serializer.h"
+#include "serialization/serializing_util.h"
 #include "serialization/serializer_context.h"
 #include "object_from_column_builder.h"
 #include "row_extractor.h"
 #include "schema/constraints/generated_always.h"  // basic_generated_always
 #include "cte_storage.h"
-#include "util.h"
-#include "serialization/serializing_util.h"
 #include "udf_existence_checker.h"
 
 namespace sqlite_orm::internal {

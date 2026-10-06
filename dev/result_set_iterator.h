@@ -7,10 +7,10 @@
 #include <functional>  //  std::reference_wrapper
 #endif
 
-#include "statement_finalizer.h"
+#include "sqlite3/sqlite3_deleters.h"  //  statement_finalizer
+#include "sqlite3/sqlite3_statements.h"
 #include "row_extractor.h"
 #include "column_result_proxy.h"
-#include "util.h"
 
 namespace sqlite_orm::internal {
 
