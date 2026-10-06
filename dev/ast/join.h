@@ -19,6 +19,16 @@
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
+    /**
+     *  The constraint of a join that spells none out: CROSS JOIN joins every row with every row, and NATURAL JOIN
+     *  matches the columns both tables have in common. Every join is constrained - explicitly by ON or USING, or
+     *  implicitly.
+     */
+    struct implicit_join_constraint {};
+
+    template<class T>
+    constexpr bool is_implicit_join_constraint_v = std::is_same<T, implicit_join_constraint>::value;
+
     struct cross_join_string {
         operator std::string() const {
             return "CROSS JOIN";
@@ -32,6 +42,9 @@ namespace sqlite_orm::internal {
     template<class T>
     struct cross_join_t : cross_join_string {
         using type = T;
+        using on_type = implicit_join_constraint;
+
+        SQLITE_ORM_NOUNIQUEADDRESS on_type constraint;
     };
 
     struct natural_join_string {
@@ -47,6 +60,9 @@ namespace sqlite_orm::internal {
     template<class T>
     struct natural_join_t : natural_join_string {
         using type = T;
+        using on_type = implicit_join_constraint;
+
+        SQLITE_ORM_NOUNIQUEADDRESS on_type constraint;
     };
 
     struct left_join_string {
