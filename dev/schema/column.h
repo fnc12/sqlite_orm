@@ -232,12 +232,12 @@ namespace sqlite_orm::internal {
      *  Factory function for a column definition from the reflection of a non-static data member.
      *
      *  The optional `[[="…"_orm_name]]` member annotation overrides the column name (otherwise the member's
-     *  reflected identifier is used); the remaining member annotations are the column constraints.
+     *  reflected identifier is used); sqlite_orm's remaining member annotations are the column constraints,
+     *  annotations of other libraries are skipped.
      */
     template<std::meta::info member>
     auto make_reflected_column() {
-        auto annotations = splice_annotations<member>();
-        std::string columnName{resolve_mapped_name<member>(annotations)};
+        std::string columnName{mapped_name_of<member>()};
 
         return std::apply(
             [&columnName](auto&&... constraints) {
@@ -245,7 +245,7 @@ namespace sqlite_orm::internal {
                                                splice_member_pointer<member>(),
                                                std::move(constraints)...);
             },
-            filter_out_mapped_name(std::move(annotations)));
+            filter_out_mapped_name(extract_orm_annotations<member>()));
     }
 }
 #endif

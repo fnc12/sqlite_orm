@@ -38,6 +38,17 @@ namespace {
         [[= "derived_label"_orm_name]] std::string label;
     };
 
+    namespace other_library {
+        struct label {
+            int value;
+        };
+    }
+
+    struct[[ = "foreign"_orm_name, = other_library::label{1} ]] ReflectedForeignAnnotated {
+        [[ = other_library::label{2}, = primary_key(), = 42 ]] int64 id;
+        std::string name;
+    };
+
     struct[[= "composite"_orm_name]] ReflectedComposite {
         int a;
         int b;
@@ -152,9 +163,33 @@ TEST_CASE("reflection-based make_table - column name annotations on base class m
     auto info = storage.pragma.table_xinfo("renamed_derived");
     REQUIRE(info.size() == 2);
 
-    auto it = std::ranges::find(info, "base_id", &table_xinfo::name);
+    auto it = std::ranges::find(info, std::string("base_id"), &table_xinfo::name);
     REQUIRE(it != info.end());
     REQUIRE(it->pk == 1);
+}
+
+TEST_CASE("reflection-based make_table - annotations of other libraries") {
+    SECTION("ownership is decided by the namespace the annotation's type is declared in") {
+        STATIC_REQUIRE(internal::is_declared_within(^^internal::mapped_name_literal<2>, ^^sqlite_orm));
+        STATIC_REQUIRE(internal::is_declared_within(^^const internal::mapped_name_literal<2>, ^^sqlite_orm));
+        STATIC_REQUIRE_FALSE(internal::is_declared_within(^^other_library::label, ^^sqlite_orm));
+        STATIC_REQUIRE_FALSE(internal::is_declared_within(^^int, ^^sqlite_orm));
+        STATIC_REQUIRE_FALSE(
+            internal::is_declared_within(^^std::tuple<internal::mapped_name_literal<2>>, ^^sqlite_orm));
+    }
+
+    SECTION("are ignored at class scope and on members") {
+        auto table = make_table<ReflectedForeignAnnotated>();
+        REQUIRE(table.name == "foreign");
+        STATIC_REQUIRE(table.template count_of<internal::is_column>() == 2);
+
+        auto storage = make_storage("", std::move(table));
+        REQUIRE_NOTHROW(storage.sync_schema());
+        auto info = storage.pragma.table_xinfo("foreign");
+        auto it = std::ranges::find(info, std::string("id"), &table_xinfo::name);
+        REQUIRE(it != info.end());
+        REQUIRE(it->pk == 1);
+    }
 }
 
 TEST_CASE("reflection-based make_table - variadic extras") {

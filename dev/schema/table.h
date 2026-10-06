@@ -129,9 +129,8 @@ namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
     template<class O, class... Cs>
     auto make_reflected_table(Cs... constraints) {
-        auto classAnnotations = extract_type_annotations<O>();
-        std::string tableName{resolve_mapped_name<^^O>(classAnnotations)};
-        auto annotationConstraints = filter_out_mapped_name(std::move(classAnnotations));
+        std::string tableName{mapped_name_of<^^O>()};
+        auto annotationConstraints = filter_out_mapped_name(extract_orm_annotations<^^O>());
         static /*gcc*/ constexpr auto members = extract_members<O>();
 
         auto columns = []<size_t... I>(std::index_sequence<I...>) static {
@@ -193,7 +192,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  the object type's non-static data members and their annotations. Class-scope annotations on
      *  the object type contribute table-level constraints; the optional `[[=orm_name("…")]]` annotation
      *  overrides the table name (otherwise the type's reflected identifier is used). Likewise, a
-     *  `[[=orm_name("…")]]` member annotation overrides the column name.
+     *  `[[=orm_name("…")]]` member annotation overrides the column name. Annotations whose type is not declared within
+     *  namespace `sqlite_orm` are ignored, both at class scope and on members.
      *
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
      *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
@@ -213,7 +213,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  the object type's non-static data members and their annotations. Class-scope annotations on
      *  the object type contribute table-level constraints; the optional `[[=orm_name("…")]]` annotation
      *  overrides the table name (otherwise the type's reflected identifier is used). Likewise, a
-     *  `[[=orm_name("…")]]` member annotation overrides the column name.
+     *  `[[=orm_name("…")]]` member annotation overrides the column name. Annotations whose type is not declared within
+     *  namespace `sqlite_orm` are ignored, both at class scope and on members.
      *
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
      *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by

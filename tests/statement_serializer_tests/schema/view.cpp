@@ -12,9 +12,11 @@ namespace {
         std::string name;
     };
 
-    struct[[= "renamed_user_view"_orm_name]] RenamedUserViewSerializerTests {
-        [[= "user_id"_orm_name]] int id = 0;
-        std::string name;
+    struct foreign_annotation {};
+
+    struct[[ = "renamed_user_view"_orm_name, = foreign_annotation{} ]] RenamedUserViewSerializerTests {
+        [[ = "user_id"_orm_name, = foreign_annotation{} ]] int id = 0;
+        [[= foreign_annotation{}]] std::string name;
     };
 }
 
@@ -49,7 +51,7 @@ TEST_CASE("view statement_serializer") {
     }
 }
 
-TEST_CASE("view statement_serializer - column name annotations") {
+TEST_CASE("view statement_serializer - column name annotations, ignoring other annotations") {
     struct User {
         int id = 0;
         std::string name;

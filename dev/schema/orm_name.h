@@ -2,7 +2,7 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-#include <meta>  //  std::meta::info, std::meta::identifier_of
+#include <meta>  //  std::meta::info, std::meta::identifier_of, std::define_static_string
 #include <string_view>  //  std::string_view
 #include <tuple>  //  std::tuple, std::tuple_size_v, std::get
 #include <type_traits>  //  std::bool_constant
@@ -12,6 +12,7 @@
 
 #include "../functional/gsl.h"
 #include "../functional/cstring_literal.h"
+#include "../functional/meta_util.h"
 #include "../functional/mpl.h"
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_traits.h"
@@ -52,25 +53,6 @@ namespace sqlite_orm::internal {
     using is_mapped_name_literal = std::bool_constant<is_mapped_name_literal_v<T>>;
 
     /**
-     *  Returns the mapped name carried by the `mapped_name_literal<…>` element of `annotations`,
-     *  or the reflected identifier of `refl` when no such element is present.
-     *
-     *  `refl` is the reflection of the annotated entity, a class or a non-static data member.
-     */
-    template<std::meta::info refl, class Tuple>
-    constexpr std::string_view resolve_mapped_name(const Tuple& annotations) {
-        static_assert(count_tuple<Tuple, is_mapped_name_literal>::value <= 1,
-                      "An entity can only have 1 mapped name annotation");
-        using name_index = find_tuple_element<Tuple, is_mapped_name_literal>;
-
-        if constexpr (name_index::value < std::tuple_size_v<Tuple>) {
-            return std::get<name_index::value>(annotations).name();
-        } else {
-            return std::meta::identifier_of(refl);
-        }
-    }
-
-    /**
      *  Returns a copy of `tuple` with all `mapped_name_literal<…>` elements removed.
      */
     template<class Tuple>
@@ -78,6 +60,40 @@ namespace sqlite_orm::internal {
         using constraints_index_sequence =
             filter_tuple_sequence_t<Tuple, check_if_not<is_mapped_name_literal>::template fn>;
         return create_from_tuple<std::tuple>(std::forward<Tuple>(tuple), constraints_index_sequence{});
+    }
+
+    /**
+     *  Returns sqlite_orm's own annotations of the entity `refl`, a class or a non-static data member, as a tuple.
+     *
+     *  An annotation is sqlite_orm's own if its type is declared within namespace `sqlite_orm`; annotations of
+     *  other libraries on the same entity are skipped. sqlite_orm's own annotations are not vetted here:
+     *  the factories consuming them validate them as elements of the definition they are placed in.
+     */
+    template<std::meta::info refl>
+    consteval auto extract_orm_annotations() {
+        return splice_annotations_within<refl, ^^::sqlite_orm>();
+    }
+
+    /**
+     *  Returns the name the entity `refl`, a class or a non-static data member, is mapped to:
+     *  the value of its `mapped_name_literal<…>` annotation, or its reflected identifier when it has none.
+     *
+     *  The name is resolved entirely at compile time and returned as a static string. This keeps run-time code
+     *  free of expressions involving a reflection, which are only allowed in a constant-evaluated context.
+     */
+    template<std::meta::info refl>
+    consteval orm_gsl::czstring mapped_name_of() {
+        auto annotations = extract_orm_annotations<refl>();
+        using annotations_type = decltype(annotations);
+        static_assert(count_tuple<annotations_type, is_mapped_name_literal>::value <= 1,
+                      "An entity can only have 1 mapped name annotation");
+        using name_index = find_tuple_element<annotations_type, is_mapped_name_literal>;
+
+        if constexpr (name_index::value < std::tuple_size_v<annotations_type>) {
+            return std::define_static_string(std::string_view{std::get<name_index::value>(annotations)});
+        } else {
+            return std::define_static_string(std::meta::identifier_of(refl));
+        }
     }
 }
 
