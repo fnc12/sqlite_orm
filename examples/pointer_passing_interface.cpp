@@ -38,7 +38,6 @@ using std::endl;
 using std::error_category;
 using std::error_code;
 using std::make_unique;
-using std::min;
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 // c++ integral constant for our pointer type domain
@@ -107,7 +106,7 @@ int main() {
 #endif
 
         ecat_binding operator()(unsigned int errorCategory) const {
-            size_t idx = min<size_t>(errorCategory, ecat_map.size());
+            size_t idx = std::min<size_t>(errorCategory, ecat_map.size());
             const error_category* ecat = idx != ecat_map.size() ? &get<const error_category&>(ecat_map[idx]) : nullptr;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             return bind_pointer_statically<ecode_pointer_tag>(ecat);
@@ -162,7 +161,7 @@ int main() {
 #endif
 
         ecode_binding operator()(int errorValue, unsigned int errorCategory) const {
-            size_t idx = min<size_t>(errorCategory, ecat_map.size());
+            size_t idx = std::min<size_t>(errorCategory, ecat_map.size());
             error_code* ec = idx != ecat_map.size()
                                  ? new error_code{errorValue, get<const error_category&>(ecat_map[idx])}
                                  : nullptr;

@@ -11,8 +11,9 @@
 #include "prepared_statement.h"
 #include "ast/crud/get.h"
 #include "connection_holder.h"
-#include "serializer_context.h"
-#include "util.h"
+#include "serialization/serializer_context.h"
+#include "sqlite3/sqlite3_statements.h"
+#include "sqlite3/sqlite3_deleters.h"  //  statement_finalizer
 
 namespace sqlite_orm::internal {
     /**

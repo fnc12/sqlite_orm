@@ -1,18 +1,19 @@
-name: Experimental - VS 2017 (v141)
+name: VS 2017 (v141)
 
 # The GitHub-hosted Windows images carry only the v143 and v142 toolsets. v141 was dropped when the
 # multi-version build tools were removed in May 2024, and actions/runner-images#12764 reports that adding
 # `Microsoft.VisualStudio.Component.VC.v141.x86.x64` to the installed VS 2022 fails with
 # "Toolset directory for version '14.16' was not found".
 #
-# This workflow probes whether the standalone VS 2017 Build Tools bootstrapper still yields a usable v141
-# on the current image. It cannot fail the run, so the answer can be gathered without putting the CI matrix
-# at risk. The steps are deliberately fine-grained, so that a failure says which part gave out: the
-# installer, the toolset layout, vcpkg's VS 2017 discovery, or the compile itself.
+# This workflow therefore installs the standalone VS 2017 Build Tools on windows-2022 (roughly 9 minutes
+# in all) and builds and tests with the v141 toolset, which nothing else in CI covers. It lives apart from
+# the Windows matrix in ci.yaml, because the install, the toolset check and the overlay triplet are needed
+# for this entry alone.
 #
-# Outcome so far: green on windows-2022 in roughly 9 minutes, with the toolset check confirming 14.16, so
-# both of the doubtful parts hold up -- vcpkg does discover a standalone Build Tools instance, and Catch2
-# builds under v141.
+# The job gates like any other. Mind that it downloads a legacy installer from aka.ms: a failure in the
+# install step can come from upstream rather than from the code. The steps are deliberately fine-grained,
+# so that a failure says which part gave out: the installer, the toolset layout, vcpkg's VS 2017
+# discovery, or the compile itself.
 #
 # v141 must be compiled without `/permissive-`. With it, the 14.16 front end instantiates but never emits
 # the `std::forward_as_tuple` specializations behind `streaming_serialized(std::vector<std::string>)` and
@@ -21,25 +22,32 @@ name: Experimental - VS 2017 (v141)
 # because CMake never adds the switch (see the MSVC block in the top-level CMakeLists.txt); a local build
 # that turns on conformance mode for the v141 toolset, as Visual Studio projects do by default, breaks.
 #
-# TODO(release): decide what to do with this file before the release goes out.
-#   a. Keep it as its own workflow, or promote it into ci.yaml as a job of its own. It does not fit the
-#      Windows matrix, because the install, toolset assertion and overlay triplet steps are needed for this
-#      entry alone.
-#   b. Decide whether to drop `continue-on-error`. Nothing else in CI covers v141, so today a regression
-#      against it shows up as a red job that blocks nothing. Against making it gate: the job downloads a
-#      legacy installer from aka.ms, so an upstream change would redden CI for reasons unrelated to the code.
 # Caching the toolset was considered and rejected: restoring only the install directory leaves out the
 # registry and installer state that `vswhere` reads, which is what vcpkg needs to find the toolset at all.
 
 on:
   # `workflow_dispatch` is only offered for workflows that already live on the default branch, which is
   # master, while pull requests here target dev -- so the manual button does not appear when the PR lands,
-  # only once this file reaches master. Until then `pull_request` is what exercises the probe. The triggers
-  # otherwise mirror ci.yaml's cadence.
+  # only once this file reaches master. The triggers otherwise mirror ci.yaml's, including its
+  # `paths-ignore`, so that a change touching only documentation runs neither.
   workflow_dispatch:
-  pull_request:
   push:
     branches: [dev, master]
+    paths-ignore:
+      - '.git*'
+      - '_config.yml'
+      - 'LICENSE'
+      - '**/*.md'
+      - '*.png'
+      - '*.sh'
+  pull_request:
+    paths-ignore:
+      - '.git*'
+      - '_config.yml'
+      - 'LICENSE'
+      - '**/*.md'
+      - '*.png'
+      - '*.sh'
 
 env:
   VCPKG_COMMIT: 4334d8b4c8916018600212ab4dd4bbdc343065d1  # 2025.09.17
@@ -49,8 +57,6 @@ jobs:
   vs2017:
     name: VS 2017 (v141), x64, C++17
     runs-on: windows-2022
-    # never fail the run; this workflow exists to answer a question, not to gate anything
-    continue-on-error: true
 
     steps:
       - name: Checkout
@@ -104,7 +110,7 @@ jobs:
       - name: Install dependencies
         shell: pwsh
         run: |
-          # whether vcpkg discovers the standalone Build Tools instance is itself part of the experiment
+          # vcpkg has to discover the standalone Build Tools instance; the triplet's toolset selects it
           vcpkg install sqlite3[core,dbstat,math,json1,fts5,rtree,soundex] catch2 `
             --triplet x64-windows-v141 --overlay-triplets=${{ github.workspace }}/.vcpkg-triplets
 

@@ -148,6 +148,7 @@ jobs:
             cc: gcc-16
             cxx: g++-16
             cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_26=ON"
+            build_examples: "-DBUILD_EXAMPLES=ON"
             install_compiler: true
             compiler_package: g++-16
             compiler_ppa: ppa:ubuntu-toolchain-r/test

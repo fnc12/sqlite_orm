@@ -11,13 +11,12 @@
 #endif
 
 #include "functional/gsl.h"
-#include "error_code.h"
 #include "row_extractor.h"
 #include "journal_mode.h"
 #include "locking_mode.h"
 #include "connection_holder.h"
-#include "util.h"
-#include "serializing_util.h"
+#include "sqlite3/sqlite3_statements.h"
+#include "serialization/serializing_util.h"
 
 namespace sqlite_orm::internal {
     struct storage_base;

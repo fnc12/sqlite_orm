@@ -9,6 +9,7 @@
 #include "vocabulary/node_traits.h"  //  is_app_function_call, is_named_collate
 #include "error_code.h"
 #include "storage_base.h"
+#include "sqlite3/sqlite3_errors.h"
 
 namespace sqlite_orm::internal {
     /*

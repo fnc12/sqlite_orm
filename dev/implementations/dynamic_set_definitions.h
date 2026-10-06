@@ -11,8 +11,8 @@
 #include "../functional/type_traits.h"
 #include "../vocabulary/node_traits.h"
 #include "../ast_iterator.h"
-#include "../table_name_collector.h"
-#include "../statement_serializer.h"
+#include "../serialization/table_name_collector.h"
+#include "../serialization/statement_serializer.h"
 #include "../ast/crud/set.h"
 
 namespace sqlite_orm::internal {

@@ -67,7 +67,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 
 3. **Type system** (`dev/functional/type_traits.h`, `dev/type_printer.h`): Extensive compile-time type introspection to deduce types from member pointers and validate queries at compile time.
 
-4. **Statement serialization** (`dev/statement_serializer.h`, `dev/serializer_context.h`): Converts C++ expression objects into SQL strings.
+4. **Statement serialization** (`dev/serialization/statement_serializer.h`, `dev/serialization/serializer_context.h`): Converts C++ expression objects into SQL strings.
 
 5. **Expression objects** (`dev/ast/`, `dev/builtin/functions/`): Type-safe representations of SQL operations (WHERE, JOIN, ORDER BY, etc.).
 
@@ -104,13 +104,16 @@ The library uses a **storage-centric architecture** with compile-time type safet
 - `dev/ast/` - AST nodes for query, DML and operational constructs (`select_t`, `insert_t`, `where`, `window`, ...)
 - `dev/ast/crud/` - One header per CRUD statement kind (`get`, `insert`, `replace`, `update`, `remove`), in both their object and their raw DML spellings, plus the clause nodes only they take (`into`, `set`, `default_values`, `upsert_clause`)
 
+**Serialization:**
+- `dev/serialization/` - The statement serializer and its context, and the helpers it alone uses: streaming utilities (`serializing_util.h`), the quoting of identifiers and literals (`quoting.h`), the ORDER BY serializer, the DEFAULT value extractor, and the collectors walking an expression for what serialization needs (`table_name_collector.h`, `column_expressions_collector.h`, `cte_column_names_collector.h`). `field_printer.h` and `type_printer.h` stay at the top level: they are public customization points.
+
 **Type binding:**
 - `dev/statement_binder.h` - Binds C++ values to prepared statements
 - `dev/row_extractor.h` - Extracts C++ objects from result rows
 - `dev/field_printer.h` - Serializes field values
 
 **Utilities:**
-- `dev/sqlite3/` - sqlite_orm's interface to the SQLite C library: the configuration derived from `<sqlite3.h>` (`sqlite3_config.h`) and the types republished from it as sqlite_orm's own (`sqlite3_types.h`: `int64`, `uint64`)
+- `dev/sqlite3/` - sqlite_orm's interface to the SQLite C library: the configuration derived from `<sqlite3.h>` (`sqlite3_config.h`), the types republished from it as sqlite_orm's own (`sqlite3_types.h`: `int64`, `uint64`), its result codes as `std::error_code`s (`sqlite3_errors.h`), the deleters of what it allocates (`sqlite3_deleters.h`: `statement_finalizer`), its destructor callback convention and the adaptation of C++ deleters to it (`sqlite3_xdestroy.h`: `xdestroy_fn_t`, `obtain_xdestroy_for()`), and the execution of statements through it (`sqlite3_statements.h`); umbrella `sqlite3_interface.h`. A header belongs here only if both hold: it depends on nothing in sqlite_orm but `functional/` and other `sqlite3/` headers (no DSL, schema, storage or connection), and its content is the C library's vocabulary - handles, calls, result codes, callback conventions - rather than sqlite_orm's own concepts. Merely using the C API does not qualify: `prepared_statement.h` owns a `sqlite3_stmt`, but it is a storage concept carrying a DSL expression.
 - `dev/prepared_statement.h` - Prepared statement support
 - `dev/ast_iterator.h` - Traverses expression ASTs
 - `dev/transaction_guard.h` - RAII transaction guards
@@ -122,6 +125,19 @@ The library uses a **storage-centric architecture** with compile-time type safet
 `include/sqlite_orm/sqlite_orm.h` is the **generated** single-header
 amalgamation of `dev/`. Never edit it by hand — change `dev/` and regenerate.
 `not_single_header_include/` holds the non-amalgamated variant.
+
+**The configuration is universally available.** Both variants include
+`dev/functional/config.h` first, and with it the C++ core feature and
+compiler-specific macros (`cxx_universal.h`), the platform macros
+(`platform_definitions.h`), `SQLITE_ORM_EXPORT` and the SQLite
+configuration of `sqlite3_config.h` - the SQLite version and feature macros
+(`SQLITE_VERSION_NUMBER`, `SQLITE_ORM_JSON_SUPPORTED`, ...). Every header in `dev/`
+can rely on them without including `config.h`, and their absence is not to be
+flagged. This covers configuration only: that `sqlite3_config.h` includes
+`<sqlite3.h>` to derive it is an implementation detail. A header that uses the
+SQLite C API - its functions, types or constants such as `SQLITE_OPEN_READONLY` -
+includes `<sqlite3.h>` itself, and a header that uses one of sqlite_orm's own
+public symbols includes the header declaring it.
 
 **Never guard an `#include` of a sqlite_orm header** — not with `#ifdef
 SQLITE_ORM_WITH_CPP20_ALIASES`, not with a SQLite version check, not with
