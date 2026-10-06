@@ -610,8 +610,8 @@ void apfelmaennchen() {
                                              m->*x * m->*x - m->*y * m->*y + m->*cx,
                                              2.0 * m->*x * m->*y + m->*cy),
                                      where((m->*x * m->*x + m->*y * m->*y) < 4.0 && m->*iter < 28)))),
-            m2(iter, cx, cy).as(select(columns(max<>(m->*iter), m->*cx, m->*cy), group_by(m->*cx, m->*cy))),
-            a(t).as(select(group_concat(substr(" .+*#", 1 + min<>(m2->*iter / 7.0, 4.0), 1), ""), group_by(m2->*cy)))),
+            m2(iter, cx, cy).as(select(columns(max(m->*iter), m->*cx, m->*cy), group_by(m->*cx, m->*cy))),
+            a(t).as(select(group_concat(substr(" .+*#", 1 + min(m2->*iter / 7.0, 4.0), 1), ""), group_by(m2->*cy)))),
         select(group_concat(rtrim(a->*t), "\n")));
 #else
     using cte_xaxis = decltype(1_ctealias);
