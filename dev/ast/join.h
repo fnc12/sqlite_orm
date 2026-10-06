@@ -104,6 +104,107 @@ namespace sqlite_orm::internal {
     template<class T, class O>
     using left_outer_join_t = join_clause<left_outer_join_string, T, O>;
 
+    struct natural_inner_join_string {
+        operator std::string() const {
+            return "NATURAL INNER JOIN";
+        }
+    };
+
+    template<class T>
+    using natural_inner_join_t = join_clause<natural_inner_join_string, T, implicit_join_constraint>;
+
+    struct natural_left_join_string {
+        operator std::string() const {
+            return "NATURAL LEFT JOIN";
+        }
+    };
+
+    template<class T>
+    using natural_left_join_t = join_clause<natural_left_join_string, T, implicit_join_constraint>;
+
+    struct natural_left_outer_join_string {
+        operator std::string() const {
+            return "NATURAL LEFT OUTER JOIN";
+        }
+    };
+
+    template<class T>
+    using natural_left_outer_join_t = join_clause<natural_left_outer_join_string, T, implicit_join_constraint>;
+
+#if SQLITE_VERSION_NUMBER >= 3039000
+    struct right_join_string {
+        operator std::string() const {
+            return "RIGHT JOIN";
+        }
+    };
+
+    template<class T, class O>
+    using right_join_t = join_clause<right_join_string, T, O>;
+
+    struct right_outer_join_string {
+        operator std::string() const {
+            return "RIGHT OUTER JOIN";
+        }
+    };
+
+    template<class T, class O>
+    using right_outer_join_t = join_clause<right_outer_join_string, T, O>;
+
+    struct full_join_string {
+        operator std::string() const {
+            return "FULL JOIN";
+        }
+    };
+
+    template<class T, class O>
+    using full_join_t = join_clause<full_join_string, T, O>;
+
+    struct full_outer_join_string {
+        operator std::string() const {
+            return "FULL OUTER JOIN";
+        }
+    };
+
+    template<class T, class O>
+    using full_outer_join_t = join_clause<full_outer_join_string, T, O>;
+
+    struct natural_right_join_string {
+        operator std::string() const {
+            return "NATURAL RIGHT JOIN";
+        }
+    };
+
+    template<class T>
+    using natural_right_join_t = join_clause<natural_right_join_string, T, implicit_join_constraint>;
+
+    struct natural_right_outer_join_string {
+        operator std::string() const {
+            return "NATURAL RIGHT OUTER JOIN";
+        }
+    };
+
+    template<class T>
+    using natural_right_outer_join_t = join_clause<natural_right_outer_join_string, T, implicit_join_constraint>;
+
+    struct natural_full_join_string {
+        operator std::string() const {
+            return "NATURAL FULL JOIN";
+        }
+    };
+
+    template<class T>
+    using natural_full_join_t = join_clause<natural_full_join_string, T, implicit_join_constraint>;
+
+    struct natural_full_outer_join_string {
+        operator std::string() const {
+            return "NATURAL FULL OUTER JOIN";
+        }
+    };
+
+    template<class T>
+    using natural_full_outer_join_t = join_clause<natural_full_outer_join_string, T, implicit_join_constraint>;
+#endif
+
     struct on_string {
         operator std::string() const {
             return "ON";
@@ -192,10 +293,20 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(o)};
     }
 
+    template<class T>
+    internal::left_join_t<T, internal::implicit_join_constraint> left_join() {
+        return {};
+    }
+
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_refers_to_recordset auto alias, class On>
     auto left_join(On on) {
         return left_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
+    }
+
+    template<orm_refers_to_recordset auto alias>
+    auto left_join() {
+        return left_join<internal::auto_decay_table_ref_t<alias>>();
     }
 #endif
 
@@ -204,10 +315,20 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(o)};
     }
 
+    template<class T>
+    internal::join_t<T, internal::implicit_join_constraint> join() {
+        return {};
+    }
+
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_refers_to_recordset auto alias, class On>
     auto join(On on) {
         return join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
+    }
+
+    template<orm_refers_to_recordset auto alias>
+    auto join() {
+        return join<internal::auto_decay_table_ref_t<alias>>();
     }
 #endif
 
@@ -216,10 +337,20 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(o)};
     }
 
+    template<class T>
+    internal::left_outer_join_t<T, internal::implicit_join_constraint> left_outer_join() {
+        return {};
+    }
+
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_refers_to_recordset auto alias, class On>
     auto left_outer_join(On on) {
         return left_outer_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
+    }
+
+    template<orm_refers_to_recordset auto alias>
+    auto left_outer_join() {
+        return left_outer_join<internal::auto_decay_table_ref_t<alias>>();
     }
 #endif
 
@@ -228,10 +359,231 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(o)};
     }
 
+    template<class T>
+    internal::inner_join_t<T, internal::implicit_join_constraint> inner_join() {
+        return {};
+    }
+
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_refers_to_recordset auto alias, class On>
     auto inner_join(On on) {
         return inner_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
     }
+
+    template<orm_refers_to_recordset auto alias>
+    auto inner_join() {
+        return inner_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  NATURAL INNER JOIN function. Usage: `natural_inner_join<User>()`.
+     */
+    template<class T>
+    internal::natural_inner_join_t<T> natural_inner_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto natural_inner_join() {
+        return natural_inner_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  NATURAL LEFT JOIN function. Usage: `natural_left_join<User>()`.
+     */
+    template<class T>
+    internal::natural_left_join_t<T> natural_left_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto natural_left_join() {
+        return natural_left_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  NATURAL LEFT OUTER JOIN function. Usage: `natural_left_outer_join<User>()`.
+     */
+    template<class T>
+    internal::natural_left_outer_join_t<T> natural_left_outer_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto natural_left_outer_join() {
+        return natural_left_outer_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3039000
+    /**
+     *  RIGHT JOIN function, constrained by ON or USING, or implicitly.
+     *  Usage: `right_join<User>(on(...))`, `right_join<User>(using_(...))`, `right_join<User>()`.
+     */
+    template<class T, class O>
+    internal::right_join_t<T, O> right_join(O o) {
+        return {std::move(o)};
+    }
+
+    template<class T>
+    internal::right_join_t<T, internal::implicit_join_constraint> right_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias, class On>
+    auto right_join(On on) {
+        return right_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
+    }
+
+    template<orm_refers_to_recordset auto alias>
+    auto right_join() {
+        return right_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  RIGHT OUTER JOIN function, constrained by ON or USING, or implicitly.
+     *  Usage: `right_outer_join<User>(on(...))`, `right_outer_join<User>(using_(...))`, `right_outer_join<User>()`.
+     */
+    template<class T, class O>
+    internal::right_outer_join_t<T, O> right_outer_join(O o) {
+        return {std::move(o)};
+    }
+
+    template<class T>
+    internal::right_outer_join_t<T, internal::implicit_join_constraint> right_outer_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias, class On>
+    auto right_outer_join(On on) {
+        return right_outer_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
+    }
+
+    template<orm_refers_to_recordset auto alias>
+    auto right_outer_join() {
+        return right_outer_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  FULL JOIN function, constrained by ON or USING, or implicitly.
+     *  Usage: `full_join<User>(on(...))`, `full_join<User>(using_(...))`, `full_join<User>()`.
+     */
+    template<class T, class O>
+    internal::full_join_t<T, O> full_join(O o) {
+        return {std::move(o)};
+    }
+
+    template<class T>
+    internal::full_join_t<T, internal::implicit_join_constraint> full_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias, class On>
+    auto full_join(On on) {
+        return full_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
+    }
+
+    template<orm_refers_to_recordset auto alias>
+    auto full_join() {
+        return full_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  FULL OUTER JOIN function, constrained by ON or USING, or implicitly.
+     *  Usage: `full_outer_join<User>(on(...))`, `full_outer_join<User>(using_(...))`, `full_outer_join<User>()`.
+     */
+    template<class T, class O>
+    internal::full_outer_join_t<T, O> full_outer_join(O o) {
+        return {std::move(o)};
+    }
+
+    template<class T>
+    internal::full_outer_join_t<T, internal::implicit_join_constraint> full_outer_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias, class On>
+    auto full_outer_join(On on) {
+        return full_outer_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
+    }
+
+    template<orm_refers_to_recordset auto alias>
+    auto full_outer_join() {
+        return full_outer_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  NATURAL RIGHT JOIN function. Usage: `natural_right_join<User>()`.
+     */
+    template<class T>
+    internal::natural_right_join_t<T> natural_right_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto natural_right_join() {
+        return natural_right_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  NATURAL RIGHT OUTER JOIN function. Usage: `natural_right_outer_join<User>()`.
+     */
+    template<class T>
+    internal::natural_right_outer_join_t<T> natural_right_outer_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto natural_right_outer_join() {
+        return natural_right_outer_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  NATURAL FULL JOIN function. Usage: `natural_full_join<User>()`.
+     */
+    template<class T>
+    internal::natural_full_join_t<T> natural_full_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto natural_full_join() {
+        return natural_full_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  NATURAL FULL OUTER JOIN function. Usage: `natural_full_outer_join<User>()`.
+     */
+    template<class T>
+    internal::natural_full_outer_join_t<T> natural_full_outer_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto natural_full_outer_join() {
+        return natural_full_outer_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
 #endif
 }
