@@ -27979,8 +27979,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 /** @file The joins of a FROM clause, with their ON and USING constraints.
  *
  *        All joins are DSL spellings of the one join-operator production, classified by `is_any_join`: each carries
- *        its keyword and the joined table as its `type`, and the constrained ones additionally the constraint as
- *        their `on_type` - which is the only thing telling them apart from CROSS JOIN and NATURAL JOIN.
+ *        its keyword, the joined table as its `type`, and its constraint as its `on_type` - ON or USING spelled out,
+ *        or the implicit constraint of CROSS JOIN and NATURAL JOIN.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
