@@ -16,7 +16,7 @@
 #include "../mapped_type_proxy.h"
 #include "../alias_traits.h"
 #include "../schema/algorithms/table_lookup.h"  //  pick_table
-#include "../util.h"  // quote_identifier
+#include "quoting.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"  // access_column_expression
 #include "../schema/column_identifier.h"
