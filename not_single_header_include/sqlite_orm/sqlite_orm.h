@@ -14,4 +14,5 @@
 #include "../../dev/builtin/functions.h"
 #include "../../dev/builtin/dbos.h"
 #include "../../dev/carray.h"
+#include "../../dev/async/async.h"
 #include "../../dev/functional/finish_macros.h"

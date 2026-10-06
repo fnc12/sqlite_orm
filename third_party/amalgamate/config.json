@@ -15,7 +15,10 @@
     "dev/builtin/functions.h",
     "dev/builtin/dbos.h",
     "dev/carray.h",
+    "dev/async/async.h",
     "dev/functional/finish_macros.h"
   ],
-  "include_paths": [ "dev" ]
+  "include_paths": [
+    "dev"
+  ]
 }
