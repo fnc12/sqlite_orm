@@ -42,7 +42,7 @@
 #include "order_by_serializer.h"
 #include "serializing_util.h"
 #include "../statement_binder.h"
-#include "../util.h"
+#include "quoting.h"
 #include "../error_code.h"
 #include "../schema/constraints/primary_key.h"  // conflict_clause_t
 #include "../schema/constraints/generated_always.h"  // basic_generated_always

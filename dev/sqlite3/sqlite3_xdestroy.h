@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file The C library's destructor callback convention ("xDestroy"), and the adaptation of C++ deleters to it.
+ *
+ *        SQLite calls a `void(*)(void*)` destructor to release a value it was handed: a pointer bound with
+ *        `sqlite3_bind_pointer()`, the text of `sqlite3_result_text()`, or the user data of
+ *        `sqlite3_create_function_v2()`. `obtain_xdestroy_for()` yields such a callback for a C++ deleter.
+ *        The counterpart of `sqlite3_deleters.h`, which turns the C library's release functions into C++ deleters.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  // std::integral_constant
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
@@ -7,12 +15,22 @@
 #endif
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
-#include "functional/gsl.h"
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/gsl.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
+    /**
+     *  The type of a destructor callback SQLite calls to release a value it was handed,
+     *  i.e. `sqlite3_destructor_type` - the "xDestroy" parameter of `sqlite3_bind_pointer()`,
+     *  `sqlite3_result_text()`, `sqlite3_create_function_v2()` and others.
+     */
     using xdestroy_fn_t = void (*)(void*);
+
+    /**
+     *  The absent destructor callback: SQLite does not release the value, which outlives its use,
+     *  as with `SQLITE_STATIC`. As an integral function constant, it doubles as a state-less deleter type.
+     */
     using null_xdestroy_t = std::integral_constant<xdestroy_fn_t, nullptr>;
     inline constexpr null_xdestroy_t null_xdestroy_f{};
 }
