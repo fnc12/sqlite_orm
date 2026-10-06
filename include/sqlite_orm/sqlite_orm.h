@@ -27985,7 +27985,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
-#include <type_traits>  //  std::disjunction
+#include <type_traits>  //  std::is_same
 #include <utility>  //  std::move
 #endif
 
@@ -28009,23 +28009,35 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_implicit_join_constraint_v = std::is_same<T, implicit_join_constraint>::value;
 
+    /**
+     *  A join of the table `T`, with the join operator `Keyword` and its constraint `Constraint`: ON or USING
+     *  spelled out, or the implicit constraint of a join that spells none out.
+     *
+     *  Every join is this one node; the join operators are its aliases, telling them apart by their keyword.
+     */
+    template<class Keyword, class T, class Constraint>
+    struct join_clause : Keyword {
+        using type = T;
+        using on_type = Constraint;
+
+        SQLITE_ORM_NOUNIQUEADDRESS on_type constraint;
+
+        join_clause() = default;
+
+        join_clause(on_type constraint_) : constraint(std::move(constraint_)) {}
+    };
+
+    template<class T>
+    constexpr bool is_any_join_v = polyfill::is_specialization_of<T, join_clause>::value;
+
     struct cross_join_string {
         operator std::string() const {
             return "CROSS JOIN";
         }
     };
 
-    /**
-     *  CROSS JOIN holder.
-     *  T is joined type which represents any mapped table.
-     */
     template<class T>
-    struct cross_join_t : cross_join_string {
-        using type = T;
-        using on_type = implicit_join_constraint;
-
-        SQLITE_ORM_NOUNIQUEADDRESS on_type constraint;
-    };
+    using cross_join_t = join_clause<cross_join_string, T, implicit_join_constraint>;
 
     struct natural_join_string {
         operator std::string() const {
@@ -28033,38 +28045,8 @@ namespace sqlite_orm::internal {
         }
     };
 
-    /**
-     *  NATURAL JOIN holder.
-     *  T is joined type which represents any mapped table.
-     */
     template<class T>
-    struct natural_join_t : natural_join_string {
-        using type = T;
-        using on_type = implicit_join_constraint;
-
-        SQLITE_ORM_NOUNIQUEADDRESS on_type constraint;
-    };
-
-    struct left_join_string {
-        operator std::string() const {
-            return "LEFT JOIN";
-        }
-    };
-
-    /**
-     *  LEFT JOIN holder.
-     *  T is joined type which represents any mapped table.
-     *  O is on(...) argument type.
-     */
-    template<class T, class O>
-    struct left_join_t : left_join_string {
-        using type = T;
-        using on_type = O;
-
-        on_type constraint;
-
-        left_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
-    };
+    using natural_join_t = join_clause<natural_join_string, T, implicit_join_constraint>;
 
     struct join_string {
         operator std::string() const {
@@ -28072,41 +28054,8 @@ namespace sqlite_orm::internal {
         }
     };
 
-    /**
-     *  Simple JOIN holder.
-     *  T is joined type which represents any mapped table.
-     *  O is on(...) argument type.
-     */
     template<class T, class O>
-    struct join_t : join_string {
-        using type = T;
-        using on_type = O;
-
-        on_type constraint;
-
-        join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
-    };
-
-    struct left_outer_join_string {
-        operator std::string() const {
-            return "LEFT OUTER JOIN";
-        }
-    };
-
-    /**
-     *  LEFT OUTER JOIN holder.
-     *  T is joined type which represents any mapped table.
-     *  O is on(...) argument type.
-     */
-    template<class T, class O>
-    struct left_outer_join_t : left_outer_join_string {
-        using type = T;
-        using on_type = O;
-
-        on_type constraint;
-
-        left_outer_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
-    };
+    using join_t = join_clause<join_string, T, O>;
 
     struct inner_join_string {
         operator std::string() const {
@@ -28114,28 +28063,26 @@ namespace sqlite_orm::internal {
         }
     };
 
-    /**
-     *  INNER JOIN holder.
-     *  T is joined type which represents any mapped table.
-     *  O is on(...) argument type.
-     */
     template<class T, class O>
-    struct inner_join_t : inner_join_string {
-        using type = T;
-        using on_type = O;
+    using inner_join_t = join_clause<inner_join_string, T, O>;
 
-        on_type constraint;
-
-        inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
+    struct left_join_string {
+        operator std::string() const {
+            return "LEFT JOIN";
+        }
     };
 
-    template<class T>
-    constexpr bool is_any_join_v = std::disjunction<polyfill::is_specialization_of<T, cross_join_t>,
-                                                    polyfill::is_specialization_of<T, natural_join_t>,
-                                                    polyfill::is_specialization_of<T, left_join_t>,
-                                                    polyfill::is_specialization_of<T, join_t>,
-                                                    polyfill::is_specialization_of<T, left_outer_join_t>,
-                                                    polyfill::is_specialization_of<T, inner_join_t>>::value;
+    template<class T, class O>
+    using left_join_t = join_clause<left_join_string, T, O>;
+
+    struct left_outer_join_string {
+        operator std::string() const {
+            return "LEFT OUTER JOIN";
+        }
+    };
+
+    template<class T, class O>
+    using left_outer_join_t = join_clause<left_outer_join_string, T, O>;
 
     struct on_string {
         operator std::string() const {
