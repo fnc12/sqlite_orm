@@ -16,14 +16,17 @@ TEST_CASE("cross_join") {
     using context_t = internal::serializer_context<db_objects_t>;
     context_t context{dbObjects};
     std::string value;
+    std::string expected;
     SECTION("straight") {
         auto node = cross_join<User>();
         value = serialize(node, context);
+        expected = R"(CROSS JOIN "users")";
     }
     SECTION("alias") {
         using user_s = alias_s<User>;
         auto node = cross_join<user_s>();
         value = serialize(node, context);
+        expected = R"(CROSS JOIN "users" "s")";
     }
-    REQUIRE(value == R"(CROSS JOIN "users")");
+    REQUIRE(value == expected);
 }
