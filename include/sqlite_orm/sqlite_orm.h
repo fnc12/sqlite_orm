@@ -28647,18 +28647,26 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
+// #include "../tags.h"
+
 // #include "../vocabulary/node_algorithms.h"
 // unwrap_expression
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 
 namespace sqlite_orm::internal {
+    /**
+     *  MATCH operator object matching against the whole FTS table.
+     *  Like every other condition, it can be combined with `||`/`&&` (or `or_()`/`and_()`) and negated with `!`.
+     */
     template<class T, class X>
-    struct match_with_table_t {
+    struct match_with_table_t : condition_t, negatable_t {
         using mapped_type = T;
         using argument_type = X;
 
         argument_type argument;
+
+        constexpr match_with_table_t(argument_type argument_) : argument(std::move(argument_)) {}
     };
 
     template<class T>
@@ -28666,14 +28674,18 @@ namespace sqlite_orm::internal {
 
     /*
      *  Alternative equality comparison where the left side is always a field.
+     *  Like every other condition, it can be combined with `||`/`&&` (or `or_()`/`and_()`) and negated with `!`.
      */
     template<class Field, class X>
-    struct match_t {
+    struct match_t : condition_t, negatable_t {
         using field_type = Field;
         using argument_type = X;
 
         field_type field;
         argument_type argument;
+
+        constexpr match_t(field_type field_, argument_type argument_) :
+            field(std::move(field_)), argument(std::move(argument_)) {}
     };
 
     template<class T>

@@ -63,6 +63,10 @@ TEST_CASE("quoted operands") {
         STATIC_REQUIRE(
             is_same<decltype(c(cond1) || cond2), internal::or_condition_t<decltype(cond1), decltype(cond2)>>::value);
         STATIC_REQUIRE(is_same<decltype(c(cond1) && c(cond2)), decltype(cond1 && cond2)>::value);
+        auto match1 = match(&User::name, "a");
+        auto match2 = match(&User::name, "b");
+        STATIC_REQUIRE(is_same<decltype(c(match1) || c(match2)),
+                               internal::or_condition_t<decltype(match1), decltype(match2)>>::value);
         STATIC_REQUIRE(
             is_same<decltype(c(&User::name) || "a"), internal::conc_t<std::string User::*, const char*>>::value);
         STATIC_REQUIRE(
