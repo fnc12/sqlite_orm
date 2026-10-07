@@ -3,8 +3,8 @@
 /** @file The joins of a FROM clause, with their ON and USING constraints.
  *
  *        All joins are DSL spellings of the one join-operator production, classified by `is_any_join`: each carries
- *        its keyword and the joined table as its `type`, and the constrained ones additionally the constraint as
- *        their `on_type` - which is the only thing telling them apart from CROSS JOIN and NATURAL JOIN.
+ *        its keyword, the joined table as its `type`, and its constraint as its `on_type` - ON or USING spelled out,
+ *        or the implicit constraint of CROSS JOIN and NATURAL JOIN.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -19,6 +19,16 @@
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
+    /**
+     *  The constraint of a join that spells none out: CROSS JOIN joins every row with every row, and NATURAL JOIN
+     *  matches the columns both tables have in common. Every join is constrained - explicitly by ON or USING, or
+     *  implicitly.
+     */
+    struct implicit_join_constraint {};
+
+    template<class T>
+    constexpr bool is_implicit_join_constraint_v = std::is_same<T, implicit_join_constraint>::value;
+
     struct cross_join_string {
         operator std::string() const {
             return "CROSS JOIN";
@@ -32,6 +42,9 @@ namespace sqlite_orm::internal {
     template<class T>
     struct cross_join_t : cross_join_string {
         using type = T;
+        using on_type = implicit_join_constraint;
+
+        SQLITE_ORM_NOUNIQUEADDRESS on_type constraint;
     };
 
     struct natural_join_string {
@@ -47,6 +60,9 @@ namespace sqlite_orm::internal {
     template<class T>
     struct natural_join_t : natural_join_string {
         using type = T;
+        using on_type = implicit_join_constraint;
+
+        SQLITE_ORM_NOUNIQUEADDRESS on_type constraint;
     };
 
     struct left_join_string {

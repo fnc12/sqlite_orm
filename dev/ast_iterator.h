@@ -464,9 +464,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    //  a join constrained by ON or USING; CROSS JOIN and NATURAL JOIN are leaves
+    //  a join, and its constraint: ON or USING, or the implicit one of CROSS JOIN and NATURAL JOIN
     template<class Join>
-    struct ast_iterator<Join, std::enable_if_t<is_any_join_v<Join> && polyfill::is_detected_v<on_type_t, Join>>> {
+    struct ast_iterator<Join, match_if<is_any_join, Join>> {
         using node_type = Join;
 
         template<class L>
@@ -600,7 +600,8 @@ namespace sqlite_orm::internal {
     struct ast_iterator<T,
                         std::enable_if_t<std::disjunction<polyfill::is_specialization_of<T, alias_holder>,
                                                           polyfill::is_specialization_of<T, literal_holder>,
-                                                          is_column_alias<T>>::value>> {
+                                                          is_column_alias<T>,
+                                                          is_implicit_join_constraint<T>>::value>> {
         using node_type = T;
 
         template<class L>
