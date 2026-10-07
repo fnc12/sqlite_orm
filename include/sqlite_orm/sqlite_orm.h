@@ -14728,7 +14728,7 @@ namespace sqlite_orm::internal {
         template<class T>
         std::vector<std::string> integrity_check(T table_name) {
             std::ostringstream ss;
-            ss << "integrity_check(" << table_name << ")" << std::flush;
+            ss << "integrity_check(" << streaming_identifier(table_name) << ")" << std::flush;
             return this->get_pragma<std::vector<std::string>>(ss.str());
         }
 
