@@ -455,7 +455,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <system_error>  //  std::error_code, std::error_category, std::system_error, std::is_error_code_enum
 #include <string>  //  std::string
-#include <sstream>  //  std::ostringstream
+#include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::true_type
 #include <utility>  //  std::forward
 #endif
@@ -498,7 +498,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<typename... T>
     std::string get_error_message(sqlite3* db, T&&... args) {
-        std::ostringstream stream;
+        std::stringstream stream;
         using unpack = int[];
         (void)unpack{0, (stream << args, 0)...};
         stream << sqlite3_errmsg(db);
@@ -14109,7 +14109,7 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 #include <functional>  //  std::function
 #include <utility>  //  std::move
 #include <vector>  //  std::vector
-#include <sstream>  //  std::ostringstream, std::stringstream
+#include <sstream>  //  std::stringstream
 #endif
 
 // #include "functional/gsl.h"
@@ -14729,13 +14729,13 @@ namespace sqlite_orm::internal {
 
         template<class T>
         std::vector<std::string> integrity_check(T table_name) {
-            std::ostringstream ss;
+            std::stringstream ss;
             ss << "integrity_check(" << streaming_identifier(table_name) << ")";
             return this->get_pragma<std::vector<std::string>>(ss.str());
         }
 
         std::vector<std::string> integrity_check(int n) {
-            std::ostringstream ss;
+            std::stringstream ss;
             ss << "integrity_check(" << n << ")";
             return this->get_pragma<std::vector<std::string>>(ss.str());
         }
@@ -14751,7 +14751,7 @@ namespace sqlite_orm::internal {
             std::vector<sqlite_orm::table_xinfo> result;
             std::string sql;
             {
-                std::ostringstream ss;
+                std::stringstream ss;
                 ss << "PRAGMA "
                       "table_xinfo("
                    << streaming_identifier(tableName) << ")";
@@ -14785,7 +14785,7 @@ namespace sqlite_orm::internal {
 
             std::string sql;
             {
-                std::ostringstream ss;
+                std::stringstream ss;
                 ss << "PRAGMA "
                       "table_info("
                    << streaming_identifier(tableName) << ")";
