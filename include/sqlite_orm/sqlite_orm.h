@@ -14763,20 +14763,14 @@ namespace sqlite_orm::internal {
                     {
                         auto index = 0;
                         auto cid = atoi(argv[index++]);
-                        std::string name = argv[index++];
-                        std::string type = argv[index++];
+                        orm_gsl::czstring name = argv[index++];
+                        orm_gsl::czstring type = argv[index++];
                         bool notnull = !!atoi(argv[index++]);
-                        std::string dflt_value = argv[index] ? argv[index] : "";
+                        orm_gsl::czstring dflt_value = argv[index] ? argv[index] : "";
                         ++index;
                         auto pk = atoi(argv[index++]);
                         auto hidden = atoi(argv[index++]);
-                        res.emplace_back(cid,
-                                         std::move(name),
-                                         std::move(type),
-                                         notnull,
-                                         std::move(dflt_value),
-                                         pk,
-                                         hidden);
+                        res.emplace_back(cid, name, type, notnull, dflt_value, pk, hidden);
                     }
                     return 0;
                 },
@@ -14804,13 +14798,13 @@ namespace sqlite_orm::internal {
                     {
                         auto index = 0;
                         auto cid = atoi(argv[index++]);
-                        std::string name = argv[index++];
-                        std::string type = argv[index++];
+                        orm_gsl::czstring name = argv[index++];
+                        orm_gsl::czstring type = argv[index++];
                         bool notnull = !!atoi(argv[index++]);
-                        std::string dflt_value = argv[index] ? argv[index] : "";
+                        orm_gsl::czstring dflt_value = argv[index] ? argv[index] : "";
                         ++index;
                         auto pk = atoi(argv[index++]);
-                        res.emplace_back(cid, std::move(name), std::move(type), notnull, std::move(dflt_value), pk);
+                        res.emplace_back(cid, name, type, notnull, dflt_value, pk);
                     }
                     return 0;
                 },
