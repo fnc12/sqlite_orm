@@ -50,6 +50,22 @@ TEST_CASE("quoted operands") {
         STATIC_REQUIRE(is_same<decltype(and_(c(&User::id), c(5))), decltype(and_(&User::id, 5))>::value);
         STATIC_REQUIRE(is_same<decltype(or_(c(&User::id), c(5))), decltype(or_(&User::id, 5))>::value);
     }
+    //  `||` is the logical OR for conditions and the string concatenation otherwise:
+    //  a quoted condition is told apart as the condition it quotes
+    SECTION("logical or concatenation") {
+        auto cond1 = eq(&User::id, 1);
+        auto cond2 = eq(&User::id, 2);
+        STATIC_REQUIRE(is_same<decltype(c(cond1) || c(cond2)), decltype(cond1 || cond2)>::value);
+        STATIC_REQUIRE(is_same<decltype(c(cond1) || cond2), decltype(cond1 || cond2)>::value);
+        STATIC_REQUIRE(is_same<decltype(cond1 || c(cond2)), decltype(cond1 || cond2)>::value);
+        STATIC_REQUIRE(
+            is_same<decltype(c(cond1) || cond2), internal::or_condition_t<decltype(cond1), decltype(cond2)>>::value);
+        STATIC_REQUIRE(is_same<decltype(c(cond1) && c(cond2)), decltype(cond1 && cond2)>::value);
+        STATIC_REQUIRE(
+            is_same<decltype(c(&User::name) || "a"), internal::conc_t<std::string User::*, const char*>>::value);
+        STATIC_REQUIRE(
+            is_same<decltype(c(&User::name) || c("a")), internal::conc_t<std::string User::*, const char*>>::value);
+    }
     SECTION("arithmetic and bitwise") {
         STATIC_REQUIRE(is_same<decltype(add(c(&User::id), 5)), decltype(add(&User::id, 5))>::value);
         STATIC_REQUIRE(is_same<decltype(sub(c(&User::id), c(5))), decltype(sub(&User::id, 5))>::value);
