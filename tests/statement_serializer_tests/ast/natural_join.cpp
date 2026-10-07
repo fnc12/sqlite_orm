@@ -16,14 +16,17 @@ TEST_CASE("natural_join") {
     using context_t = internal::serializer_context<db_objects_t>;
     context_t context{dbObjects};
     std::string value;
+    std::string expected;
     SECTION("straight") {
         auto node = natural_join<User>();
         value = serialize(node, context);
+        expected = R"(NATURAL JOIN "users")";
     }
     SECTION("alias") {
         using user_s = alias_s<User>;
         auto node = natural_join<user_s>();
         value = serialize(node, context);
+        expected = R"(NATURAL JOIN "users" "s")";
     }
-    REQUIRE(value == R"(NATURAL JOIN "users")");
+    REQUIRE(value == expected);
 }

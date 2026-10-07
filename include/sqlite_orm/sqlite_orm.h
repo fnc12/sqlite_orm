@@ -3320,11 +3320,11 @@ namespace sqlite_orm::internal {
     using is_any_from = std::bool_constant<is_any_from_v<T>>;
 
     /**
-     *  Nodes joining a table: CROSS JOIN, NATURAL JOIN, and JOIN, LEFT JOIN, LEFT OUTER JOIN, INNER JOIN
-     *  constrained by ON or USING.
+     *  Nodes joining a table: CROSS JOIN, NATURAL JOIN, JOIN, LEFT JOIN, LEFT OUTER JOIN, INNER JOIN.
      *
-     *  All of them are DSL spellings of the one join-operator production; each carries its keyword, and the
-     *  constrained ones carry the constraint as their `on_type`.
+     *  All of them are DSL spellings of the one join-operator production; each carries its keyword, and every one
+     *  carries its constraint as its `on_type`: ON or USING spelled out, or the implicit constraint of CROSS JOIN
+     *  and NATURAL JOIN.
      */
     template<class T>
     extern const bool is_any_join_v;
@@ -3346,6 +3346,15 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_using = std::bool_constant<is_using_v<T>>;
+
+    /**
+     *  The constraint of a join that spells none out: CROSS JOIN and NATURAL JOIN.
+     */
+    template<class T>
+    extern const bool is_implicit_join_constraint_v;
+
+    template<class T>
+    using is_implicit_join_constraint = std::bool_constant<is_implicit_join_constraint_v<T>>;
 
     template<class T>
     extern const bool is_window_defn_v;
@@ -13282,9 +13291,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    //  a join constrained by ON or USING; CROSS JOIN and NATURAL JOIN are leaves
+    //  a join, and its constraint: ON or USING, or the implicit one of CROSS JOIN and NATURAL JOIN
     template<class Join>
-    struct ast_iterator<Join, std::enable_if_t<is_any_join_v<Join> && polyfill::is_detected_v<on_type_t, Join>>> {
+    struct ast_iterator<Join, match_if<is_any_join, Join>> {
         using node_type = Join;
 
         template<class L>
@@ -13418,7 +13427,8 @@ namespace sqlite_orm::internal {
     struct ast_iterator<T,
                         std::enable_if_t<std::disjunction<polyfill::is_specialization_of<T, alias_holder>,
                                                           polyfill::is_specialization_of<T, literal_holder>,
-                                                          is_column_alias<T>>::value>> {
+                                                          is_column_alias<T>,
+                                                          is_implicit_join_constraint<T>>::value>> {
         using node_type = T;
 
         template<class L>
@@ -17892,6 +17902,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
 #include <vector>  //  std::vector
+#include <utility>  //  std::make_pair
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert
 #include <codecvt>  //  std::codecvt_utf8_utf16
@@ -21072,19 +21083,14 @@ namespace sqlite_orm::internal {
                 using joins_index_sequence = filter_tuple_sequence_t<conditions_tuple, is_any_join>;
 
                 auto tableNames = collect_table_names(sel, context);
-                // deduplicate table names of constrained join statements
+                //  a joined table is declared by its join rather than in the FROM clause;
+                //  a table is referred to by its name and its alias, so an aliased self-join keeps the table it joins
                 iterate_tuple(sel.conditions, joins_index_sequence{}, [&tableNames, &context](auto& join) {
                     using original_join_type = typename std::remove_reference_t<decltype(join)>::type;
                     using join_type = mapped_type_proxy_t<original_join_type>;
 
-                    const auto& tableName = lookup_table_name<join_type>(context.db_objects);
-                    auto it = std::find_if(tableNames.begin(), tableNames.end(), [&tableName](const auto& pair) {
-                        return pair.first == tableName;
-                    });
-                    if (it == tableNames.end()) {
-                        return;
-                    }
-                    tableNames.erase(it);
+                    tableNames.erase(std::make_pair(lookup_table_name<join_type>(context.db_objects),
+                                                    alias_extractor<original_join_type>::as_alias()));
                 });
 
                 if (!tableNames.empty() && !is_compound_operator<return_type>::value) {
@@ -21439,14 +21445,12 @@ namespace sqlite_orm::internal {
             using table_type = type_t<statement_type>;
 
             std::stringstream ss;
-            ss << static_cast<std::string>(join) << " ";
-            //  constrained by ON or USING
-            if constexpr (polyfill::is_detected_v<on_type_t, statement_type>) {
-                ss << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
-                                           alias_extractor<table_type>::as_alias())
-                   << " " << serialize(join.constraint, context);
-            } else {
-                ss << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects));
+            ss << static_cast<std::string>(join) << " "
+               << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
+                                       alias_extractor<table_type>::as_alias());
+            //  the constraint, unless it is the implicit one of CROSS JOIN and NATURAL JOIN
+            if constexpr (!is_implicit_join_constraint_v<on_type_t<statement_type>>) {
+                ss << " " << serialize(join.constraint, context);
             }
             return ss.str();
         }
@@ -28064,8 +28068,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 /** @file The joins of a FROM clause, with their ON and USING constraints.
  *
  *        All joins are DSL spellings of the one join-operator production, classified by `is_any_join`: each carries
- *        its keyword and the joined table as its `type`, and the constrained ones additionally the constraint as
- *        their `on_type` - which is the only thing telling them apart from CROSS JOIN and NATURAL JOIN.
+ *        its keyword, the joined table as its `type`, and its constraint as its `on_type` - ON or USING spelled out,
+ *        or the implicit constraint of CROSS JOIN and NATURAL JOIN.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -28084,6 +28088,16 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // Included to specialize traits
 
 namespace sqlite_orm::internal {
+    /**
+     *  The constraint of a join that spells none out: CROSS JOIN joins every row with every row, and NATURAL JOIN
+     *  matches the columns both tables have in common. Every join is constrained - explicitly by ON or USING, or
+     *  implicitly.
+     */
+    struct implicit_join_constraint {};
+
+    template<class T>
+    constexpr bool is_implicit_join_constraint_v = std::is_same<T, implicit_join_constraint>::value;
+
     struct cross_join_string {
         operator std::string() const {
             return "CROSS JOIN";
@@ -28097,6 +28111,9 @@ namespace sqlite_orm::internal {
     template<class T>
     struct cross_join_t : cross_join_string {
         using type = T;
+        using on_type = implicit_join_constraint;
+
+        SQLITE_ORM_NOUNIQUEADDRESS on_type constraint;
     };
 
     struct natural_join_string {
@@ -28112,6 +28129,9 @@ namespace sqlite_orm::internal {
     template<class T>
     struct natural_join_t : natural_join_string {
         using type = T;
+        using on_type = implicit_join_constraint;
+
+        SQLITE_ORM_NOUNIQUEADDRESS on_type constraint;
     };
 
     struct left_join_string {
@@ -29692,10 +29712,14 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<T, match_if<is_app_function_call, T>> : node_tuple<args_tuple_t<T>> {};
 
-    //  a join constrained by ON or USING; CROSS JOIN and NATURAL JOIN are leaves
+    //  a join, and its constraint: ON or USING, or the implicit one of CROSS JOIN and NATURAL JOIN
     template<class T>
-    struct node_tuple<T, std::enable_if_t<is_any_join_v<T> && polyfill::is_detected_v<on_type_t, T>>>
-        : node_tuple<on_type_t<T>> {};
+    struct node_tuple<T, match_if<is_any_join, T>> : node_tuple<on_type_t<T>> {};
+
+    template<class T>
+    struct node_tuple<T, match_if<is_implicit_join_constraint, T>> {
+        using type = std::tuple<>;
+    };
 
     template<class T>
     struct node_tuple<T, match_if<is_on, T>> : node_tuple<expression_type_t<T>> {};
