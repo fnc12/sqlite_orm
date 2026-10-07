@@ -8,7 +8,6 @@
 #include <memory>  // std::shared_ptr
 #include <vector>  //  std::vector
 #include <sstream>
-#include <ostream>  //  std::flush
 #endif
 
 #include "functional/gsl.h"
@@ -138,13 +137,13 @@ namespace sqlite_orm::internal {
         template<class T>
         std::vector<std::string> integrity_check(T table_name) {
             std::ostringstream ss;
-            ss << "integrity_check(" << streaming_identifier(table_name) << ")" << std::flush;
+            ss << "integrity_check(" << streaming_identifier(table_name) << ")";
             return this->get_pragma<std::vector<std::string>>(ss.str());
         }
 
         std::vector<std::string> integrity_check(int n) {
             std::ostringstream ss;
-            ss << "integrity_check(" << n << ")" << std::flush;
+            ss << "integrity_check(" << n << ")";
             return this->get_pragma<std::vector<std::string>>(ss.str());
         }
 
@@ -162,7 +161,7 @@ namespace sqlite_orm::internal {
                 std::ostringstream ss;
                 ss << "PRAGMA "
                       "table_xinfo("
-                   << streaming_identifier(tableName) << ")" << std::flush;
+                   << streaming_identifier(tableName) << ")";
                 sql = ss.str();
             }
             this->executor.perform_exec(
@@ -196,7 +195,7 @@ namespace sqlite_orm::internal {
                 std::ostringstream ss;
                 ss << "PRAGMA "
                       "table_info("
-                   << streaming_identifier(tableName) << ")" << std::flush;
+                   << streaming_identifier(tableName) << ")";
                 sql = ss.str();
             }
             std::vector<sqlite_orm::table_info> result;
