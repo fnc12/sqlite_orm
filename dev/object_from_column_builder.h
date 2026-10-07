@@ -10,7 +10,7 @@
 #include "functional/type_traits.h"
 #include "member_traits/member_traits.h"
 #include "vocabulary/node_fwd.h"  // column_field
-#include "table_reference.h"
+#include "ast/table_reference.h"
 #include "row_extractor.h"
 #include "schema/algorithms/table_lookup.h"
 

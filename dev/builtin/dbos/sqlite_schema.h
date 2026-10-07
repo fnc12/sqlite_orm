@@ -6,8 +6,8 @@
 
 #include "../../schema/column.h"
 #include "../../schema/table.h"
-#include "../../table_reference.h"
-#include "../../alias.h"
+#include "../../ast/table_reference.h"
+#include "../../ast/alias.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 

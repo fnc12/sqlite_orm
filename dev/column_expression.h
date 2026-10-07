@@ -11,7 +11,7 @@
 #include "tuple_helper/tuple_transformer.h"
 #include "vocabulary/node_traits.h"
 #include "ast/result_columns.h"
-#include "alias.h"
+#include "ast/alias.h"
 #include "schema/algorithms/table_lookup.h"  //  schema_mapped_column_field_expressions
 
 namespace sqlite_orm::internal {

@@ -894,6 +894,82 @@ namespace sqlite_orm::internal {
     using is_trigger_spec = std::bool_constant<is_trigger_spec_v<T>>;
 }
 
+// Alias traits
+namespace sqlite_orm::internal {
+    /**
+     *  Types naming something by an alias - a record set, a column or an expression -, i.e. derived from `alias_tag`.
+     *  Aliases are user-definable, hence classified by their capabilities rather than by a sqlite_orm node.
+     */
+    template<class T>
+    extern const bool is_alias_v;
+
+    template<class T>
+    using is_alias = std::bool_constant<is_alias_v<T>>;
+
+    /**
+     *  Aliases of a column in a record set, see `orm_column_alias`.
+     */
+    template<class T>
+    extern const bool is_column_alias_v;
+
+    template<class T>
+    using is_column_alias = std::bool_constant<is_column_alias_v<T>>;
+
+    /**
+     *  Aliases of any type of record set, see `orm_recordset_alias`.
+     */
+    template<class T>
+    extern const bool is_recordset_alias_v;
+
+    template<class T>
+    using is_recordset_alias = std::bool_constant<is_recordset_alias_v<T>>;
+
+    /**
+     *  Aliases of a concrete table, see `orm_table_alias`.
+     */
+    template<class T>
+    extern const bool is_table_alias_v;
+
+    template<class T>
+    using is_table_alias = std::bool_constant<is_table_alias_v<T>>;
+
+    /**
+     *  Monikers of a CTE, see `orm_cte_moniker`.
+     */
+    template<class T>
+    extern const bool is_cte_moniker_v;
+
+    template<class T>
+    using is_cte_moniker = std::bool_constant<is_cte_moniker_v<T>>;
+
+    /**
+     *  Nodes referring to a column alias defined elsewhere in a statement: `get<colalias_a>()`.
+     */
+    template<class T>
+    extern const bool is_alias_holder_v;
+
+    template<class T>
+    using is_alias_holder = std::bool_constant<is_alias_holder_v<T>>;
+
+    /**
+     *  Nodes qualifying a column by a table alias: alias.column.
+     */
+    template<class T>
+    extern const bool is_alias_column_v;
+
+    template<class T>
+    using is_alias_column = std::bool_constant<is_alias_column_v<T>>;
+
+    /**
+     *  Nodes calling an eponymous virtual table as a table-valued function: table(arguments...).
+     */
+    template<class T>
+    extern const bool is_table_valued_expression_v;
+
+    template<class T>
+    using is_table_valued_expression = std::bool_constant<is_table_valued_expression_v<T>>;
+}
+
 // Role-based grammar traits
 namespace sqlite_orm::internal {
     /**

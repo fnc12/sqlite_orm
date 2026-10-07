@@ -8,7 +8,7 @@
 
 #include "../mapped_type_proxy.h"
 #include "../vocabulary/node_traits.h"
-#include "../alias.h"
+#include "../ast/alias.h"
 #include "../schema/algorithms/table_lookup.h"  // lookup_table_name
 
 namespace sqlite_orm::internal {
@@ -40,7 +40,7 @@ namespace sqlite_orm::internal {
                 this->table_names.emplace(std::move(tableName), alias_extractor<table_type>::as_alias());
             }
             // ...
-            else if constexpr (polyfill::is_specialization_of_v<ColRef, alias_column_t>) {
+            else if constexpr (is_alias_column_v<ColRef>) {
                 // note: instead of accessing the column, we are interested in the type the column is aliased into
                 using A = alias_type_t<ColRef>;
                 auto tableName = lookup_table_name<mapped_type_proxy_t<A>>(this->db_objects);

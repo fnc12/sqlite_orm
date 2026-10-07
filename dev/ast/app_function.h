@@ -228,13 +228,13 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_operator_argument_v<T, std::enable_if_t<is_app_function_call_v<T>>> = true;
 
-    template<class T>
+    template<class T, class SFINAE = void>
     struct unpacked_arg {
         using type = T;
     };
-    template<class F, class... CallArgs>
-    struct unpacked_arg<app_function_call<F, CallArgs...>> {
-        using type = typename callable_arguments<F>::return_type;
+    template<class T>
+    struct unpacked_arg<T, match_if<is_app_function_call, T>> {
+        using type = typename callable_arguments<udf_type_t<T>>::return_type;
     };
     template<class T>
     using unpacked_arg_t = typename unpacked_arg<T>::type;

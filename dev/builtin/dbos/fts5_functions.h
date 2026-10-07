@@ -20,7 +20,7 @@
 #include <sqlite3.h>
 
 #include "../../alias_traits.h"  //  is_recordset_alias_v
-#include "../../column_pointer.h"  //  column
+#include "../../ast/column_pointer.h"  //  column
 #include "../../vocabulary/node_algorithms.h"  //  hidden_column_of_vtab, hidden_field_of_vtab
 #include "../../ast/builtin_function.h"
 #include "fts5.h"

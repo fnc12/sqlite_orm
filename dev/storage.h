@@ -33,7 +33,7 @@
 #include "vocabulary/node_algorithms.h"
 #include "vocabulary/node_fwd.h"  // column_field
 #include "error_code.h"
-#include "alias.h"
+#include "ast/alias.h"
 #include "field_printer.h"
 #include "ast/operators.h"
 #include "ast/result_columns.h"

@@ -18,7 +18,7 @@
 #include "ast/result_columns.h"
 #include "ast/select.h"
 #include "ast/cte.h"
-#include "alias.h"
+#include "ast/alias.h"
 #include "cte_types.h"
 #include "serialization/cte_column_names_collector.h"
 #include "column_expression.h"
@@ -77,7 +77,7 @@ namespace sqlite_orm::internal {
     }
 
     // aliased column expressions, explicit or implicitly numbered
-    template<typename F, typename ColRef, satisfies_is_specialization_of<ColRef, alias_holder> = true>
+    template<typename F, typename ColRef, satisfies<is_alias_holder, ColRef> = true>
     auto make_cte_column(std::string name, const ColRef& /*finalColRef*/) {
         using object_type = aliased_field<type_t<ColRef>, F>;
 
@@ -163,7 +163,7 @@ namespace sqlite_orm::internal {
         } else if constexpr (is_as_node_v<E>) {
             // aliased expression -> alias_holder
             return std::tuple<alias_holder<alias_type_t<E>>>{};
-        } else if constexpr (polyfill::is_specialization_of_v<E, alias_holder>) {
+        } else if constexpr (is_alias_holder_v<E>) {
             // colref -> alias_holder
             return std::tuple<E>{};
         } else {
@@ -211,7 +211,7 @@ namespace sqlite_orm::internal {
     auto determine_cte_colref(const DBOs& /*dbObjects*/,
                               const SubselectColRef& subselectColRef,
                               const ExplicitColRef& explicitColRef) {
-        if constexpr (polyfill::is_specialization_of_v<ExplicitColRef, alias_holder>) {
+        if constexpr (is_alias_holder_v<ExplicitColRef>) {
             return explicitColRef;
         } else if constexpr (std::is_member_pointer<ExplicitColRef>::value) {
             return explicitColRef;

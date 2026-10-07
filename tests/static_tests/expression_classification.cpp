@@ -73,6 +73,38 @@ TEST_CASE("expression classification") {
                                     std::tuple<decltype(&User::name), std::string, std::string>>::value);
     }
 
+    SECTION("aliases and quoting") {
+        using als = alias_a<User>;
+
+        STATIC_REQUIRE(internal::is_alias_v<colalias_a>);
+        STATIC_REQUIRE(internal::is_alias_v<als>);
+        STATIC_REQUIRE(internal::is_column_alias_v<colalias_a>);
+        STATIC_REQUIRE(internal::is_column_alias<colalias_a>::value);
+        //  a record set alias is no column alias - neither by the variable nor by the type trait
+        STATIC_REQUIRE_FALSE(internal::is_column_alias_v<als>);
+        STATIC_REQUIRE_FALSE(internal::is_column_alias<als>::value);
+        STATIC_REQUIRE(internal::is_recordset_alias_v<als>);
+        STATIC_REQUIRE(internal::is_table_alias_v<als>);
+        STATIC_REQUIRE_FALSE(internal::is_alias_v<User>);
+
+        STATIC_REQUIRE(internal::is_alias_holder_v<decltype(get<colalias_a>())>);
+        STATIC_REQUIRE_FALSE(internal::is_alias_holder_v<colalias_a>);
+        STATIC_REQUIRE(internal::is_alias_column_v<decltype(alias_column<als>(&User::id))>);
+        STATIC_REQUIRE_FALSE(internal::is_alias_column_v<decltype(&User::id)>);
+
+        STATIC_REQUIRE(internal::is_literal_v<internal::literal_holder<int>>);
+        STATIC_REQUIRE_FALSE(internal::is_literal_v<int>);
+        STATIC_REQUIRE(internal::is_table_reference_v<internal::table_reference<User>>);
+        STATIC_REQUIRE(internal::is_table_reference_v<const internal::table_reference<User>>);
+        STATIC_REQUIRE_FALSE(internal::is_table_reference_v<User>);
+        STATIC_REQUIRE(internal::is_table_valued_expression_v<internal::table_valued_expression<User, int>>);
+        STATIC_REQUIRE_FALSE(internal::is_table_valued_expression_v<internal::table_reference<User>>);
+
+        //  column aliases and references to them are no nodes
+        STATIC_REQUIRE(std::is_same<internal::node_tuple_t<colalias_a>, std::tuple<>>::value);
+        STATIC_REQUIRE(std::is_same<internal::node_tuple_t<decltype(get<colalias_a>())>, std::tuple<>>::value);
+    }
+
     SECTION("operators") {
         STATIC_REQUIRE(internal::is_binary_operator_v<decltype(add(&User::id, 1))>);
         STATIC_REQUIRE(internal::is_binary_operator_v<decltype(conc(&User::name, "a"))>);
