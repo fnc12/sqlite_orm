@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_base_of
+#include <type_traits>  //  std::is_base_of, std::enable_if_t
 #endif
 
 #include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
@@ -26,5 +26,5 @@ namespace sqlite_orm::internal {
     struct condition_t {};
 
     template<class T>
-    constexpr bool is_conditional_operand_v = std::is_base_of<condition_t, T>::value;
+    constexpr bool is_conditional_operand_v<T, std::enable_if_t<std::is_base_of<condition_t, T>::value>> = true;
 }
