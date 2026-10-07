@@ -4965,8 +4965,14 @@ namespace sqlite_orm::internal {
     template<class Select>
     using main_select_t = polyfill::remove_cvref_t<decltype(access_main_select(std::declval<Select>()))>;
 
-    /*  
+    /*
      *  Move a possibly quoted plain expression or the expression itself.
+     *
+     *  No node holds the quoting wrapper `quoted_expression_t`: nothing serializes, iterates or binds one.
+     *  Unwrapping is therefore part of normalizing an operand, alongside validating it (`is_operand_or_bindable`,
+     *  `are_valid_operands`), and every factory taking operands is to do both, whether it has an operator spelling
+     *  or not - the operator factories do, the rest is listed in TODO.md. The alternative, unwrapping only in the overloaded operators, which cannot do without `c()`, was
+     *  rejected: it would make a quoted operand usable in one notation but not in the other.
      */
     template<class T>
     constexpr auto unwrap_expression(T&& expression) {
@@ -23163,6 +23169,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Public interface for syntax sugar for columns. Example: `where(c(&User::id) == 5)` or
      *  `storage.update(set(c(&User::name) = "Dua Lipa"));
+     *
+     *  `c()` lifts an expression into sqlite_orm's DSL, which is what lets the overloaded operators and the
+     *  member notation (`=`, `in()`, `and_()`, ...) apply to it. A named factory accepts the lifted expression just
+     *  as well and builds the very node it builds from the expression itself, so a quoted operand can be defined
+     *  once, e.g. `constexpr auto id = c(&User::id);`, and passed to `id <= 5` as well as to `between(id, 1, 9)`.
      */
     template<class T>
     constexpr internal::quoted_expression_t<T> c(T value) {
