@@ -182,10 +182,14 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<T, match_if<is_app_function_call, T>> : node_tuple<args_tuple_t<T>> {};
 
-    //  a join constrained by ON or USING; CROSS JOIN and NATURAL JOIN are leaves
+    //  a join, and its constraint: ON or USING, or the implicit one of CROSS JOIN and NATURAL JOIN
     template<class T>
-    struct node_tuple<T, std::enable_if_t<is_any_join_v<T> && polyfill::is_detected_v<on_type_t, T>>>
-        : node_tuple<on_type_t<T>> {};
+    struct node_tuple<T, match_if<is_any_join, T>> : node_tuple<on_type_t<T>> {};
+
+    template<class T>
+    struct node_tuple<T, match_if<is_implicit_join_constraint, T>> {
+        using type = std::tuple<>;
+    };
 
     template<class T>
     struct node_tuple<T, match_if<is_on, T>> : node_tuple<expression_type_t<T>> {};

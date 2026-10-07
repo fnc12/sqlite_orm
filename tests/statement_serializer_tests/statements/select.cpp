@@ -313,16 +313,26 @@ TEST_CASE("statement_serializer select_t") {
                 auto expression = select(columns(&Rank::rank, &Suit::suit), cross_join<Suit>(), order_by(&Suit::suit));
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
+                expected =
+                    R"(SELECT "ranks"."rank", "suits"."suit" FROM "ranks" CROSS JOIN "suits" ORDER BY "suits"."suit")";
             }
             SECTION("alias") {
                 using suit_s = alias_s<Suit>;
-                auto expression =
-                    select(columns(&Rank::rank, &Suit::suit), cross_join<suit_s>(), order_by(&Suit::suit));
+                auto expression = select(columns(&Rank::rank, alias_column<suit_s>(&Suit::suit)),
+                                         cross_join<suit_s>(),
+                                         order_by(alias_column<suit_s>(&Suit::suit)));
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
+                expected =
+                    R"(SELECT "ranks"."rank", "s"."suit" FROM "ranks" CROSS JOIN "suits" "s" ORDER BY "s"."suit")";
             }
-            expected =
-                R"(SELECT "ranks"."rank", "suits"."suit" FROM "ranks" CROSS JOIN "suits" ORDER BY "suits"."suit")";
+            SECTION("self-join") {
+                using suit_s = alias_s<Suit>;
+                auto expression = select(columns(&Suit::suit, alias_column<suit_s>(&Suit::suit)), cross_join<suit_s>());
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT "suits"."suit", "s"."suit" FROM "suits" CROSS JOIN "suits" "s")";
+            }
         }
         SECTION("natural join") {
             SECTION("straight") {
@@ -330,16 +340,27 @@ TEST_CASE("statement_serializer select_t") {
                     select(columns(&Rank::rank, &Suit::suit), natural_join<Suit>(), order_by(&Suit::suit));
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
+                expected =
+                    R"(SELECT "ranks"."rank", "suits"."suit" FROM "ranks" NATURAL JOIN "suits" ORDER BY "suits"."suit")";
             }
             SECTION("alias") {
                 using suit_s = alias_s<Suit>;
-                auto expression =
-                    select(columns(&Rank::rank, &Suit::suit), natural_join<suit_s>(), order_by(&Suit::suit));
+                auto expression = select(columns(&Rank::rank, alias_column<suit_s>(&Suit::suit)),
+                                         natural_join<suit_s>(),
+                                         order_by(alias_column<suit_s>(&Suit::suit)));
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
+                expected =
+                    R"(SELECT "ranks"."rank", "s"."suit" FROM "ranks" NATURAL JOIN "suits" "s" ORDER BY "s"."suit")";
             }
-            expected =
-                R"(SELECT "ranks"."rank", "suits"."suit" FROM "ranks" NATURAL JOIN "suits" ORDER BY "suits"."suit")";
+            SECTION("self-join") {
+                using suit_s = alias_s<Suit>;
+                auto expression =
+                    select(columns(&Suit::suit, alias_column<suit_s>(&Suit::suit)), natural_join<suit_s>());
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT "suits"."suit", "s"."suit" FROM "suits" NATURAL JOIN "suits" "s")";
+            }
         }
     }
     REQUIRE(stringValue == expected);

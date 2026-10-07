@@ -115,9 +115,12 @@ TEST_CASE("expression classification") {
         STATIC_REQUIRE(internal::is_any_join_v<decltype(inner_join<User>(using_(&User::id)))>);
         STATIC_REQUIRE_FALSE(internal::is_any_join_v<decltype(on(is_equal(&User::id, 1)))>);
         STATIC_REQUIRE_FALSE(internal::is_any_join_v<decltype(from<User>())>);
-        //  ... telling the constrained ones apart by their constraint
-        STATIC_REQUIRE(polyfill::is_detected_v<internal::on_type_t, decltype(inner_join<User>(using_(&User::id)))>);
-        STATIC_REQUIRE_FALSE(polyfill::is_detected_v<internal::on_type_t, decltype(cross_join<User>())>);
+        //  ... and every one is constrained: by ON or USING, or implicitly as CROSS JOIN and NATURAL JOIN
+        STATIC_REQUIRE(internal::is_using_v<internal::on_type_t<decltype(inner_join<User>(using_(&User::id)))>>);
+        STATIC_REQUIRE(internal::is_implicit_join_constraint_v<internal::on_type_t<decltype(cross_join<User>())>>);
+        STATIC_REQUIRE(internal::is_implicit_join_constraint_v<internal::on_type_t<decltype(natural_join<User>())>>);
+        STATIC_REQUIRE_FALSE(internal::is_implicit_join_constraint_v<
+                             internal::on_type_t<decltype(inner_join<User>(using_(&User::id)))>>);
 
         STATIC_REQUIRE(internal::is_on_v<decltype(on(is_equal(&User::id, 1)))>);
         STATIC_REQUIRE(internal::is_using_v<decltype(using_(&User::id))>);

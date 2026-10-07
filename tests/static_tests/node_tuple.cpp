@@ -1068,3 +1068,37 @@ TEST_CASE("Node tuple") {
     }
 #endif
 }
+
+/*
+ *  Every join is constrained - explicitly by ON or USING, or implicitly as CROSS JOIN and NATURAL JOIN are.
+ *  An implicit constraint has no nodes of its own.
+ */
+TEST_CASE("Node tuple of joins") {
+    using internal::node_tuple_t;
+    using internal::on_type_t;
+    using std::is_same;
+    using std::tuple;
+
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    using s = alias_s<User>;
+
+    SECTION("every join carries a constraint") {
+        STATIC_REQUIRE(polyfill::is_detected_v<on_type_t, decltype(cross_join<User>())>);
+        STATIC_REQUIRE(polyfill::is_detected_v<on_type_t, decltype(natural_join<User>())>);
+        STATIC_REQUIRE(polyfill::is_detected_v<on_type_t, decltype(join<User>(on(is_equal(&User::id, 1))))>);
+        STATIC_REQUIRE(polyfill::is_detected_v<on_type_t, decltype(left_join<User>(on(is_equal(&User::id, 1))))>);
+        STATIC_REQUIRE(polyfill::is_detected_v<on_type_t, decltype(left_outer_join<User>(on(is_equal(&User::id, 1))))>);
+        STATIC_REQUIRE(polyfill::is_detected_v<on_type_t, decltype(inner_join<User>(on(is_equal(&User::id, 1))))>);
+    }
+    SECTION("implicit constraint") {
+        STATIC_REQUIRE(is_same<node_tuple_t<decltype(cross_join<User>())>, tuple<>>::value);
+        STATIC_REQUIRE(is_same<node_tuple_t<decltype(natural_join<s>())>, tuple<>>::value);
+    }
+    SECTION("explicit constraint") {
+        using Join = decltype(left_join<s>(on(is_equal(&User::id, 5))));
+        STATIC_REQUIRE(is_same<node_tuple_t<Join>, tuple<decltype(&User::id), int>>::value);
+    }
+}
