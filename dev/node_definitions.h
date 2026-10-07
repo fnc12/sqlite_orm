@@ -34,7 +34,6 @@
 #include "ast/cast.h"
 #include "ast/collate.h"
 #include "ast/compound_operator.h"
-#include "ast/cross_join.h"
 #include "ast/cte.h"
 #include "ast/crud/default_values.h"
 #include "ast/crud/get.h"
