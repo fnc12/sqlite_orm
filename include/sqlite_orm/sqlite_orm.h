@@ -14104,6 +14104,7 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
+#include <string_view>  //  std::string_view
 #include <functional>  //  std::function
 #include <memory>  // std::shared_ptr
 #include <vector>  //  std::vector
@@ -14820,10 +14821,10 @@ namespace sqlite_orm::internal {
         const sqlite_executor& executor;
 
         template<class T>
-        T get_pragma(const std::string& name) {
+        T get_pragma(std::string name) {
             auto connection = this->get_connection();
             T result;
-            const std::string sql = "PRAGMA " + name;
+            const std::string sql = "PRAGMA " + std::move(name);
             this->executor.perform_exec(connection.get(), sql, getPragmaCallback<T>, &result);
             return result;
         }
@@ -14833,19 +14834,19 @@ namespace sqlite_orm::internal {
          *  but it turns out that bindings in pragma statements are not supported.
          */
         template<class T>
-        void set_pragma(const std::string& name, const T& value, sqlite3* db = nullptr) {
+        void set_pragma(std::string_view name, const T& value, sqlite3* db = nullptr) {
             std::stringstream ss;
             ss << "PRAGMA " << name << " = " << value;
             this->set_pragma_impl(ss.str(), db);
         }
 
-        void set_pragma(const std::string& name, sqlite_orm::journal_mode value, sqlite3* db = nullptr) {
+        void set_pragma(std::string_view name, sqlite_orm::journal_mode value, sqlite3* db = nullptr) {
             std::stringstream ss;
             ss << "PRAGMA " << name << " = " << journal_mode_to_string(value);
             this->set_pragma_impl(ss.str(), db);
         }
 
-        void set_pragma(const std::string& name, sqlite_orm::locking_mode value, sqlite3* db = nullptr) {
+        void set_pragma(std::string_view name, sqlite_orm::locking_mode value, sqlite3* db = nullptr) {
             std::stringstream ss;
             ss << "PRAGMA " << name << " = " << locking_mode_to_string(value);
             this->set_pragma_impl(ss.str(), db);
