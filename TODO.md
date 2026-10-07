@@ -6,6 +6,7 @@
 
 * `RETURNING` clause for INSERT/UPDATE/DELETE https://sqlite.org/lang_returning.html
 * `RIGHT JOIN` / `FULL OUTER JOIN` (3.39)
+* join operators and constraints combined as SQLite allows: a join without ON or USING (`join<T>()`, `left_join<T>()`), and NATURAL with LEFT or INNER (`NATURAL LEFT JOIN`); every join node already carries a constraint, an implicit one included
 * `IS DISTINCT FROM` / `IS NOT DISTINCT FROM` binary operators (3.39), and the bare `IS` / `IS NOT` spellings
 * `NULLS FIRST` / `NULLS LAST` in ORDER BY (3.30)
 * ORDER BY inside aggregate function calls (3.44), e.g. `string_agg(x, ',' ORDER BY y)`

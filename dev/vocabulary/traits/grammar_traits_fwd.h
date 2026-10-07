@@ -644,11 +644,11 @@ namespace sqlite_orm::internal {
     using is_any_from = std::bool_constant<is_any_from_v<T>>;
 
     /**
-     *  Nodes joining a table: CROSS JOIN, NATURAL JOIN, and JOIN, LEFT JOIN, LEFT OUTER JOIN, INNER JOIN
-     *  constrained by ON or USING.
+     *  Nodes joining a table: CROSS JOIN, NATURAL JOIN, JOIN, LEFT JOIN, LEFT OUTER JOIN, INNER JOIN.
      *
-     *  All of them are DSL spellings of the one join-operator production; each carries its keyword, and the
-     *  constrained ones carry the constraint as their `on_type`.
+     *  All of them are DSL spellings of the one join-operator production; each carries its keyword, and every one
+     *  carries its constraint as its `on_type`: ON or USING spelled out, or the implicit constraint of CROSS JOIN
+     *  and NATURAL JOIN.
      */
     template<class T>
     extern const bool is_any_join_v;
@@ -670,6 +670,15 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_using = std::bool_constant<is_using_v<T>>;
+
+    /**
+     *  The constraint of a join that spells none out: CROSS JOIN and NATURAL JOIN.
+     */
+    template<class T>
+    extern const bool is_implicit_join_constraint_v;
+
+    template<class T>
+    using is_implicit_join_constraint = std::bool_constant<is_implicit_join_constraint_v<T>>;
 
     template<class T>
     extern const bool is_window_defn_v;
