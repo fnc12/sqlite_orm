@@ -3772,8 +3772,8 @@ namespace sqlite_orm::internal {
     /**
      *  Types participating as a conditional argument to overloaded operators
      */
-    template<class T>
-    extern const bool is_conditional_operand_v;
+    template<class T, class SFINAE = void>
+    constexpr bool is_conditional_operand_v = false;
 
     template<class T>
     using is_conditional_operand = std::bool_constant<is_conditional_operand_v<T>>;
@@ -6297,7 +6297,7 @@ namespace sqlite_orm {
 // #include "tags.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_base_of
+#include <type_traits>  //  std::is_base_of, std::enable_if_t
 #endif
 
 // #include "vocabulary/traits/operand_traits_fwd.h"
@@ -6323,7 +6323,7 @@ namespace sqlite_orm::internal {
     struct condition_t {};
 
     template<class T>
-    constexpr bool is_conditional_operand_v = std::is_base_of<condition_t, T>::value;
+    constexpr bool is_conditional_operand_v<T, std::enable_if_t<std::is_base_of<condition_t, T>::value>> = true;
 }
 
 namespace sqlite_orm::internal {
@@ -22856,12 +22856,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
-        //  note: `||` is told apart by the unwrapped operands, so that a `c()`-quoted condition is a condition as well
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<is_conditional_operand<unwrap_expression_t<L>>,
-                                                   is_conditional_operand<unwrap_expression_t<R>>>::value,
-                                  bool> = true>
+                 std::enable_if_t<std::disjunction<is_conditional_operand<L>, is_conditional_operand<R>>::value, bool> =
+                     true>
         constexpr or_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
@@ -22874,9 +22872,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                                     is_operator_argument<L>,
                                                                     is_operator_argument<R>>,
                                                    // exclude conditions
-                                                   std::negation<std::disjunction<
-                                                       is_conditional_operand<unwrap_expression_t<L>>,
-                                                       is_conditional_operand<unwrap_expression_t<R>>>>>::value,
+                                                   std::negation<std::disjunction<is_conditional_operand<L>,
+                                                                                  is_conditional_operand<R>>>>::value,
                                   bool> = true>
         constexpr conc_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
@@ -23093,6 +23090,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 //  and_condition_t, or_condition_t
+// #include "../vocabulary/node_algorithms.h"
+// unwrap_expression_t
 // #include "../operators.h"
 
 // #include "../vocabulary/traits/structural_traits_fwd.h"
@@ -23166,6 +23165,13 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_operator_argument_v<T, std::enable_if_t<is_quoted_expression_v<T>>> = true;
+
+    /**
+     *  A quoted condition is a condition: the node built from it holds the condition it quotes.
+     */
+    template<class T>
+    constexpr bool is_conditional_operand_v<T, std::enable_if_t<is_quoted_expression_v<T>>> =
+        is_conditional_operand_v<unwrap_expression_t<T>>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

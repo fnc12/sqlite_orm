@@ -396,12 +396,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
-        //  note: `||` is told apart by the unwrapped operands, so that a `c()`-quoted condition is a condition as well
         template<class L,
                  class R,
-                 std::enable_if_t<std::disjunction<is_conditional_operand<unwrap_expression_t<L>>,
-                                                   is_conditional_operand<unwrap_expression_t<R>>>::value,
-                                  bool> = true>
+                 std::enable_if_t<std::disjunction<is_conditional_operand<L>, is_conditional_operand<R>>::value, bool> =
+                     true>
         constexpr or_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
@@ -414,9 +412,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                                     is_operator_argument<L>,
                                                                     is_operator_argument<R>>,
                                                    // exclude conditions
-                                                   std::negation<std::disjunction<
-                                                       is_conditional_operand<unwrap_expression_t<L>>,
-                                                       is_conditional_operand<unwrap_expression_t<R>>>>>::value,
+                                                   std::negation<std::disjunction<is_conditional_operand<L>,
+                                                                                  is_conditional_operand<R>>>>::value,
                                   bool> = true>
         constexpr conc_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
             return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};

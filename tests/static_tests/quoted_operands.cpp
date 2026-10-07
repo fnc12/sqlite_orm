@@ -55,6 +55,8 @@ TEST_CASE("quoted operands") {
     SECTION("logical or concatenation") {
         auto cond1 = eq(&User::id, 1);
         auto cond2 = eq(&User::id, 2);
+        STATIC_REQUIRE(internal::is_conditional_operand<decltype(c(cond1))>::value);
+        STATIC_REQUIRE_FALSE(internal::is_conditional_operand<decltype(c(&User::name))>::value);
         STATIC_REQUIRE(is_same<decltype(c(cond1) || c(cond2)), decltype(cond1 || cond2)>::value);
         STATIC_REQUIRE(is_same<decltype(c(cond1) || cond2), decltype(cond1 || cond2)>::value);
         STATIC_REQUIRE(is_same<decltype(cond1 || c(cond2)), decltype(cond1 || cond2)>::value);

@@ -31,8 +31,8 @@ namespace sqlite_orm::internal {
     /**
      *  Types participating as a conditional argument to overloaded operators
      */
-    template<class T>
-    extern const bool is_conditional_operand_v;
+    template<class T, class SFINAE = void>
+    constexpr bool is_conditional_operand_v = false;
 
     template<class T>
     using is_conditional_operand = std::bool_constant<is_conditional_operand_v<T>>;
