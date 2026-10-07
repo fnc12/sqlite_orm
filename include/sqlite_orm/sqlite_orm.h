@@ -14610,7 +14610,6 @@ namespace sqlite_orm::internal {
 
 namespace sqlite_orm::internal {
     struct storage_base;
-    struct sqlite_executor;
 
     template<class T>
     int getPragmaCallback(void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring* x) {
