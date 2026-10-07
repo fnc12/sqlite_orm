@@ -14103,15 +14103,18 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <cstdlib>  //  ::atoi
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
 #include <functional>  //  std::function
-#include <memory>  // std::shared_ptr
+#include <utility>  //  std::move
 #include <vector>  //  std::vector
-#include <sstream>
+#include <sstream>  //  std::ostringstream, std::stringstream
 #endif
 
 // #include "functional/gsl.h"
+
+// #include "table_info.h"
 
 // #include "row_extractor.h"
 
