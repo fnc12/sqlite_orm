@@ -165,7 +165,8 @@ TEST_CASE("Integrity Check") {
     std::remove(filename);
 
     // a plain name as well as names that need quoting
-    std::string tablename = GENERATE(as<std::string>{}, "users", "my table", "order", "2tab", R"(a"b)");
+    std::string tablename =
+        GENERATE(Catch::Generators::as<std::string>{}, "users", "my table", "order", "2tab", R"(a"b)");
     auto storage = make_storage(filename,
                                 make_table(tablename,
                                            make_column("id", &User::id, primary_key()),
