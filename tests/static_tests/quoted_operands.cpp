@@ -76,6 +76,10 @@ TEST_CASE("quoted operands") {
         STATIC_REQUIRE(
             is_same<decltype(like(c(&User::name), "a%", "!")), decltype(like(&User::name, "a%", "!"))>::value);
         STATIC_REQUIRE(is_same<decltype(glob(c(&User::name), "a*")), decltype(glob(&User::name, "a*"))>::value);
+        STATIC_REQUIRE(is_same<decltype(match(c(&User::name), "a")), decltype(match(&User::name, "a"))>::value);
+        STATIC_REQUIRE(is_same<decltype(match(&User::name, c("a"))), decltype(match(&User::name, "a"))>::value);
+        STATIC_REQUIRE(is_same<decltype(match(c(column<User>(&User::name)), c("a"))),
+                               decltype(match(column<User>(&User::name), "a"))>::value);
     }
     SECTION("ranges and sets") {
         STATIC_REQUIRE(is_same<decltype(between(c(&User::id), 1, 10)), decltype(between(&User::id, 1, 10))>::value);

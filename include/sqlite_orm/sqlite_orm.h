@@ -28627,6 +28627,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
+// #include "../vocabulary/node_algorithms.h"
+// unwrap_expression
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 
@@ -28665,18 +28667,19 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class X>
     [[deprecated(
         "Use the `match` function accepting the hidden FTS5 'any' field or a field of your FTS table instead")]]
-    constexpr internal::match_with_table_t<T, X> match(X argument) {
-        return {std::move(argument)};
+    constexpr internal::match_with_table_t<T, internal::unwrap_expression_t<X>> match(X argument) {
+        return {internal::unwrap_expression(std::move(argument))};
     }
 
     template<class CP, class X>
-    constexpr internal::match_t<CP, X> match(CP field, X argument) {
-        return {std::move(field), std::move(argument)};
+    constexpr internal::match_t<internal::unwrap_expression_t<CP>, internal::unwrap_expression_t<X>> match(CP field,
+                                                                                                           X argument) {
+        return {internal::unwrap_expression(std::move(field)), internal::unwrap_expression(std::move(argument))};
     }
 
     template<class O, class F, class X>
-    constexpr internal::match_t<F O::*, X> match(F O::* field, X argument) {
-        return {field, std::move(argument)};
+    constexpr internal::match_t<F O::*, internal::unwrap_expression_t<X>> match(F O::* field, X argument) {
+        return {field, internal::unwrap_expression(std::move(argument))};
     }
 }
 
