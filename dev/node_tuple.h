@@ -9,7 +9,6 @@
 
 #include "functional/type_traits.h"
 #include "tuple_helper/tuple_filter.h"
-#include "ast/join.h"
 #include "operators.h"
 #include "prepared_statement.h"
 #include "optional_container.h"
@@ -187,25 +186,18 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<T, match_if<is_app_function_call, T>> : node_tuple<args_tuple_t<T>> {};
 
-    template<class T, class O>
-    struct node_tuple<left_join_t<T, O>, void> : node_tuple<O> {};
+    //  a join constrained by ON or USING; CROSS JOIN and NATURAL JOIN are leaves
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_any_join_v<T> && polyfill::is_detected_v<on_type_t, T>>>
+        : node_tuple<on_type_t<T>> {};
 
     template<class T>
-    struct node_tuple<on_t<T>, void> : node_tuple<T> {};
+    struct node_tuple<T, match_if<is_on, T>> : node_tuple<expression_type_t<T>> {};
 
     // note: not strictly necessary as there's no binding support for USING;
     // we provide it nevertheless, in line with on_t.
-    template<class T, class M>
-    struct node_tuple<using_t<T, M>, void> : node_tuple<column_pointer<T, M>> {};
-
-    template<class T, class O>
-    struct node_tuple<join_t<T, O>, void> : node_tuple<O> {};
-
-    template<class T, class O>
-    struct node_tuple<left_outer_join_t<T, O>, void> : node_tuple<O> {};
-
-    template<class T, class O>
-    struct node_tuple<inner_join_t<T, O>, void> : node_tuple<O> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_using, T>> : node_tuple<column_type_t<T>> {};
 
     template<class T>
     struct node_tuple<T, match_if<is_case_expression, T>>
