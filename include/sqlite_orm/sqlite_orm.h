@@ -455,7 +455,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <system_error>  //  std::error_code, std::error_category, std::system_error, std::is_error_code_enum
 #include <string>  //  std::string
-#include <sstream>  //  std::ostringstream
+#include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::true_type
 #include <utility>  //  std::forward
 #endif
@@ -498,7 +498,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<typename... T>
     std::string get_error_message(sqlite3* db, T&&... args) {
-        std::ostringstream stream;
+        std::stringstream stream;
         using unpack = int[];
         (void)unpack{0, (stream << args, 0)...};
         stream << sqlite3_errmsg(db);
@@ -14113,15 +14113,18 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <cstdlib>  //  ::atoi
 #include <string>  //  std::string
+#include <string_view>  //  std::string_view
 #include <functional>  //  std::function
-#include <memory>  // std::shared_ptr
+#include <utility>  //  std::move
 #include <vector>  //  std::vector
-#include <sstream>
-#include <ostream>  //  std::flush
+#include <sstream>  //  std::stringstream
 #endif
 
 // #include "functional/gsl.h"
+
+// #include "table_info.h"
 
 // #include "row_extractor.h"
 
@@ -14620,7 +14623,6 @@ namespace sqlite_orm::internal {
 
 namespace sqlite_orm::internal {
     struct storage_base;
-    struct sqlite_executor;
 
     template<class T>
     int getPragmaCallback(void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring* x) {
@@ -14737,14 +14739,14 @@ namespace sqlite_orm::internal {
 
         template<class T>
         std::vector<std::string> integrity_check(T table_name) {
-            std::ostringstream ss;
-            ss << "integrity_check(" << table_name << ")" << std::flush;
+            std::stringstream ss;
+            ss << "integrity_check(" << streaming_identifier(table_name) << ")";
             return this->get_pragma<std::vector<std::string>>(ss.str());
         }
 
         std::vector<std::string> integrity_check(int n) {
-            std::ostringstream ss;
-            ss << "integrity_check(" << n << ")" << std::flush;
+            std::stringstream ss;
+            ss << "integrity_check(" << n << ")";
             return this->get_pragma<std::vector<std::string>>(ss.str());
         }
 
@@ -14759,10 +14761,10 @@ namespace sqlite_orm::internal {
             std::vector<sqlite_orm::table_xinfo> result;
             std::string sql;
             {
-                std::ostringstream ss;
+                std::stringstream ss;
                 ss << "PRAGMA "
                       "table_xinfo("
-                   << streaming_identifier(tableName) << ")" << std::flush;
+                   << streaming_identifier(tableName) << ")";
                 sql = ss.str();
             }
             this->executor.perform_exec(
@@ -14773,20 +14775,14 @@ namespace sqlite_orm::internal {
                     {
                         auto index = 0;
                         auto cid = atoi(argv[index++]);
-                        std::string name = argv[index++];
-                        std::string type = argv[index++];
+                        orm_gsl::czstring name = argv[index++];
+                        orm_gsl::czstring type = argv[index++];
                         bool notnull = !!atoi(argv[index++]);
-                        std::string dflt_value = argv[index] ? argv[index] : "";
+                        orm_gsl::czstring dflt_value = argv[index] ? argv[index] : "";
                         ++index;
                         auto pk = atoi(argv[index++]);
                         auto hidden = atoi(argv[index++]);
-                        res.emplace_back(cid,
-                                         std::move(name),
-                                         std::move(type),
-                                         notnull,
-                                         std::move(dflt_value),
-                                         pk,
-                                         hidden);
+                        res.emplace_back(cid, name, type, notnull, dflt_value, pk, hidden);
                     }
                     return 0;
                 },
@@ -14799,10 +14795,10 @@ namespace sqlite_orm::internal {
 
             std::string sql;
             {
-                std::ostringstream ss;
+                std::stringstream ss;
                 ss << "PRAGMA "
                       "table_info("
-                   << streaming_identifier(tableName) << ")" << std::flush;
+                   << streaming_identifier(tableName) << ")";
                 sql = ss.str();
             }
             std::vector<sqlite_orm::table_info> result;
@@ -14814,13 +14810,13 @@ namespace sqlite_orm::internal {
                     {
                         auto index = 0;
                         auto cid = atoi(argv[index++]);
-                        std::string name = argv[index++];
-                        std::string type = argv[index++];
+                        orm_gsl::czstring name = argv[index++];
+                        orm_gsl::czstring type = argv[index++];
                         bool notnull = !!atoi(argv[index++]);
-                        std::string dflt_value = argv[index] ? argv[index] : "";
+                        orm_gsl::czstring dflt_value = argv[index] ? argv[index] : "";
                         ++index;
                         auto pk = atoi(argv[index++]);
-                        res.emplace_back(cid, std::move(name), std::move(type), notnull, std::move(dflt_value), pk);
+                        res.emplace_back(cid, name, type, notnull, dflt_value, pk);
                     }
                     return 0;
                 },
@@ -14837,10 +14833,10 @@ namespace sqlite_orm::internal {
         const sqlite_executor& executor;
 
         template<class T>
-        T get_pragma(const std::string& name) {
+        T get_pragma(std::string name) {
             auto connection = this->get_connection();
             T result;
-            const std::string sql = "PRAGMA " + name;
+            const std::string sql = "PRAGMA " + std::move(name);
             this->executor.perform_exec(connection.get(), sql, getPragmaCallback<T>, &result);
             return result;
         }
@@ -14850,19 +14846,19 @@ namespace sqlite_orm::internal {
          *  but it turns out that bindings in pragma statements are not supported.
          */
         template<class T>
-        void set_pragma(const std::string& name, const T& value, sqlite3* db = nullptr) {
+        void set_pragma(std::string_view name, const T& value, sqlite3* db = nullptr) {
             std::stringstream ss;
             ss << "PRAGMA " << name << " = " << value;
             this->set_pragma_impl(ss.str(), db);
         }
 
-        void set_pragma(const std::string& name, sqlite_orm::journal_mode value, sqlite3* db = nullptr) {
+        void set_pragma(std::string_view name, sqlite_orm::journal_mode value, sqlite3* db = nullptr) {
             std::stringstream ss;
             ss << "PRAGMA " << name << " = " << journal_mode_to_string(value);
             this->set_pragma_impl(ss.str(), db);
         }
 
-        void set_pragma(const std::string& name, sqlite_orm::locking_mode value, sqlite3* db = nullptr) {
+        void set_pragma(std::string_view name, sqlite_orm::locking_mode value, sqlite3* db = nullptr) {
             std::stringstream ss;
             ss << "PRAGMA " << name << " = " << locking_mode_to_string(value);
             this->set_pragma_impl(ss.str(), db);
