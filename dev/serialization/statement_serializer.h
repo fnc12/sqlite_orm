@@ -47,7 +47,7 @@
 #include "../schema/constraints/primary_key.h"  // conflict_clause_t
 #include "../schema/constraints/generated_always.h"  // basic_generated_always
 #include "../builtin/collations.h"  //  collate_argument_to_string
-#include "../vocabulary/node_algorithms.h"  // unwrap_expression
+#include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_fwd.h"  // column_constraints
 
@@ -859,7 +859,7 @@ namespace sqlite_orm::internal {
             if constexpr (parenthesize) {
                 ss << "(";
             }
-            ss << serialize(unwrap_expression(expression.argument), subCtx);
+            ss << serialize(expression.argument, subCtx);
             if constexpr (parenthesize) {
                 ss << ")";
             }
@@ -886,7 +886,7 @@ namespace sqlite_orm::internal {
             if constexpr (parenthesize) {
                 ss << "(";
             }
-            ss << serialize(unwrap_expression(expression.c), subCtx);
+            ss << serialize(expression.c, subCtx);
             if constexpr (parenthesize) {
                 ss << ")";
             }
