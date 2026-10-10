@@ -838,10 +838,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<
-        T,
-        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<T, unary_minus_t>,
-                                          polyfill::is_specialization_of<T, bitwise_not_t>>::value>> {
+    struct statement_serializer<T, match_if<is_unary_operator, T>> {
         using statement_type = T;
 
         template<class Ctx>

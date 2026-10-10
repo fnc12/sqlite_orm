@@ -3447,8 +3447,11 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_unbounded_following = std::bool_constant<is_unbounded_following_v<T>>;
 
+    /**
+     *  Nodes assigning an expression to a column in a SET clause: column = expression.
+     */
     template<class T>
-    constexpr bool is_assign_v = false;
+    extern const bool is_assign_v;
 
     template<class T>
     using is_assign = std::bool_constant<is_assign_v<T>>;
@@ -3587,11 +3590,33 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_compound_operator = std::bool_constant<is_compound_operator_v<T>>;
 
+    /**
+     *  Nodes representing a binary operator: ||, +, -, *, /, %, <<, >>, &, |, and the assignment of a SET clause.
+     *  Each declares the C++ type it yields as its `result_type` - except the assignment, which yields nothing.
+     */
     template<class T>
     extern const bool is_binary_operator_v;
 
     template<class T>
     using is_binary_operator = std::bool_constant<is_binary_operator_v<T>>;
+
+    /**
+     *  Nodes representing the string concatenation operator: expr || expr.
+     */
+    template<class T>
+    extern const bool is_conc_v;
+
+    template<class T>
+    using is_conc = std::bool_constant<is_conc_v<T>>;
+
+    /**
+     *  Nodes representing a unary operator: -expr, ~expr. Each declares the C++ type it yields as its `result_type`.
+     */
+    template<class T>
+    extern const bool is_unary_operator_v;
+
+    template<class T>
+    using is_unary_operator = std::bool_constant<is_unary_operator_v<T>>;
 
     template<class T>
     extern const bool is_binary_condition_v;
@@ -3781,7 +3806,7 @@ namespace sqlite_orm::internal {
     /**
      *  Types participating as a chainable argument to overloaded operators
      */
-    template<class T>
+    template<class T, class SFINAE = void>
     constexpr bool is_chainable_operand_v = false;
 
     template<class T>
@@ -6272,23 +6297,31 @@ namespace sqlite_orm {
     };
 }
 
-// #include "operators.h"
+// #include "ast/operators.h"
+
+/** @file The unary and binary operators on expressions: -, ~, and ||, +, -, *, /, %, <<, >>, &, |,
+ *        and the assignment of a SET clause - with their factory functions and operator overloads.
+ *
+ *        Each operator's tag carries its SQL spelling and the C++ type the operator yields, as `result_type`,
+ *        which the operator nodes inherit.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::disjunction
-#include <utility>  //  std::move, std::forward
+#include <string>  //  std::string
 #include <string_view>  //  std::string_view
+#include <type_traits>  //  std::enable_if, std::disjunction, std::is_base_of
+#include <utility>  //  std::move, std::forward
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "vocabulary/traits/grammar_traits_fwd.h"
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
-// #include "vocabulary/traits/operand_traits_fwd.h"
+// #include "../vocabulary/traits/operand_traits_fwd.h"
 // Included to specialize traits
-// #include "vocabulary/node_algorithms.h"
+// #include "../vocabulary/node_algorithms.h"
 // is_operand_or_bindable, are_valid_operands, unwrap_expression
-// #include "tags.h"
+// #include "../tags.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_base_of
@@ -6321,6 +6354,11 @@ namespace sqlite_orm::internal {
 }
 
 namespace sqlite_orm::internal {
+    /**
+     *  L - type of the left operand
+     *  R - type of the right operand
+     *  Ds - the operator's tag, followed by further tags classifying the operator's operand capabilities
+     */
     template<class L, class R, class... Ds>
     struct binary_operator : Ds... {
         using left_type = L;
@@ -6336,6 +6374,8 @@ namespace sqlite_orm::internal {
     constexpr bool is_binary_operator_v = polyfill::is_specialization_of<T, binary_operator>::value;
 
     struct conc_string {
+        using result_type = std::string;
+
         std::string_view serialize() const {
             return "||";
         }
@@ -6347,10 +6387,17 @@ namespace sqlite_orm::internal {
     template<class L, class R>
     using conc_t = binary_operator<L, R, conc_string>;
 
-    template<class L, class R>
-    constexpr bool is_chainable_operand_v<conc_t<L, R>> = true;
+    //  note: the operator's tag tells it apart, but only of a binary operator -
+    //  a class deriving from a tag, e.g. a tuple of operator nodes, is no operator
+    template<class T>
+    constexpr bool is_conc_v = is_binary_operator_v<T> && std::is_base_of<conc_string, T>::value;
+
+    template<class T>
+    constexpr bool is_chainable_operand_v<T, std::enable_if_t<is_conc_v<T>>> = true;
 
     struct unary_minus_string {
+        using result_type = double;
+
         std::string_view serialize() const {
             return "-";
         }
@@ -6369,6 +6416,8 @@ namespace sqlite_orm::internal {
     };
 
     struct add_string {
+        using result_type = double;
+
         std::string_view serialize() const {
             return "+";
         }
@@ -6381,6 +6430,8 @@ namespace sqlite_orm::internal {
     using add_t = binary_operator<L, R, add_string, arithmetic_t, negatable_t>;
 
     struct sub_string {
+        using result_type = double;
+
         std::string_view serialize() const {
             return "-";
         }
@@ -6393,6 +6444,8 @@ namespace sqlite_orm::internal {
     using sub_t = binary_operator<L, R, sub_string, arithmetic_t, negatable_t>;
 
     struct mul_string {
+        using result_type = double;
+
         std::string_view serialize() const {
             return "*";
         }
@@ -6405,6 +6458,8 @@ namespace sqlite_orm::internal {
     using mul_t = binary_operator<L, R, mul_string, arithmetic_t, negatable_t>;
 
     struct div_string {
+        using result_type = double;
+
         std::string_view serialize() const {
             return "/";
         }
@@ -6417,6 +6472,8 @@ namespace sqlite_orm::internal {
     using div_t = binary_operator<L, R, div_string, arithmetic_t, negatable_t>;
 
     struct mod_operator_string {
+        using result_type = double;
+
         std::string_view serialize() const {
             return "%";
         }
@@ -6429,6 +6486,8 @@ namespace sqlite_orm::internal {
     using mod_t = binary_operator<L, R, mod_operator_string, arithmetic_t, negatable_t>;
 
     struct bitwise_shift_left_string {
+        using result_type = int;
+
         std::string_view serialize() const {
             return "<<";
         }
@@ -6441,6 +6500,8 @@ namespace sqlite_orm::internal {
     using bitwise_shift_left_t = binary_operator<L, R, bitwise_shift_left_string, arithmetic_t, negatable_t>;
 
     struct bitwise_shift_right_string {
+        using result_type = int;
+
         std::string_view serialize() const {
             return ">>";
         }
@@ -6453,6 +6514,8 @@ namespace sqlite_orm::internal {
     using bitwise_shift_right_t = binary_operator<L, R, bitwise_shift_right_string, arithmetic_t, negatable_t>;
 
     struct bitwise_and_string {
+        using result_type = int;
+
         std::string_view serialize() const {
             return "&";
         }
@@ -6465,6 +6528,8 @@ namespace sqlite_orm::internal {
     using bitwise_and_t = binary_operator<L, R, bitwise_and_string, arithmetic_t, negatable_t>;
 
     struct bitwise_or_string {
+        using result_type = int;
+
         std::string_view serialize() const {
             return "|";
         }
@@ -6477,6 +6542,8 @@ namespace sqlite_orm::internal {
     using bitwise_or_t = binary_operator<L, R, bitwise_or_string, arithmetic_t, negatable_t>;
 
     struct bitwise_not_string {
+        using result_type = int;
+
         std::string_view serialize() const {
             return "~";
         }
@@ -6494,6 +6561,10 @@ namespace sqlite_orm::internal {
         bitwise_not_t(argument_type argument_) : argument(std::move(argument_)) {}
     };
 
+    template<class T>
+    constexpr bool is_unary_operator_v = std::disjunction<polyfill::is_specialization_of<T, unary_minus_t>,
+                                                          polyfill::is_specialization_of<T, bitwise_not_t>>::value;
+
     struct assign_string {
         std::string_view serialize() const {
             return "=";
@@ -6506,8 +6577,9 @@ namespace sqlite_orm::internal {
     template<class L, class R>
     using assign_t = binary_operator<L, R, assign_string>;
 
-    template<class L, class R>
-    constexpr bool is_assign_v<assign_t<L, R>> = true;
+    //  note: see `is_conc_v`
+    template<class T>
+    constexpr bool is_assign_v = is_binary_operator_v<T> && std::is_base_of<assign_string, T>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -9680,8 +9752,6 @@ namespace sqlite_orm::internal {
     using mapped_type_proxy_t = typename mapped_type_proxy<T>::type;
 }
 
-// #include "operators.h"
-
 // #include "column_result_proxy.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -10739,64 +10809,12 @@ namespace sqlite_orm::internal {
     struct column_result_t<DBOs, T, match_if<is_rowset_deduplicator, T>> : column_result_t<DBOs, expression_type_t<T>> {
     };
 
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, conc_t<L, R>, void> {
-        using type = std::string;
-    };
-
+    //  note: an assignment has no result type - it is no column expression
     template<class DBOs, class T>
-    struct column_result_t<DBOs, unary_minus_t<T>, void> {
-        using type = double;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, add_t<L, R>, void> {
-        using type = double;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, sub_t<L, R>, void> {
-        using type = double;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, mul_t<L, R>, void> {
-        using type = double;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, div_t<L, R>, void> {
-        using type = double;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, mod_t<L, R>, void> {
-        using type = double;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, bitwise_shift_left_t<L, R>, void> {
-        using type = int;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, bitwise_shift_right_t<L, R>, void> {
-        using type = int;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, bitwise_and_t<L, R>, void> {
-        using type = int;
-    };
-
-    template<class DBOs, class L, class R>
-    struct column_result_t<DBOs, bitwise_or_t<L, R>, void> {
-        using type = int;
-    };
-
-    template<class DBOs, class T>
-    struct column_result_t<DBOs, bitwise_not_t<T>, void> {
-        using type = int;
+    struct column_result_t<DBOs,
+                           T,
+                           std::enable_if_t<std::disjunction<is_binary_operator<T>, is_unary_operator<T>>::value>> {
+        using type = result_type_t<T>;
     };
 
     template<class DBOs, class T>
@@ -12253,8 +12271,6 @@ namespace sqlite_orm::internal {
 
 // #include "alias.h"
 
-// #include "operators.h"
-
 // #include "prepared_statement.h"
 
 #include <sqlite3.h>
@@ -13391,8 +13407,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct ast_iterator<bitwise_not_t<T>, void> {
-        using node_type = bitwise_not_t<T>;
+    struct ast_iterator<T, match_if<is_unary_operator, T>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& a, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -19988,10 +20004,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<
-        T,
-        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<T, unary_minus_t>,
-                                          polyfill::is_specialization_of<T, bitwise_not_t>>::value>> {
+    struct statement_serializer<T, match_if<is_unary_operator, T>> {
         using statement_type = T;
 
         template<class Ctx>
@@ -22403,7 +22416,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../alias_traits.h"
 
-// #include "../operators.h"
+// #include "operators.h"
 //  conc_t
 // #include "../vocabulary/node_algorithms.h"
 // unwrap_expression, are_valid_operands
@@ -23057,7 +23070,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 //  and_condition_t, or_condition_t
-// #include "../operators.h"
+// #include "operators.h"
 
 // #include "../vocabulary/traits/structural_traits_fwd.h"
 // Included to specialize traits
@@ -28705,6 +28718,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/offset.h"
 
+// #include "ast/operators.h"
+
 // #include "ast/order_by.h"
 
 // #include "ast/result_columns.h"
@@ -29540,8 +29555,6 @@ namespace sqlite_orm::internal {
 
 // #include "tuple_helper/tuple_filter.h"
 
-// #include "operators.h"
-
 // #include "prepared_statement.h"
 
 // #include "optional_container.h"
@@ -29705,10 +29718,7 @@ namespace sqlite_orm::internal {
     struct node_tuple<T, match_if<is_negated_condition, T>> : node_tuple<argument_type_t<T>> {};
 
     template<class T>
-    struct node_tuple<unary_minus_t<T>, void> : node_tuple<T> {};
-
-    template<class T>
-    struct node_tuple<bitwise_not_t<T>, void> : node_tuple<T> {};
+    struct node_tuple<T, match_if<is_unary_operator, T>> : node_tuple<argument_type_t<T>> {};
 
     template<class T>
     struct node_tuple<T, match_if<is_builtin_function_call, T>> : node_tuple<args_tuple_t<T>> {};
