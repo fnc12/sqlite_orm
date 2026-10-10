@@ -1102,3 +1102,49 @@ TEST_CASE("Node tuple of joins") {
         STATIC_REQUIRE(is_same<node_tuple_t<Join>, tuple<decltype(&User::id), int>>::value);
     }
 }
+
+/*
+ *  Every join operator, constrained explicitly or implicitly, is the one join node.
+ */
+TEST_CASE("Join operators are joins") {
+    using internal::implicit_join_constraint;
+    using internal::is_any_join_v;
+    using internal::node_tuple_t;
+    using internal::on_type_t;
+    using std::is_same;
+    using std::tuple;
+
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+
+    SECTION("implicit constraint") {
+        STATIC_REQUIRE(is_any_join_v<decltype(join<User>())>);
+        STATIC_REQUIRE(is_same<on_type_t<decltype(join<User>())>, implicit_join_constraint>::value);
+        STATIC_REQUIRE(is_same<on_type_t<decltype(inner_join<User>())>, implicit_join_constraint>::value);
+        STATIC_REQUIRE(is_same<on_type_t<decltype(left_join<User>())>, implicit_join_constraint>::value);
+        STATIC_REQUIRE(is_same<on_type_t<decltype(left_outer_join<User>())>, implicit_join_constraint>::value);
+        STATIC_REQUIRE(is_same<node_tuple_t<decltype(left_join<User>())>, tuple<>>::value);
+        STATIC_REQUIRE(
+            is_same<decltype(left_join<User>()), internal::left_join_t<User, implicit_join_constraint>>::value);
+    }
+    SECTION("NATURAL") {
+        STATIC_REQUIRE(is_any_join_v<decltype(natural_inner_join<User>())>);
+        STATIC_REQUIRE(is_any_join_v<decltype(natural_left_join<User>())>);
+        STATIC_REQUIRE(is_any_join_v<decltype(natural_left_outer_join<User>())>);
+        STATIC_REQUIRE(is_same<on_type_t<decltype(natural_left_join<User>())>, implicit_join_constraint>::value);
+    }
+#if SQLITE_VERSION_NUMBER >= 3039000
+    SECTION("RIGHT and FULL") {
+        STATIC_REQUIRE(is_any_join_v<decltype(right_join<User>(using_(&User::id)))>);
+        STATIC_REQUIRE(is_any_join_v<decltype(right_outer_join<User>())>);
+        STATIC_REQUIRE(is_any_join_v<decltype(full_join<User>(using_(&User::id)))>);
+        STATIC_REQUIRE(is_any_join_v<decltype(full_outer_join<User>())>);
+        STATIC_REQUIRE(is_any_join_v<decltype(natural_right_join<User>())>);
+        STATIC_REQUIRE(is_any_join_v<decltype(natural_full_outer_join<User>())>);
+        STATIC_REQUIRE(is_same<node_tuple_t<decltype(full_join<User>(on(is_equal(&User::id, 1))))>,
+                               tuple<decltype(&User::id), int>>::value);
+    }
+#endif
+}
