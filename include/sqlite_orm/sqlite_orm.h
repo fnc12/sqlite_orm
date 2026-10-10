@@ -26254,6 +26254,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
+    template<class T, class... Cols>
+    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
+    make_unique_index(std::string name, Cols... cols) {
+        using namespace ::sqlite_orm::internal;
+        validate_index_arguments<T, Cols...>();
+        return {std::move(name), true, std::tuple{make_indexed_column(std::move(cols))...}};
+    }
+
     template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_unique_index(std::string name, Cols... cols) {
