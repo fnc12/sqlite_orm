@@ -11,6 +11,13 @@ namespace {
         int id = 0;
         std::string name;
     };
+
+    struct foreign_annotation {};
+
+    struct[[ = "renamed_user_view"_orm_name, = foreign_annotation{} ]] RenamedUserViewSerializerTests {
+        [[ = "user_id"_orm_name, = foreign_annotation{} ]] int id = 0;
+        [[= foreign_annotation{}]] std::string name;
+    };
 }
 
 TEST_CASE("view statement_serializer") {
@@ -42,6 +49,24 @@ TEST_CASE("view statement_serializer") {
         std::string value = serialize(expression, context);
         REQUIRE(value == R"(SELECT "user_view".* FROM "user_view")");
     }
+}
+
+TEST_CASE("view statement_serializer - column name annotations, ignoring other annotations") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+
+    auto table = make_table<User>("user", make_column("id", &User::id), make_column("name", &User::name));
+    auto view = make_view<RenamedUserViewSerializerTests>(select(asterisk<User>(true)));
+    using db_objects_t = internal::db_objects_tuple<decltype(table), decltype(view)>;
+    const db_objects_t dbObjects{table, view};
+    using context_t = internal::serializer_context<db_objects_t>;
+    const context_t context{dbObjects};
+
+    std::string value = serialize(view, context);
+    REQUIRE(value ==
+            R"(CREATE VIEW "renamed_user_view" ("user_id", "name") AS SELECT "user"."id", "user"."name" FROM "user")");
 }
 #endif
 #endif

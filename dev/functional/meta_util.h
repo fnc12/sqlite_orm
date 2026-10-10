@@ -3,9 +3,11 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 #include <array>  //  std::array
-#include <meta>  //  std::define_static_array, std::meta::access_context, std::meta::nonstatic_data_members_of, std::meta::identifier_of, std::meta::annotations_of
+#include <meta>  //  std::define_static_array, std::meta::access_context, std::meta::nonstatic_data_members_of, std::meta::annotations_of, std::meta::constant_of, std::meta::parent_of
+#include <span>  //  std::span
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::index_sequence, std::make_index_sequence
+#include <vector>  //  std::vector
 #endif
 #endif
 
@@ -38,14 +40,6 @@ namespace sqlite_orm::internal {
     }
 
     /**
-     *  Returns the identifier of `T`.
-     */
-    template<class T>
-    consteval auto extract_type_identifier() {
-        return std::meta::identifier_of(^^T);
-    }
-
-    /**
      *  Splices a non-static data member reflection into a member-pointer expression.
      *  Encapsulated here so the splice operator does not leak into consumer headers.
      */
@@ -55,8 +49,42 @@ namespace sqlite_orm::internal {
     }
 
     /**
-     *  Splices a reflection's annotations into a tuple of values. The reflection may be
-     *  a type or a non-static data member.
+     *  Returns whether `type` is declared within namespace `ns`, directly or in a nested scope.
+     *  A class template specialization counts by the scope of its template, not by the scopes of its template
+     *  arguments; types without a scope (fundamental types, pointers, arrays) are declared within no namespace.
+     */
+    consteval bool is_declared_within(std::meta::info type, std::meta::info ns) {
+        std::meta::info scope = std::meta::dealias(std::meta::remove_cvref(type));
+        if (std::meta::has_template_arguments(scope)) {
+            scope = std::meta::template_of(scope);
+        }
+        while (std::meta::has_parent(scope)) {
+            scope = std::meta::parent_of(scope);
+            if (scope == ns) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     *  Returns the indices of a reflection's annotations whose type is declared within namespace `ns`.
+     */
+    template<std::meta::info refl, std::meta::info ns>
+    consteval std::span<const size_t> annotation_indices_within() {
+        const std::vector<std::meta::info> annotations = std::meta::annotations_of(refl);
+        std::vector<size_t> indices;
+        for (size_t i = 0; i < annotations.size(); ++i) {
+            if (is_declared_within(std::meta::type_of(annotations[i]), ns)) {
+                indices.push_back(i);
+            }
+        }
+        return std::define_static_array(indices);
+    }
+
+    /**
+     *  Splices a reflection's annotations whose type is declared within namespace `ns` into a tuple of values,
+     *  skipping all others. The reflection may be a type or a non-static data member.
      *  Encapsulated here so the splice operator does not leak into consumer headers.
      *
      *  Two P3394 details inform this implementation:
@@ -69,19 +97,12 @@ namespace sqlite_orm::internal {
      *    `annotations_of` inline so each transient vector dies within its own constant
      *    expression.
      */
-    template<std::meta::info refl>
-    consteval auto splice_annotations() {
+    template<std::meta::info refl, std::meta::info ns>
+    consteval auto splice_annotations_within() {
         return []<size_t... I>(std::index_sequence<I...>) consteval {
-            return std::tuple{[:std::meta::constant_of(std::meta::annotations_of(refl)[I]):]...};
-        }(std::make_index_sequence<std::meta::annotations_of(refl).size()>{});
-    }
-
-    /**
-     *  Returns the class-scope annotations of `T` as a tuple.
-     */
-    template<class T>
-    consteval auto extract_type_annotations() {
-        return splice_annotations<^^T>();
+            return std::tuple{[:std::meta::constant_of(
+                                    std::meta::annotations_of(refl)[annotation_indices_within<refl, ns>()[I]]):]...};
+        }(std::make_index_sequence<annotation_indices_within<refl, ns>().size()>{});
     }
 }
 #endif

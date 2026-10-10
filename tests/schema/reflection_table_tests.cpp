@@ -24,6 +24,31 @@ namespace {
         [[= collate_nocase()]] std::string handle;
     };
 
+    struct[[= "renamed"_orm_name]] ReflectedRenamed {
+        [[ = "user_id"_orm_name, = primary_key() ]] int64 userId;
+        [[ = not_null(), = orm_name("display_name") ]] std::string displayName;
+        std::string note;
+    };
+
+    struct ReflectedRenamedBase {
+        [[ = "base_id"_orm_name, = primary_key() ]] int64 baseId;
+    };
+
+    struct[[= "renamed_derived"_orm_name]] ReflectedRenamedDerived : ReflectedRenamedBase {
+        [[= "derived_label"_orm_name]] std::string label;
+    };
+
+    namespace other_library {
+        struct label {
+            int value;
+        };
+    }
+
+    struct[[ = "foreign"_orm_name, = other_library::label{1} ]] ReflectedForeignAnnotated {
+        [[ = other_library::label{2}, = primary_key(), = 42 ]] int64 id;
+        std::string name;
+    };
+
     struct[[= "composite"_orm_name]] ReflectedComposite {
         int a;
         int b;
@@ -97,6 +122,73 @@ TEST_CASE("reflection-based make_table - member annotations") {
 
     SECTION("default_value() with a literal-type value applies to the annotated member") {
         REQUIRE(findCol("score").dflt_value == "0");
+    }
+}
+
+TEST_CASE("reflection-based make_table - column name annotations") {
+    auto table = make_table<ReflectedRenamed>();
+    STATIC_REQUIRE(table.template count_of<internal::is_column>() == 3);
+    REQUIRE(*table.find_column_name(&ReflectedRenamed::userId) == "user_id");
+    REQUIRE(*table.find_column_name(&ReflectedRenamed::displayName) == "display_name");
+    REQUIRE(*table.find_column_name(&ReflectedRenamed::note) == "note");
+
+    auto storage = make_storage("", std::move(table));
+    REQUIRE_NOTHROW(storage.sync_schema());
+    auto info = storage.pragma.table_xinfo("renamed");
+    REQUIRE(info.size() == 3);
+
+    auto findCol = [&info](const std::string& name) -> const table_xinfo& {
+        auto it = std::ranges::find(info, name, &table_xinfo::name);
+        REQUIRE(it != info.end());
+        return *it;
+    };
+
+    SECTION("constraints following the name annotation apply to the renamed column") {
+        REQUIRE(findCol("user_id").pk == 1);
+    }
+
+    SECTION("constraints preceding the name annotation apply to the renamed column") {
+        REQUIRE(findCol("display_name").notnull == true);
+    }
+}
+
+TEST_CASE("reflection-based make_table - column name annotations on base class members") {
+    auto table = make_table<ReflectedRenamedDerived>();
+    STATIC_REQUIRE(table.template count_of<internal::is_column>() == 2);
+    REQUIRE(*table.find_column_name(&ReflectedRenamedDerived::baseId) == "base_id");
+    REQUIRE(*table.find_column_name(&ReflectedRenamedDerived::label) == "derived_label");
+
+    auto storage = make_storage("", std::move(table));
+    REQUIRE_NOTHROW(storage.sync_schema());
+    auto info = storage.pragma.table_xinfo("renamed_derived");
+    REQUIRE(info.size() == 2);
+
+    auto it = std::ranges::find(info, std::string("base_id"), &table_xinfo::name);
+    REQUIRE(it != info.end());
+    REQUIRE(it->pk == 1);
+}
+
+TEST_CASE("reflection-based make_table - annotations of other libraries") {
+    SECTION("ownership is decided by the namespace the annotation's type is declared in") {
+        STATIC_REQUIRE(internal::is_declared_within(^^internal::mapped_name_literal<2>, ^^sqlite_orm));
+        STATIC_REQUIRE(internal::is_declared_within(^^const internal::mapped_name_literal<2>, ^^sqlite_orm));
+        STATIC_REQUIRE_FALSE(internal::is_declared_within(^^other_library::label, ^^sqlite_orm));
+        STATIC_REQUIRE_FALSE(internal::is_declared_within(^^int, ^^sqlite_orm));
+        STATIC_REQUIRE_FALSE(
+            internal::is_declared_within(^^std::tuple<internal::mapped_name_literal<2>>, ^^sqlite_orm));
+    }
+
+    SECTION("are ignored at class scope and on members") {
+        auto table = make_table<ReflectedForeignAnnotated>();
+        REQUIRE(table.name == "foreign");
+        STATIC_REQUIRE(table.template count_of<internal::is_column>() == 2);
+
+        auto storage = make_storage("", std::move(table));
+        REQUIRE_NOTHROW(storage.sync_schema());
+        auto info = storage.pragma.table_xinfo("foreign");
+        auto it = std::ranges::find(info, std::string("id"), &table_xinfo::name);
+        REQUIRE(it != info.end());
+        REQUIRE(it->pk == 1);
     }
 }
 

@@ -4,10 +4,10 @@
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_const, std::true_type, std::false_type
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple_element, std::get, std::apply, std::tuple_cat
+#include <tuple>  //  std::tuple_element, std::get, std::tuple_cat
 #include <utility>  //  std::forward, std::move
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-#include <meta>  // std::meta::info, std::meta::identifier_of
+#include <meta>  // std::meta::info
 #endif
 #endif
 
@@ -23,7 +23,7 @@
 #include "constraints/generated_always.h"
 #include "table_base.h"
 #include "column.h"  //  sqlite_orm::make_column
-#include "dbo_name.h"
+#include "orm_name.h"
 
 namespace sqlite_orm::internal {
     /** 
@@ -129,23 +129,12 @@ namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
     template<class O, class... Cs>
     auto make_reflected_table(Cs... constraints) {
-        auto classAnnotations = extract_type_annotations<O>();
-        std::string tableName{resolve_dbo_name<O>(classAnnotations)};
-        auto annotationConstraints = filter_out_dbo_name(std::move(classAnnotations));
+        std::string tableName{mapped_name_of<^^O>()};
+        auto annotationConstraints = filter_out_mapped_name(extract_orm_annotations<^^O>());
         static /*gcc*/ constexpr auto members = extract_members<O>();
 
         auto columns = []<size_t... I>(std::index_sequence<I...>) static {
-            return std::tuple {
-                []<std::meta::info member>() static {
-                    return std::apply(
-                        [](auto&&... columnConstraints) static {
-                            return sqlite_orm::make_column(std::string(std::meta::identifier_of(member)),
-                                                           splice_member_pointer<member>(),
-                                                           std::move(columnConstraints)...);
-                        },
-                        splice_annotations<member>());
-                }.template operator()<members[I]>()...
-            };
+            return std::tuple{make_reflected_column<members[I]>()...};
         }(std::make_index_sequence<members.size()>{});
 
         return [&tableName]<class... Es>(std::tuple<Es...>&& definition) {
@@ -202,7 +191,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The mapped object type is explicitly specified, columns and column constraints are deferred from
      *  the object type's non-static data members and their annotations. Class-scope annotations on
      *  the object type contribute table-level constraints; the optional `[[=orm_name("…")]]` annotation
-     *  overrides the table name (otherwise the type's reflected identifier is used).
+     *  overrides the table name (otherwise the type's reflected identifier is used). Likewise, a
+     *  `[[=orm_name("…")]]` member annotation overrides the column name. Annotations whose type is not declared within
+     *  namespace `sqlite_orm` are ignored, both at class scope and on members.
      *
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
      *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
@@ -221,7 +212,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The mapped object type is explicitly specified, columns and column constraints are deferred from
      *  the object type's non-static data members and their annotations. Class-scope annotations on
      *  the object type contribute table-level constraints; the optional `[[=orm_name("…")]]` annotation
-     *  overrides the table name (otherwise the type's reflected identifier is used).
+     *  overrides the table name (otherwise the type's reflected identifier is used). Likewise, a
+     *  `[[=orm_name("…")]]` member annotation overrides the column name. Annotations whose type is not declared within
+     *  namespace `sqlite_orm` are ignored, both at class scope and on members.
      *
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
      *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
