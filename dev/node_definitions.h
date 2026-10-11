@@ -56,6 +56,7 @@
 #include "ast/match.h"
 #include "ast/negated_condition.h"
 #include "ast/offset.h"
+#include "ast/operators.h"
 #include "ast/order_by.h"
 #include "ast/result_columns.h"
 #include "ast/rowid.h"

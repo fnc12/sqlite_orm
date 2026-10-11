@@ -73,6 +73,38 @@ TEST_CASE("expression classification") {
                                     std::tuple<decltype(&User::name), std::string, std::string>>::value);
     }
 
+    SECTION("operators") {
+        STATIC_REQUIRE(internal::is_binary_operator_v<decltype(add(&User::id, 1))>);
+        STATIC_REQUIRE(internal::is_binary_operator_v<decltype(conc(&User::name, "a"))>);
+        STATIC_REQUIRE(internal::is_unary_operator_v<decltype(minus(&User::id))>);
+        STATIC_REQUIRE(internal::is_unary_operator_v<decltype(bitwise_not(&User::id))>);
+        STATIC_REQUIRE_FALSE(internal::is_unary_operator_v<decltype(add(&User::id, 1))>);
+
+        STATIC_REQUIRE(internal::is_conc_v<decltype(conc(&User::name, "a"))>);
+        STATIC_REQUIRE_FALSE(internal::is_conc_v<decltype(add(&User::id, 1))>);
+        STATIC_REQUIRE(internal::is_assign_v<decltype(assign(&User::id, 1))>);
+        STATIC_REQUIRE(internal::is_assign_v<decltype(c(&User::id) = 1)>);
+        STATIC_REQUIRE_FALSE(internal::is_assign_v<decltype(conc(&User::name, "a"))>);
+        //  a class deriving from an operator's tag is no operator
+        STATIC_REQUIRE_FALSE(internal::is_conc_v<std::tuple<internal::conc_string>>);
+        STATIC_REQUIRE_FALSE(internal::is_assign_v<std::tuple<internal::assign_string>>);
+
+        STATIC_REQUIRE(internal::is_chainable_operand_v<decltype(conc(&User::name, "a"))>);
+        STATIC_REQUIRE_FALSE(internal::is_chainable_operand_v<decltype(add(&User::id, 1))>);
+
+        //  each operator yields the type its tag declares
+        using internal::result_type_t;
+        STATIC_REQUIRE(std::is_same<result_type_t<decltype(conc(&User::name, "a"))>, std::string>::value);
+        STATIC_REQUIRE(std::is_same<result_type_t<decltype(add(&User::id, 1))>, double>::value);
+        STATIC_REQUIRE(std::is_same<result_type_t<decltype(bitwise_and(&User::id, 1))>, int>::value);
+        STATIC_REQUIRE(std::is_same<result_type_t<decltype(minus(&User::id))>, double>::value);
+        STATIC_REQUIRE(std::is_same<result_type_t<decltype(bitwise_not(&User::id))>, int>::value);
+
+        //  the operand of a unary operator is walked into, for binding as for collecting
+        using Minus = decltype(minus(1));
+        STATIC_REQUIRE(std::is_same<internal::node_tuple_t<Minus>, std::tuple<int>>::value);
+    }
+
     SECTION("joins") {
         //  every join is the one join-operator production ...
         STATIC_REQUIRE(internal::is_any_join_v<decltype(cross_join<User>())>);

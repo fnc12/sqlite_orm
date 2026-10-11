@@ -771,8 +771,11 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_unbounded_following = std::bool_constant<is_unbounded_following_v<T>>;
 
+    /**
+     *  Nodes assigning an expression to a column in a SET clause: column = expression.
+     */
     template<class T>
-    constexpr bool is_assign_v = false;
+    extern const bool is_assign_v;
 
     template<class T>
     using is_assign = std::bool_constant<is_assign_v<T>>;
@@ -911,11 +914,33 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_compound_operator = std::bool_constant<is_compound_operator_v<T>>;
 
+    /**
+     *  Nodes representing a binary operator: ||, +, -, *, /, %, <<, >>, &, |, and the assignment of a SET clause.
+     *  Each declares the C++ type it yields as its `result_type` - except the assignment, which yields nothing.
+     */
     template<class T>
     extern const bool is_binary_operator_v;
 
     template<class T>
     using is_binary_operator = std::bool_constant<is_binary_operator_v<T>>;
+
+    /**
+     *  Nodes representing the string concatenation operator: expr || expr.
+     */
+    template<class T>
+    extern const bool is_conc_v;
+
+    template<class T>
+    using is_conc = std::bool_constant<is_conc_v<T>>;
+
+    /**
+     *  Nodes representing a unary operator: -expr, ~expr. Each declares the C++ type it yields as its `result_type`.
+     */
+    template<class T>
+    extern const bool is_unary_operator_v;
+
+    template<class T>
+    using is_unary_operator = std::bool_constant<is_unary_operator_v<T>>;
 
     template<class T>
     extern const bool is_binary_condition_v;

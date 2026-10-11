@@ -68,6 +68,18 @@ TEST_CASE("ast_iterator") {
         expected.push_back(typeid(int));
         iterate_ast(node, lambda);
     }
+    SECTION("unary operators") {
+        SECTION("unary minus") {
+            auto node = minus(&User::id);
+            expected.push_back(typeid(&User::id));
+            iterate_ast(node, lambda);
+        }
+        SECTION("bitwise not") {
+            auto node = bitwise_not(5);
+            expected.push_back(typeid(int));
+            iterate_ast(node, lambda);
+        }
+    }
     SECTION("aggregate functions") {
         SECTION("avg") {
             auto node = avg(&User::id);
