@@ -33,7 +33,7 @@
 #include "../prepared_statement.h"
 #include "../mapped_type_proxy.h"
 #include "../pointer_value.h"
-#include "../type_printer.h"
+#include "../type_mapping/type_printer.h"
 #include "../field_printer.h"
 #include "../literal.h"
 #include "table_name_collector.h"

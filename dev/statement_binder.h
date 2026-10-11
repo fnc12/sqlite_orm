@@ -19,10 +19,10 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/type_traits.h"
 #include "tuple_helper/tuple_filter.h"
-#include "is_std_ptr.h"
+#include "type_mapping/is_std_ptr.h"
 #include "vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_bindable_v
 #include "error_code.h"
-#include "arithmetic_tag.h"
+#include "type_mapping/arithmetic_tag.h"
 #include "sqlite3/sqlite3_xdestroy.h"
 #include "sqlite3/sqlite3_errors.h"
 #include "pointer_value.h"

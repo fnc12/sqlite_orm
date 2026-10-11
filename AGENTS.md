@@ -65,7 +65,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 
 2. **Table definitions** (`dev/schema/table.h`): Tables are defined using `make_table()` which maps C++ structs to database schema. Columns are mapped using member pointers.
 
-3. **Type system** (`dev/functional/type_traits.h`, `dev/type_printer.h`): Extensive compile-time type introspection to deduce types from member pointers and validate queries at compile time.
+3. **Type system** (`dev/functional/type_traits.h`, `dev/type_mapping/type_printer.h`): Extensive compile-time type introspection to deduce types from member pointers and validate queries at compile time.
 
 4. **Statement serialization** (`dev/serialization/statement_serializer.h`, `dev/serialization/serializer_context.h`): Converts C++ expression objects into SQL strings.
 
@@ -105,7 +105,10 @@ The library uses a **storage-centric architecture** with compile-time type safet
 - `dev/ast/crud/` - One header per CRUD statement kind (`get`, `insert`, `replace`, `update`, `remove`), in both their object and their raw DML spellings, plus the clause nodes only they take (`into`, `set`, `default_values`, `upsert_clause`)
 
 **Serialization:**
-- `dev/serialization/` - The statement serializer and its context, and the helpers it alone uses: streaming utilities (`serializing_util.h`), the quoting of identifiers and literals (`quoting.h`), the ORDER BY serializer, the DEFAULT value extractor, and the collectors walking an expression for what serialization needs (`table_name_collector.h`, `column_expressions_collector.h`, `cte_column_names_collector.h`). `field_printer.h` and `type_printer.h` stay at the top level: they are public customization points.
+- `dev/serialization/` - The statement serializer and its context, and the helpers it alone uses: streaming utilities (`serializing_util.h`), the quoting of identifiers and literals (`quoting.h`), the ORDER BY serializer, the DEFAULT value extractor, and the collectors walking an expression for what serialization needs (`table_name_collector.h`, `column_expressions_collector.h`, `cte_column_names_collector.h`). The customization points it uses are not its own: they live in `dev/type_mapping/` and with the value conversions.
+
+**Type mapping:**
+- `dev/type_mapping/` - The type-level mapping of C++ types onto SQLite's, public customization points and their helpers: the declared SQLite type of a C++ type (`type_printer.h`), whether it admits NULL (`type_is_nullable.h`), the smart pointers recognized as nullable holders (`is_std_ptr.h`), and the storage-class tag arithmetic values are dispatched on (`arithmetic_tag.h`). Conversions of values do not belong here.
 
 **Type binding:**
 - `dev/statement_binder.h` - Binds C++ values to prepared statements

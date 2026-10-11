@@ -6092,7 +6092,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "vocabulary/algorithms/field_predicates_fwd.h"
 // Included to define is_printable_v
-// #include "is_std_ptr.h"
+// #include "type_mapping/is_std_ptr.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>
@@ -8938,19 +8938,19 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_filter.h"
 
-// #include "is_std_ptr.h"
+// #include "type_mapping/is_std_ptr.h"
 
 // #include "vocabulary/algorithms/field_predicates_fwd.h"
 // Included to define is_bindable_v
 // #include "error_code.h"
 
-// #include "arithmetic_tag.h"
+// #include "type_mapping/arithmetic_tag.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  // std::is_integral
 #endif
 
-// #include "functional/mpl/conditional.h"
+// #include "../functional/mpl/conditional.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -11364,11 +11364,11 @@ namespace sqlite_orm::internal {
 
 // #include "tuple_helper/tuple_transformer.h"
 
-// #include "is_std_ptr.h"
+// #include "type_mapping/is_std_ptr.h"
 
 // #include "column_result_proxy.h"
 
-// #include "arithmetic_tag.h"
+// #include "type_mapping/arithmetic_tag.h"
 
 // #include "pointer_value.h"
 
@@ -18073,7 +18073,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../pointer_value.h"
 
-// #include "../type_printer.h"
+// #include "../type_mapping/type_printer.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -18081,11 +18081,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <optional>  //  std::optional
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/gsl.h"
+// #include "../functional/gsl.h"
 
-// #include "functional/type_traits.h"
+// #include "../functional/type_traits.h"
 
 // #include "is_std_ptr.h"
 
@@ -18658,7 +18658,7 @@ namespace sqlite_orm::internal {
 //  collate_argument, collate_argument_to_string
 // #include "../serialization/serializer_context.h"
 
-// #include "../type_printer.h"
+// #include "../type_mapping/type_printer.h"
 
 // #include "../literal.h"
 
@@ -21670,7 +21670,7 @@ namespace sqlite_orm::internal {
 
 // #include "../member_traits/member_traits.h"
 
-// #include "../type_is_nullable.h"
+// #include "../type_mapping/type_is_nullable.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::false_type, std::true_type, std::enable_if
@@ -21678,7 +21678,7 @@ namespace sqlite_orm::internal {
 #include <optional>  //  std::optional
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -21712,7 +21712,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     };
 }
 
-// #include "../type_printer.h"
+// #include "../type_mapping/type_printer.h"
 //  type_printer, integer_printer
 // #include "column_identifier.h"
 
@@ -29054,7 +29054,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 //  int64
 // #include "../../functional/gsl.h"
 // orm_gsl::czstring, orm_gsl::cwzstring
-// #include "../../type_printer.h"
+// #include "../../type_mapping/type_printer.h"
 
 // #include "field_predicates_fwd.h"
 // Included to specialize field predicates
@@ -29174,7 +29174,7 @@ namespace sqlite_orm::internal {
 
 // #include "../vocabulary/node_algorithms.h"
 
-// #include "../type_printer.h"
+// #include "../type_mapping/type_printer.h"
 
 // #include "../schema/table.h"
 

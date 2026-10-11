@@ -485,8 +485,7 @@ Decided, not yet done. The destination is settled in each case; only the work re
   For those that do qualify, apply the axis table above to pick the file.
 
 - **`type_printer` / `integer_printer`.** A genuine open per-raw-type customization point,
-  the same shape as the field traits, but still in its current public, pre-existing
-  location. Real work, not urgent.
+  the same shape as the field traits, public in `type_mapping/`. Real work, not urgent.
 
 - **Retire the legacy built-in function nodes with C++17.** In C++20 builds every
   built-in is one `inline constexpr` definition of name plus overload set in

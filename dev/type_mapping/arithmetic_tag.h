@@ -4,7 +4,7 @@
 #include <type_traits>  // std::is_integral
 #endif
 
-#include "functional/mpl/conditional.h"
+#include "../functional/mpl/conditional.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 

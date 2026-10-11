@@ -11,7 +11,7 @@
 
 #include "../../sqlite3/sqlite3_types.h"  //  int64
 #include "../../functional/gsl.h"  // orm_gsl::czstring, orm_gsl::cwzstring
-#include "../../type_printer.h"
+#include "../../type_mapping/type_printer.h"
 #include "field_predicates_fwd.h"  // Included to specialize field predicates
 
 namespace sqlite_orm::internal {

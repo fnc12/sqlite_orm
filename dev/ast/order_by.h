@@ -18,7 +18,7 @@
 #include "../functional/type_traits.h"
 #include "../builtin/collations.h"  //  collate_argument, collate_argument_to_string
 #include "../serialization/serializer_context.h"
-#include "../type_printer.h"
+#include "../type_mapping/type_printer.h"
 #include "../literal.h"
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
