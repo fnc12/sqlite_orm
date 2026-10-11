@@ -21,6 +21,8 @@
     "dev/builtin/functions.h",
     "dev/builtin/dbos.h",
 
+    "dev/marshaling/pointer_value.h",
+
     "dev/carray.h",
 
     "dev/functional/finish_macros.h"

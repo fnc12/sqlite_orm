@@ -7,9 +7,9 @@
 
 #include "functional/cxx_type_traits_polyfill.h"  //  polyfill::remove_cvref_t
 #include "functional/type_traits.h"  //  forward_lvalue_ref
+#include "functional/index_sequence_util.h"  //  index_sequence_value_at
 #include "vocabulary/node_traits.h"  //  traits, projections
-#include "vocabulary/node_algorithms.h"  //  is_bindable, access_dml_object
-#include "marshaling/parameter_binders.h"  //  bindable_filter_t
+#include "vocabulary/node_algorithms.h"  //  is_bindable, bindable_index_sequence_of, access_dml_object
 #include "prepared_statement.h"  //  prepared_statement_t
 #include "ast_iterator.h"  //  iterate_ast
 #include "node_tuple.h"  //  node_tuple_t
@@ -81,8 +81,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using statement_type = polyfill::remove_cvref_t<decltype(statement)>;
         using expression_type = expression_type_t<statement_type>;
         using node_tuple = node_tuple_t<expression_type>;
-        using bind_tuple = bindable_filter_t<node_tuple>;
-        using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
+        constexpr size_t nodeIdx =
+            index_sequence_value_at<static_cast<size_t>(N)>(bindable_index_sequence_of<node_tuple>{});
+        using result_type = std::tuple_element_t<nodeIdx, node_tuple>;
         const result_type* result = nullptr;
         iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
             using node_type = polyfill::remove_cvref_t<decltype(node)>;
@@ -110,8 +111,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using statement_type = std::remove_reference_t<decltype(statement)>;
         using expression_type = expression_type_t<statement_type>;
         using node_tuple = node_tuple_t<expression_type>;
-        using bind_tuple = bindable_filter_t<node_tuple>;
-        using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
+        constexpr size_t nodeIdx =
+            index_sequence_value_at<static_cast<size_t>(N)>(bindable_index_sequence_of<node_tuple>{});
+        using result_type = std::tuple_element_t<nodeIdx, node_tuple>;
         result_type* result = nullptr;
 
         iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {

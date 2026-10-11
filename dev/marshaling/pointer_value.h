@@ -17,7 +17,7 @@
 #include "../sqlite3/sqlite3_xdestroy.h"
 #include "../vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_pointer_arg_v, is_pointer_binding_v
 
-// note (internal): declared and classified regardless of `SQLITE_VERSION_NUMBER`, for checking function calls in the DSL
+#if SQLITE_VERSION_NUMBER >= 3020000
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<typename P, typename T>
     struct pointer_arg;
@@ -32,10 +32,7 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_pointer_binding_v = polyfill::is_specialization_of_v<T, pointer_binding>;
-}
 
-#if SQLITE_VERSION_NUMBER >= 3020000
-namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<char... C>
     struct pointer_type {
@@ -88,14 +85,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using tag = T;
         using qualified_type = P;
 
-        P* p_;
+        P* _p;
 
         P* ptr() const noexcept {
-            return p_;
+            return _p;
         }
 
         operator P*() const noexcept {
-            return p_;
+            return _p;
         }
     };
 
@@ -127,7 +124,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<typename P, typename T, typename D>
     class pointer_binding {
 
-        P* p_;
+        P* _p;
         SQLITE_ORM_NOUNIQUEADDRESS
         D d_;
 
@@ -145,7 +142,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         // Construct from pointer and deleter.
         // Transfers ownership of the passed in object.
-        pointer_binding(P* p, D d = {}) noexcept : p_{p}, d_{std::move(d)} {}
+        pointer_binding(P* p, D d = {}) noexcept : _p{p}, d_{std::move(d)} {}
 
       public:
         using qualified_type = P;
@@ -157,27 +154,27 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         pointer_binding& operator=(pointer_binding&&) = delete;
 
         pointer_binding(pointer_binding&& other) noexcept :
-            p_{std::exchange(other.p_, nullptr)}, d_{std::move(other.d_)} {}
+            _p{std::exchange(other._p, nullptr)}, d_{std::move(other.d_)} {}
 
         ~pointer_binding() {
-            if (p_) {
+            if (_p) {
                 if (auto xDestroy = get_xdestroy()) {
                     // note: C-casting `P* -> void*` like statement_binder<pointer_binding<P, T, D>>
-                    xDestroy((void*)p_);
+                    xDestroy((void*)_p);
                 }
             }
         }
 
         P* ptr() const noexcept {
-            return p_;
+            return _p;
         }
 
         P* take_ptr() noexcept {
-            return std::exchange(p_, nullptr);
+            return std::exchange(_p, nullptr);
         }
 
         xdestroy_fn_t get_xdestroy() const noexcept {
-            return obtain_xdestroy_for(d_, p_);
+            return obtain_xdestroy_for(d_, _p);
         }
     };
 
@@ -318,5 +315,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     auto rebind_statically(const pointer_arg<P, T>& pv) noexcept -> static_pointer_binding<P, T> {
         return bind_pointer_statically<T>(pv.ptr());
     }
+}
+#else
+namespace sqlite_orm::internal {
+    template<class T>
+    constexpr bool is_pointer_arg_v = false;
+
+    template<class T>
+    constexpr bool is_pointer_binding_v = false;
 }
 #endif

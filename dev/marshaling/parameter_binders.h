@@ -14,7 +14,6 @@
 #endif
 
 #include "../functional/type_traits.h"
-#include "../tuple_helper/tuple_filter.h"
 #include "../vocabulary/node_algorithms.h"  //  is_bindable
 #include "../error_code.h"
 #include "../sqlite3/sqlite3_errors.h"
@@ -51,6 +50,10 @@ namespace sqlite_orm::internal {
         void operator()(const T&) const {}
     };
 
+    /*
+     *  Binds the projected elements of a tuple as the consecutive parameters of a statement;
+     *  a projected pointer binds its pointee, which must not be null.
+     */
     struct tuple_parameter_binder {
         sqlite3_stmt* stmt = nullptr;
 
@@ -94,7 +97,4 @@ namespace sqlite_orm::internal {
             this->bind(*value, nthSqlParameter);
         }
     };
-
-    template<class Tpl>
-    using bindable_filter_t = filter_tuple_t<Tpl, is_bindable>;
 }

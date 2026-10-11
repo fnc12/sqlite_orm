@@ -22,7 +22,7 @@
 #include "../functional/type_traits.h"
 #include "../type_mapping/is_std_ptr.h"
 #include "../type_mapping/arithmetic_tag.h"
-#include "pointer_value.h"
+#include "../vocabulary/algorithms/field_predicates_fwd.h"  //  is_pointer_arg, is_pointer_binding
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 

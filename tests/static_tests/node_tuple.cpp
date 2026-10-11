@@ -8,6 +8,9 @@ using internal::column_alias;
 using internal::column_pointer;
 using internal::literal_holder;
 
+template<class Tpl>
+using bindable_filter_t = internal::tuple_from_index_sequence_t<Tpl, internal::bindable_index_sequence_of<Tpl>>;
+
 template<class T>
 struct is_pair : std::false_type {};
 
@@ -21,7 +24,6 @@ template<class... Args>
 struct is_tuple<std::tuple<Args...>> : std::true_type {};
 
 TEST_CASE("Node tuple") {
-    using internal::bindable_filter_t;
     using internal::node_tuple;
     using internal::node_tuple_t;
     using std::is_same;

@@ -62,7 +62,7 @@ namespace sqlite_orm::internal {
     struct is_printable : std::bool_constant<is_printable_v<T>> {};
 }
 
-// Values of the pointer-passing interface, defined in `pointer_value.h` (not to be included by the DSL)
+// Values of the pointer-passing interface, defined in `pointer_value.h`; always false before SQLite 3.20
 namespace sqlite_orm::internal {
     /*
      *  Whether a type is a `pointer_arg`: a function parameter receiving a pointer value.

@@ -21,7 +21,6 @@
 #include "../vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_bindable_v
 #include "../type_mapping/arithmetic_tag.h"
 #include "../sqlite3/sqlite3_xdestroy.h"
-#include "pointer_value.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 

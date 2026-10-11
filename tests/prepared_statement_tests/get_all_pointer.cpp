@@ -61,7 +61,8 @@ TEST_CASE("Prepared get all pointer") {
         using Statement = decltype(statement);
         using Expression = Statement::expression_type;
         using NodeTuple = internal::node_tuple<Expression>::type;
-        using BindTuple = internal::bindable_filter_t<NodeTuple>;
+        using BindTuple =
+            internal::tuple_from_index_sequence_t<NodeTuple, internal::bindable_index_sequence_of<NodeTuple>>;
         {
             STATIC_REQUIRE(std::tuple_size<BindTuple>::value == 1);
             {
@@ -102,7 +103,8 @@ TEST_CASE("Prepared get all pointer") {
         using Statement = decltype(statement);
         using Expression = Statement::expression_type;
         using NodeTuple = internal::node_tuple<Expression>::type;
-        using BindTuple = typename internal::bindable_filter_t<NodeTuple>;
+        using BindTuple =
+            internal::tuple_from_index_sequence_t<NodeTuple, internal::bindable_index_sequence_of<NodeTuple>>;
         {
             STATIC_REQUIRE(std::tuple_size<BindTuple>::value == 1);
             {

@@ -32,7 +32,6 @@
 #include "../ast/crud/set.h"
 #include "../prepared_statement.h"
 #include "../mapped_type_proxy.h"
-#include "../marshaling/pointer_value.h"
 #include "../type_mapping/type_printer.h"
 #include "../marshaling/field_printer.h"
 #include "../literal.h"

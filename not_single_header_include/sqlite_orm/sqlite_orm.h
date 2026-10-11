@@ -24,6 +24,9 @@
 #include "../../dev/builtin/functions.h"
 #include "../../dev/builtin/dbos.h"
 
+// the pointer-passing interface
+#include "../../dev/marshaling/pointer_value.h"
+
 // the carray extension
 #include "../../dev/carray.h"
 
