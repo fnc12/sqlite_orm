@@ -9,7 +9,7 @@
 #include "functional/type_traits.h"  //  forward_lvalue_ref
 #include "vocabulary/node_traits.h"  //  traits, projections
 #include "vocabulary/node_algorithms.h"  //  is_bindable, access_dml_object
-#include "marshaling/statement_binder.h"  //  bindable_filter_t
+#include "marshaling/parameter_binders.h"  //  bindable_filter_t
 #include "prepared_statement.h"  //  prepared_statement_t
 #include "ast_iterator.h"  //  iterate_ast
 #include "node_tuple.h"  //  node_tuple_t

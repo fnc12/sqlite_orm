@@ -6,6 +6,7 @@
 #endif
 
 #include "marshaling/row_extractor.h"
+#include "marshaling/parameter_binders.h"  //  conditional_binder
 #include "mapped_iterator.h"
 #include "ast_iterator.h"
 #include "prepared_statement.h"

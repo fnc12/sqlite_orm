@@ -11,6 +11,7 @@
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "result_set_iterator.h"
+#include "marshaling/parameter_binders.h"  //  conditional_binder
 #include "ast_iterator.h"
 #include "connection_holder.h"
 #include "serialization/serializer_context.h"

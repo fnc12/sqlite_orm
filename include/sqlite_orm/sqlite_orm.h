@@ -8918,13 +8918,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_arithmetic, std::is_same, std::make_index_sequence, std::index_sequence
+#include <type_traits>  //  std::enable_if, std::is_arithmetic, std::is_same
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
 #include <string_view>  //  std::string_view
 #include <vector>  //  std::vector
 #include <cstring>  //  strncpy
-#include <functional>  //  std::invoke
 #include <optional>  //  std::optional
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert
@@ -8936,14 +8935,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/type_traits.h"
 
-// #include "../tuple_helper/tuple_filter.h"
-
 // #include "../type_mapping/is_std_ptr.h"
 
 // #include "../vocabulary/algorithms/field_predicates_fwd.h"
 // Included to define is_bindable_v
-// #include "../error_code.h"
-
 // #include "../type_mapping/arithmetic_tag.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -8971,8 +8966,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "../sqlite3/sqlite3_xdestroy.h"
-
-// #include "../sqlite3/sqlite3_errors.h"
 
 // #include "pointer_value.h"
 
@@ -9507,6 +9500,33 @@ namespace sqlite_orm {
         SQLITE_ORM_STATIC_CALLOP void result(sqlite3_context*, const V&) SQLITE_ORM_OR_CONST_CALLOP = delete;
     };
 }
+
+// #include "marshaling/parameter_binders.h"
+
+/** @file Binding the parameters of a statement in sequence, value by value through `statement_binder`:
+ *        the bindable leaves of an expression, the fields of an object, the elements of a tuple.
+ */
+
+#include <sqlite3.h>
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::make_index_sequence, std::index_sequence
+#include <tuple>  //  std::tuple_size, std::get
+#include <utility>  //  std::forward
+#include <functional>  //  std::invoke
+#include <system_error>  //  std::system_error
+#endif
+
+// #include "../functional/type_traits.h"
+
+// #include "../tuple_helper/tuple_filter.h"
+
+// #include "../vocabulary/algorithms/field_predicates_fwd.h"
+//  is_bindable
+// #include "../error_code.h"
+
+// #include "../sqlite3/sqlite3_errors.h"
+
+// #include "statement_binder.h"
 
 namespace sqlite_orm::internal {
     struct conditional_binder {
@@ -11942,6 +11962,8 @@ namespace sqlite_orm {
     };
 }
 
+// #include "marshaling/parameter_binders.h"
+//  conditional_binder
 // #include "mapped_iterator.h"
 
 #include <sqlite3.h>
@@ -14012,6 +14034,8 @@ namespace sqlite_orm::internal {
     };
 }
 
+// #include "marshaling/parameter_binders.h"
+//  conditional_binder
 // #include "ast_iterator.h"
 
 // #include "connection_holder.h"
@@ -29540,7 +29564,7 @@ namespace sqlite_orm::internal {
 //  traits, projections
 // #include "vocabulary/node_algorithms.h"
 //  is_bindable, access_dml_object
-// #include "marshaling/statement_binder.h"
+// #include "marshaling/parameter_binders.h"
 //  bindable_filter_t
 // #include "prepared_statement.h"
 //  prepared_statement_t

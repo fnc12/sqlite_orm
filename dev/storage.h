@@ -42,6 +42,7 @@
 #include "sqlite3/sqlite3_statements.h"
 #include "builtin/functions/aggregate.h"
 #include "marshaling/statement_binder.h"
+#include "marshaling/parameter_binders.h"
 #include "column_result.h"
 #include "mapped_type_proxy.h"
 #include "sync_schema_result.h"
