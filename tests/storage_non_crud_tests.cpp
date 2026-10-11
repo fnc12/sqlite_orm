@@ -877,8 +877,8 @@ TEST_CASE("small C API wrappers") {
 #endif
 #if SQLITE_VERSION_NUMBER >= 3034000
     SECTION("transaction state") {
-        transaction_state actual;
-        decltype(actual) expected;
+        transaction_state actual{};
+        decltype(actual) expected{};
         SECTION("idle") {
             actual = storage.txn_state();
             expected = transaction_state::none;
