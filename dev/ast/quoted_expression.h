@@ -85,6 +85,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Public interface for syntax sugar for columns. Example: `where(c(&User::id) == 5)` or
      *  `storage.update(set(c(&User::name) = "Dua Lipa"));
+     *
+     *  `c()` lifts an expression into sqlite_orm's DSL, which is what lets the overloaded operators and the
+     *  member notation (`=`, `in()`, `and_()`, ...) apply to it. A named factory accepts the lifted expression just
+     *  as well and builds the very node it builds from the expression itself, so a quoted operand can be defined
+     *  once, e.g. `constexpr auto id = c(&User::id);`, and passed to `id <= 5` as well as to `between(id, 1, 9)`.
      */
     template<class T>
     constexpr internal::quoted_expression_t<T> c(T value) {

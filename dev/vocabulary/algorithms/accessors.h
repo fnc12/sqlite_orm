@@ -101,8 +101,14 @@ namespace sqlite_orm::internal {
     template<class Select>
     using main_select_t = polyfill::remove_cvref_t<decltype(access_main_select(std::declval<Select>()))>;
 
-    /*  
+    /*
      *  Move a possibly quoted plain expression or the expression itself.
+     *
+     *  No node holds the quoting wrapper `quoted_expression_t`: nothing serializes, iterates or binds one.
+     *  Unwrapping is therefore part of normalizing an operand, alongside validating it (`is_operand_or_bindable`,
+     *  `are_valid_operands`), and every factory taking operands is to do both, whether it has an operator spelling
+     *  or not - the operator factories do, the rest is listed in TODO.md. The alternative, unwrapping only in the overloaded operators, which cannot do without `c()`, was
+     *  rejected: it would make a quoted operand usable in one notation but not in the other.
      */
     template<class T>
     constexpr auto unwrap_expression(T&& expression) {
