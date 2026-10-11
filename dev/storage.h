@@ -64,8 +64,7 @@
 #include "serialization/serializing_util.h"
 #include "serialization/serializer_context.h"
 #include "marshaling/object_from_column_builder.h"
-#include "marshaling/struct_extractor.h"
-#include "marshaling/row_extractor.h"
+#include "marshaling/struct_extractor.h"  // make_row_extractor
 #include "schema/constraints/generated_always.h"  // basic_generated_always
 #include "cte_storage.h"
 #include "udf_existence_checker.h"
@@ -151,8 +150,7 @@ namespace sqlite_orm::internal {
                 using ExprDBOs =
                     polyfill::remove_cvref_t<decltype(db_objects_for_expression(this->db_objects, view->select))>;
                 using ColResult = column_result_of_t<ExprDBOs, DrivingSelect>;
-                using elements_type = elements_type_t<std::remove_reference_t<decltype(*view)>>;
-                using field_types = transform_tuple_t<filter_tuple_t<elements_type, is_column>, field_type_t>;
+                using field_types = column_field_types_t<std::remove_reference_t<decltype(*view)>>;
 
                 static_assert(std::is_same<column_result_proxy_t<ColResult>, ColResult>::value,
                               "A view cannot select sub-objects");
