@@ -455,7 +455,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <system_error>  //  std::error_code, std::error_category, std::system_error, std::is_error_code_enum
 #include <string>  //  std::string
-#include <sstream>  //  std::ostringstream
+#include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::true_type
 #include <utility>  //  std::forward
 #endif
@@ -498,7 +498,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<typename... T>
     std::string get_error_message(sqlite3* db, T&&... args) {
-        std::ostringstream stream;
+        std::stringstream stream;
         using unpack = int[];
         (void)unpack{0, (stream << args, 0)...};
         stream << sqlite3_errmsg(db);
@@ -14123,15 +14123,18 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <cstdlib>  //  ::atoi
 #include <string>  //  std::string
+#include <string_view>  //  std::string_view
 #include <functional>  //  std::function
-#include <memory>  // std::shared_ptr
+#include <utility>  //  std::move
 #include <vector>  //  std::vector
-#include <sstream>
-#include <ostream>  //  std::flush
+#include <sstream>  //  std::stringstream
 #endif
 
 // #include "functional/gsl.h"
+
+// #include "table_info.h"
 
 // #include "row_extractor.h"
 
@@ -14630,7 +14633,6 @@ namespace sqlite_orm::internal {
 
 namespace sqlite_orm::internal {
     struct storage_base;
-    struct sqlite_executor;
 
     template<class T>
     int getPragmaCallback(void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring* x) {
@@ -14747,14 +14749,14 @@ namespace sqlite_orm::internal {
 
         template<class T>
         std::vector<std::string> integrity_check(T table_name) {
-            std::ostringstream ss;
-            ss << "integrity_check(" << table_name << ")" << std::flush;
+            std::stringstream ss;
+            ss << "integrity_check(" << streaming_identifier(table_name) << ")";
             return this->get_pragma<std::vector<std::string>>(ss.str());
         }
 
         std::vector<std::string> integrity_check(int n) {
-            std::ostringstream ss;
-            ss << "integrity_check(" << n << ")" << std::flush;
+            std::stringstream ss;
+            ss << "integrity_check(" << n << ")";
             return this->get_pragma<std::vector<std::string>>(ss.str());
         }
 
@@ -14769,10 +14771,10 @@ namespace sqlite_orm::internal {
             std::vector<sqlite_orm::table_xinfo> result;
             std::string sql;
             {
-                std::ostringstream ss;
+                std::stringstream ss;
                 ss << "PRAGMA "
                       "table_xinfo("
-                   << streaming_identifier(tableName) << ")" << std::flush;
+                   << streaming_identifier(tableName) << ")";
                 sql = ss.str();
             }
             this->executor.perform_exec(
@@ -14783,20 +14785,14 @@ namespace sqlite_orm::internal {
                     {
                         auto index = 0;
                         auto cid = atoi(argv[index++]);
-                        std::string name = argv[index++];
-                        std::string type = argv[index++];
+                        orm_gsl::czstring name = argv[index++];
+                        orm_gsl::czstring type = argv[index++];
                         bool notnull = !!atoi(argv[index++]);
-                        std::string dflt_value = argv[index] ? argv[index] : "";
+                        orm_gsl::czstring dflt_value = argv[index] ? argv[index] : "";
                         ++index;
                         auto pk = atoi(argv[index++]);
                         auto hidden = atoi(argv[index++]);
-                        res.emplace_back(cid,
-                                         std::move(name),
-                                         std::move(type),
-                                         notnull,
-                                         std::move(dflt_value),
-                                         pk,
-                                         hidden);
+                        res.emplace_back(cid, name, type, notnull, dflt_value, pk, hidden);
                     }
                     return 0;
                 },
@@ -14809,10 +14805,10 @@ namespace sqlite_orm::internal {
 
             std::string sql;
             {
-                std::ostringstream ss;
+                std::stringstream ss;
                 ss << "PRAGMA "
                       "table_info("
-                   << streaming_identifier(tableName) << ")" << std::flush;
+                   << streaming_identifier(tableName) << ")";
                 sql = ss.str();
             }
             std::vector<sqlite_orm::table_info> result;
@@ -14824,13 +14820,13 @@ namespace sqlite_orm::internal {
                     {
                         auto index = 0;
                         auto cid = atoi(argv[index++]);
-                        std::string name = argv[index++];
-                        std::string type = argv[index++];
+                        orm_gsl::czstring name = argv[index++];
+                        orm_gsl::czstring type = argv[index++];
                         bool notnull = !!atoi(argv[index++]);
-                        std::string dflt_value = argv[index] ? argv[index] : "";
+                        orm_gsl::czstring dflt_value = argv[index] ? argv[index] : "";
                         ++index;
                         auto pk = atoi(argv[index++]);
-                        res.emplace_back(cid, std::move(name), std::move(type), notnull, std::move(dflt_value), pk);
+                        res.emplace_back(cid, name, type, notnull, dflt_value, pk);
                     }
                     return 0;
                 },
@@ -14847,10 +14843,10 @@ namespace sqlite_orm::internal {
         const sqlite_executor& executor;
 
         template<class T>
-        T get_pragma(const std::string& name) {
+        T get_pragma(std::string name) {
             auto connection = this->get_connection();
             T result;
-            const std::string sql = "PRAGMA " + name;
+            const std::string sql = "PRAGMA " + std::move(name);
             this->executor.perform_exec(connection.get(), sql, getPragmaCallback<T>, &result);
             return result;
         }
@@ -14860,19 +14856,19 @@ namespace sqlite_orm::internal {
          *  but it turns out that bindings in pragma statements are not supported.
          */
         template<class T>
-        void set_pragma(const std::string& name, const T& value, sqlite3* db = nullptr) {
+        void set_pragma(std::string_view name, const T& value, sqlite3* db = nullptr) {
             std::stringstream ss;
             ss << "PRAGMA " << name << " = " << value;
             this->set_pragma_impl(ss.str(), db);
         }
 
-        void set_pragma(const std::string& name, sqlite_orm::journal_mode value, sqlite3* db = nullptr) {
+        void set_pragma(std::string_view name, sqlite_orm::journal_mode value, sqlite3* db = nullptr) {
             std::stringstream ss;
             ss << "PRAGMA " << name << " = " << journal_mode_to_string(value);
             this->set_pragma_impl(ss.str(), db);
         }
 
-        void set_pragma(const std::string& name, sqlite_orm::locking_mode value, sqlite3* db = nullptr) {
+        void set_pragma(std::string_view name, sqlite_orm::locking_mode value, sqlite3* db = nullptr) {
             std::stringstream ss;
             ss << "PRAGMA " << name << " = " << locking_mode_to_string(value);
             this->set_pragma_impl(ss.str(), db);
@@ -26301,6 +26297,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
+    template<class T, class... Cols>
+    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
+    make_unique_index(std::string name, Cols... cols) {
+        using namespace ::sqlite_orm::internal;
+        validate_index_arguments<T, Cols...>();
+        return {std::move(name), true, std::tuple{make_indexed_column(std::move(cols))...}};
+    }
+
     template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_unique_index(std::string name, Cols... cols) {
@@ -28124,7 +28128,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
-#include <type_traits>  //  std::disjunction
+#include <type_traits>  //  std::is_same
 #include <utility>  //  std::move
 #endif
 
@@ -28148,23 +28152,35 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_implicit_join_constraint_v = std::is_same<T, implicit_join_constraint>::value;
 
+    /**
+     *  A join of the table `T`, with the join operator `Keyword` and its constraint `Constraint`: ON or USING
+     *  spelled out, or the implicit constraint of a join that spells none out.
+     *
+     *  Every join is this one node; the join operators are its aliases, telling them apart by their keyword.
+     */
+    template<class Keyword, class T, class Constraint>
+    struct join_clause : Keyword {
+        using type = T;
+        using on_type = Constraint;
+
+        SQLITE_ORM_NOUNIQUEADDRESS on_type constraint;
+
+        join_clause() = default;
+
+        join_clause(on_type constraint_) : constraint(std::move(constraint_)) {}
+    };
+
+    template<class T>
+    constexpr bool is_any_join_v = polyfill::is_specialization_of<T, join_clause>::value;
+
     struct cross_join_string {
         operator std::string() const {
             return "CROSS JOIN";
         }
     };
 
-    /**
-     *  CROSS JOIN holder.
-     *  T is joined type which represents any mapped table.
-     */
     template<class T>
-    struct cross_join_t : cross_join_string {
-        using type = T;
-        using on_type = implicit_join_constraint;
-
-        SQLITE_ORM_NOUNIQUEADDRESS on_type constraint;
-    };
+    using cross_join_t = join_clause<cross_join_string, T, implicit_join_constraint>;
 
     struct natural_join_string {
         operator std::string() const {
@@ -28172,38 +28188,8 @@ namespace sqlite_orm::internal {
         }
     };
 
-    /**
-     *  NATURAL JOIN holder.
-     *  T is joined type which represents any mapped table.
-     */
     template<class T>
-    struct natural_join_t : natural_join_string {
-        using type = T;
-        using on_type = implicit_join_constraint;
-
-        SQLITE_ORM_NOUNIQUEADDRESS on_type constraint;
-    };
-
-    struct left_join_string {
-        operator std::string() const {
-            return "LEFT JOIN";
-        }
-    };
-
-    /**
-     *  LEFT JOIN holder.
-     *  T is joined type which represents any mapped table.
-     *  O is on(...) argument type.
-     */
-    template<class T, class O>
-    struct left_join_t : left_join_string {
-        using type = T;
-        using on_type = O;
-
-        on_type constraint;
-
-        left_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
-    };
+    using natural_join_t = join_clause<natural_join_string, T, implicit_join_constraint>;
 
     struct join_string {
         operator std::string() const {
@@ -28211,41 +28197,8 @@ namespace sqlite_orm::internal {
         }
     };
 
-    /**
-     *  Simple JOIN holder.
-     *  T is joined type which represents any mapped table.
-     *  O is on(...) argument type.
-     */
     template<class T, class O>
-    struct join_t : join_string {
-        using type = T;
-        using on_type = O;
-
-        on_type constraint;
-
-        join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
-    };
-
-    struct left_outer_join_string {
-        operator std::string() const {
-            return "LEFT OUTER JOIN";
-        }
-    };
-
-    /**
-     *  LEFT OUTER JOIN holder.
-     *  T is joined type which represents any mapped table.
-     *  O is on(...) argument type.
-     */
-    template<class T, class O>
-    struct left_outer_join_t : left_outer_join_string {
-        using type = T;
-        using on_type = O;
-
-        on_type constraint;
-
-        left_outer_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
-    };
+    using join_t = join_clause<join_string, T, O>;
 
     struct inner_join_string {
         operator std::string() const {
@@ -28253,28 +28206,127 @@ namespace sqlite_orm::internal {
         }
     };
 
-    /**
-     *  INNER JOIN holder.
-     *  T is joined type which represents any mapped table.
-     *  O is on(...) argument type.
-     */
     template<class T, class O>
-    struct inner_join_t : inner_join_string {
-        using type = T;
-        using on_type = O;
+    using inner_join_t = join_clause<inner_join_string, T, O>;
 
-        on_type constraint;
+    struct left_join_string {
+        operator std::string() const {
+            return "LEFT JOIN";
+        }
+    };
 
-        inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
+    template<class T, class O>
+    using left_join_t = join_clause<left_join_string, T, O>;
+
+    struct left_outer_join_string {
+        operator std::string() const {
+            return "LEFT OUTER JOIN";
+        }
+    };
+
+    template<class T, class O>
+    using left_outer_join_t = join_clause<left_outer_join_string, T, O>;
+
+    struct natural_inner_join_string {
+        operator std::string() const {
+            return "NATURAL INNER JOIN";
+        }
     };
 
     template<class T>
-    constexpr bool is_any_join_v = std::disjunction<polyfill::is_specialization_of<T, cross_join_t>,
-                                                    polyfill::is_specialization_of<T, natural_join_t>,
-                                                    polyfill::is_specialization_of<T, left_join_t>,
-                                                    polyfill::is_specialization_of<T, join_t>,
-                                                    polyfill::is_specialization_of<T, left_outer_join_t>,
-                                                    polyfill::is_specialization_of<T, inner_join_t>>::value;
+    using natural_inner_join_t = join_clause<natural_inner_join_string, T, implicit_join_constraint>;
+
+    struct natural_left_join_string {
+        operator std::string() const {
+            return "NATURAL LEFT JOIN";
+        }
+    };
+
+    template<class T>
+    using natural_left_join_t = join_clause<natural_left_join_string, T, implicit_join_constraint>;
+
+    struct natural_left_outer_join_string {
+        operator std::string() const {
+            return "NATURAL LEFT OUTER JOIN";
+        }
+    };
+
+    template<class T>
+    using natural_left_outer_join_t = join_clause<natural_left_outer_join_string, T, implicit_join_constraint>;
+
+#if SQLITE_VERSION_NUMBER >= 3039000
+    struct right_join_string {
+        operator std::string() const {
+            return "RIGHT JOIN";
+        }
+    };
+
+    template<class T, class O>
+    using right_join_t = join_clause<right_join_string, T, O>;
+
+    struct right_outer_join_string {
+        operator std::string() const {
+            return "RIGHT OUTER JOIN";
+        }
+    };
+
+    template<class T, class O>
+    using right_outer_join_t = join_clause<right_outer_join_string, T, O>;
+
+    struct full_join_string {
+        operator std::string() const {
+            return "FULL JOIN";
+        }
+    };
+
+    template<class T, class O>
+    using full_join_t = join_clause<full_join_string, T, O>;
+
+    struct full_outer_join_string {
+        operator std::string() const {
+            return "FULL OUTER JOIN";
+        }
+    };
+
+    template<class T, class O>
+    using full_outer_join_t = join_clause<full_outer_join_string, T, O>;
+
+    struct natural_right_join_string {
+        operator std::string() const {
+            return "NATURAL RIGHT JOIN";
+        }
+    };
+
+    template<class T>
+    using natural_right_join_t = join_clause<natural_right_join_string, T, implicit_join_constraint>;
+
+    struct natural_right_outer_join_string {
+        operator std::string() const {
+            return "NATURAL RIGHT OUTER JOIN";
+        }
+    };
+
+    template<class T>
+    using natural_right_outer_join_t = join_clause<natural_right_outer_join_string, T, implicit_join_constraint>;
+
+    struct natural_full_join_string {
+        operator std::string() const {
+            return "NATURAL FULL JOIN";
+        }
+    };
+
+    template<class T>
+    using natural_full_join_t = join_clause<natural_full_join_string, T, implicit_join_constraint>;
+
+    struct natural_full_outer_join_string {
+        operator std::string() const {
+            return "NATURAL FULL OUTER JOIN";
+        }
+    };
+
+    template<class T>
+    using natural_full_outer_join_t = join_clause<natural_full_outer_join_string, T, implicit_join_constraint>;
+#endif
 
     struct on_string {
         operator std::string() const {
@@ -28364,10 +28416,20 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(o)};
     }
 
+    template<class T>
+    internal::left_join_t<T, internal::implicit_join_constraint> left_join() {
+        return {};
+    }
+
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_refers_to_recordset auto alias, class On>
     auto left_join(On on) {
         return left_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
+    }
+
+    template<orm_refers_to_recordset auto alias>
+    auto left_join() {
+        return left_join<internal::auto_decay_table_ref_t<alias>>();
     }
 #endif
 
@@ -28376,10 +28438,20 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(o)};
     }
 
+    template<class T>
+    internal::join_t<T, internal::implicit_join_constraint> join() {
+        return {};
+    }
+
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_refers_to_recordset auto alias, class On>
     auto join(On on) {
         return join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
+    }
+
+    template<orm_refers_to_recordset auto alias>
+    auto join() {
+        return join<internal::auto_decay_table_ref_t<alias>>();
     }
 #endif
 
@@ -28388,10 +28460,20 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(o)};
     }
 
+    template<class T>
+    internal::left_outer_join_t<T, internal::implicit_join_constraint> left_outer_join() {
+        return {};
+    }
+
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_refers_to_recordset auto alias, class On>
     auto left_outer_join(On on) {
         return left_outer_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
+    }
+
+    template<orm_refers_to_recordset auto alias>
+    auto left_outer_join() {
+        return left_outer_join<internal::auto_decay_table_ref_t<alias>>();
     }
 #endif
 
@@ -28400,11 +28482,232 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(o)};
     }
 
+    template<class T>
+    internal::inner_join_t<T, internal::implicit_join_constraint> inner_join() {
+        return {};
+    }
+
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_refers_to_recordset auto alias, class On>
     auto inner_join(On on) {
         return inner_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
     }
+
+    template<orm_refers_to_recordset auto alias>
+    auto inner_join() {
+        return inner_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  NATURAL INNER JOIN function. Usage: `natural_inner_join<User>()`.
+     */
+    template<class T>
+    internal::natural_inner_join_t<T> natural_inner_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto natural_inner_join() {
+        return natural_inner_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  NATURAL LEFT JOIN function. Usage: `natural_left_join<User>()`.
+     */
+    template<class T>
+    internal::natural_left_join_t<T> natural_left_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto natural_left_join() {
+        return natural_left_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  NATURAL LEFT OUTER JOIN function. Usage: `natural_left_outer_join<User>()`.
+     */
+    template<class T>
+    internal::natural_left_outer_join_t<T> natural_left_outer_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto natural_left_outer_join() {
+        return natural_left_outer_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3039000
+    /**
+     *  RIGHT JOIN function, constrained by ON or USING, or implicitly.
+     *  Usage: `right_join<User>(on(...))`, `right_join<User>(using_(...))`, `right_join<User>()`.
+     */
+    template<class T, class O>
+    internal::right_join_t<T, O> right_join(O o) {
+        return {std::move(o)};
+    }
+
+    template<class T>
+    internal::right_join_t<T, internal::implicit_join_constraint> right_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias, class On>
+    auto right_join(On on) {
+        return right_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
+    }
+
+    template<orm_refers_to_recordset auto alias>
+    auto right_join() {
+        return right_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  RIGHT OUTER JOIN function, constrained by ON or USING, or implicitly.
+     *  Usage: `right_outer_join<User>(on(...))`, `right_outer_join<User>(using_(...))`, `right_outer_join<User>()`.
+     */
+    template<class T, class O>
+    internal::right_outer_join_t<T, O> right_outer_join(O o) {
+        return {std::move(o)};
+    }
+
+    template<class T>
+    internal::right_outer_join_t<T, internal::implicit_join_constraint> right_outer_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias, class On>
+    auto right_outer_join(On on) {
+        return right_outer_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
+    }
+
+    template<orm_refers_to_recordset auto alias>
+    auto right_outer_join() {
+        return right_outer_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  FULL JOIN function, constrained by ON or USING, or implicitly.
+     *  Usage: `full_join<User>(on(...))`, `full_join<User>(using_(...))`, `full_join<User>()`.
+     */
+    template<class T, class O>
+    internal::full_join_t<T, O> full_join(O o) {
+        return {std::move(o)};
+    }
+
+    template<class T>
+    internal::full_join_t<T, internal::implicit_join_constraint> full_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias, class On>
+    auto full_join(On on) {
+        return full_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
+    }
+
+    template<orm_refers_to_recordset auto alias>
+    auto full_join() {
+        return full_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  FULL OUTER JOIN function, constrained by ON or USING, or implicitly.
+     *  Usage: `full_outer_join<User>(on(...))`, `full_outer_join<User>(using_(...))`, `full_outer_join<User>()`.
+     */
+    template<class T, class O>
+    internal::full_outer_join_t<T, O> full_outer_join(O o) {
+        return {std::move(o)};
+    }
+
+    template<class T>
+    internal::full_outer_join_t<T, internal::implicit_join_constraint> full_outer_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias, class On>
+    auto full_outer_join(On on) {
+        return full_outer_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
+    }
+
+    template<orm_refers_to_recordset auto alias>
+    auto full_outer_join() {
+        return full_outer_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  NATURAL RIGHT JOIN function. Usage: `natural_right_join<User>()`.
+     */
+    template<class T>
+    internal::natural_right_join_t<T> natural_right_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto natural_right_join() {
+        return natural_right_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  NATURAL RIGHT OUTER JOIN function. Usage: `natural_right_outer_join<User>()`.
+     */
+    template<class T>
+    internal::natural_right_outer_join_t<T> natural_right_outer_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto natural_right_outer_join() {
+        return natural_right_outer_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  NATURAL FULL JOIN function. Usage: `natural_full_join<User>()`.
+     */
+    template<class T>
+    internal::natural_full_join_t<T> natural_full_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto natural_full_join() {
+        return natural_full_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
+    /**
+     *  NATURAL FULL OUTER JOIN function. Usage: `natural_full_outer_join<User>()`.
+     */
+    template<class T>
+    internal::natural_full_outer_join_t<T> natural_full_outer_join() {
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto natural_full_outer_join() {
+        return natural_full_outer_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
 #endif
 }
 

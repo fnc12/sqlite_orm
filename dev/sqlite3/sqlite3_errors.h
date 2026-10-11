@@ -8,7 +8,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <system_error>  //  std::error_code, std::error_category, std::system_error, std::is_error_code_enum
 #include <string>  //  std::string
-#include <sstream>  //  std::ostringstream
+#include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::true_type
 #include <utility>  //  std::forward
 #endif
@@ -51,7 +51,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<typename... T>
     std::string get_error_message(sqlite3* db, T&&... args) {
-        std::ostringstream stream;
+        std::stringstream stream;
         using unpack = int[];
         (void)unpack{0, (stream << args, 0)...};
         stream << sqlite3_errmsg(db);
