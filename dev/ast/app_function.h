@@ -246,7 +246,7 @@ namespace sqlite_orm::internal {
 
     template<size_t I, class PointerArgDataType, class BindingDataType>
     SQLITE_ORM_CONSTEVAL bool assert_same_pointer_data_type() {
-        // Always allow binding a null pointer binding to a pointer argument
+        // a null pointer binding is always allowed
         constexpr bool valid = std::is_same<BindingDataType, std::nullptr_t>::value ||
                                std::is_convertible<BindingDataType*, PointerArgDataType*>::value;
         static_assert(valid, "Pointer data types of I-th argument do not match");

@@ -4136,13 +4136,12 @@ namespace sqlite_orm::internal {
 
 // #include "algorithms/field_predicates_fwd.h"
 
-/** @file Declarations of closed predicates on raw C++ types - of fields, values and function parameters -
- *        checking whether they qualify for an SQL-level role.
+/** @file Declarations of closed predicates on raw C++ types, checking whether they qualify for an SQL-level role.
  */
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
-// Capabilities derived from the type itself
+// Derived from the type itself, defined in `field_predicates.h`
 namespace sqlite_orm::internal {
     template<class F, class SFINAE = void>
     extern const bool is_rowid_alias_capable_v;
@@ -4161,14 +4160,10 @@ namespace sqlite_orm::internal {
     using is_text_value = std::bool_constant<is_text_value_v<T>>;
 }
 
-// Readings of the type mapping's customization points
+// Tied to a customization point of the type mapping, defined with it
 namespace sqlite_orm::internal {
     /*
-     *  Whether a C++ type maps to SQLite's INTEGER type.
-     *
-     *  In contrast to `is_rowid_alias_capable`, which is a capability derived from the field type itself,
-     *  this is tied to the `type_printer` customization point - a type qualifies if its type printer derives
-     *  from `integer_printer` - hence its definition stays with `type_printer` in `type_printer.h`.
+     *  Whether a C++ type maps to SQLite's INTEGER type: its `type_printer` derives from `integer_printer`.
      */
     template<class T>
     extern const bool is_integer_mapped_v;
@@ -4177,13 +4172,11 @@ namespace sqlite_orm::internal {
     using is_integer_mapped = std::bool_constant<is_integer_mapped_v<T>>;
 }
 
-// Readings of the marshaling's customization points
+// Tied to a customization point of the marshaling, defined with it
 namespace sqlite_orm::internal {
     /*
-     *  Whether a field type can be bound as a parameter of a prepared statement.
-     *
-     *  Like `is_integer_mapped`, this is tied to a customization point, namely whether `statement_binder`
-     *  is instantiable for it - hence its definition stays with `statement_binder` in `statement_binder.h`.
+     *  Whether a field type can be bound as a parameter of a prepared statement: `statement_binder` is
+     *  instantiable for it.
      */
     template<class T, class SFINAE = void>
     extern const bool is_bindable_v;
@@ -4194,10 +4187,7 @@ namespace sqlite_orm::internal {
     struct is_bindable : std::bool_constant<is_bindable_v<T>> {};
 
     /*
-     *  Whether a field type can be printed as a human-readable string.
-     *
-     *  Like `is_bindable`, this is tied to whether the `field_printer` customization point is
-     *  instantiable for it - hence its definition stays with `field_printer` in `field_printer.h`.
+     *  Whether a field type can be printed as a human-readable string: `field_printer` is instantiable for it.
      */
     template<class T, class SFINAE = void>
     extern const bool is_printable_v;
@@ -4208,14 +4198,10 @@ namespace sqlite_orm::internal {
     struct is_printable : std::bool_constant<is_printable_v<T>> {};
 }
 
-// Values of the pointer-passing interface
+// Values of the pointer-passing interface, defined in `pointer_value.h` (not to be included by the DSL)
 namespace sqlite_orm::internal {
     /*
-     *  Whether a type is a `pointer_arg`, the parameter of an application-defined function receiving a value
-     *  through SQLite's pointer-passing interface.
-     *
-     *  Defined with `pointer_arg` in `pointer_value.h`, which consumers in the DSL do not include,
-     *  as it depends on the SQLite C API.
+     *  Whether a type is a `pointer_arg`: a function parameter receiving a pointer value.
      */
     template<class T>
     extern const bool is_pointer_arg_v;
@@ -4224,10 +4210,7 @@ namespace sqlite_orm::internal {
     using is_pointer_arg = std::bool_constant<is_pointer_arg_v<T>>;
 
     /*
-     *  Whether a type is a `pointer_binding`, a value bound through SQLite's pointer-passing interface -
-     *  as a statement parameter, a function call argument or a function result.
-     *
-     *  Defined with `pointer_binding` in `pointer_value.h`, like `is_pointer_arg`.
+     *  Whether a type is a `pointer_binding`: a pointer value bound as a parameter or set as a function result.
      */
     template<class T>
     extern const bool is_pointer_binding_v;
@@ -9039,8 +9022,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../vocabulary/algorithms/field_predicates_fwd.h"
 // Included to define is_pointer_arg_v, is_pointer_binding_v
 
-// note (internal): declared and classified even if `SQLITE_VERSION_NUMBER < 3020000`,
-// in order to simplify checking function calls in the DSL
+// note (internal): declared and classified regardless of `SQLITE_VERSION_NUMBER`, for checking function calls in the DSL
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<typename P, typename T>
     struct pointer_arg;
@@ -9574,8 +9556,8 @@ namespace sqlite_orm {
 
 // #include "marshaling/parameter_binders.h"
 
-/** @file Binding the parameters of a statement in sequence, value by value through `statement_binder`:
- *        the bindable leaves of an expression, the fields of an object, the elements of a tuple.
+/** @file Binding a statement's parameters in sequence through `statement_binder`: an expression's bindable leaves,
+ *        an object's fields, a tuple's elements.
  */
 
 #include <sqlite3.h>
@@ -10373,7 +10355,7 @@ namespace sqlite_orm::internal {
 
     template<size_t I, class PointerArgDataType, class BindingDataType>
     SQLITE_ORM_CONSTEVAL bool assert_same_pointer_data_type() {
-        // Always allow binding a null pointer binding to a pointer argument
+        // a null pointer binding is always allowed
         constexpr bool valid = std::is_same<BindingDataType, std::nullptr_t>::value ||
                                std::is_convertible<BindingDataType*, PointerArgDataType*>::value;
         static_assert(valid, "Pointer data types of I-th argument do not match");
@@ -13680,8 +13662,8 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_v
 
 // #include "../marshaling/struct_extractor.h"
 
-/** @file Extraction of composite column results from a result row - tuples, ad-hoc structures and mapped
- *        objects - by extracting their elements one by one.
+/** @file Extraction of composite column results from a result row, element by element: tuples, ad-hoc structures
+ *        and mapped objects.
  */
 
 #include <sqlite3.h>

@@ -17,8 +17,7 @@
 #include "../sqlite3/sqlite3_xdestroy.h"
 #include "../vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_pointer_arg_v, is_pointer_binding_v
 
-// note (internal): declared and classified even if `SQLITE_VERSION_NUMBER < 3020000`,
-// in order to simplify checking function calls in the DSL
+// note (internal): declared and classified regardless of `SQLITE_VERSION_NUMBER`, for checking function calls in the DSL
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<typename P, typename T>
     struct pointer_arg;

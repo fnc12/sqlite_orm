@@ -1,12 +1,11 @@
 #pragma once
 
-/** @file Declarations of closed predicates on raw C++ types - of fields, values and function parameters -
- *        checking whether they qualify for an SQL-level role.
+/** @file Declarations of closed predicates on raw C++ types, checking whether they qualify for an SQL-level role.
  */
 
 #include "../../functional/cxx_type_traits_polyfill.h"
 
-// Capabilities derived from the type itself
+// Derived from the type itself, defined in `field_predicates.h`
 namespace sqlite_orm::internal {
     template<class F, class SFINAE = void>
     extern const bool is_rowid_alias_capable_v;
@@ -25,14 +24,10 @@ namespace sqlite_orm::internal {
     using is_text_value = std::bool_constant<is_text_value_v<T>>;
 }
 
-// Readings of the type mapping's customization points
+// Tied to a customization point of the type mapping, defined with it
 namespace sqlite_orm::internal {
     /*
-     *  Whether a C++ type maps to SQLite's INTEGER type.
-     *
-     *  In contrast to `is_rowid_alias_capable`, which is a capability derived from the field type itself,
-     *  this is tied to the `type_printer` customization point - a type qualifies if its type printer derives
-     *  from `integer_printer` - hence its definition stays with `type_printer` in `type_printer.h`.
+     *  Whether a C++ type maps to SQLite's INTEGER type: its `type_printer` derives from `integer_printer`.
      */
     template<class T>
     extern const bool is_integer_mapped_v;
@@ -41,13 +36,11 @@ namespace sqlite_orm::internal {
     using is_integer_mapped = std::bool_constant<is_integer_mapped_v<T>>;
 }
 
-// Readings of the marshaling's customization points
+// Tied to a customization point of the marshaling, defined with it
 namespace sqlite_orm::internal {
     /*
-     *  Whether a field type can be bound as a parameter of a prepared statement.
-     *
-     *  Like `is_integer_mapped`, this is tied to a customization point, namely whether `statement_binder`
-     *  is instantiable for it - hence its definition stays with `statement_binder` in `statement_binder.h`.
+     *  Whether a field type can be bound as a parameter of a prepared statement: `statement_binder` is
+     *  instantiable for it.
      */
     template<class T, class SFINAE = void>
     extern const bool is_bindable_v;
@@ -58,10 +51,7 @@ namespace sqlite_orm::internal {
     struct is_bindable : std::bool_constant<is_bindable_v<T>> {};
 
     /*
-     *  Whether a field type can be printed as a human-readable string.
-     *
-     *  Like `is_bindable`, this is tied to whether the `field_printer` customization point is
-     *  instantiable for it - hence its definition stays with `field_printer` in `field_printer.h`.
+     *  Whether a field type can be printed as a human-readable string: `field_printer` is instantiable for it.
      */
     template<class T, class SFINAE = void>
     extern const bool is_printable_v;
@@ -72,14 +62,10 @@ namespace sqlite_orm::internal {
     struct is_printable : std::bool_constant<is_printable_v<T>> {};
 }
 
-// Values of the pointer-passing interface
+// Values of the pointer-passing interface, defined in `pointer_value.h` (not to be included by the DSL)
 namespace sqlite_orm::internal {
     /*
-     *  Whether a type is a `pointer_arg`, the parameter of an application-defined function receiving a value
-     *  through SQLite's pointer-passing interface.
-     *
-     *  Defined with `pointer_arg` in `pointer_value.h`, which consumers in the DSL do not include,
-     *  as it depends on the SQLite C API.
+     *  Whether a type is a `pointer_arg`: a function parameter receiving a pointer value.
      */
     template<class T>
     extern const bool is_pointer_arg_v;
@@ -88,10 +74,7 @@ namespace sqlite_orm::internal {
     using is_pointer_arg = std::bool_constant<is_pointer_arg_v<T>>;
 
     /*
-     *  Whether a type is a `pointer_binding`, a value bound through SQLite's pointer-passing interface -
-     *  as a statement parameter, a function call argument or a function result.
-     *
-     *  Defined with `pointer_binding` in `pointer_value.h`, like `is_pointer_arg`.
+     *  Whether a type is a `pointer_binding`: a pointer value bound as a parameter or set as a function result.
      */
     template<class T>
     extern const bool is_pointer_binding_v;

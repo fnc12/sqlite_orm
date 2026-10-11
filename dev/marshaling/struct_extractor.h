@@ -1,7 +1,7 @@
 #pragma once
 
-/** @file Extraction of composite column results from a result row - tuples, ad-hoc structures and mapped
- *        objects - by extracting their elements one by one.
+/** @file Extraction of composite column results from a result row, element by element: tuples, ad-hoc structures
+ *        and mapped objects.
  */
 
 #include <sqlite3.h>

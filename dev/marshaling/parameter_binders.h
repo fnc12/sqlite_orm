@@ -1,7 +1,7 @@
 #pragma once
 
-/** @file Binding the parameters of a statement in sequence, value by value through `statement_binder`:
- *        the bindable leaves of an expression, the fields of an object, the elements of a tuple.
+/** @file Binding a statement's parameters in sequence through `statement_binder`: an expression's bindable leaves,
+ *        an object's fields, a tuple's elements.
  */
 
 #include <sqlite3.h>
