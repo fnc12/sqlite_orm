@@ -63,6 +63,7 @@
 #include "serialization/serializing_util.h"
 #include "serialization/serializer_context.h"
 #include "marshaling/object_from_column_builder.h"
+#include "marshaling/struct_extractor.h"
 #include "marshaling/row_extractor.h"
 #include "schema/constraints/generated_always.h"  // basic_generated_always
 #include "cte_storage.h"
