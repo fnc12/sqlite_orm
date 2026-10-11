@@ -9612,10 +9612,10 @@ namespace sqlite_orm::internal {
         void operator()(const T&) const {}
     };
 
-    struct tuple_value_binder {
+    struct tuple_parameter_binder {
         sqlite3_stmt* stmt = nullptr;
 
-        explicit tuple_value_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
+        explicit tuple_parameter_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
 #ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
         template<class Tpl, class Projection>
@@ -25272,7 +25272,7 @@ namespace sqlite_orm::internal {
 
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
-            tuple_value_binder{stmt}(
+            tuple_parameter_binder{stmt}(
                 statement.expression.columns.columns,
                 [&table = this->get_table<object_type>(), &object = access_dml_object(statement)](auto& memberPointer) {
                     return table.object_field_value(object, memberPointer);

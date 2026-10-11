@@ -51,10 +51,10 @@ namespace sqlite_orm::internal {
         void operator()(const T&) const {}
     };
 
-    struct tuple_value_binder {
+    struct tuple_parameter_binder {
         sqlite3_stmt* stmt = nullptr;
 
-        explicit tuple_value_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
+        explicit tuple_parameter_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
 #ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
         template<class Tpl, class Projection>
