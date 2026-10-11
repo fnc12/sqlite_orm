@@ -37,10 +37,8 @@ namespace sqlite_orm::internal {
     template<class T>
     extern const bool is_integer_mapped_v;
 
-    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
-    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
     template<class T>
-    struct is_integer_mapped : std::bool_constant<is_integer_mapped_v<T>> {};
+    using is_integer_mapped = std::bool_constant<is_integer_mapped_v<T>>;
 }
 
 // Readings of the marshaling's customization points
@@ -86,10 +84,8 @@ namespace sqlite_orm::internal {
     template<class T>
     extern const bool is_pointer_arg_v;
 
-    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
-    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
     template<class T>
-    struct is_pointer_arg : std::bool_constant<is_pointer_arg_v<T>> {};
+    using is_pointer_arg = std::bool_constant<is_pointer_arg_v<T>>;
 
     /*
      *  Whether a type is a `pointer_binding`, a value bound through SQLite's pointer-passing interface -
@@ -100,8 +96,6 @@ namespace sqlite_orm::internal {
     template<class T>
     extern const bool is_pointer_binding_v;
 
-    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
-    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
     template<class T>
-    struct is_pointer_binding : std::bool_constant<is_pointer_binding_v<T>> {};
+    using is_pointer_binding = std::bool_constant<is_pointer_binding_v<T>>;
 }
