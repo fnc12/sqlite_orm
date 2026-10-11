@@ -40,5 +40,49 @@ TEST_CASE("statement_serializer match") {
         auto value = serialize(node, context);
         REQUIRE(value == R"("name" MATCH 'Claude')");
     }
+    SECTION("logical or") {
+        std::string value;
+        SECTION("operator") {
+            value = serialize(match(&User::name, "Claude") || match(&User::name, "Dua"), context);
+        }
+        SECTION("quoted operator") {
+            value = serialize(c(match(&User::name, "Claude")) || c(match(&User::name, "Dua")), context);
+        }
+        SECTION("function") {
+            value = serialize(or_(match(&User::name, "Claude"), match(&User::name, "Dua")), context);
+        }
+        REQUIRE(value == R"("name" MATCH 'Claude' OR "name" MATCH 'Dua')");
+    }
+    SECTION("logical or with table") {
+        std::string value;
+        SECTION("operator") {
+            value = serialize(match<User>("Claude") || match<User>("Dua"), context);
+        }
+        SECTION("function") {
+            value = serialize(or_(match<User>("Claude"), match<User>("Dua")), context);
+        }
+        REQUIRE(value == R"("users" MATCH 'Claude' OR "users" MATCH 'Dua')");
+    }
+    SECTION("logical and") {
+        std::string value;
+        SECTION("operator") {
+            value = serialize(match(&User::name, "Claude") && match(&User::name, "Dua"), context);
+        }
+        SECTION("function") {
+            value = serialize(and_(match(&User::name, "Claude"), match(&User::name, "Dua")), context);
+        }
+        REQUIRE(value == R"("name" MATCH 'Claude' AND "name" MATCH 'Dua')");
+    }
+    SECTION("negation") {
+        std::string value;
+        SECTION("field") {
+            value = serialize(!match(&User::name, "Claude"), context);
+            REQUIRE(value == R"(NOT "name" MATCH 'Claude')");
+        }
+        SECTION("table") {
+            value = serialize(!match<User>("Claude"), context);
+            REQUIRE(value == R"(NOT "users" MATCH 'Claude')");
+        }
+    }
 }
 #endif

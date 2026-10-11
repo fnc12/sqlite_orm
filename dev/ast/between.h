@@ -37,10 +37,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Example: storage.select(between(&User::id, 10, 20))
      */
     template<class A, class T>
-    internal::between_t<A, T> between(A expression, T lower, T upper) {
+    internal::between_t<internal::unwrap_expression_t<A>, internal::unwrap_expression_t<T>>
+    between(A expression, T lower, T upper) {
         static_assert(internal::is_operand_or_bindable<A>::value,
                       "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
                       "pointers, column pointers, c()-wrapped values, aliases or expressions");
-        return {std::move(expression), std::move(lower), std::move(upper)};
+        return {internal::unwrap_expression(std::move(expression)),
+                internal::unwrap_expression(std::move(lower)),
+                internal::unwrap_expression(std::move(upper))};
     }
 }

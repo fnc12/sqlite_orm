@@ -3,11 +3,12 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <type_traits>  //  std::enable_if, std::disjunction
-#include <utility>  //  std::move
+#include <utility>  //  std::move, std::forward
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../tags.h"
+#include "../vocabulary/node_algorithms.h"  //  unwrap_expression
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  //  is_negatable_operand, is_operator_argument
 
@@ -41,8 +42,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         template<
             class T,
             std::enable_if_t<std::disjunction<is_negatable_operand<T>, is_operator_argument<T>>::value, bool> = true>
-        constexpr negated_condition_t<T> operator!(T arg) {
-            return {std::move(arg)};
+        constexpr negated_condition_t<unwrap_expression_t<T>> operator!(T arg) {
+            return {unwrap_expression(std::forward<T>(arg))};
         }
     }
 }
