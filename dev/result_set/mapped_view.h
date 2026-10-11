@@ -6,7 +6,7 @@
 #endif
 
 #include "../marshaling/row_extractor.h"
-#include "../marshaling/parameter_binders.h"  //  conditional_binder
+#include "../marshaling/parameter_binders.h"  //  expression_parameter_binder
 #include "mapped_iterator.h"
 #include "../ast_iterator.h"
 #include "../prepared_statement.h"
@@ -48,7 +48,7 @@ namespace sqlite_orm::internal {
 
             const std::string sql = serialize(this->expression, context);
             statement_finalizer stmt{prepare_stmt(this->connection.get(), sql)};
-            iterate_ast(this->expression.conditions, conditional_binder{stmt.get()});
+            iterate_ast(this->expression.conditions, expression_parameter_binder{stmt.get()});
             return {dbObjects, std::move(stmt)};
         }
 

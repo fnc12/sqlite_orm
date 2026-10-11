@@ -9582,11 +9582,14 @@ namespace sqlite_orm {
 // #include "statement_binder.h"
 
 namespace sqlite_orm::internal {
-    struct conditional_binder {
+    /*
+     *  Binds values as the consecutive parameters of a statement; each value must be bindable.
+     */
+    struct parameter_binder {
         sqlite3_stmt* stmt = nullptr;
         int nthSqlParameter = 0;
 
-        explicit conditional_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
+        explicit parameter_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
         template<class T, satisfies<is_bindable, T> = true>
         void operator()(const T& t) {
@@ -9595,25 +9598,18 @@ namespace sqlite_orm::internal {
                 throw_translated_sqlite_error(rc);
             }
         }
+    };
+
+    /*
+     *  AST iteration callable binding the bindable nodes of an expression as the consecutive parameters
+     *  of a statement, skipping all other nodes.
+     */
+    struct expression_parameter_binder : parameter_binder {
+        using parameter_binder::parameter_binder;
+        using parameter_binder::operator();
 
         template<class T, satisfies_not<is_bindable, T> = true>
         void operator()(const T&) const {}
-    };
-
-    struct field_value_binder : conditional_binder {
-        using conditional_binder::conditional_binder;
-        using conditional_binder::operator();
-
-        template<class T, satisfies_not<is_bindable, T> = true>
-        void operator()(const T&) const = delete;
-
-        template<class T>
-        void operator()(const T* value) {
-            if (!value) {
-                throw std::system_error{orm_error_code::value_is_null};
-            }
-            (*this)(*value);
-        }
     };
 
     struct tuple_value_binder {
@@ -11821,7 +11817,7 @@ namespace sqlite_orm {
 }
 
 // #include "../marshaling/parameter_binders.h"
-//  conditional_binder
+//  expression_parameter_binder
 // #include "mapped_iterator.h"
 
 #include <sqlite3.h>
@@ -13619,7 +13615,7 @@ namespace sqlite_orm::internal {
 
             const std::string sql = serialize(this->expression, context);
             statement_finalizer stmt{prepare_stmt(this->connection.get(), sql)};
-            iterate_ast(this->expression.conditions, conditional_binder{stmt.get()});
+            iterate_ast(this->expression.conditions, expression_parameter_binder{stmt.get()});
             return {dbObjects, std::move(stmt)};
         }
 
@@ -13893,7 +13889,7 @@ namespace sqlite_orm::internal {
 }
 
 // #include "../marshaling/parameter_binders.h"
-//  conditional_binder
+//  expression_parameter_binder
 // #include "../ast_iterator.h"
 
 // #include "../connection_holder.h"
@@ -13948,7 +13944,7 @@ namespace sqlite_orm::internal {
 
             const std::string sql = serialize(this->expression, context);
             statement_finalizer stmt{prepare_stmt(this->connection.get(), sql)};
-            iterate_ast(this->expression, conditional_binder{stmt.get()});
+            iterate_ast(this->expression, expression_parameter_binder{stmt.get()});
 
             // note: it is enough to only use the 'expression DBOs' at compile-time to determine the column results;
             // because we cannot select objects/structs from a CTE, passing the permanently defined DBOs are enough.
@@ -25073,7 +25069,7 @@ namespace sqlite_orm::internal {
         auto execute_select(const S& statement) {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
-            iterate_ast(statement.expression, conditional_binder{stmt});
+            iterate_ast(statement.expression, expression_parameter_binder{stmt});
 
             using R = decltype(make_row_extractor<ColResult>(this->db_objects).extract(nullptr, 0));
 
@@ -25262,7 +25258,7 @@ namespace sqlite_orm::internal {
         template<class DML, std::enable_if_t<is_raw_dml_expression_v<DML>, bool> = true>
         void execute(const prepared_statement_t<DML>& statement) {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-            iterate_ast(statement.expression, conditional_binder{stmt});
+            iterate_ast(statement.expression, expression_parameter_binder{stmt});
             this->executor.perform_single_step(stmt);
         }
 
@@ -25293,7 +25289,7 @@ namespace sqlite_orm::internal {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
             auto processObject = [&table = this->get_table<object_type>(),
-                                  bindValue = field_value_binder{stmt}](const object_type& object) mutable {
+                                  bindValue = parameter_binder{stmt}](const object_type& object) mutable {
                 table.template for_each_column_excluding<is_generated_always>(
                     call_as_template_base<column_field>([&bindValue, &object](auto& column) {
                         bindValue(std::invoke(column.member_pointer, object));
@@ -25335,7 +25331,7 @@ namespace sqlite_orm::internal {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
             auto processObject = [&table = this->get_table<object_type>(),
-                                  bindValue = field_value_binder{stmt}](const object_type& object) mutable {
+                                  bindValue = parameter_binder{stmt}](const object_type& object) mutable {
                 using table_type = polyfill::remove_cvref_t<decltype(table)>;
                 using is_pkcolumn_q = mpl::conjunction<mpl::not_<mpl::always<typename table_type::is_without_rowid>>,
                                                        mpl::quote_fn<is_primary_key>>;
@@ -25386,7 +25382,7 @@ namespace sqlite_orm::internal {
         template<class E, satisfies<is_remove, E> = true>
         void execute(const prepared_statement_t<E>& statement) {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-            iterate_ast(statement.expression.ids, conditional_binder{stmt});
+            iterate_ast(statement.expression.ids, expression_parameter_binder{stmt});
             this->executor.perform_single_step(stmt);
         }
 
@@ -25397,7 +25393,7 @@ namespace sqlite_orm::internal {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
             auto& table = this->get_table<object_type>();
 
-            field_value_binder bindValue{stmt};
+            parameter_binder bindValue{stmt};
             const object_type& object = access_dml_object(statement);
             table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                 call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
@@ -25430,7 +25426,7 @@ namespace sqlite_orm::internal {
 
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
-            iterate_ast(statement.expression.ids, conditional_binder{stmt});
+            iterate_ast(statement.expression.ids, expression_parameter_binder{stmt});
 
             holder_type res;
             this->executor.perform_step(stmt, [&table = this->get_table<object_type>(), &res](sqlite3_stmt* stmt) {
@@ -25470,7 +25466,7 @@ namespace sqlite_orm::internal {
 
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
-            iterate_ast(statement.expression, conditional_binder{stmt});
+            iterate_ast(statement.expression, expression_parameter_binder{stmt});
 
             container_type res;
             this->executor.perform_steps(stmt, [&table = this->get_table<object_type>(), &res](sqlite3_stmt* stmt) {

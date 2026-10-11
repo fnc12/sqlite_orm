@@ -1391,7 +1391,7 @@ namespace sqlite_orm::internal {
         auto execute_select(const S& statement) {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
-            iterate_ast(statement.expression, conditional_binder{stmt});
+            iterate_ast(statement.expression, expression_parameter_binder{stmt});
 
             using R = decltype(make_row_extractor<ColResult>(this->db_objects).extract(nullptr, 0));
 
@@ -1580,7 +1580,7 @@ namespace sqlite_orm::internal {
         template<class DML, std::enable_if_t<is_raw_dml_expression_v<DML>, bool> = true>
         void execute(const prepared_statement_t<DML>& statement) {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-            iterate_ast(statement.expression, conditional_binder{stmt});
+            iterate_ast(statement.expression, expression_parameter_binder{stmt});
             this->executor.perform_single_step(stmt);
         }
 
@@ -1611,7 +1611,7 @@ namespace sqlite_orm::internal {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
             auto processObject = [&table = this->get_table<object_type>(),
-                                  bindValue = field_value_binder{stmt}](const object_type& object) mutable {
+                                  bindValue = parameter_binder{stmt}](const object_type& object) mutable {
                 table.template for_each_column_excluding<is_generated_always>(
                     call_as_template_base<column_field>([&bindValue, &object](auto& column) {
                         bindValue(std::invoke(column.member_pointer, object));
@@ -1653,7 +1653,7 @@ namespace sqlite_orm::internal {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
             auto processObject = [&table = this->get_table<object_type>(),
-                                  bindValue = field_value_binder{stmt}](const object_type& object) mutable {
+                                  bindValue = parameter_binder{stmt}](const object_type& object) mutable {
                 using table_type = polyfill::remove_cvref_t<decltype(table)>;
                 using is_pkcolumn_q = mpl::conjunction<mpl::not_<mpl::always<typename table_type::is_without_rowid>>,
                                                        mpl::quote_fn<is_primary_key>>;
@@ -1704,7 +1704,7 @@ namespace sqlite_orm::internal {
         template<class E, satisfies<is_remove, E> = true>
         void execute(const prepared_statement_t<E>& statement) {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-            iterate_ast(statement.expression.ids, conditional_binder{stmt});
+            iterate_ast(statement.expression.ids, expression_parameter_binder{stmt});
             this->executor.perform_single_step(stmt);
         }
 
@@ -1715,7 +1715,7 @@ namespace sqlite_orm::internal {
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
             auto& table = this->get_table<object_type>();
 
-            field_value_binder bindValue{stmt};
+            parameter_binder bindValue{stmt};
             const object_type& object = access_dml_object(statement);
             table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                 call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
@@ -1748,7 +1748,7 @@ namespace sqlite_orm::internal {
 
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
-            iterate_ast(statement.expression.ids, conditional_binder{stmt});
+            iterate_ast(statement.expression.ids, expression_parameter_binder{stmt});
 
             holder_type res;
             this->executor.perform_step(stmt, [&table = this->get_table<object_type>(), &res](sqlite3_stmt* stmt) {
@@ -1788,7 +1788,7 @@ namespace sqlite_orm::internal {
 
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
-            iterate_ast(statement.expression, conditional_binder{stmt});
+            iterate_ast(statement.expression, expression_parameter_binder{stmt});
 
             container_type res;
             this->executor.perform_steps(stmt, [&table = this->get_table<object_type>(), &res](sqlite3_stmt* stmt) {

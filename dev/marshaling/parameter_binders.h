@@ -21,11 +21,14 @@
 #include "statement_binder.h"
 
 namespace sqlite_orm::internal {
-    struct conditional_binder {
+    /*
+     *  Binds values as the consecutive parameters of a statement; each value must be bindable.
+     */
+    struct parameter_binder {
         sqlite3_stmt* stmt = nullptr;
         int nthSqlParameter = 0;
 
-        explicit conditional_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
+        explicit parameter_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
         template<class T, satisfies<is_bindable, T> = true>
         void operator()(const T& t) {
@@ -34,25 +37,18 @@ namespace sqlite_orm::internal {
                 throw_translated_sqlite_error(rc);
             }
         }
+    };
+
+    /*
+     *  AST iteration callable binding the bindable nodes of an expression as the consecutive parameters
+     *  of a statement, skipping all other nodes.
+     */
+    struct expression_parameter_binder : parameter_binder {
+        using parameter_binder::parameter_binder;
+        using parameter_binder::operator();
 
         template<class T, satisfies_not<is_bindable, T> = true>
         void operator()(const T&) const {}
-    };
-
-    struct field_value_binder : conditional_binder {
-        using conditional_binder::conditional_binder;
-        using conditional_binder::operator();
-
-        template<class T, satisfies_not<is_bindable, T> = true>
-        void operator()(const T&) const = delete;
-
-        template<class T>
-        void operator()(const T* value) {
-            if (!value) {
-                throw std::system_error{orm_error_code::value_is_null};
-            }
-            (*this)(*value);
-        }
     };
 
     struct tuple_value_binder {

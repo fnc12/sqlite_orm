@@ -11,7 +11,7 @@
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "result_set_iterator.h"
-#include "../marshaling/parameter_binders.h"  //  conditional_binder
+#include "../marshaling/parameter_binders.h"  //  expression_parameter_binder
 #include "../ast_iterator.h"
 #include "../connection_holder.h"
 #include "../serialization/serializer_context.h"
@@ -60,7 +60,7 @@ namespace sqlite_orm::internal {
 
             const std::string sql = serialize(this->expression, context);
             statement_finalizer stmt{prepare_stmt(this->connection.get(), sql)};
-            iterate_ast(this->expression, conditional_binder{stmt.get()});
+            iterate_ast(this->expression, expression_parameter_binder{stmt.get()});
 
             // note: it is enough to only use the 'expression DBOs' at compile-time to determine the column results;
             // because we cannot select objects/structs from a CTE, passing the permanently defined DBOs are enough.
