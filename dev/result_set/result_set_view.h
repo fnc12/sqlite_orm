@@ -9,16 +9,16 @@
 #endif
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_type_traits_polyfill.h"
 #include "result_set_iterator.h"
-#include "marshaling/parameter_binders.h"  //  conditional_binder
-#include "ast_iterator.h"
-#include "connection_holder.h"
-#include "serialization/serializer_context.h"
-#include "sqlite3/sqlite3_statements.h"
-#include "sqlite3/sqlite3_deleters.h"  //  statement_finalizer
-#include "vocabulary/node_traits.h"  // projections
-#include "schema/db_objects.h"
+#include "../marshaling/parameter_binders.h"  //  conditional_binder
+#include "../ast_iterator.h"
+#include "../connection_holder.h"
+#include "../serialization/serializer_context.h"
+#include "../sqlite3/sqlite3_statements.h"
+#include "../sqlite3/sqlite3_deleters.h"  //  statement_finalizer
+#include "../vocabulary/node_traits.h"  // projections
+#include "../schema/db_objects.h"
 
 namespace sqlite_orm::internal {
     /*  
