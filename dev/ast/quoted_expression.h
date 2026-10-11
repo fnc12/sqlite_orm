@@ -9,6 +9,7 @@
 #include "../functional/cxx_utility_polyfill.h"  //  polyfill::forward_like
 #include "in.h"
 #include "binary_condition.h"  //  and_condition_t, or_condition_t
+#include "../vocabulary/node_algorithms.h"  // unwrap_expression_t
 #include "../operators.h"
 #include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
@@ -79,6 +80,13 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_operator_argument_v<T, std::enable_if_t<is_quoted_expression_v<T>>> = true;
+
+    /**
+     *  A quoted condition is a condition: the node built from it holds the condition it quotes.
+     */
+    template<class T>
+    constexpr bool is_conditional_operand_v<T, std::enable_if_t<is_quoted_expression_v<T>>> =
+        is_conditional_operand_v<unwrap_expression_t<T>>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
