@@ -34,14 +34,14 @@
 #include "vocabulary/node_fwd.h"  // column_field
 #include "error_code.h"
 #include "alias.h"
-#include "field_printer.h"
+#include "marshaling/field_printer.h"
 #include "operators.h"
 #include "ast/result_columns.h"
 #include "ast/cte.h"
 #include "sqlite3/sqlite3_types.h"  //  int64
 #include "sqlite3/sqlite3_statements.h"
 #include "builtin/functions/aggregate.h"
-#include "statement_binder.h"
+#include "marshaling/statement_binder.h"
 #include "column_result.h"
 #include "mapped_type_proxy.h"
 #include "sync_schema_result.h"
@@ -62,8 +62,8 @@
 #include "serialization/statement_serializer.h"
 #include "serialization/serializing_util.h"
 #include "serialization/serializer_context.h"
-#include "object_from_column_builder.h"
-#include "row_extractor.h"
+#include "marshaling/object_from_column_builder.h"
+#include "marshaling/row_extractor.h"
 #include "schema/constraints/generated_always.h"  // basic_generated_always
 #include "cte_storage.h"
 #include "udf_existence_checker.h"

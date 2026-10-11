@@ -18,7 +18,7 @@
 #include "vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value
 #include "mapped_type_proxy.h"
 #include "operators.h"
-#include "column_result_proxy.h"
+#include "marshaling/column_result_proxy.h"
 #include "alias.h"
 #include "cte_types.h"
 #include "schema/algorithms/table_lookup.h"  // schema_pick_table_t, schema_mapped_column_field_types

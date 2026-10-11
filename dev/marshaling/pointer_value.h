@@ -11,9 +11,9 @@
 #endif
 #endif
 
-#include "functional/gsl.h"
-#include "functional/cstring_literal.h"
-#include "sqlite3/sqlite3_xdestroy.h"
+#include "../functional/gsl.h"
+#include "../functional/cstring_literal.h"
+#include "../sqlite3/sqlite3_xdestroy.h"
 
 #if SQLITE_VERSION_NUMBER >= 3020000
 namespace sqlite_orm::internal {

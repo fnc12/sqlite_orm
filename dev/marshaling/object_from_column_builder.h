@@ -6,13 +6,13 @@
 #include <utility>  //  std::move
 #endif
 
-#include "functional/gsl.h"
-#include "functional/type_traits.h"
-#include "member_traits/member_traits.h"
-#include "vocabulary/node_fwd.h"  // column_field
-#include "table_reference.h"
+#include "../functional/gsl.h"
+#include "../functional/type_traits.h"
+#include "../member_traits/member_traits.h"
+#include "../vocabulary/node_fwd.h"  // column_field
+#include "../table_reference.h"
 #include "row_extractor.h"
-#include "schema/algorithms/table_lookup.h"
+#include "../schema/algorithms/table_lookup.h"
 
 namespace sqlite_orm::internal {
     struct object_from_column_builder_base {

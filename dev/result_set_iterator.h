@@ -9,8 +9,8 @@
 
 #include "sqlite3/sqlite3_deleters.h"  //  statement_finalizer
 #include "sqlite3/sqlite3_statements.h"
-#include "row_extractor.h"
-#include "column_result_proxy.h"
+#include "marshaling/row_extractor.h"
+#include "marshaling/column_result_proxy.h"
 
 namespace sqlite_orm::internal {
 

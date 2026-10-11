@@ -5,7 +5,7 @@
 #include <utility>  //  std::forward, std::move
 #endif
 
-#include "row_extractor.h"
+#include "marshaling/row_extractor.h"
 #include "mapped_iterator.h"
 #include "ast_iterator.h"
 #include "prepared_statement.h"

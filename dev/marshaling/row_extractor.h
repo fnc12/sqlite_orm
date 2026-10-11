@@ -19,17 +19,17 @@
 #endif
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
-#include "functional/gsl.h"
-#include "functional/type_traits.h"
-#include "tuple_helper/tuple_transformer.h"
-#include "type_mapping/is_std_ptr.h"
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/gsl.h"
+#include "../functional/type_traits.h"
+#include "../tuple_helper/tuple_transformer.h"
+#include "../type_mapping/is_std_ptr.h"
 #include "column_result_proxy.h"
-#include "type_mapping/arithmetic_tag.h"
+#include "../type_mapping/arithmetic_tag.h"
 #include "pointer_value.h"
-#include "journal_mode.h"
-#include "locking_mode.h"
-#include "error_code.h"
+#include "../journal_mode.h"
+#include "../locking_mode.h"
+#include "../error_code.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
