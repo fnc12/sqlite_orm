@@ -23,7 +23,7 @@
 #include "../functional/type_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
-#include "../vocabulary/algorithms/field_predicates_fwd.h"  //  is_pointer_arg_v, is_pointer_binding_v
+#include "../vocabulary/node_algorithms.h"  //  is_pointer_arg_v, is_pointer_binding_v
 
 // export forward-declarations
 SQLITE_ORM_EXPORT namespace sqlite_orm { struct arg_values; }

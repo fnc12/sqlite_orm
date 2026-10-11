@@ -15,7 +15,7 @@
 
 #include "../functional/type_traits.h"
 #include "../tuple_helper/tuple_filter.h"
-#include "../vocabulary/algorithms/field_predicates_fwd.h"  //  is_bindable
+#include "../vocabulary/node_algorithms.h"  //  is_bindable
 #include "../error_code.h"
 #include "../sqlite3/sqlite3_errors.h"
 #include "statement_binder.h"

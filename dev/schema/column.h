@@ -14,7 +14,6 @@
 #include "../tuple_helper/tuple_traits.h"
 #include "../member_traits/member_traits.h"
 #include "../type_mapping/type_is_nullable.h"
-#include "../vocabulary/algorithms/field_predicates_fwd.h"  //  is_integer_mapped_v
 #include "column_identifier.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_traits.h"

@@ -9597,7 +9597,7 @@ namespace sqlite_orm {
 
 // #include "../tuple_helper/tuple_filter.h"
 
-// #include "../vocabulary/algorithms/field_predicates_fwd.h"
+// #include "../vocabulary/node_algorithms.h"
 //  is_bindable
 // #include "../error_code.h"
 
@@ -10155,7 +10155,7 @@ namespace sqlite_orm::internal {
 // Included to specialize traits
 // #include "../vocabulary/traits/operand_traits_fwd.h"
 // Included to specialize traits
-// #include "../vocabulary/algorithms/field_predicates_fwd.h"
+// #include "../vocabulary/node_algorithms.h"
 //  is_pointer_arg_v, is_pointer_binding_v
 
 // export forward-declarations
@@ -18799,12 +18799,10 @@ namespace sqlite_orm::internal {
 //  collate_argument, collate_argument_to_string
 // #include "../serialization/serializer_context.h"
 
-// #include "../vocabulary/algorithms/field_predicates_fwd.h"
-//  is_integer_mapped
 // #include "../literal.h"
 
 // #include "../vocabulary/node_algorithms.h"
-// is_statement_clause
+// is_statement_clause, is_integer_mapped
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 
@@ -21853,8 +21851,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     };
 }
 
-// #include "../vocabulary/algorithms/field_predicates_fwd.h"
-//  is_integer_mapped_v
 // #include "column_identifier.h"
 
 // #include "../vocabulary/node_algorithms.h"
