@@ -21653,16 +21653,128 @@ namespace sqlite_orm::internal {
 // #include "schema/column.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple
+#include <tuple>  //  std::tuple, std::apply
 #include <string>  //  std::string
 #include <optional>  //  std::optional
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_member_object_pointer, std::is_signed
 #include <utility>  //  std::move
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#include <meta>  //  std::meta::info
+#endif
 #endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../functional/type_traits.h"
+
+// #include "../functional/meta_util.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#include <array>  //  std::array
+#include <meta>  //  std::define_static_array, std::meta::access_context, std::meta::nonstatic_data_members_of, std::meta::annotations_of, std::meta::constant_of, std::meta::parent_of
+#include <span>  //  std::span
+#include <tuple>  //  std::tuple
+#include <utility>  //  std::index_sequence, std::make_index_sequence
+#include <vector>  //  std::vector
+#endif
+#endif
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace sqlite_orm::internal {
+    /**
+     *  Reflects the non-static data members of `T` and its base classes
+     *  and returns them as a fixed-size span of `std::meta::info` reflections.
+     */
+    template<class T>
+    consteval auto extract_members() {
+        constexpr auto ctx = std::meta::access_context::current();
+
+        constexpr auto collect = []<class U>(this const auto& self) -> std::vector<std::meta::info> {
+            std::vector<std::meta::info> result;
+
+            // Recurse into direct base classes first (preserves layout order)
+            template for (constexpr std::meta::info base: std::define_static_array(bases_of(^^U, ctx))) {
+                using base_type = typename[:type_of(base):];
+                result.append_range(self.template operator()<base_type>());
+            }
+
+            // Then this class's own non-static data members
+            result.append_range(nonstatic_data_members_of(^^U, ctx));
+
+            return result;
+        };
+
+        return std::define_static_array(collect.template operator()<T>());
+    }
+
+    /**
+     *  Splices a non-static data member reflection into a member-pointer expression.
+     *  Encapsulated here so the splice operator does not leak into consumer headers.
+     */
+    template<std::meta::info member>
+    consteval auto splice_member_pointer() {
+        return &[:member:];
+    }
+
+    /**
+     *  Returns whether `type` is declared within namespace `ns`, directly or in a nested scope.
+     *  A class template specialization counts by the scope of its template, not by the scopes of its template
+     *  arguments; types without a scope (fundamental types, pointers, arrays) are declared within no namespace.
+     */
+    consteval bool is_declared_within(std::meta::info type, std::meta::info ns) {
+        std::meta::info scope = std::meta::dealias(std::meta::remove_cvref(type));
+        if (std::meta::has_template_arguments(scope)) {
+            scope = std::meta::template_of(scope);
+        }
+        while (std::meta::has_parent(scope)) {
+            scope = std::meta::parent_of(scope);
+            if (scope == ns) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     *  Returns the indices of a reflection's annotations whose type is declared within namespace `ns`.
+     */
+    template<std::meta::info refl, std::meta::info ns>
+    consteval std::span<const size_t> annotation_indices_within() {
+        const std::vector<std::meta::info> annotations = std::meta::annotations_of(refl);
+        std::vector<size_t> indices;
+        for (size_t i = 0; i < annotations.size(); ++i) {
+            if (is_declared_within(std::meta::type_of(annotations[i]), ns)) {
+                indices.push_back(i);
+            }
+        }
+        return std::define_static_array(indices);
+    }
+
+    /**
+     *  Splices a reflection's annotations whose type is declared within namespace `ns` into a tuple of values,
+     *  skipping all others. The reflection may be a type or a non-static data member.
+     *  Encapsulated here so the splice operator does not leak into consumer headers.
+     *
+     *  Two P3394 details inform this implementation:
+     *  - Annotation reflections returned by `annotations_of` are not directly spliceable;
+     *    they must first be routed through `std::meta::constant_of`, which returns a
+     *    splice-able constant reflection.
+     *  - `std::meta::annotations_of` returns a `std::vector<std::meta::info>`, whose heap
+     *    allocation is transient under C++20 constexpr rules and cannot be bound to a
+     *    `constexpr` variable. The size and per-index lookups therefore re-call
+     *    `annotations_of` inline so each transient vector dies within its own constant
+     *    expression.
+     */
+    template<std::meta::info refl, std::meta::info ns>
+    consteval auto splice_annotations_within() {
+        return []<size_t... I>(std::index_sequence<I...>) consteval {
+            return std::tuple{[:std::meta::constant_of(
+                                    std::meta::annotations_of(refl)[annotation_indices_within<refl, ns>()[I]]):]...};
+        }(std::make_index_sequence<annotation_indices_within<refl, ns>().size()>{});
+    }
+}
+#endif
 
 // #include "../sqlite3/sqlite3_types.h"
 //  int64
@@ -21715,6 +21827,140 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../type_printer.h"
 //  type_printer, integer_printer
 // #include "column_identifier.h"
+
+// #include "orm_name.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#include <meta>  //  std::meta::info, std::meta::identifier_of, std::define_static_string
+#include <string_view>  //  std::string_view
+#include <tuple>  //  std::tuple, std::tuple_size_v, std::get
+#include <type_traits>  //  std::bool_constant
+#include <utility>  //  std::forward
+#endif
+#endif
+
+// #include "../functional/gsl.h"
+
+// #include "../functional/cstring_literal.h"
+
+// #include "../functional/meta_util.h"
+
+// #include "../functional/mpl.h"
+
+// #include "../tuple_helper/tuple_filter.h"
+
+// #include "../tuple_helper/tuple_traits.h"
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace sqlite_orm::internal {
+    /**
+     *  Annotation that overrides the name a C++ entity is mapped to in the database:
+     *  - on a class, the database object name (table or view);
+     *  - on a non-static data member, the column name.
+     *  When absent, the name falls back to the entity's reflected identifier.
+     *
+     *  The string is embedded in the type's bytes via `cstring_literal<N>` rather than
+     *  carried by pointer + size: pointers to string literals are not accepted as
+     *  annotation values by current reflection implementations (the underlying object
+     *  has no linkage), so a self-contained fixed-size byte array is required.
+     */
+    template<size_t N>
+    struct mapped_name_literal : cstring_literal<N> {
+        constexpr mapped_name_literal(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
+
+        constexpr orm_gsl::czstring name() const noexcept {
+            return this->cstr;
+        }
+
+        constexpr operator std::string_view() const noexcept {
+            return this->cstr;
+        }
+    };
+
+    template<class T>
+    constexpr bool is_mapped_name_literal_v = false;
+
+    template<size_t N>
+    constexpr bool is_mapped_name_literal_v<mapped_name_literal<N>> = true;
+
+    template<class T>
+    using is_mapped_name_literal = std::bool_constant<is_mapped_name_literal_v<T>>;
+
+    /**
+     *  Returns a copy of `tuple` with all `mapped_name_literal<…>` elements removed.
+     */
+    template<class Tuple>
+    constexpr auto filter_out_mapped_name(Tuple&& tuple) {
+        using constraints_index_sequence =
+            filter_tuple_sequence_t<Tuple, check_if_not<is_mapped_name_literal>::template fn>;
+        return create_from_tuple<std::tuple>(std::forward<Tuple>(tuple), constraints_index_sequence{});
+    }
+
+    /**
+     *  Returns sqlite_orm's own annotations of the entity `refl`, a class or a non-static data member, as a tuple.
+     *
+     *  An annotation is sqlite_orm's own if its type is declared within namespace `sqlite_orm`; annotations of
+     *  other libraries on the same entity are skipped. sqlite_orm's own annotations are not vetted here:
+     *  the factories consuming them validate them as elements of the definition they are placed in.
+     */
+    template<std::meta::info refl>
+    consteval auto extract_orm_annotations() {
+        return splice_annotations_within<refl, ^^::sqlite_orm>();
+    }
+
+    /**
+     *  Returns the name the entity `refl`, a class or a non-static data member, is mapped to:
+     *  the value of its `mapped_name_literal<…>` annotation, or its reflected identifier when it has none.
+     *
+     *  The name is resolved entirely at compile time and returned as a static string. This keeps run-time code
+     *  free of expressions involving a reflection, which are only allowed in a constant-evaluated context.
+     */
+    template<std::meta::info refl>
+    consteval orm_gsl::czstring mapped_name_of() {
+        auto annotations = extract_orm_annotations<refl>();
+        using annotations_type = decltype(annotations);
+        static_assert(count_tuple<annotations_type, is_mapped_name_literal>::value <= 1,
+                      "An entity can only have 1 mapped name annotation");
+        using name_index = find_tuple_element<annotations_type, is_mapped_name_literal>;
+
+        if constexpr (name_index::value < std::tuple_size_v<annotations_type>) {
+            return std::define_static_string(std::string_view{std::get<name_index::value>(annotations)});
+        } else {
+            return std::define_static_string(std::meta::identifier_of(refl));
+        }
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    inline namespace literals {
+        /**
+         *  Mapped name annotation factory.
+         *  Use as a class-scope annotation to name the table or view:
+         *  `struct [[="users"_orm_name]] User { ... };`
+         *  `struct [[= sqlite_orm::operator""_orm_name<"users">()]] User { ... };`
+         *  Use as a member annotation to name the column:
+         *  `[[="user_id"_orm_name]] int64 userId;`
+         *  `make_table<T>()` and `make_view<T>()` consume this annotation.
+         */
+        template<internal::mapped_name_literal mappedName>
+        [[nodiscard]] consteval auto operator""_orm_name() {
+            return mappedName;
+        }
+    }
+
+    /**
+     *  Mapped name annotation factory as a fallback to the literal operator.
+     *  Use as a class-scope annotation: `struct [[=orm_name("users")]] User { ... };`,
+     *  or as a member annotation: `[[=orm_name("user_id")]] int64 userId;`.
+     *  `make_table<T>()` and `make_view<T>()` consume this annotation.
+     */
+    template<size_t N>
+    consteval internal::mapped_name_literal<N> orm_name(const char (&mappedName)[N]) {
+        return {mappedName};
+    }
+}
+#endif
 
 // #include "../vocabulary/node_algorithms.h"
 
@@ -21923,6 +22169,30 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}};
     }
 }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace sqlite_orm::internal {
+    /**
+     *  Factory function for a column definition from the reflection of a non-static data member.
+     *
+     *  The optional `[[="…"_orm_name]]` member annotation overrides the column name (otherwise the member's
+     *  reflected identifier is used); sqlite_orm's remaining member annotations are the column constraints,
+     *  annotations of other libraries are skipped.
+     */
+    template<std::meta::info member>
+    auto make_reflected_column() {
+        std::string columnName{mapped_name_of<member>()};
+
+        return std::apply(
+            [&columnName](auto&&... constraints) {
+                return sqlite_orm::make_column(std::move(columnName),
+                                               splice_member_pointer<member>(),
+                                               std::move(constraints)...);
+            },
+            filter_out_mapped_name(extract_orm_annotations<member>()));
+    }
+}
+#endif
 
 // #include "schema/table_base.h"
 
@@ -25430,102 +25700,16 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_const, std::true_type, std::false_type
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple_element, std::get, std::apply, std::tuple_cat
+#include <tuple>  //  std::tuple_element, std::get, std::tuple_cat
 #include <utility>  //  std::forward, std::move
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-#include <meta>  // std::meta::info, std::meta::identifier_of
+#include <meta>  // std::meta::info
 #endif
 #endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../functional/meta_util.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-#include <array>  //  std::array
-#include <meta>  //  std::define_static_array, std::meta::access_context, std::meta::nonstatic_data_members_of, std::meta::identifier_of, std::meta::annotations_of
-#include <tuple>  //  std::tuple
-#include <utility>  //  std::index_sequence, std::make_index_sequence
-#endif
-#endif
-
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-namespace sqlite_orm::internal {
-    /**
-     *  Reflects the non-static data members of `T` and its base classes
-     *  and returns them as a fixed-size span of `std::meta::info` reflections.
-     */
-    template<class T>
-    consteval auto extract_members() {
-        constexpr auto ctx = std::meta::access_context::current();
-
-        constexpr auto collect = []<class U>(this const auto& self) -> std::vector<std::meta::info> {
-            std::vector<std::meta::info> result;
-
-            // Recurse into direct base classes first (preserves layout order)
-            template for (constexpr std::meta::info base: std::define_static_array(bases_of(^^U, ctx))) {
-                using base_type = typename[:type_of(base):];
-                result.append_range(self.template operator()<base_type>());
-            }
-
-            // Then this class's own non-static data members
-            result.append_range(nonstatic_data_members_of(^^U, ctx));
-
-            return result;
-        };
-
-        return std::define_static_array(collect.template operator()<T>());
-    }
-
-    /**
-     *  Returns the identifier of `T`.
-     */
-    template<class T>
-    consteval auto extract_type_identifier() {
-        return std::meta::identifier_of(^^T);
-    }
-
-    /**
-     *  Splices a non-static data member reflection into a member-pointer expression.
-     *  Encapsulated here so the splice operator does not leak into consumer headers.
-     */
-    template<std::meta::info member>
-    consteval auto splice_member_pointer() {
-        return &[:member:];
-    }
-
-    /**
-     *  Splices a reflection's annotations into a tuple of values. The reflection may be
-     *  a type or a non-static data member.
-     *  Encapsulated here so the splice operator does not leak into consumer headers.
-     *
-     *  Two P3394 details inform this implementation:
-     *  - Annotation reflections returned by `annotations_of` are not directly spliceable;
-     *    they must first be routed through `std::meta::constant_of`, which returns a
-     *    splice-able constant reflection.
-     *  - `std::meta::annotations_of` returns a `std::vector<std::meta::info>`, whose heap
-     *    allocation is transient under C++20 constexpr rules and cannot be bound to a
-     *    `constexpr` variable. The size and per-index lookups therefore re-call
-     *    `annotations_of` inline so each transient vector dies within its own constant
-     *    expression.
-     */
-    template<std::meta::info refl>
-    consteval auto splice_annotations() {
-        return []<size_t... I>(std::index_sequence<I...>) consteval {
-            return std::tuple{[:std::meta::constant_of(std::meta::annotations_of(refl)[I]):]...};
-        }(std::make_index_sequence<std::meta::annotations_of(refl).size()>{});
-    }
-
-    /**
-     *  Returns the class-scope annotations of `T` as a tuple.
-     */
-    template<class T>
-    consteval auto extract_type_annotations() {
-        return splice_annotations<^^T>();
-    }
-}
-#endif
 
 // #include "../functional/mpl.h"
 
@@ -25547,114 +25731,7 @@ namespace sqlite_orm::internal {
 
 // #include "column.h"
 //  sqlite_orm::make_column
-// #include "dbo_name.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-#include <string_view>  //  std::string_view
-#include <tuple>  //  std::tuple
-#include <type_traits>  //  std::bool_constant
-#include <utility>  //  std::forward
-#endif
-#endif
-
-// #include "../functional/gsl.h"
-
-// #include "../functional/cstring_literal.h"
-
-// #include "../functional/meta_util.h"
-
-// #include "../functional/mpl.h"
-
-// #include "../tuple_helper/tuple_filter.h"
-
-// #include "../tuple_helper/tuple_traits.h"
-
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-namespace sqlite_orm::internal {
-    /**
-     *  Class-scope annotation that overrides the database object name (table or view).
-     *  When absent, the name falls back to `std::meta::identifier_of(^^T)`.
-     *
-     *  The string is embedded in the type's bytes via `cstring_literal<N>` rather than
-     *  carried by pointer + size: pointers to string literals are not accepted as
-     *  annotation values by current reflection implementations (the underlying object
-     *  has no linkage), so a self-contained fixed-size byte array is required.
-     */
-    template<size_t N>
-    struct dbo_name_literal : cstring_literal<N> {
-        constexpr dbo_name_literal(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
-
-        constexpr orm_gsl::czstring name() const noexcept {
-            return this->cstr;
-        }
-
-        constexpr operator std::string_view() const noexcept {
-            return this->cstr;
-        }
-    };
-
-    template<class T>
-    constexpr bool is_dbo_name_literal_v = false;
-
-    template<size_t N>
-    constexpr bool is_dbo_name_literal_v<dbo_name_literal<N>> = true;
-
-    template<class T>
-    using is_dbo_name_literal = std::bool_constant<is_dbo_name_literal_v<T>>;
-
-    /**
-     *  Returns the database object name carried by the `dbo_name_literal<…>` element of `annotations`,
-     *  or the type's reflected identifier when no such element is present.
-     */
-    template<class T, class Tuple>
-    constexpr std::string_view resolve_dbo_name(const Tuple& annotations) {
-        using name_index = find_tuple_element<Tuple, is_dbo_name_literal>;
-
-        if constexpr (name_index::value < std::tuple_size_v<Tuple>) {
-            return std::get<name_index::value>(annotations).name();
-        } else {
-            return extract_type_identifier<T>();
-        }
-    }
-
-    /**
-     *  Returns a copy of `tuple` with all `dbo_name_literal<…>` elements removed.
-     */
-    template<class Tuple>
-    constexpr auto filter_out_dbo_name(Tuple&& tuple) {
-        using constraints_index_sequence =
-            filter_tuple_sequence_t<Tuple, check_if_not<is_dbo_name_literal>::template fn>;
-        return create_from_tuple<std::tuple>(std::forward<Tuple>(tuple), constraints_index_sequence{});
-    }
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    inline namespace literals {
-        /**
-         *  Database object name annotation factory.
-         *  Use as a class-scope annotation:
-         *  `struct [[="users"_orm_name]] User { ... };`
-         *  `struct [[= sqlite_orm::operator""_orm_name<"users">()]] User { ... };`
-         *  `make_view<T>()` consumes this annotation.
-         */
-        template<internal::dbo_name_literal dboName>
-        [[nodiscard]] consteval auto operator""_orm_name() {
-            return dboName;
-        }
-    }
-
-    /**
-     *  Database object name annotation factory as a fallback to the literal operator.
-     *  Use as a class-scope annotation: `struct [[=orm_name("users")]] User { ... };`.
-     *  `make_view<T>()` consumes this annotation.
-     */
-    template<size_t N>
-    consteval internal::dbo_name_literal<N> orm_name(const char (&dboName)[N]) {
-        return {dboName};
-    }
-}
-#endif
+// #include "orm_name.h"
 
 namespace sqlite_orm::internal {
     /** 
@@ -25760,23 +25837,12 @@ namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
     template<class O, class... Cs>
     auto make_reflected_table(Cs... constraints) {
-        auto classAnnotations = extract_type_annotations<O>();
-        std::string tableName{resolve_dbo_name<O>(classAnnotations)};
-        auto annotationConstraints = filter_out_dbo_name(std::move(classAnnotations));
+        std::string tableName{mapped_name_of<^^O>()};
+        auto annotationConstraints = filter_out_mapped_name(extract_orm_annotations<^^O>());
         static /*gcc*/ constexpr auto members = extract_members<O>();
 
         auto columns = []<size_t... I>(std::index_sequence<I...>) static {
-            return std::tuple {
-                []<std::meta::info member>() static {
-                    return std::apply(
-                        [](auto&&... columnConstraints) static {
-                            return sqlite_orm::make_column(std::string(std::meta::identifier_of(member)),
-                                                           splice_member_pointer<member>(),
-                                                           std::move(columnConstraints)...);
-                        },
-                        splice_annotations<member>());
-                }.template operator()<members[I]>()...
-            };
+            return std::tuple{make_reflected_column<members[I]>()...};
         }(std::make_index_sequence<members.size()>{});
 
         return [&tableName]<class... Es>(std::tuple<Es...>&& definition) {
@@ -25833,7 +25899,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The mapped object type is explicitly specified, columns and column constraints are deferred from
      *  the object type's non-static data members and their annotations. Class-scope annotations on
      *  the object type contribute table-level constraints; the optional `[[=orm_name("…")]]` annotation
-     *  overrides the table name (otherwise the type's reflected identifier is used).
+     *  overrides the table name (otherwise the type's reflected identifier is used). Likewise, a
+     *  `[[=orm_name("…")]]` member annotation overrides the column name. Annotations whose type is not declared within
+     *  namespace `sqlite_orm` are ignored, both at class scope and on members.
      *
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
      *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
@@ -25852,7 +25920,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The mapped object type is explicitly specified, columns and column constraints are deferred from
      *  the object type's non-static data members and their annotations. Class-scope annotations on
      *  the object type contribute table-level constraints; the optional `[[=orm_name("…")]]` annotation
-     *  overrides the table name (otherwise the type's reflected identifier is used).
+     *  overrides the table name (otherwise the type's reflected identifier is used). Likewise, a
+     *  `[[=orm_name("…")]]` member annotation overrides the column name. Annotations whose type is not declared within
+     *  namespace `sqlite_orm` are ignored, both at class scope and on members.
      *
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
      *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
@@ -26026,8 +26096,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_VIEW
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#include <string>  // std::string
+#include <tuple>  // std::tuple, std::tuple_size_v
 #include <utility>  // std::forward, std::move, std::index_sequence, std::make_index_sequence
-#include <meta>  // std::meta::info, std::meta::identifier_of
+#include <meta>  // std::meta::info
 #endif
 #endif
 #endif
@@ -26035,6 +26107,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../functional/meta_util.h"
+
+// #include "../tuple_helper/tuple_traits.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -26044,7 +26118,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // sqlite_orm::make_column
 // #include "table_base.h"
 
-// #include "dbo_name.h"
+// #include "orm_name.h"
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_WITH_VIEW
@@ -26072,18 +26146,28 @@ namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_WITH_VIEW
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
+    /**
+     *  Returns the mapped name of the entity `refl`, a view's object type or one of its non-static data members.
+     *  A view takes no constraints, hence a mapped name is the only annotation of sqlite_orm's it accepts.
+     */
+    template<std::meta::info refl>
+    consteval orm_gsl::czstring view_mapped_name_of() {
+        using annotations_type = decltype(extract_orm_annotations<refl>());
+        static_assert(count_tuple<annotations_type, is_mapped_name_literal>::value ==
+                          std::tuple_size_v<annotations_type>,
+                      "A view and its columns can only be annotated with a mapped name");
+
+        return mapped_name_of<refl>();
+    }
+
     template<class O, class Select>
     auto make_reflected_view(Select select) {
-        std::string viewName{resolve_dbo_name<O>(extract_type_annotations<O>())};
+        std::string viewName{view_mapped_name_of<^^O>()};
         static /*gcc*/ constexpr auto members = extract_members<O>();
 
         auto columns = []<size_t... I>(std::index_sequence<I...>) static {
-            return std::tuple {
-                []<std::meta::info member>() static {
-                    return sqlite_orm::make_column(std::string(std::meta::identifier_of(member)),
-                                                   splice_member_pointer<member>());
-                }.template operator()<members[I]>()...
-            };
+            return std::tuple{sqlite_orm::make_column(std::string{view_mapped_name_of<members[I]>()},
+                                                      splice_member_pointer<members[I]>())...};
         }(std::make_index_sequence<members.size()>{});
 
         return [&viewName, &select]<class... Cs>(std::tuple<Cs...>&& cols) {
@@ -26098,7 +26182,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
      *  The object type must be an aggregate. The optional `[[="…"_orm_name]]` class-scope annotation overrides
-     *  the view name (otherwise the type's reflected identifier is used).
+     *  the view name (otherwise the type's reflected identifier is used). Likewise,
+     *  a `[[="…"_orm_name]]` member annotation overrides the column name; view columns take no constraints.
+     *  Annotations whose type is not declared within namespace `sqlite_orm` are ignored.
      */
     template<class O, class Select>
         requires (internal::is_select_expression_v<Select>)
@@ -26117,7 +26203,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
      *  The object type must be an aggregate. The optional `[[="…"_orm_name]]` class-scope annotation overrides
-     *  the view name (otherwise the type's reflected identifier is used).
+     *  the view name (otherwise the type's reflected identifier is used). Likewise,
+     *  a `[[="…"_orm_name]]` member annotation overrides the column name; view columns take no constraints.
+     *  Annotations whose type is not declared within namespace `sqlite_orm` are ignored.
      */
     template<orm_table_reference auto table, class Select>
     auto make_view(Select select) {

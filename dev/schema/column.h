@@ -1,21 +1,26 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple
+#include <tuple>  //  std::tuple, std::apply
 #include <string>  //  std::string
 #include <optional>  //  std::optional
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_member_object_pointer, std::is_signed
 #include <utility>  //  std::move
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#include <meta>  //  std::meta::info
+#endif
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/type_traits.h"
+#include "../functional/meta_util.h"
 #include "../sqlite3/sqlite3_types.h"  //  int64
 #include "../tuple_helper/tuple_traits.h"
 #include "../member_traits/member_traits.h"
 #include "../type_is_nullable.h"
 #include "../type_printer.h"  //  type_printer, integer_printer
 #include "column_identifier.h"
+#include "orm_name.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
@@ -220,3 +225,27 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}};
     }
 }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace sqlite_orm::internal {
+    /**
+     *  Factory function for a column definition from the reflection of a non-static data member.
+     *
+     *  The optional `[[="…"_orm_name]]` member annotation overrides the column name (otherwise the member's
+     *  reflected identifier is used); sqlite_orm's remaining member annotations are the column constraints,
+     *  annotations of other libraries are skipped.
+     */
+    template<std::meta::info member>
+    auto make_reflected_column() {
+        std::string columnName{mapped_name_of<member>()};
+
+        return std::apply(
+            [&columnName](auto&&... constraints) {
+                return sqlite_orm::make_column(std::move(columnName),
+                                               splice_member_pointer<member>(),
+                                               std::move(constraints)...);
+            },
+            filter_out_mapped_name(extract_orm_annotations<member>()));
+    }
+}
+#endif
