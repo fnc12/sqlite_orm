@@ -140,24 +140,25 @@ namespace sqlite_orm {
      *  @note The 'pointer-passing' interface doesn't support (and in fact prohibits)
      *  extracting pointers from columns.
      */
-    template<class P, class T>
-    struct row_extractor<pointer_arg<P, T>, void> {
-        using V = pointer_arg<P, T>;
+    template<class V>
+    struct row_extractor<V, internal::match_if<internal::is_pointer_arg, V>> {
+        using qualified_type = typename V::qualified_type;
+        using tag = typename V::tag;
 
         V extract(orm_gsl::czstring columnText) const = delete;
 
         V extract(sqlite3_stmt* stmt, int columnIndex) const = delete;
 
         V extract(sqlite3_value* value) const {
-            return {(P*)sqlite3_value_pointer(value, T::value)};
+            return {(qualified_type*)sqlite3_value_pointer(value, tag::value)};
         }
     };
 
     /**
      *  Undefine using pointer_binding<> for querying values
      */
-    template<class P, class T, class D>
-    struct row_extractor<pointer_binding<P, T, D>, void>;
+    template<class V>
+    struct row_extractor<V, internal::match_if<internal::is_pointer_binding, V>>;
 #endif
 
     /**

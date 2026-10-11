@@ -23,18 +23,10 @@
 #include "../functional/type_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
+#include "../vocabulary/algorithms/field_predicates_fwd.h"  //  is_pointer_arg_v, is_pointer_binding_v
 
 // export forward-declarations
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    struct arg_values;
-
-    // note (internal): forward declare even if `SQLITE_VERSION_NUMBER < 3020000` in order to simplify coding below
-    template<class P, class T>
-    struct pointer_arg;
-    // note (internal): forward declare even if `SQLITE_VERSION_NUMBER < 3020000` in order to simplify coding below
-    template<class P, class T, class D>
-    class pointer_binding;
-}
+SQLITE_ORM_EXPORT namespace sqlite_orm { struct arg_values; }
 
 namespace sqlite_orm::internal {
     template<class F>
@@ -250,14 +242,13 @@ namespace sqlite_orm::internal {
 
     // Always allow binding nullptr to a pointer argument
     template<size_t I, class PointerArg>
-    constexpr bool is_same_pvt_v<I, PointerArg, std::nullptr_t, std::void_t<typename PointerArg::tag>> = true;
-    // Always allow binding nullptr to a pointer argument
-    template<size_t I, class P, class T, class D>
-    constexpr bool is_same_pvt_v<I, pointer_arg<P, T>, pointer_binding<std::nullptr_t, T, D>, void> = true;
+    constexpr bool is_same_pvt_v<I, PointerArg, std::nullptr_t, std::enable_if_t<is_pointer_arg_v<PointerArg>>> = true;
 
     template<size_t I, class PointerArgDataType, class BindingDataType>
     SQLITE_ORM_CONSTEVAL bool assert_same_pointer_data_type() {
-        constexpr bool valid = std::is_convertible<BindingDataType*, PointerArgDataType*>::value;
+        // Always allow binding a null pointer binding to a pointer argument
+        constexpr bool valid = std::is_same<BindingDataType, std::nullptr_t>::value ||
+                               std::is_convertible<BindingDataType*, PointerArgDataType*>::value;
         static_assert(valid, "Pointer data types of I-th argument do not match");
         return valid;
     }
@@ -270,7 +261,10 @@ namespace sqlite_orm::internal {
         return valid;
     }
     template<size_t I, class PointerArg, class Binding>
-    constexpr bool is_same_pvt_v<I, PointerArg, Binding, std::void_t<typename PointerArg::tag, typename Binding::tag>> =
+    constexpr bool is_same_pvt_v<I,
+                                 PointerArg,
+                                 Binding,
+                                 std::enable_if_t<is_pointer_arg_v<PointerArg> && is_pointer_binding_v<Binding>>> =
         assert_same_pointer_tag<I, PointerArg::tag::value, Binding::tag::value>() &&
         assert_same_pointer_data_type<I, typename PointerArg::qualified_type, typename Binding::qualified_type>();
 #else
@@ -282,7 +276,10 @@ namespace sqlite_orm::internal {
     }
 
     template<size_t I, class PointerArg, class Binding>
-    constexpr bool is_same_pvt_v<I, PointerArg, Binding, std::void_t<typename PointerArg::tag, typename Binding::tag>> =
+    constexpr bool is_same_pvt_v<I,
+                                 PointerArg,
+                                 Binding,
+                                 std::enable_if_t<is_pointer_arg_v<PointerArg> && is_pointer_binding_v<Binding>>> =
         assert_same_pointer_tag<I, typename PointerArg::tag, typename Binding::tag>();
 #endif
 
@@ -307,11 +304,8 @@ namespace sqlite_orm::internal {
         using func_param_type = std::tuple_element_t<I, FnParams>;
         using call_arg_type = unpacked_arg_t<std::tuple_element_t<I, CallArgs>>;
 
-        constexpr bool valid = validate_pointer_value_type<I,
-                                                           std::tuple_element_t<I, FnParams>,
-                                                           unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>(
-            std::bool_constant < (polyfill::is_specialization_of_v<func_param_type, pointer_arg>) ||
-            (polyfill::is_specialization_of_v<call_arg_type, pointer_binding>) > {});
+        constexpr bool valid = validate_pointer_value_type<I, func_param_type, call_arg_type>(
+            std::bool_constant<(is_pointer_arg_v<func_param_type> || is_pointer_binding_v<call_arg_type>)>{});
 
         return validate_pointer_value_types<FnParams, CallArgs>(polyfill::index_constant<I - 1>{}) && valid;
     }

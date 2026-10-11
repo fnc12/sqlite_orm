@@ -4136,32 +4136,19 @@ namespace sqlite_orm::internal {
 
 // #include "algorithms/field_predicates_fwd.h"
 
-/** @file Declarations of closed predicates for checking the validity of fields of column nodes.
+/** @file Declarations of closed predicates on raw C++ types - of fields, values and function parameters -
+ *        checking whether they qualify for an SQL-level role.
  */
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
+// Capabilities derived from the type itself
 namespace sqlite_orm::internal {
     template<class F, class SFINAE = void>
     extern const bool is_rowid_alias_capable_v;
 
     template<class F>
     using is_rowid_alias_capable = std::bool_constant<is_rowid_alias_capable_v<F>>;
-
-    /*
-     *  Whether a C++ type maps to SQLite's INTEGER type.
-     *
-     *  Like `is_bindable`, this is tied to the `type_printer` customization point - a type qualifies if its
-     *  type printer derives from `integer_printer` - hence its definition stays with `type_printer`
-     *  in `type_printer.h`.
-     */
-    template<class T>
-    extern const bool is_integer_mapped_v;
-
-    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
-    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
-    template<class T>
-    struct is_integer_mapped : std::bool_constant<is_integer_mapped_v<T>> {};
 
     /*
      *  Whether a type is a C++ text value - a narrow or wide C string, string view or string -,
@@ -4172,13 +4159,33 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_text_value = std::bool_constant<is_text_value_v<T>>;
+}
 
+// Readings of the type mapping's customization points
+namespace sqlite_orm::internal {
+    /*
+     *  Whether a C++ type maps to SQLite's INTEGER type.
+     *
+     *  In contrast to `is_rowid_alias_capable`, which is a capability derived from the field type itself,
+     *  this is tied to the `type_printer` customization point - a type qualifies if its type printer derives
+     *  from `integer_printer` - hence its definition stays with `type_printer` in `type_printer.h`.
+     */
+    template<class T>
+    extern const bool is_integer_mapped_v;
+
+    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    template<class T>
+    struct is_integer_mapped : std::bool_constant<is_integer_mapped_v<T>> {};
+}
+
+// Readings of the marshaling's customization points
+namespace sqlite_orm::internal {
     /*
      *  Whether a field type can be bound as a parameter of a prepared statement.
      *
-     *  In contrast to `is_rowid_alias_capable`, which is a capability derived from the field type itself,
-     *  this is tied to whether the `statement_binder` customization point is instantiable for it -
-     *  hence its definition stays with `statement_binder` in `statement_binder.h`.
+     *  Like `is_integer_mapped`, this is tied to a customization point, namely whether `statement_binder`
+     *  is instantiable for it - hence its definition stays with `statement_binder` in `statement_binder.h`.
      */
     template<class T, class SFINAE = void>
     extern const bool is_bindable_v;
@@ -4201,6 +4208,38 @@ namespace sqlite_orm::internal {
     //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
     template<class T>
     struct is_printable : std::bool_constant<is_printable_v<T>> {};
+}
+
+// Values of the pointer-passing interface
+namespace sqlite_orm::internal {
+    /*
+     *  Whether a type is a `pointer_arg`, the parameter of an application-defined function receiving a value
+     *  through SQLite's pointer-passing interface.
+     *
+     *  Defined with `pointer_arg` in `pointer_value.h`, which consumers in the DSL do not include,
+     *  as it depends on the SQLite C API.
+     */
+    template<class T>
+    extern const bool is_pointer_arg_v;
+
+    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    template<class T>
+    struct is_pointer_arg : std::bool_constant<is_pointer_arg_v<T>> {};
+
+    /*
+     *  Whether a type is a `pointer_binding`, a value bound through SQLite's pointer-passing interface -
+     *  as a statement parameter, a function call argument or a function result.
+     *
+     *  Defined with `pointer_binding` in `pointer_value.h`, like `is_pointer_arg`.
+     */
+    template<class T>
+    extern const bool is_pointer_binding_v;
+
+    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    template<class T>
+    struct is_pointer_binding : std::bool_constant<is_pointer_binding_v<T>> {};
 }
 
 // #include "algorithms/field_predicates_concepts.h"
@@ -8995,11 +9034,34 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
+// #include "../functional/cxx_type_traits_polyfill.h"
+
 // #include "../functional/gsl.h"
 
 // #include "../functional/cstring_literal.h"
 
 // #include "../sqlite3/sqlite3_xdestroy.h"
+
+// #include "../vocabulary/algorithms/field_predicates_fwd.h"
+// Included to define is_pointer_arg_v, is_pointer_binding_v
+
+// note (internal): declared and classified even if `SQLITE_VERSION_NUMBER < 3020000`,
+// in order to simplify checking function calls in the DSL
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    template<typename P, typename T>
+    struct pointer_arg;
+
+    template<typename P, typename T, typename D>
+    class pointer_binding;
+}
+
+namespace sqlite_orm::internal {
+    template<class T>
+    constexpr bool is_pointer_arg_v = polyfill::is_specialization_of_v<T, pointer_arg>;
+
+    template<class T>
+    constexpr bool is_pointer_binding_v = polyfill::is_specialization_of_v<T, pointer_binding>;
+}
 
 #if SQLITE_VERSION_NUMBER >= 3020000
 namespace sqlite_orm::internal {
@@ -9319,21 +9381,21 @@ namespace sqlite_orm {
     /**
      *  Specialization for pointer bindings (part of the 'pointer-passing interface').
      */
-    template<class P, class T, class D>
-    struct statement_binder<pointer_binding<P, T, D>, void> {
-        using V = pointer_binding<P, T, D>;
+    template<class V>
+    struct statement_binder<V, internal::match_if<internal::is_pointer_binding, V>> {
+        using tag = typename V::tag;
 
         // ownership of pointed-to-object is left untouched and remains at prepared statement's AST expression
         SQLITE_ORM_STATIC_CALLOP int bind(sqlite3_stmt* stmt, int index, const V& value) SQLITE_ORM_OR_CONST_CALLOP {
             // note: C-casting `P* -> void*`, internal::xdestroy_proxy() does the inverse
-            return sqlite3_bind_pointer(stmt, index, (void*)value.ptr(), T::value, null_xdestroy_f);
+            return sqlite3_bind_pointer(stmt, index, (void*)value.ptr(), tag::value, null_xdestroy_f);
         }
 
         // ownership of pointed-to-object is transferred to sqlite
         SQLITE_ORM_STATIC_CALLOP void result(sqlite3_context* context, V& value) SQLITE_ORM_OR_CONST_CALLOP {
             // note: C-casting `P* -> void*`,
-            // row_extractor<pointer_arg<P, T>>::extract() and internal::xdestroy_proxy() do the inverse
-            sqlite3_result_pointer(context, (void*)value.take_ptr(), T::value, value.get_xdestroy());
+            // the `row_extractor` of `pointer_arg` and internal::xdestroy_proxy() do the inverse
+            sqlite3_result_pointer(context, (void*)value.take_ptr(), tag::value, value.get_xdestroy());
         }
     };
 #endif
@@ -10093,18 +10155,11 @@ namespace sqlite_orm::internal {
 // Included to specialize traits
 // #include "../vocabulary/traits/operand_traits_fwd.h"
 // Included to specialize traits
+// #include "../vocabulary/algorithms/field_predicates_fwd.h"
+//  is_pointer_arg_v, is_pointer_binding_v
 
 // export forward-declarations
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    struct arg_values;
-
-    // note (internal): forward declare even if `SQLITE_VERSION_NUMBER < 3020000` in order to simplify coding below
-    template<class P, class T>
-    struct pointer_arg;
-    // note (internal): forward declare even if `SQLITE_VERSION_NUMBER < 3020000` in order to simplify coding below
-    template<class P, class T, class D>
-    class pointer_binding;
-}
+SQLITE_ORM_EXPORT namespace sqlite_orm { struct arg_values; }
 
 namespace sqlite_orm::internal {
     template<class F>
@@ -10320,14 +10375,13 @@ namespace sqlite_orm::internal {
 
     // Always allow binding nullptr to a pointer argument
     template<size_t I, class PointerArg>
-    constexpr bool is_same_pvt_v<I, PointerArg, std::nullptr_t, std::void_t<typename PointerArg::tag>> = true;
-    // Always allow binding nullptr to a pointer argument
-    template<size_t I, class P, class T, class D>
-    constexpr bool is_same_pvt_v<I, pointer_arg<P, T>, pointer_binding<std::nullptr_t, T, D>, void> = true;
+    constexpr bool is_same_pvt_v<I, PointerArg, std::nullptr_t, std::enable_if_t<is_pointer_arg_v<PointerArg>>> = true;
 
     template<size_t I, class PointerArgDataType, class BindingDataType>
     SQLITE_ORM_CONSTEVAL bool assert_same_pointer_data_type() {
-        constexpr bool valid = std::is_convertible<BindingDataType*, PointerArgDataType*>::value;
+        // Always allow binding a null pointer binding to a pointer argument
+        constexpr bool valid = std::is_same<BindingDataType, std::nullptr_t>::value ||
+                               std::is_convertible<BindingDataType*, PointerArgDataType*>::value;
         static_assert(valid, "Pointer data types of I-th argument do not match");
         return valid;
     }
@@ -10340,7 +10394,10 @@ namespace sqlite_orm::internal {
         return valid;
     }
     template<size_t I, class PointerArg, class Binding>
-    constexpr bool is_same_pvt_v<I, PointerArg, Binding, std::void_t<typename PointerArg::tag, typename Binding::tag>> =
+    constexpr bool is_same_pvt_v<I,
+                                 PointerArg,
+                                 Binding,
+                                 std::enable_if_t<is_pointer_arg_v<PointerArg> && is_pointer_binding_v<Binding>>> =
         assert_same_pointer_tag<I, PointerArg::tag::value, Binding::tag::value>() &&
         assert_same_pointer_data_type<I, typename PointerArg::qualified_type, typename Binding::qualified_type>();
 #else
@@ -10352,7 +10409,10 @@ namespace sqlite_orm::internal {
     }
 
     template<size_t I, class PointerArg, class Binding>
-    constexpr bool is_same_pvt_v<I, PointerArg, Binding, std::void_t<typename PointerArg::tag, typename Binding::tag>> =
+    constexpr bool is_same_pvt_v<I,
+                                 PointerArg,
+                                 Binding,
+                                 std::enable_if_t<is_pointer_arg_v<PointerArg> && is_pointer_binding_v<Binding>>> =
         assert_same_pointer_tag<I, typename PointerArg::tag, typename Binding::tag>();
 #endif
 
@@ -10377,11 +10437,8 @@ namespace sqlite_orm::internal {
         using func_param_type = std::tuple_element_t<I, FnParams>;
         using call_arg_type = unpacked_arg_t<std::tuple_element_t<I, CallArgs>>;
 
-        constexpr bool valid = validate_pointer_value_type<I,
-                                                           std::tuple_element_t<I, FnParams>,
-                                                           unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>(
-            std::bool_constant < (polyfill::is_specialization_of_v<func_param_type, pointer_arg>) ||
-            (polyfill::is_specialization_of_v<call_arg_type, pointer_binding>) > {});
+        constexpr bool valid = validate_pointer_value_type<I, func_param_type, call_arg_type>(
+            std::bool_constant<(is_pointer_arg_v<func_param_type> || is_pointer_binding_v<call_arg_type>)>{});
 
         return validate_pointer_value_types<FnParams, CallArgs>(polyfill::index_constant<I - 1>{}) && valid;
     }
@@ -11517,24 +11574,25 @@ namespace sqlite_orm {
      *  @note The 'pointer-passing' interface doesn't support (and in fact prohibits)
      *  extracting pointers from columns.
      */
-    template<class P, class T>
-    struct row_extractor<pointer_arg<P, T>, void> {
-        using V = pointer_arg<P, T>;
+    template<class V>
+    struct row_extractor<V, internal::match_if<internal::is_pointer_arg, V>> {
+        using qualified_type = typename V::qualified_type;
+        using tag = typename V::tag;
 
         V extract(orm_gsl::czstring columnText) const = delete;
 
         V extract(sqlite3_stmt* stmt, int columnIndex) const = delete;
 
         V extract(sqlite3_value* value) const {
-            return {(P*)sqlite3_value_pointer(value, T::value)};
+            return {(qualified_type*)sqlite3_value_pointer(value, tag::value)};
         }
     };
 
     /**
      *  Undefine using pointer_binding<> for querying values
      */
-    template<class P, class T, class D>
-    struct row_extractor<pointer_binding<P, T, D>, void>;
+    template<class V>
+    struct row_extractor<V, internal::match_if<internal::is_pointer_binding, V>>;
 #endif
 
     /**
@@ -19361,13 +19419,11 @@ namespace sqlite_orm::internal {
             return quote_blob_literal(field_printer<std::vector<char>>{}(t));
         }
 
-#if SQLITE_VERSION_NUMBER >= 3020000
-        template<class P, class PT, class D>
-        static std::string do_serialize(const pointer_binding<P, PT, D>&) {
+        template<class X, std::enable_if_t<is_pointer_binding_v<X>, bool> = true>
+        static std::string do_serialize(const X&) {
             // always serialize null (security reasons)
             return field_printer<std::nullptr_t>{}(nullptr);
         }
-#endif
     };
 
     template<class Table>

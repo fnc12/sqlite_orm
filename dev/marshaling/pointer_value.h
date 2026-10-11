@@ -11,9 +11,29 @@
 #endif
 #endif
 
+#include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/gsl.h"
 #include "../functional/cstring_literal.h"
 #include "../sqlite3/sqlite3_xdestroy.h"
+#include "../vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_pointer_arg_v, is_pointer_binding_v
+
+// note (internal): declared and classified even if `SQLITE_VERSION_NUMBER < 3020000`,
+// in order to simplify checking function calls in the DSL
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    template<typename P, typename T>
+    struct pointer_arg;
+
+    template<typename P, typename T, typename D>
+    class pointer_binding;
+}
+
+namespace sqlite_orm::internal {
+    template<class T>
+    constexpr bool is_pointer_arg_v = polyfill::is_specialization_of_v<T, pointer_arg>;
+
+    template<class T>
+    constexpr bool is_pointer_binding_v = polyfill::is_specialization_of_v<T, pointer_binding>;
+}
 
 #if SQLITE_VERSION_NUMBER >= 3020000
 namespace sqlite_orm::internal {

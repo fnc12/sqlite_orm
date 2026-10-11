@@ -1,31 +1,18 @@
 #pragma once
 
-/** @file Declarations of closed predicates for checking the validity of fields of column nodes.
+/** @file Declarations of closed predicates on raw C++ types - of fields, values and function parameters -
+ *        checking whether they qualify for an SQL-level role.
  */
 
 #include "../../functional/cxx_type_traits_polyfill.h"
 
+// Capabilities derived from the type itself
 namespace sqlite_orm::internal {
     template<class F, class SFINAE = void>
     extern const bool is_rowid_alias_capable_v;
 
     template<class F>
     using is_rowid_alias_capable = std::bool_constant<is_rowid_alias_capable_v<F>>;
-
-    /*
-     *  Whether a C++ type maps to SQLite's INTEGER type.
-     *
-     *  Like `is_bindable`, this is tied to the `type_printer` customization point - a type qualifies if its
-     *  type printer derives from `integer_printer` - hence its definition stays with `type_printer`
-     *  in `type_printer.h`.
-     */
-    template<class T>
-    extern const bool is_integer_mapped_v;
-
-    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
-    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
-    template<class T>
-    struct is_integer_mapped : std::bool_constant<is_integer_mapped_v<T>> {};
 
     /*
      *  Whether a type is a C++ text value - a narrow or wide C string, string view or string -,
@@ -36,13 +23,33 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_text_value = std::bool_constant<is_text_value_v<T>>;
+}
 
+// Readings of the type mapping's customization points
+namespace sqlite_orm::internal {
+    /*
+     *  Whether a C++ type maps to SQLite's INTEGER type.
+     *
+     *  In contrast to `is_rowid_alias_capable`, which is a capability derived from the field type itself,
+     *  this is tied to the `type_printer` customization point - a type qualifies if its type printer derives
+     *  from `integer_printer` - hence its definition stays with `type_printer` in `type_printer.h`.
+     */
+    template<class T>
+    extern const bool is_integer_mapped_v;
+
+    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    template<class T>
+    struct is_integer_mapped : std::bool_constant<is_integer_mapped_v<T>> {};
+}
+
+// Readings of the marshaling's customization points
+namespace sqlite_orm::internal {
     /*
      *  Whether a field type can be bound as a parameter of a prepared statement.
      *
-     *  In contrast to `is_rowid_alias_capable`, which is a capability derived from the field type itself,
-     *  this is tied to whether the `statement_binder` customization point is instantiable for it -
-     *  hence its definition stays with `statement_binder` in `statement_binder.h`.
+     *  Like `is_integer_mapped`, this is tied to a customization point, namely whether `statement_binder`
+     *  is instantiable for it - hence its definition stays with `statement_binder` in `statement_binder.h`.
      */
     template<class T, class SFINAE = void>
     extern const bool is_bindable_v;
@@ -65,4 +72,36 @@ namespace sqlite_orm::internal {
     //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
     template<class T>
     struct is_printable : std::bool_constant<is_printable_v<T>> {};
+}
+
+// Values of the pointer-passing interface
+namespace sqlite_orm::internal {
+    /*
+     *  Whether a type is a `pointer_arg`, the parameter of an application-defined function receiving a value
+     *  through SQLite's pointer-passing interface.
+     *
+     *  Defined with `pointer_arg` in `pointer_value.h`, which consumers in the DSL do not include,
+     *  as it depends on the SQLite C API.
+     */
+    template<class T>
+    extern const bool is_pointer_arg_v;
+
+    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    template<class T>
+    struct is_pointer_arg : std::bool_constant<is_pointer_arg_v<T>> {};
+
+    /*
+     *  Whether a type is a `pointer_binding`, a value bound through SQLite's pointer-passing interface -
+     *  as a statement parameter, a function call argument or a function result.
+     *
+     *  Defined with `pointer_binding` in `pointer_value.h`, like `is_pointer_arg`.
+     */
+    template<class T>
+    extern const bool is_pointer_binding_v;
+
+    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    template<class T>
+    struct is_pointer_binding : std::bool_constant<is_pointer_binding_v<T>> {};
 }
