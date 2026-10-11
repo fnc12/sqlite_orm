@@ -10,7 +10,7 @@
 #include "in.h"
 #include "binary_condition.h"  //  and_condition_t, or_condition_t
 #include "../vocabulary/node_algorithms.h"  // unwrap_expression_t
-#include "../operators.h"
+#include "operators.h"
 #include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 

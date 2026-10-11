@@ -9,7 +9,6 @@
 
 #include "functional/type_traits.h"
 #include "tuple_helper/tuple_filter.h"
-#include "operators.h"
 #include "prepared_statement.h"
 #include "optional_container.h"
 #include "vocabulary/node_traits.h"
@@ -171,10 +170,7 @@ namespace sqlite_orm::internal {
     struct node_tuple<T, match_if<is_negated_condition, T>> : node_tuple<argument_type_t<T>> {};
 
     template<class T>
-    struct node_tuple<unary_minus_t<T>, void> : node_tuple<T> {};
-
-    template<class T>
-    struct node_tuple<bitwise_not_t<T>, void> : node_tuple<T> {};
+    struct node_tuple<T, match_if<is_unary_operator, T>> : node_tuple<argument_type_t<T>> {};
 
     template<class T>
     struct node_tuple<T, match_if<is_builtin_function_call, T>> : node_tuple<args_tuple_t<T>> {};

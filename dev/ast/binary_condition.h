@@ -19,7 +19,7 @@
 #include "../tags.h"
 #include "../table_reference.h"
 #include "../alias_traits.h"
-#include "../operators.h"  //  conc_t
+#include "operators.h"  //  conc_t
 #include "../vocabulary/node_algorithms.h"  // unwrap_expression, are_valid_operands
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "collate.h"

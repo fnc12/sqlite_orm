@@ -40,7 +40,7 @@ namespace sqlite_orm::internal {
     /**
      *  Types participating as a chainable argument to overloaded operators
      */
-    template<class T>
+    template<class T, class SFINAE = void>
     constexpr bool is_chainable_operand_v = false;
 
     template<class T>
