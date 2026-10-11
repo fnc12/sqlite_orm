@@ -5,7 +5,6 @@
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
 #include <cstdlib>  //  ::atof, ::atoi, ::atoll
 #include <cstring>  //  ::strlen
-#include <system_error>  //  std::system_error
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert
@@ -24,9 +23,6 @@
 #include "../type_mapping/is_std_ptr.h"
 #include "../type_mapping/arithmetic_tag.h"
 #include "pointer_value.h"
-#include "../journal_mode.h"
-#include "../locking_mode.h"
-#include "../error_code.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -410,55 +406,5 @@ namespace sqlite_orm {
             auto len = static_cast<size_t>(sqlite3_value_bytes(value));
             return {bytes, bytes + len};
         }
-    };
-
-    /**
-     *  Specialization for locking_mode.
-     */
-    template<>
-    struct row_extractor<locking_mode, void> {
-        locking_mode extract(orm_gsl::czstring columnText) const {
-            if (columnText) {
-                if (auto [found, mode] = internal::locking_mode_from_string(columnText); found) {
-                    return mode;
-                } else {
-                    throw std::system_error{orm_error_code::incorrect_locking_mode_string};
-                }
-            } else {
-                throw std::system_error{orm_error_code::incorrect_locking_mode_string};
-            }
-        }
-
-        locking_mode extract(sqlite3_stmt* stmt, int columnIndex) const {
-            orm_gsl::czstring text = (const char*)sqlite3_column_text(stmt, columnIndex);
-            return this->extract(text);
-        }
-
-        locking_mode extract(sqlite3_value* value) const = delete;
-    };
-
-    /**
-     *  Specialization for journal_mode.
-     */
-    template<>
-    struct row_extractor<journal_mode, void> {
-        journal_mode extract(orm_gsl::czstring columnText) const {
-            if (columnText) {
-                if (auto [found, mode] = internal::journal_mode_from_string(columnText); found) {
-                    return mode;
-                } else {
-                    throw std::system_error{orm_error_code::incorrect_journal_mode_string};
-                }
-            } else {
-                throw std::system_error{orm_error_code::incorrect_journal_mode_string};
-            }
-        }
-
-        journal_mode extract(sqlite3_stmt* stmt, int columnIndex) const {
-            orm_gsl::czstring text = (const char*)sqlite3_column_text(stmt, columnIndex);
-            return this->extract(text);
-        }
-
-        journal_mode extract(sqlite3_value* value) const = delete;
     };
 }

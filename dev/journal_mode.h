@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sqlite3.h>
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <array>  //  std::array
 #include <string>  //  std::string
@@ -7,7 +9,12 @@
 #include <algorithm>  //  std::ranges::transform
 #include <cctype>  // std::toupper
 #include <string_view>  //  std::string_view
+#include <system_error>  //  std::system_error
 #endif
+
+#include "functional/gsl.h"
+#include "error_code.h"
+#include "marshaling/row_extractor.h"
 
 #if defined(_WINNT_)
 // DELETE is a macro defined in the Windows SDK (winnt.h)
@@ -76,6 +83,34 @@ namespace sqlite_orm::internal {
 #endif
         return {false, journal_mode::OFF};
     }
+}
+
+// `row_extractor` specialization
+namespace sqlite_orm {
+    /**
+     *  Specialization for journal_mode.
+     */
+    template<>
+    struct row_extractor<journal_mode, void> {
+        journal_mode extract(orm_gsl::czstring columnText) const {
+            if (columnText) {
+                if (auto [found, mode] = internal::journal_mode_from_string(columnText); found) {
+                    return mode;
+                } else {
+                    throw std::system_error{orm_error_code::incorrect_journal_mode_string};
+                }
+            } else {
+                throw std::system_error{orm_error_code::incorrect_journal_mode_string};
+            }
+        }
+
+        journal_mode extract(sqlite3_stmt* stmt, int columnIndex) const {
+            orm_gsl::czstring text = (const char*)sqlite3_column_text(stmt, columnIndex);
+            return this->extract(text);
+        }
+
+        journal_mode extract(sqlite3_value* value) const = delete;
+    };
 }
 
 #if defined(_WINNT_)
