@@ -50,6 +50,11 @@ TEST_CASE("statement_serializer index") {
         value = internal::serialize(index, context);
         expected = R"(CREATE INDEX "idx" ON "users" ("id") WHERE ("id" IS NOT NULL))";
     }
+    SECTION("unique expression") {
+        auto index = make_unique_index<User>("idx_name", lower(&User::name));
+        value = internal::serialize(index, context);
+        expected = R"(CREATE UNIQUE INDEX "idx_name" ON "users" (LOWER("name")))";
+    }
 #ifdef SQLITE_ORM_JSON_SUPPORTED
     SECTION("json") {
         SECTION("implicit") {

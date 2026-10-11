@@ -65,6 +65,8 @@ TEST_CASE("schema factory arguments are validated at compile time") {
         std::ignore = make_index("idx_partial", &User::name, where(length(&User::name) > 2));
         std::ignore = make_unique_index("idx_unique", indexed_column(&User::name).collate("BINARY").desc());
         std::ignore = make_index<User>("idx_explicit", &User::id, &User::name);
+        std::ignore = make_unique_index<User>("idx_unique_expr", lower(&User::name));
+        std::ignore = make_unique_index<User>("idx_unique_explicit", &User::id, &User::name);
         std::ignore = make_trigger("trg",
                                    after()
                                        .update_of(&User::name, column<User>(&User::id))
