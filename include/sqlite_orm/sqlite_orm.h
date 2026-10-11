@@ -4149,6 +4149,21 @@ namespace sqlite_orm::internal {
     using is_rowid_alias_capable = std::bool_constant<is_rowid_alias_capable_v<F>>;
 
     /*
+     *  Whether a C++ type maps to SQLite's INTEGER type.
+     *
+     *  Like `is_bindable`, this is tied to the `type_printer` customization point - a type qualifies if its
+     *  type printer derives from `integer_printer` - hence its definition stays with `type_printer`
+     *  in `type_printer.h`.
+     */
+    template<class T>
+    extern const bool is_integer_mapped_v;
+
+    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    template<class T>
+    struct is_integer_mapped : std::bool_constant<is_integer_mapped_v<T>> {};
+
+    /*
      *  Whether a type is a C++ text value - a narrow or wide C string, string view or string -,
      *  which a select yields as `std::string`.
      */
@@ -18135,6 +18150,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../type_mapping/type_printer.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_base_of
 #include <string>  //  std::string
 #include <vector>  //  std::vector
 #include <optional>  //  std::optional
@@ -18147,6 +18163,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../functional/type_traits.h"
 
 // #include "is_std_ptr.h"
+
+// #include "../vocabulary/algorithms/field_predicates_fwd.h"
+// Included to define is_integer_mapped_v
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -18215,6 +18234,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<>
     struct type_printer<std::vector<char>, void> : blob_printer {};
+}
+
+namespace sqlite_orm::internal {
+    template<class T>
+    constexpr bool is_integer_mapped_v = std::is_base_of<integer_printer, type_printer<T>>::value;
 }
 
 // #include "../marshaling/field_printer.h"
@@ -18668,7 +18692,7 @@ namespace sqlite_orm::internal {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
-#include <type_traits>  //  std::is_base_of, std::disjunction
+#include <type_traits>  //  std::disjunction
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::move, std::forward
@@ -18717,8 +18741,8 @@ namespace sqlite_orm::internal {
 //  collate_argument, collate_argument_to_string
 // #include "../serialization/serializer_context.h"
 
-// #include "../type_mapping/type_printer.h"
-
+// #include "../vocabulary/algorithms/field_predicates_fwd.h"
+//  is_integer_mapped
 // #include "../literal.h"
 
 // #include "../vocabulary/node_algorithms.h"
@@ -18887,7 +18911,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  storage.select(&User::name, order_by(&User::id))
      *  storage.select(as<colalias_a>(&User::name), order_by(get<colalias_a>()))
      */
-    template<class O, internal::satisfies_not<std::is_base_of, integer_printer, type_printer<O>> = true>
+    template<class O, internal::satisfies_not<internal::is_integer_mapped, O> = true>
     internal::order_by_t<O> order_by(O o) {
         static_assert(!internal::is_statement_clause<O>::value,
                       "an ORDER BY term must be an expression, not a statement clause");
@@ -18900,7 +18924,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Examples:
      *  storage.select(&User::name, order_by(1))
      */
-    template<class O, internal::satisfies<std::is_base_of, integer_printer, type_printer<O>> = true>
+    template<class O, internal::satisfies<internal::is_integer_mapped, O> = true>
     internal::order_by_t<internal::literal_holder<O>> order_by(O o) {
         return {{std::move(o)}};
     }
@@ -21773,8 +21797,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     };
 }
 
-// #include "../type_mapping/type_printer.h"
-//  type_printer, integer_printer
+// #include "../vocabulary/algorithms/field_predicates_fwd.h"
+//  is_integer_mapped_v
 // #include "column_identifier.h"
 
 // #include "../vocabulary/node_algorithms.h"
@@ -21903,7 +21927,7 @@ namespace sqlite_orm::internal {
 
     // For non-integer types: static_assert failure
     template<class F>
-    struct check_pkcol<F, std::enable_if_t<!std::is_base_of<integer_printer, type_printer<F>>::value>> {
+    struct check_pkcol<F, std::enable_if_t<!is_integer_mapped_v<F>>> {
         static constexpr void validate_column_primary_key_with_autoincrement() {
             static_assert(polyfill::always_false_v<F>,
                           R"(AUTOINCREMENT is only allowed on an INTEGER PRIMARY KEY as an alias for the "rowid" key)");
@@ -29125,7 +29149,7 @@ namespace sqlite_orm::internal {
     // It is the programmer's responsibility to ensure data integrity in the value range of the custom type
     // and in purview of SQLite using a 64-bit signed integer.
     template<class F, class SFINAE>
-    constexpr bool is_rowid_alias_capable_v = std::is_base_of<integer_printer, type_printer<F>>::value;
+    constexpr bool is_rowid_alias_capable_v = is_integer_mapped_v<F>;
 
     // For 64-bit signed integer type: capable
     template<class F>

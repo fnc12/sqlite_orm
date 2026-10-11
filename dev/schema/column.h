@@ -14,7 +14,7 @@
 #include "../tuple_helper/tuple_traits.h"
 #include "../member_traits/member_traits.h"
 #include "../type_mapping/type_is_nullable.h"
-#include "../type_mapping/type_printer.h"  //  type_printer, integer_printer
+#include "../vocabulary/algorithms/field_predicates_fwd.h"  //  is_integer_mapped_v
 #include "column_identifier.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_traits.h"
@@ -139,7 +139,7 @@ namespace sqlite_orm::internal {
 
     // For non-integer types: static_assert failure
     template<class F>
-    struct check_pkcol<F, std::enable_if_t<!std::is_base_of<integer_printer, type_printer<F>>::value>> {
+    struct check_pkcol<F, std::enable_if_t<!is_integer_mapped_v<F>>> {
         static constexpr void validate_column_primary_key_with_autoincrement() {
             static_assert(polyfill::always_false_v<F>,
                           R"(AUTOINCREMENT is only allowed on an INTEGER PRIMARY KEY as an alias for the "rowid" key)");

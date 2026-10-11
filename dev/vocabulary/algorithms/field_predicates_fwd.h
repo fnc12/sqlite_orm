@@ -13,6 +13,21 @@ namespace sqlite_orm::internal {
     using is_rowid_alias_capable = std::bool_constant<is_rowid_alias_capable_v<F>>;
 
     /*
+     *  Whether a C++ type maps to SQLite's INTEGER type.
+     *
+     *  Like `is_bindable`, this is tied to the `type_printer` customization point - a type qualifies if its
+     *  type printer derives from `integer_printer` - hence its definition stays with `type_printer`
+     *  in `type_printer.h`.
+     */
+    template<class T>
+    extern const bool is_integer_mapped_v;
+
+    //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    template<class T>
+    struct is_integer_mapped : std::bool_constant<is_integer_mapped_v<T>> {};
+
+    /*
      *  Whether a type is a C++ text value - a narrow or wide C string, string view or string -,
      *  which a select yields as `std::string`.
      */
