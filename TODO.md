@@ -5,8 +5,6 @@
 ## SQL language
 
 * `RETURNING` clause for INSERT/UPDATE/DELETE https://sqlite.org/lang_returning.html
-* `RIGHT JOIN` / `FULL OUTER JOIN` (3.39)
-* join operators and constraints combined as SQLite allows: a join without ON or USING (`join<T>()`, `left_join<T>()`), and NATURAL with LEFT or INNER (`NATURAL LEFT JOIN`); every join node already carries a constraint, an implicit one included
 * `IS DISTINCT FROM` / `IS NOT DISTINCT FROM` binary operators (3.39), and the bare `IS` / `IS NOT` spellings
 * `NULLS FIRST` / `NULLS LAST` in ORDER BY (3.30)
 * ORDER BY inside aggregate function calls (3.44), e.g. `string_agg(x, ',' ORDER BY y)`
@@ -54,6 +52,7 @@
 ## Internals
 
 * `optional_container` (once #1550 is merged): it is the compile-time optional sub-expression slot of the `case_t`, `limit_t`, `like_t` and trigger nodes, not a generic helper — `node_tuple` pattern-matches it, `ast_iterator` and `statement_serializer` reach into it via `apply()`, and it leaks into constructor signatures. `std::optional` is no replacement, as presence must stay part of the node's type. Candidate: store the sub-expression directly with an empty `absent_t`-like tag for "not present", asked about by a trait (`if constexpr`), `node_tuple<absent_t>` being empty.
+* operand normalization in every factory taking operands: validate the operands (`is_operand_or_bindable`, `are_valid_operands`) and unwrap `c()`-quoted ones (`unwrap_expression`), as the operator factories (comparison, arithmetic, bitwise, logical, IS, LIKE/GLOB, BETWEEN, IN, MATCH, assignment, NOT) already do. Remaining: the built-in function factories (`length()`, `abs()`, ...), `cast<T>()`, `collate`, and the other operand-taking factories; preferably through one helper doing both steps, so that each factory needs a single call. `match()`'s field also wants a field check rather than an operand check. Today `length(c(x))` fails only when serialized, with a missing `statement_serializer<quoted_expression_t<...>>`.
 * `dynamic_set_t`: an AST node whose type carries the serializer context (`dynamic_set(storage)`), and which serializes each assignment eagerly as it is pushed back - its assignments are of different types, so they cannot be kept as a tuple. Keeping them instead, type-erased, would let a dynamic SET be serialized and bound like any other node, and drop the context from its type.
 
 Please feel free to add any feature that isn't listed here and not implemented yet.
