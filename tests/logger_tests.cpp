@@ -1479,8 +1479,8 @@ TEST_CASE("logger") {
             }
             SECTION("set table-name") {
                 const auto [value, expected] = GENERATE(table<std::string, std::string>({
-                    {"users", "PRAGMA integrity_check(users)"},
-                    {"visits", "PRAGMA integrity_check(visits)"},
+                    {"users", R"(PRAGMA integrity_check("users"))"},
+                    {"visits", R"(PRAGMA integrity_check("visits"))"},
                 }));
                 storage.pragma.integrity_check(value);
                 pushExpected(expected);
