@@ -10,7 +10,7 @@
 #endif
 
 #include "functional/gsl.h"
-#include "pointer_value.h"
+#include "marshaling/pointer_value.h"
 #include "sqlite3/sqlite3_types.h"  //  int64
 
 #if SQLITE_VERSION_NUMBER >= 3020000

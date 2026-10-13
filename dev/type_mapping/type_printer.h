@@ -1,15 +1,17 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_base_of
 #include <string>  //  std::string
 #include <vector>  //  std::vector
 #include <optional>  //  std::optional
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
-#include "functional/gsl.h"
-#include "functional/type_traits.h"
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/gsl.h"
+#include "../functional/type_traits.h"
 #include "is_std_ptr.h"
+#include "../vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_integer_mapped_v
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -78,4 +80,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<>
     struct type_printer<std::vector<char>, void> : blob_printer {};
+}
+
+namespace sqlite_orm::internal {
+    template<class T>
+    constexpr bool is_integer_mapped_v = std::is_base_of<integer_printer, type_printer<T>>::value;
 }

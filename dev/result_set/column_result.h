@@ -6,23 +6,23 @@
 #include <optional>  //  std::optional
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
-#include "functional/mpl.h"
-#include "functional/type_traits.h"  //  common_type_of_t
-#include "tuple_helper/tuple_traits.h"
-#include "tuple_helper/tuple_fy.h"
-#include "tuple_helper/tuple_filter.h"
-#include "tuple_helper/tuple_transformer.h"
-#include "member_traits/member_traits.h"
-#include "vocabulary/node_traits.h"
-#include "vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value
-#include "mapped_type_proxy.h"
-#include "column_result_proxy.h"
-#include "ast/alias.h"
-#include "cte_types.h"
-#include "schema/algorithms/table_lookup.h"  // schema_pick_table_t, schema_mapped_column_field_types
-#include "ast/app_function.h"
-#include "sqlite3/sqlite3_types.h"  //  int64
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/mpl.h"
+#include "../functional/type_traits.h"  //  common_type_of_t
+#include "../tuple_helper/tuple_traits.h"
+#include "../tuple_helper/tuple_fy.h"
+#include "../tuple_helper/tuple_filter.h"
+#include "../tuple_helper/tuple_transformer.h"
+#include "../member_traits/member_traits.h"
+#include "../vocabulary/node_traits.h"
+#include "../vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value
+#include "../mapped_type_proxy.h"
+#include "../marshaling/column_result_proxy.h"
+#include "../ast/alias.h"
+#include "../cte_types.h"
+#include "../schema/algorithms/table_lookup.h"  // schema_pick_table_t, schema_mapped_column_field_types
+#include "../ast/app_function.h"
+#include "../sqlite3/sqlite3_types.h"  //  int64
 
 namespace sqlite_orm::internal {
     /**

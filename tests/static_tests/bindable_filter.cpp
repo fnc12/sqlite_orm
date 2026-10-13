@@ -5,6 +5,9 @@
 
 using namespace sqlite_orm;
 
+template<class Tpl>
+using bindable_filter_t = internal::tuple_from_index_sequence_t<Tpl, internal::bindable_index_sequence_of<Tpl>>;
+
 namespace {
     struct Custom {};
     template<class Elem>
@@ -22,7 +25,6 @@ TEST_CASE("bindable_filter") {
         std::string name;
     };
 
-    using internal::bindable_filter_t;
     using std::is_same;
     {
         using Tuple = std::tuple<bool,

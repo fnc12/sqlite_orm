@@ -13,7 +13,7 @@
 
 #include "functional/gsl.h"
 #include "table_info.h"
-#include "row_extractor.h"
+#include "marshaling/row_extractor.h"
 #include "journal_mode.h"
 #include "locking_mode.h"
 #include "connection_holder.h"

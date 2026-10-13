@@ -1,5 +1,6 @@
 {
   "project": "SQLite ORM",
+  "_comment": "The sources are ordered like the includes of not_single_header_include/sqlite_orm/sqlite_orm.h, which explains why the order matters.",
   "target": "include/sqlite_orm/sqlite_orm.h",
   "sources": [
     "dev/functional/start_macros.h",
@@ -9,10 +10,12 @@
 
     "dev/error_code.h",
     "dev/serialization/quoting.h",
+    "dev/marshaling/pointer_value.h",
 
-    "dev/storage.h",
     "dev/node_definitions.h",
     "dev/node_algorithm_definitions.h",
+
+    "dev/storage.h",
     "dev/interface_definitions.h",
     "dev/get_prepared_statement.h",
 

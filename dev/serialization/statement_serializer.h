@@ -32,16 +32,15 @@
 #include "../ast/crud/set.h"
 #include "../prepared_statement.h"
 #include "../mapped_type_proxy.h"
-#include "../pointer_value.h"
-#include "../type_printer.h"
-#include "../field_printer.h"
+#include "../type_mapping/type_printer.h"
+#include "../marshaling/field_printer.h"
 #include "../ast/literal.h"
 #include "table_name_collector.h"
 #include "column_expressions_collector.h"
 #include "cte_column_names_collector.h"
 #include "order_by_serializer.h"
 #include "serializing_util.h"
-#include "../statement_binder.h"
+#include "../marshaling/statement_binder.h"
 #include "quoting.h"
 #include "../error_code.h"
 #include "../schema/constraints/primary_key.h"  // conflict_clause_t
@@ -128,13 +127,11 @@ namespace sqlite_orm::internal {
             return quote_blob_literal(field_printer<std::vector<char>>{}(t));
         }
 
-#if SQLITE_VERSION_NUMBER >= 3020000
-        template<class P, class PT, class D>
-        static std::string do_serialize(const pointer_binding<P, PT, D>&) {
+        template<class X, std::enable_if_t<is_pointer_binding_v<X>, bool> = true>
+        static std::string do_serialize(const X&) {
             // always serialize null (security reasons)
             return field_printer<std::nullptr_t>{}(nullptr);
         }
-#endif
     };
 
     template<class Table>

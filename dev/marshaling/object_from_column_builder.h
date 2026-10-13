@@ -6,13 +6,10 @@
 #include <utility>  //  std::move
 #endif
 
-#include "functional/gsl.h"
-#include "functional/type_traits.h"
-#include "member_traits/member_traits.h"
-#include "vocabulary/node_fwd.h"  // column_field
-#include "ast/table_reference.h"
+#include "../functional/type_traits.h"
+#include "../member_traits/member_traits.h"
+#include "../vocabulary/node_fwd.h"  // column_field
 #include "row_extractor.h"
-#include "schema/algorithms/table_lookup.h"
 
 namespace sqlite_orm::internal {
     struct object_from_column_builder_base {
@@ -42,34 +39,5 @@ namespace sqlite_orm::internal {
                 (object.*column.setter)(std::move(value));
             };
         }
-    };
-
-    /**
-     *  Specialization for a table reference.
-     *  
-     *  This plays together with `column_result_of_t`, which returns `object_t<O>` as `table_reference<O>`
-     */
-    template<class O, class DBOs>
-    struct struct_extractor<table_reference<O>, DBOs> {
-        const DBOs& db_objects;
-
-        O extract(orm_gsl::czstring columnText) const = delete;
-
-        // note: expects to be called only from the top level, and therefore discards the index
-        O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
-            int columnIndex = 0;
-            return this->extract(stmt, columnIndex);
-        }
-
-        O extract(sqlite3_stmt* stmt, int& columnIndex) const {
-            O obj;
-            object_from_column_builder<O> builder{obj, stmt, columnIndex};
-            auto& table = pick_table<O>(this->db_objects);
-            table.for_each_column(builder);
-            columnIndex = builder.columnIndex;
-            return obj;
-        }
-
-        O extract(sqlite3_value* value) const = delete;
     };
 }
