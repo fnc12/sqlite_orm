@@ -178,7 +178,8 @@ namespace sqlite_orm::internal {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     template<class DBOs, class CP>
     struct column_pointer_result<DBOs, CP, true> {
-        using table_type = schema_pick_table_t<type_t<CP>, DBOs>;
+        using moniker_type = type_t<CP>;
+        using table_type = schema_pick_table_t<moniker_type, DBOs>;
         using cte_mapper_type = cte_mapper_type_t<table_type>;
 
         // lookup the column alias in the final column references

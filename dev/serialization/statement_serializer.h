@@ -585,9 +585,10 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            using alias_type = alias_type_t<statement_type>;
             std::stringstream ss;
             ss << serialize(c.expression, context) + " AS "
-               << streaming_identifier(alias_extractor<alias_type_t<T>>::extract());
+               << streaming_identifier(alias_extractor<alias_type>::extract());
             return ss.str();
         }
     };
@@ -599,9 +600,10 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            using alias_type = alias_type_t<statement_type>;
             std::stringstream ss;
             if (!context.omit_table_name) {
-                ss << streaming_identifier(alias_extractor<alias_type_t<statement_type>>::extract()) << ".";
+                ss << streaming_identifier(alias_extractor<alias_type>::extract()) << ".";
             }
             auto newContext = context;
             newContext.omit_table_name = true;

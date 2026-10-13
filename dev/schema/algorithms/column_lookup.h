@@ -46,7 +46,8 @@ namespace sqlite_orm::internal {
     constexpr decltype(auto) materialize_column_pointer(const DBOs&, const CP& cp) {
         if constexpr (is_alias_holder_v<field_type_t<CP>>) {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-            using table_type = schema_pick_table_t<type_t<CP>, DBOs>;
+            using moniker_type = type_t<CP>;
+            using table_type = schema_pick_table_t<moniker_type, DBOs>;
             using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
             using cte_fields_type = typename cte_mapper_type_t<table_type>::fields_type;
 
@@ -75,7 +76,8 @@ namespace sqlite_orm::internal {
     const std::string* find_column_name(const DBOs& dbObjects, const CP& cp) {
         if constexpr (is_alias_holder_v<field_type_t<CP>>) {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-            using table_type = schema_pick_table_t<type_t<CP>, DBOs>;
+            using moniker_type = type_t<CP>;
+            using table_type = schema_pick_table_t<moniker_type, DBOs>;
             using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
             using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
 

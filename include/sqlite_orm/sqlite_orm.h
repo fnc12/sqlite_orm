@@ -18334,7 +18334,8 @@ namespace sqlite_orm::internal {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     template<class DBOs, class CP>
     struct column_pointer_result<DBOs, CP, true> {
-        using table_type = schema_pick_table_t<type_t<CP>, DBOs>;
+        using moniker_type = type_t<CP>;
+        using table_type = schema_pick_table_t<moniker_type, DBOs>;
         using cte_mapper_type = cte_mapper_type_t<table_type>;
 
         // lookup the column alias in the final column references
@@ -18706,7 +18707,8 @@ namespace sqlite_orm::internal {
     constexpr decltype(auto) materialize_column_pointer(const DBOs&, const CP& cp) {
         if constexpr (is_alias_holder_v<field_type_t<CP>>) {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-            using table_type = schema_pick_table_t<type_t<CP>, DBOs>;
+            using moniker_type = type_t<CP>;
+            using table_type = schema_pick_table_t<moniker_type, DBOs>;
             using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
             using cte_fields_type = typename cte_mapper_type_t<table_type>::fields_type;
 
@@ -18735,7 +18737,8 @@ namespace sqlite_orm::internal {
     const std::string* find_column_name(const DBOs& dbObjects, const CP& cp) {
         if constexpr (is_alias_holder_v<field_type_t<CP>>) {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-            using table_type = schema_pick_table_t<type_t<CP>, DBOs>;
+            using moniker_type = type_t<CP>;
+            using table_type = schema_pick_table_t<moniker_type, DBOs>;
             using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
             using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
 
@@ -25523,9 +25526,10 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            using alias_type = alias_type_t<statement_type>;
             std::stringstream ss;
             ss << serialize(c.expression, context) + " AS "
-               << streaming_identifier(alias_extractor<alias_type_t<T>>::extract());
+               << streaming_identifier(alias_extractor<alias_type>::extract());
             return ss.str();
         }
     };
@@ -25537,9 +25541,10 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            using alias_type = alias_type_t<statement_type>;
             std::stringstream ss;
             if (!context.omit_table_name) {
-                ss << streaming_identifier(alias_extractor<alias_type_t<statement_type>>::extract()) << ".";
+                ss << streaming_identifier(alias_extractor<alias_type>::extract()) << ".";
             }
             auto newContext = context;
             newContext.omit_table_name = true;
