@@ -10,7 +10,7 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/type_traits.h"
 #include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
-#include "vocabulary/traits/structural_traits_fwd.h"  //  is_table_reference
+#include "vocabulary/node_traits.h"  //  is_table_reference
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 

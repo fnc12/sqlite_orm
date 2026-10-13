@@ -6002,7 +6002,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
-// #include "vocabulary/traits/structural_traits_fwd.h"
+// #include "vocabulary/node_traits.h"
 //  is_table_reference
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -8990,8 +8990,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #endif
 }
-
-// #include "../alias_traits.h"
 
 // #include "operators.h"
 
