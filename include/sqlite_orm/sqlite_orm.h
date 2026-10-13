@@ -18325,29 +18325,35 @@ namespace sqlite_orm::internal {
     struct column_result_t<DBOs, T, match_if<is_alias_column, T>> : column_result_t<DBOs, column_type_t<T>> {};
 
     /*
-     *  The result of a column pointer: that of its field -
-     *  or, for a column alias referenced in a CTE, the type of the column the CTE maps it to.
+     *  The result of a column pointer: that of its field.
      */
-    template<class DBOs, class CP, bool = is_alias_holder_v<field_type_t<CP>>>
-    struct column_pointer_result : column_result_t<DBOs, field_type_t<CP>> {};
+    template<class DBOs, class T>
+    struct column_result_t<DBOs,
+                           T,
+                           std::enable_if_t<std::conjunction<is_column_pointer<T>,
+                                                             std::negation<is_alias_holder<field_type_t<T>>>>::value>>
+        : column_result_t<DBOs, field_type_t<T>> {};
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-    template<class DBOs, class CP>
-    struct column_pointer_result<DBOs, CP, true> {
-        using moniker_type = type_t<CP>;
+    /*
+     *  The result of a column pointer referring to a column alias in a CTE: the type of the column the CTE maps it to.
+     */
+    template<class DBOs, class T>
+    struct column_result_t<
+        DBOs,
+        T,
+        std::enable_if_t<std::conjunction<is_column_pointer<T>, is_alias_holder<field_type_t<T>>>::value>> {
+        using moniker_type = type_t<T>;
         using table_type = schema_pick_table_t<moniker_type, DBOs>;
         using cte_mapper_type = cte_mapper_type_t<table_type>;
 
         // lookup the column alias in the final column references
-        using colalias_index = find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, field_type_t<CP>>;
+        using colalias_index = find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, field_type_t<T>>;
         static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
                       "No such column mapped into the CTE");
         using type = std::tuple_element_t<colalias_index::value, typename cte_mapper_type::fields_type>;
     };
 #endif
-
-    template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_column_pointer, T>> : column_pointer_result<DBOs, T> {};
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_columns, T>> : column_result_t<DBOs, columns_type_t<T>> {};
