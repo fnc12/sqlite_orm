@@ -15,8 +15,7 @@
 #include "../tuple_helper/tuple_transformer.h"
 #include "../member_traits/member_traits.h"
 #include "../vocabulary/node_traits.h"
-#include "../vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value
-#include "../mapped_type_proxy.h"
+#include "../vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value, mapped_type_proxy_t
 #include "../marshaling/column_result_proxy.h"
 #include "../ast/alias.h"
 #include "../cte_types.h"

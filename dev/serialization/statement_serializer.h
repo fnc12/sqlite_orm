@@ -31,7 +31,6 @@
 #include "../ast/result_columns.h"
 #include "../ast/crud/set.h"
 #include "../prepared_statement.h"
-#include "../mapped_type_proxy.h"
 #include "../type_mapping/type_printer.h"
 #include "../marshaling/field_printer.h"
 #include "../ast/literal.h"

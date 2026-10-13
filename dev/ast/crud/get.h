@@ -23,9 +23,8 @@
 #include "../../functional/mpl.h"
 #include "../../functional/index_sequence_util.h"
 #include "../../tuple_helper/tuple_filter.h"
-#include "../../mapped_type_proxy.h"
 #include "../../vocabulary/node_traits.h"
-#include "../../vocabulary/node_algorithms.h"  //  is_bindable_v
+#include "../../vocabulary/node_algorithms.h"  //  is_bindable_v, mapped_type_proxy_t
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../select.h"  //  validate_select_clauses
 

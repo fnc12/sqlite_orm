@@ -13,11 +13,10 @@
 #include "../tuple_helper/tuple_traits.h"
 #include "../tuple_helper/tuple_iteration.h"
 #include "../error_code.h"
-#include "../mapped_type_proxy.h"
 #include "../schema/algorithms/table_lookup.h"  //  pick_table
 #include "quoting.h"
 #include "../vocabulary/node_traits.h"
-#include "../vocabulary/node_algorithms.h"  // access_column_expression
+#include "../vocabulary/node_algorithms.h"  // access_column_expression, mapped_type_proxy_t
 #include "../schema/column_identifier.h"
 #include "../schema/table_identifier.h"
 

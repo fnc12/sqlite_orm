@@ -6,7 +6,7 @@
 #include <utility>  //  std::pair, std::move
 #endif
 
-#include "../mapped_type_proxy.h"
+#include "../vocabulary/node_algorithms.h"  //  mapped_type_proxy_t
 #include "../vocabulary/node_traits.h"
 #include "../ast/alias.h"
 #include "../schema/algorithms/table_lookup.h"  // lookup_table_name

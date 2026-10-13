@@ -5529,7 +5529,7 @@ namespace sqlite_orm::internal {
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::remove_reference
+#include <type_traits>  //  std::enable_if, std::remove_reference, std::remove_const, std::void_t
 #include <utility>  //  std::declval, std::move
 #endif
 
@@ -5660,6 +5660,38 @@ namespace sqlite_orm::internal {
     template<class T>
     using unwrap_expression_t = decltype(unwrap_expression(std::declval<T>()));
 }
+
+// record set accessors
+namespace sqlite_orm::internal {
+    /** 
+     *  Defines the `type` typename to be:
+     *  - The unqualified unwrapped table reference type if T is a table reference.
+     *  - The unqualified unwrapped table-valued expression type if T is a table-valued expression.
+     *  - The unqualified aliased type if T is a recordset alias.
+     *  - The enclosing data struct for eponymous virtual tables with hidden columns.
+     *  - ... otherwise unqualified T.
+     */
+    template<class T, class SFINAE = void>
+    struct mapped_type_proxy : std::remove_const<T> {};
+
+    template<class T>
+    struct mapped_type_proxy<T, std::void_t<enclosing_type_t<T>>> {
+        using type = enclosing_type_t<T>;
+    };
+
+    template<class R>
+    struct mapped_type_proxy<R, match_if<is_table_reference, R>> : R {};
+
+    template<class E>
+    struct mapped_type_proxy<E, match_if<is_table_valued_expression, E>> : E {};
+
+    template<class A>
+    struct mapped_type_proxy<A, match_if<is_recordset_alias, A>> : std::remove_const<type_t<A>> {};
+
+    template<class T>
+    using mapped_type_proxy_t = typename mapped_type_proxy<T>::type;
+}
+
 // #include "algorithms/field_accessors.h"
 
 /** @file Closed accessors of the object a field-level holder type holds.
@@ -12686,51 +12718,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../tuple_helper/tuple_filter.h"
 
-// #include "../../mapped_type_proxy.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::void_t, std::remove_const
-#endif
-
-// #include "functional/type_traits.h"
-
-// #include "vocabulary/node_traits.h"
-// projections
-
-namespace sqlite_orm::internal {
-    /** 
-     *  Defines the `type` typename to be:
-     *  - The unqualified unwrapped table reference type if T is a table reference.
-     *  - The unqualified unwrapped table-valued expression type if T is a table-valued expression.
-     *  - The unqualified aliased type if T is a recordset alias.
-     *  - The enclosing data struct for eponymous virtual tables with hidden columns.
-     *  - ... otherwise unqualified T.
-     */
-    template<class T, class SFINAE = void>
-    struct mapped_type_proxy : std::remove_const<T> {};
-
-    template<class T>
-    struct mapped_type_proxy<T, std::void_t<enclosing_type_t<T>>> {
-        using type = enclosing_type_t<T>;
-    };
-
-    template<class R>
-    struct mapped_type_proxy<R, match_if<is_table_reference, R>> : R {};
-
-    template<class E>
-    struct mapped_type_proxy<E, match_if<is_table_valued_expression, E>> : E {};
-
-    template<class A>
-    struct mapped_type_proxy<A, match_if<is_recordset_alias, A>> : std::remove_const<type_t<A>> {};
-
-    template<class T>
-    using mapped_type_proxy_t = typename mapped_type_proxy<T>::type;
-}
-
 // #include "../../vocabulary/node_traits.h"
 
 // #include "../../vocabulary/node_algorithms.h"
-//  is_bindable_v
+//  is_bindable_v, mapped_type_proxy_t
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 // #include "../select.h"
@@ -17839,9 +17830,7 @@ namespace sqlite_orm::internal {
 // #include "../vocabulary/node_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
-//  substitute_arguments, is_bindable_v, is_text_value
-// #include "../mapped_type_proxy.h"
-
+//  substitute_arguments, is_bindable_v, is_text_value, mapped_type_proxy_t
 // #include "../marshaling/column_result_proxy.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -18424,8 +18413,6 @@ namespace sqlite_orm::internal {
     struct column_result_t<DBOs, std::reference_wrapper<T>, void> : column_result_t<DBOs, T> {};
 }
 
-// #include "mapped_type_proxy.h"
-
 // #include "sync_schema_result.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -18695,7 +18682,7 @@ namespace sqlite_orm::internal {
 // #include "../../vocabulary/node_traits.h"
 
 // #include "../../vocabulary/node_algorithms.h"
-//  col_index_sequence_of, col_index_sequence_with
+//  col_index_sequence_of, col_index_sequence_with, mapped_type_proxy_t
 // #include "../../cte_types.h"
 
 // #include "../db_objects.h"
@@ -24475,8 +24462,6 @@ namespace sqlite_orm::internal {
 
 // #include "../prepared_statement.h"
 
-// #include "../mapped_type_proxy.h"
-
 // #include "../type_mapping/type_printer.h"
 
 // #include "../marshaling/field_printer.h"
@@ -24491,8 +24476,8 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::pair, std::move
 #endif
 
-// #include "../mapped_type_proxy.h"
-
+// #include "../vocabulary/node_algorithms.h"
+//  mapped_type_proxy_t
 // #include "../vocabulary/node_traits.h"
 
 // #include "../ast/alias.h"
@@ -24582,8 +24567,6 @@ namespace sqlite_orm::internal {
 
 // #include "../error_code.h"
 
-// #include "../mapped_type_proxy.h"
-
 // #include "../schema/algorithms/table_lookup.h"
 //  pick_table
 // #include "quoting.h"
@@ -24591,7 +24574,7 @@ namespace sqlite_orm::internal {
 // #include "../vocabulary/node_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
-// access_column_expression
+// access_column_expression, mapped_type_proxy_t
 // #include "../schema/column_identifier.h"
 
 // #include "../schema/table_identifier.h"

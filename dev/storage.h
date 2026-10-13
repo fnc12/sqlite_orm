@@ -44,7 +44,6 @@
 #include "marshaling/statement_binder.h"
 #include "marshaling/parameter_binders.h"
 #include "result_set/column_result.h"
-#include "mapped_type_proxy.h"
 #include "sync_schema_result.h"
 #include "schema/algorithms/sync_order.h"
 #include "table_info.h"
