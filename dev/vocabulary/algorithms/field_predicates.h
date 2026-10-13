@@ -11,7 +11,7 @@
 
 #include "../../sqlite3/sqlite3_types.h"  //  int64
 #include "../../functional/gsl.h"  // orm_gsl::czstring, orm_gsl::cwzstring
-#include "../../type_printer.h"
+#include "../../type_mapping/type_printer.h"
 #include "field_predicates_fwd.h"  // Included to specialize field predicates
 
 namespace sqlite_orm::internal {
@@ -19,7 +19,7 @@ namespace sqlite_orm::internal {
     // It is the programmer's responsibility to ensure data integrity in the value range of the custom type
     // and in purview of SQLite using a 64-bit signed integer.
     template<class F, class SFINAE>
-    constexpr bool is_rowid_alias_capable_v = std::is_base_of<integer_printer, type_printer<F>>::value;
+    constexpr bool is_rowid_alias_capable_v = is_integer_mapped_v<F>;
 
     // For 64-bit signed integer type: capable
     template<class F>

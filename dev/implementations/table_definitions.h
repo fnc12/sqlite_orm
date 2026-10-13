@@ -12,7 +12,7 @@
 
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"
-#include "../type_printer.h"
+#include "../type_mapping/type_printer.h"
 #include "../schema/table.h"
 
 namespace sqlite_orm::internal {

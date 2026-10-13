@@ -5,31 +5,24 @@
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
 #include <cstdlib>  //  ::atof, ::atoi, ::atoll
 #include <cstring>  //  ::strlen
-#include <system_error>  //  std::system_error
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple
 #include <optional>  //  std::optional
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>
 #endif
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
-#include "functional/gsl.h"
-#include "functional/type_traits.h"
-#include "tuple_helper/tuple_transformer.h"
-#include "is_std_ptr.h"
-#include "column_result_proxy.h"
-#include "arithmetic_tag.h"
-#include "pointer_value.h"
-#include "journal_mode.h"
-#include "locking_mode.h"
-#include "error_code.h"
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/gsl.h"
+#include "../functional/type_traits.h"
+#include "../type_mapping/is_std_ptr.h"
+#include "../type_mapping/arithmetic_tag.h"
+#include "../vocabulary/algorithms/field_predicates_fwd.h"  //  is_pointer_arg, is_pointer_binding
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -147,24 +140,25 @@ namespace sqlite_orm {
      *  @note The 'pointer-passing' interface doesn't support (and in fact prohibits)
      *  extracting pointers from columns.
      */
-    template<class P, class T>
-    struct row_extractor<pointer_arg<P, T>, void> {
-        using V = pointer_arg<P, T>;
+    template<class V>
+    struct row_extractor<V, internal::match_if<internal::is_pointer_arg, V>> {
+        using qualified_type = typename V::qualified_type;
+        using tag = typename V::tag;
 
         V extract(orm_gsl::czstring columnText) const = delete;
 
         V extract(sqlite3_stmt* stmt, int columnIndex) const = delete;
 
         V extract(sqlite3_value* value) const {
-            return {(P*)sqlite3_value_pointer(value, T::value)};
+            return {(qualified_type*)sqlite3_value_pointer(value, tag::value)};
         }
     };
 
     /**
      *  Undefine using pointer_binding<> for querying values
      */
-    template<class P, class T, class D>
-    struct row_extractor<pointer_binding<P, T, D>, void>;
+    template<class V>
+    struct row_extractor<V, internal::match_if<internal::is_pointer_binding, V>>;
 #endif
 
     /**
@@ -413,146 +407,5 @@ namespace sqlite_orm {
             auto len = static_cast<size_t>(sqlite3_value_bytes(value));
             return {bytes, bytes + len};
         }
-    };
-
-    /**
-     *  Specialization for locking_mode.
-     */
-    template<>
-    struct row_extractor<locking_mode, void> {
-        locking_mode extract(orm_gsl::czstring columnText) const {
-            if (columnText) {
-                if (auto [found, mode] = internal::locking_mode_from_string(columnText); found) {
-                    return mode;
-                } else {
-                    throw std::system_error{orm_error_code::incorrect_locking_mode_string};
-                }
-            } else {
-                throw std::system_error{orm_error_code::incorrect_locking_mode_string};
-            }
-        }
-
-        locking_mode extract(sqlite3_stmt* stmt, int columnIndex) const {
-            orm_gsl::czstring text = (const char*)sqlite3_column_text(stmt, columnIndex);
-            return this->extract(text);
-        }
-
-        locking_mode extract(sqlite3_value* value) const = delete;
-    };
-
-    /**
-     *  Specialization for journal_mode.
-     */
-    template<>
-    struct row_extractor<journal_mode, void> {
-        journal_mode extract(orm_gsl::czstring columnText) const {
-            if (columnText) {
-                if (auto [found, mode] = internal::journal_mode_from_string(columnText); found) {
-                    return mode;
-                } else {
-                    throw std::system_error{orm_error_code::incorrect_journal_mode_string};
-                }
-            } else {
-                throw std::system_error{orm_error_code::incorrect_journal_mode_string};
-            }
-        }
-
-        journal_mode extract(sqlite3_stmt* stmt, int columnIndex) const {
-            orm_gsl::czstring text = (const char*)sqlite3_column_text(stmt, columnIndex);
-            return this->extract(text);
-        }
-
-        journal_mode extract(sqlite3_value* value) const = delete;
-    };
-}
-
-namespace sqlite_orm::internal {
-
-    /*
-     *  Helper to extract a structure from a rowset.
-     */
-    template<class R, class DBOs>
-    struct struct_extractor;
-
-    /*  
-     *  Returns a value-based row extractor for an unmapped type,
-     *  returns a structure extractor for a table reference, tuple or named struct.
-     */
-    template<class R, class DBOs>
-    auto make_row_extractor([[maybe_unused]] const DBOs& dbObjects) {
-        if constexpr (polyfill::is_specialization_of_v<R, std::tuple> ||
-                      polyfill::is_specialization_of_v<R, structure> || is_table_reference_v<R>) {
-            return struct_extractor<R, DBOs>{dbObjects};
-        } else {
-            return row_value_extractor<R>();
-        }
-    }
-
-    /**
-     *  Specialization for a tuple of top-level column results.
-     */
-    template<class DBOs, class... Args>
-    struct struct_extractor<std::tuple<Args...>, DBOs> {
-        const DBOs& db_objects;
-
-        std::tuple<Args...> extract(orm_gsl::czstring columnText) const = delete;
-
-        // note: expects to be called only from the top level, and therefore discards the index
-        std::tuple<column_result_proxy_t<Args>...> extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
-            int columnIndex = -1;
-            return {make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
-        }
-
-        // unused to date
-        std::tuple<column_result_proxy_t<Args>...> extract(sqlite3_stmt* stmt, int& columnIndex) const = delete;
-
-        std::tuple<Args...> extract(sqlite3_value* value) const = delete;
-    };
-
-    /**
-     *  Specialization for an unmapped structure to be constructed ad-hoc from column results.
-     *  
-     *  This plays together with `column_result_of_t`, which returns `struct_t<O>` as `structure<O>`
-     */
-    template<class O, class... Args, class DBOs>
-    struct struct_extractor<structure<O, std::tuple<Args...>>, DBOs> {
-        const DBOs& db_objects;
-
-        O extract(orm_gsl::czstring columnText) const = delete;
-
-        // note: expects to be called only from the top level, and therefore discards the index;
-        // note: brace-init-list initialization guarantees order of evaluation, but only for aggregates and variadic constructors it seems.
-        //       see unit test tests/prepared_statement_tests/select.cpp/TEST_CASE("Prepared select")/SECTION("non-aggregate struct")
-        template<class Ox = O, satisfies<is_eval_order_garanteed, Ox> = true>
-        O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
-            int columnIndex = -1;
-            return O{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
-        }
-
-        template<class Ox = O, satisfies_not<is_eval_order_garanteed, Ox> = true>
-        O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
-            int columnIndex = -1;
-            // note: brace-init-list initialization guarantees order of evaluation, but only for aggregates and variadic constructors it seems.
-            std::tuple<Args...> t{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
-            return create_from_tuple<O>(std::move(t), std::index_sequence_for<Args...>{});
-        }
-
-        // note: brace-init-list initialization guarantees order of evaluation, but only for aggregates and variadic constructors it seems.
-        //       see unit test tests/prepared_statement_tests/select.cpp/TEST_CASE("Prepared select")/SECTION("non-aggregate struct")
-        template<class Ox = O, satisfies<is_eval_order_garanteed, Ox> = true>
-        O extract(sqlite3_stmt* stmt, int& columnIndex) const {
-            --columnIndex;
-            return O{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
-        }
-
-        template<class Ox = O, satisfies_not<is_eval_order_garanteed, Ox> = true>
-        O extract(sqlite3_stmt* stmt, int& columnIndex) const {
-            --columnIndex;
-            // note: brace-init-list initialization guarantees order of evaluation, but only for aggregates and variadic constructors it seems.
-            std::tuple<Args...> t{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
-            return create_from_tuple<O>(std::move(t), std::index_sequence_for<Args...>{});
-        }
-
-        O extract(sqlite3_value* value) const = delete;
     };
 }

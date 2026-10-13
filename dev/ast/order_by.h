@@ -6,7 +6,7 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
-#include <type_traits>  //  std::is_base_of, std::disjunction
+#include <type_traits>  //  std::disjunction
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::move, std::forward
@@ -18,9 +18,8 @@
 #include "../functional/type_traits.h"
 #include "../builtin/collations.h"  //  collate_argument, collate_argument_to_string
 #include "../serialization/serializer_context.h"
-#include "../type_printer.h"
 #include "../literal.h"
-#include "../vocabulary/node_algorithms.h"  // is_statement_clause
+#include "../vocabulary/node_algorithms.h"  // is_statement_clause, is_integer_mapped
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
@@ -184,7 +183,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  storage.select(&User::name, order_by(&User::id))
      *  storage.select(as<colalias_a>(&User::name), order_by(get<colalias_a>()))
      */
-    template<class O, internal::satisfies_not<std::is_base_of, integer_printer, type_printer<O>> = true>
+    template<class O, internal::satisfies_not<internal::is_integer_mapped, O> = true>
     internal::order_by_t<O> order_by(O o) {
         static_assert(!internal::is_statement_clause<O>::value,
                       "an ORDER BY term must be an expression, not a statement clause");
@@ -197,7 +196,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Examples:
      *  storage.select(&User::name, order_by(1))
      */
-    template<class O, internal::satisfies<std::is_base_of, integer_printer, type_printer<O>> = true>
+    template<class O, internal::satisfies<internal::is_integer_mapped, O> = true>
     internal::order_by_t<internal::literal_holder<O>> order_by(O o) {
         return {{std::move(o)}};
     }

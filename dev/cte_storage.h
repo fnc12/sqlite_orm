@@ -10,7 +10,7 @@
 #endif
 
 #include "tuple_helper/tuple_fy.h"
-#include "column_result.h"
+#include "result_set/column_result.h"
 #include "vocabulary/node_traits.h"
 #include "schema/column.h"
 #include "schema/table_base.h"
