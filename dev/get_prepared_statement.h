@@ -81,9 +81,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using statement_type = polyfill::remove_cvref_t<decltype(statement)>;
         using expression_type = expression_type_t<statement_type>;
         using node_tuple = node_tuple_t<expression_type>;
-        constexpr size_t nodeIdx =
+        constexpr size_t nodeIndex =
             index_sequence_value_at<static_cast<size_t>(N)>(bindable_index_sequence_of<node_tuple>{});
-        using result_type = std::tuple_element_t<nodeIdx, node_tuple>;
+        using result_type = std::tuple_element_t<nodeIndex, node_tuple>;
         const result_type* result = nullptr;
         iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
             using node_type = polyfill::remove_cvref_t<decltype(node)>;
@@ -111,9 +111,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using statement_type = std::remove_reference_t<decltype(statement)>;
         using expression_type = expression_type_t<statement_type>;
         using node_tuple = node_tuple_t<expression_type>;
-        constexpr size_t nodeIdx =
+        constexpr size_t nodeIndex =
             index_sequence_value_at<static_cast<size_t>(N)>(bindable_index_sequence_of<node_tuple>{});
-        using result_type = std::tuple_element_t<nodeIdx, node_tuple>;
+        using result_type = std::tuple_element_t<nodeIndex, node_tuple>;
         result_type* result = nullptr;
 
         iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
