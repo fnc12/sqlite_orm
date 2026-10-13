@@ -71,7 +71,7 @@ namespace sqlite_orm::internal {
     using is_literal = std::bool_constant<is_literal_v<T>>;
 
     /**
-     *  Nodes lifting a mapped object type into a value: `c<Object>()`.
+     *  Nodes lifting a struct mapped as a table or view into the DSL, enabling `->*`: `c<Object>()`.
      */
     template<class T>
     extern const bool is_table_reference_v;

@@ -54,7 +54,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     /**
-     *  Make a table reference.
+     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
+     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
      */
     template<class O>
         requires (!orm_recordset_alias<O>)
@@ -63,7 +64,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #else
     /**
-     *  Make a table reference.
+     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
+     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
      */
     template<class O, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
     constexpr internal::table_reference<O> c() {

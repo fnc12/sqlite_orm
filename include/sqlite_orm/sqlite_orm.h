@@ -4061,7 +4061,7 @@ namespace sqlite_orm::internal {
     using is_literal = std::bool_constant<is_literal_v<T>>;
 
     /**
-     *  Nodes lifting a mapped object type into a value: `c<Object>()`.
+     *  Nodes lifting a struct mapped as a table or view into the DSL, enabling `->*`: `c<Object>()`.
      */
     template<class T>
     extern const bool is_table_reference_v;
@@ -8971,7 +8971,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     /**
-     *  Make a table reference.
+     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
+     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
      */
     template<class O>
         requires (!orm_recordset_alias<O>)
@@ -8980,7 +8981,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #else
     /**
-     *  Make a table reference.
+     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
+     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
      */
     template<class O, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
     constexpr internal::table_reference<O> c() {
