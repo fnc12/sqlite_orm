@@ -7,10 +7,9 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
-#include "../alias_traits.h"
+#include "../vocabulary/node_traits.h"  //  orm_recordset_alias
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
-#include "literal.h"
 
 namespace sqlite_orm::internal {
     /*
@@ -47,11 +46,6 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    template<class T>
-    concept orm_table_valued_expression = internal::is_table_valued_expression_v<T>;
-#endif
-
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     /**
      *  Make a table reference, lifting a struct mapped as a table or view into the DSL.

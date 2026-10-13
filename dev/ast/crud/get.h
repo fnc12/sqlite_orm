@@ -23,7 +23,6 @@
 #include "../../functional/mpl.h"
 #include "../../functional/index_sequence_util.h"
 #include "../../tuple_helper/tuple_filter.h"
-#include "../table_reference.h"
 #include "../../mapped_type_proxy.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/node_algorithms.h"  //  is_bindable_v

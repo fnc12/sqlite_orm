@@ -15,12 +15,55 @@
 #include "../functional/cstring_literal.h"
 #include "../functional/type_traits.h"
 #include "../member_traits/field_of.h"
-#include "../alias_traits.h"
 #include "../vocabulary/node_traits.h"
 #include "column_pointer.h"
 #include "../vocabulary/node_fwd.h"  // table_identifier
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /** @short Base class for a custom table alias, column alias or expression alias.
+     */
+    struct alias_tag {};
+}
+
+namespace sqlite_orm::internal {
+    template<class T>
+    constexpr bool is_alias_v = std::is_base_of<alias_tag, T>::value;
+
+    //  note: the definitions below are written in terms of the variable templates rather than of the `is_*` alias
+    //  templates of the traits - msvc 141 fails to resolve an alias template in the initializer of a variable template
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR];
+    //  and they name their template parameter like the declarations in `grammar_traits_fwd.h` do - msvc 141 resolves
+    //  the initializer of a redeclared variable template with the parameter names of the first declaration
+
+    /** @short Alias of a column in a record set, see `orm_column_alias`.
+     */
+    template<class T>
+    constexpr bool is_column_alias_v = is_alias_v<T> && !polyfill::is_detected_v<type_t, T>;
+
+    /** @short Alias of any type of record set, see `orm_recordset_alias`.
+     */
+    template<class T>
+    constexpr bool is_recordset_alias_v = is_alias_v<T> && polyfill::is_detected_v<type_t, T>;
+
+    /** @short Alias of a concrete table, see `orm_table_alias`.
+     */
+    template<class T>
+    constexpr bool is_table_alias_v =
+        is_recordset_alias_v<T> && !std::is_same<polyfill::detected_t<type_t, T>, std::remove_const_t<T>>::value;
+
+    /** @short Moniker of a CTE, see `orm_cte_moniker`.
+     */
+    template<class T>
+    constexpr bool is_cte_moniker_v =
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+        is_recordset_alias_v<T> && std::is_same<polyfill::detected_t<type_t, T>, std::remove_const_t<T>>::value;
+#else
+        false;
+#endif
+}
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES

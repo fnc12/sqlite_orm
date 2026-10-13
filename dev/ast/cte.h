@@ -15,7 +15,6 @@
 #include "../functional/type_traits.h"
 #include "../tuple_helper/tuple_transformer.h"
 #include "alias.h"
-#include "../alias_traits.h"
 #include "../cte_moniker.h"
 #include "select.h"
 #include "compound_operator.h"

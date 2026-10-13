@@ -12,5 +12,6 @@
 #include "traits/structural_traits_fwd.h"
 #include "traits/semantic_traits_fwd.h"
 #include "traits/operand_traits_fwd.h"
+#include "traits/recordset_concepts.h"
 #include "projections/nested_types.h"
 #include "projections/mapped_types.h"

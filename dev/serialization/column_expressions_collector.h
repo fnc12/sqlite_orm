@@ -14,7 +14,6 @@
 #include "../tuple_helper/tuple_iteration.h"
 #include "../error_code.h"
 #include "../mapped_type_proxy.h"
-#include "../alias_traits.h"
 #include "../schema/algorithms/table_lookup.h"  //  pick_table
 #include "quoting.h"
 #include "../vocabulary/node_traits.h"

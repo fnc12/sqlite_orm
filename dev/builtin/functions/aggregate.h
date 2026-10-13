@@ -17,8 +17,7 @@
 #include <string_view>  //  std::string_view
 #endif
 
-#include "../../alias_traits.h"  //  orm_refers_to_recordset, auto_decay_table_ref_t
-#include "../../vocabulary/node_algorithms.h"  //  argument
+#include "../../vocabulary/node_algorithms.h"  //  argument, orm_refers_to_recordset
 #include "../../ast/builtin_function.h"  //  count_asterisk_t, count_asterisk_without_type
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

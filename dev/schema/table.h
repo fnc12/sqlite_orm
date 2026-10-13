@@ -17,7 +17,6 @@
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_transformer.h"
 #include "../table_info.h"
-#include "../alias_traits.h"  //  orm_table_reference, auto_decay_table_ref_t
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits

@@ -70,7 +70,9 @@ vocabulary/
     algorithms/             "What follows from that?" — see below
 
     node_traits.h           Umbrella, declaration-only: traits/*_fwd.h +
-                            projections/*.h. Never includes a definition file.
+                            projections/*.h. Never includes a definition file,
+                            save traits/recordset_concepts.h - concepts cannot be
+                            forward-declared.
                             Safe for broad inclusion. There is no separate projections
                             umbrella: traits and projections are one tier of question,
                             and a consumer of one is overwhelmingly a consumer of both.
@@ -79,7 +81,8 @@ vocabulary/
                             clause_predicates.h, expression_element_predicates.h,
                             operand_predicates.h, index_filters.h, accessors.h,
                             field_accessors.h, argument_placeholders.h,
-                            field_predicates_fwd.h, field_predicates_concepts.h.
+                            field_predicates_fwd.h, field_predicates_concepts.h,
+                            recordset_predicates.h.
                             Deliberately does NOT include field_predicates.h.
 ```
 
@@ -190,6 +193,12 @@ Four axes are keyed on a DSL node; one is keyed on a raw C++ type.
 All four node axes are **open**: the primary template is declared in the `_fwd.h` file, and
 each node specializes it **in the node's own header**.
 
+`traits/recordset_concepts.h` is the one definition file among them: the public concepts classifying a single
+node referring to a record set or one of its columns — the alias concepts `orm_alias` … `orm_cte_moniker`,
+`orm_table_reference` and `orm_table_valued_expression`. Each is the public face of one grammar or structural
+trait; since concepts cannot be forward-declared, they are defined here and reach consumers through
+`node_traits.h`. See [Concepts](#concepts-a-hard-constraint-on-splitting).
+
 ### Grammar
 
 Classifier/leaf traits plus structural grouping by real SQL grammar production:
@@ -248,7 +257,8 @@ specialize. Direct single-node accessors, in three shapes across two files.
 `projections/mapped_types.h` instead destructures a node to a type it captured, and therefore
 names the concrete nodes it matches: `table_type_of` yields the enclosing class of a
 pointer-to-member, the `T` of a `column_pointer<T, F>`, and recurses through
-`indexed_column_t`. Needing `node_fwd.h` is what sets this shape apart from the other two.
+`indexed_column_t`; `decay_table_ref` yields the mapped object of a `table_reference<O>`, leaving
+any other record set as it is. Needing `node_fwd.h` is what sets this shape apart from the other two.
 
 Whether the type such a projection yields is *actually* mapped by a schema is not its
 question — that is schema-wide lookup, one tier up in `schema/algorithms/table_lookup.h`.
@@ -274,6 +284,7 @@ Nothing is being composed into a judgment; it is still extraction.
 | — where their definitions live | `is_rowid_alias_capable_v` is a capability *derived from* the field type, so it is defined in `field_predicates.h` with the other computed predicates. `is_bindable_v` and `is_printable_v` instead test whether a customization point is instantiable for the type, so each stays with the point it tests — `statement_binder.h` and `field_printer.h` respectively, which include the `_fwd` header to define them. `is_integer_mapped_v` likewise reads a customization point — whether the type's `type_printer` derives from `integer_printer` — and is defined in `type_printer.h`; consumers ask it instead of inspecting the printer's base themselves. `is_pointer_arg_v` and `is_pointer_binding_v` are defined with the pointer-passing interface's values in `marshaling/pointer_value.h` — always false before SQLite 3.20, where those values do not exist. Like every definition, it arrives through the top-level headers rather than through its users: `statement_binder.h` and `row_extractor.h` pattern-match the values through the declarations, and so does `ast/app_function.h` when checking the pointer values of a function call. As the customization points get instantiated for concrete types while the headers are processed, the top-level headers include `pointer_value.h` ahead of `storage.h` — see [The manifests](#the-manifests). |
 | `algorithms/field_predicates.h` | The definitions of the *derived* field predicates — `is_rowid_alias_capable_v` and `is_text_value_v` — of which the former needs `type_printer.h`. Reached only through the `node_algorithm_definitions.h` manifest. |
 | `algorithms/field_predicates_concepts.h` | The `hidden_column_of_vtab` / `hidden_field_of_vtab` concepts, plus their C++17 fallback `is_hidden_column_of_vtab_v` / `is_hidden_field_of_vtab_v`, under one guard — declared and defined here, not in the `_fwd` file. See [Concepts](#concepts-a-hard-constraint-on-splitting). |
+| `algorithms/recordset_predicates.h` | The public concepts checking whether a node refers to a table or a record set, i.e. may occupy the record set slot of a factory — `orm_refers_to_table`, `orm_refers_to_recordset`, `orm_mapped_recordset` — plus their C++17 fallback `is_referring_to_recordset_v`. They compose the structural table reference with the grammar alias traits, hence algorithms rather than traits; the single-node concepts they compose live in `traits/recordset_concepts.h`. |
 
 ## Open vs. closed
 
@@ -340,7 +351,10 @@ Both branches check the identical condition over the identical dependencies, so 
 no benefit to separating them.
 
 This pattern generalizes to any future concept, in traits or algorithms, needing the same
-transparency-over-weight-isolation trade.
+transparency-over-weight-isolation trade. `traits/recordset_concepts.h` is the second instance:
+its alias concepts name `alias_tag` directly, which a forward declaration in `node_fwd.h`
+suffices for, so that a failed constraint tells which requirement is not met. Concepts composing
+them across axes are algorithms and live apart, in `algorithms/recordset_predicates.h`.
 
 ## Schema-level algorithms
 

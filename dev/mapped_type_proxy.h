@@ -5,7 +5,6 @@
 #endif
 
 #include "functional/type_traits.h"
-#include "alias_traits.h"
 #include "vocabulary/node_traits.h"  // projections
 
 namespace sqlite_orm::internal {

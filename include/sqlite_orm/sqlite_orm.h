@@ -2852,6 +2852,8 @@ namespace sqlite_orm::internal {
  *        e.g. for base-class overloads, partial specializations or metafunctions.
  */
 
+SQLITE_ORM_EXPORT namespace sqlite_orm { struct alias_tag; }
+
 namespace sqlite_orm::internal {
     template<class... Cs>
     struct primary_key_t;
@@ -2866,6 +2868,9 @@ namespace sqlite_orm::internal {
 
     template<class T, class F>
     struct column_pointer;
+
+    template<class O>
+    struct table_reference;
 
     template<class C>
     struct indexed_column_t;
@@ -4170,6 +4175,88 @@ namespace sqlite_orm::internal {
     using is_operator_argument = std::bool_constant<is_operator_argument_v<T>>;
 }
 
+// #include "traits/recordset_concepts.h"
+
+/** @file Concepts classifying a single node referring to a record set or one of its columns:
+ *        aliases, table references and table-valued function calls - the public face of
+ *        the corresponding grammar and structural traits.
+ *
+ *        Concepts cannot be forward-declared, so this is a definition file within `traits/`.
+ *        The alias concepts spell out their requirements rather than forwarding to the traits,
+ *        so that a failed constraint tells which requirement is not met.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#include <type_traits>  //  std::remove_const_t
+#include <concepts>  //  std::derived_from, std::same_as
+#endif
+#endif
+
+// #include "../../functional/type_traits.h"
+//  orm_names_type
+// #include "../node_fwd.h"
+//  alias_tag
+// #include "grammar_traits_fwd.h"
+
+// #include "structural_traits_fwd.h"
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    template<class A>
+    concept orm_alias = std::derived_from<A, alias_tag>;
+
+    /** @short Specifies that a type is an alias of a column in a record set.
+     *
+     *  A column alias has the following traits:
+     *  - is derived from `alias_tag`
+     *  - must not have a nested `type` typename
+     */
+    template<class A>
+    concept orm_column_alias = (orm_alias<A> && !orm_names_type<A>);
+
+    /** @short Specifies that a type is an alias of any type of record set.
+     *
+     *  A record set alias has the following traits:
+     *  - is derived from `alias_tag`.
+     *  - has a nested `type` typename, which refers to a mapped object.
+     */
+    template<class A>
+    concept orm_recordset_alias = (orm_alias<A> && orm_names_type<A>);
+
+    /** @short Specifies that a type is an alias of a concrete table.
+     *
+     *  A concrete table alias has the following traits:
+     *  - is derived from `alias_tag`.
+     *  - has a `type` typename, which refers to another mapped object (i.e. doesn't refer to itself).
+     */
+    template<class A>
+    concept orm_table_alias = (orm_recordset_alias<A> && !std::same_as<typename A::type, std::remove_const_t<A>>);
+
+    /** @short Moniker of a CTE.
+     *
+     *  A CTE moniker has the following traits:
+     *  - is derived from `alias_tag`.
+     *  - has a `type` typename, which refers to itself.
+     */
+    template<class A>
+    concept orm_cte_moniker = (orm_recordset_alias<A> && std::same_as<typename A::type, std::remove_const_t<A>>);
+
+    /** @short Specifies that a type is a reference of a concrete table, especially of a derived class.
+     *
+     *  A concrete table reference has the following traits:
+     *  - specialization of `table_reference`, whose `type` typename references a mapped object.
+     */
+    template<class O>
+    concept orm_table_reference = internal::is_table_reference_v<O>;
+
+    /** @short Specifies that a type is a table-valued function call: `c<VTab>()(args...)`.
+     */
+    template<class T>
+    concept orm_table_valued_expression = internal::is_table_valued_expression_v<T>;
+#endif
+}
+
 // #include "projections/nested_types.h"
 
 /** @file Projections reading the type names a node declares, as alias templates for syntactic sugar.
@@ -4428,6 +4515,12 @@ namespace sqlite_orm::internal {
  *  tier up, by the lookup algorithms in `schema/algorithms/table_lookup.h`.
  */
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::remove_const
+#endif
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
 // #include "../node_fwd.h"
 
 namespace sqlite_orm::internal {
@@ -4472,6 +4565,23 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using table_type_of_t = typename table_type_of<T>::type;
+
+    /**
+     *  The mapped object a table reference stands for; any other record set stays as it is.
+     */
+    template<class RecordSet>
+    struct decay_table_ref : std::remove_const<RecordSet> {};
+    template<class O>
+    struct decay_table_ref<table_reference<O>> : polyfill::type_identity<O> {};
+    template<class O>
+    struct decay_table_ref<const table_reference<O>> : polyfill::type_identity<O> {};
+
+    template<class RecordSet>
+    using decay_table_ref_t = typename decay_table_ref<RecordSet>::type;
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<auto recordset>
+    using auto_decay_table_ref_t = typename decay_table_ref<decltype(recordset)>::type;
+#endif
 }
 
 namespace sqlite_orm::internal {
@@ -4496,6 +4606,53 @@ namespace sqlite_orm::internal {
     template<class Hidden, class F, class VTabStruct>
     constexpr bool is_hidden_field_of_vtab_v =
         is_field_of_v<F Hidden::*, typename VTabStruct::hidden::template _of<typename Hidden::enclosing_type>>;
+#endif
+}
+
+// #include "algorithms/recordset_predicates.h"
+
+/** @file Closed predicates for checking whether a node refers to a table or a record set,
+ *        i.e. whether it may occupy the record set slot of a factory - FROM, JOIN, `get<>()`, `count<>()`, ...
+ *
+ *        They compose the structural table reference with the grammar alias traits; as concepts,
+ *        with their C++17 fallback under the same guard.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::bool_constant
+#endif
+
+// #include "../node_traits.h"
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    /** @short Specifies that a type refers to a mapped table (possibly aliased).
+     */
+    template<class T>
+    concept orm_refers_to_table = (orm_table_reference<T> || orm_table_alias<T>);
+
+    /** @short Specifies that a type refers to a recordset.
+     */
+    template<class T>
+    concept orm_refers_to_recordset = (orm_table_reference<T> || orm_recordset_alias<T>);
+
+    /** @short Specifies that a type is a mapped recordset (table reference).
+     */
+    template<class T>
+    concept orm_mapped_recordset = (orm_table_reference<T> || orm_cte_moniker<T>);
+#endif
+}
+
+namespace sqlite_orm::internal {
+#ifndef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    /**
+     *  Whether a node refers to a record set: a table reference or a record set alias.
+     */
+    template<class T>
+    constexpr bool is_referring_to_recordset_v = is_table_reference_v<T> || is_recordset_alias_v<T>;
+
+    template<class T>
+    using is_referring_to_recordset = std::bool_constant<is_referring_to_recordset_v<T>>;
 #endif
 }
 
@@ -5987,161 +6144,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     };
 }
 
-// #include "../alias_traits.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_base_of, std::is_same, std::remove_const
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-#include <concepts>
-#endif
-#endif
-
-// #include "functional/cxx_type_traits_polyfill.h"
-
-// #include "functional/type_traits.h"
-
-// #include "vocabulary/traits/grammar_traits_fwd.h"
-// Included to specialize traits
-// #include "vocabulary/node_traits.h"
-//  is_table_reference
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-
-    /** @short Base class for a custom table alias, column alias or expression alias.
-     */
-    struct alias_tag {};
-}
-
-namespace sqlite_orm::internal {
-    template<class O>
-    struct table_reference;
-
-    template<class RecordSet>
-    struct decay_table_ref : std::remove_const<RecordSet> {};
-    template<class O>
-    struct decay_table_ref<table_reference<O>> : polyfill::type_identity<O> {};
-    template<class O>
-    struct decay_table_ref<const table_reference<O>> : polyfill::type_identity<O> {};
-
-    template<class RecordSet>
-    using decay_table_ref_t = typename decay_table_ref<RecordSet>::type;
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<auto recordset>
-    using auto_decay_table_ref_t = typename decay_table_ref<decltype(recordset)>::type;
-#endif
-
-    //  note: aliases are user-definable, hence the alias traits are defined here, next to `alias_tag`,
-    //  rather than in the header of a sqlite_orm node
-    template<class T>
-    constexpr bool is_alias_v = std::is_base_of<alias_tag, T>::value;
-
-    //  note: the definitions below are written in terms of the variable templates rather than of the `is_*` alias
-    //  templates of the traits - msvc 141 fails to resolve an alias template in the initializer of a variable template
-    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR];
-    //  and they name their template parameter like the declarations in `grammar_traits_fwd.h` do - msvc 141 resolves
-    //  the initializer of a redeclared variable template with the parameter names of the first declaration
-
-    /** @short Alias of a column in a record set, see `orm_column_alias`.
-     */
-    template<class T>
-    constexpr bool is_column_alias_v = is_alias_v<T> && !polyfill::is_detected_v<type_t, T>;
-
-    /** @short Alias of any type of record set, see `orm_recordset_alias`.
-     */
-    template<class T>
-    constexpr bool is_recordset_alias_v = is_alias_v<T> && polyfill::is_detected_v<type_t, T>;
-
-    /** @short Alias of a concrete table, see `orm_table_alias`.
-     */
-    template<class T>
-    constexpr bool is_table_alias_v =
-        is_recordset_alias_v<T> && !std::is_same<polyfill::detected_t<type_t, T>, std::remove_const_t<T>>::value;
-
-    /** @short Moniker of a CTE, see `orm_cte_moniker`.
-     */
-    template<class T>
-    constexpr bool is_cte_moniker_v =
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-        is_recordset_alias_v<T> && std::is_same<polyfill::detected_t<type_t, T>, std::remove_const_t<T>>::value;
-#else
-        false;
-#endif
-
-    /** @short Referring to a recordset.
-     */
-    template<class T>
-    inline constexpr bool is_referring_to_recordset_v = is_table_reference_v<T> || is_recordset_alias_v<T>;
-
-    template<class T>
-    using is_referring_to_recordset = std::bool_constant<is_referring_to_recordset_v<T>>;
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    template<class A>
-    concept orm_alias = std::derived_from<A, alias_tag>;
-
-    /** @short Specifies that a type is an alias of a column in a record set.
-     *  
-     *  A column alias has the following traits:
-     *  - is derived from `alias_tag`
-     *  - must not have a nested `type` typename
-     */
-    template<class A>
-    concept orm_column_alias = (orm_alias<A> && !orm_names_type<A>);
-
-    /** @short Specifies that a type is a reference of a concrete table, especially of a derived class.
-     *  
-     *  A concrete table reference has the following traits:
-     *  - specialization of `table_reference`, whose `type` typename references a mapped object.
-     */
-    template<class O>
-    concept orm_table_reference = polyfill::is_specialization_of_v<std::remove_const_t<O>, internal::table_reference>;
-
-    /** @short Specifies that a type is an alias of any type of record set.
-     *  
-     *  A record set alias has the following traits:
-     *  - is derived from `alias_tag`.
-     *  - has a nested `type` typename, which refers to a mapped object.
-     */
-    template<class A>
-    concept orm_recordset_alias = (orm_alias<A> && orm_names_type<A>);
-
-    /** @short Specifies that a type is an alias of a concrete table.
-     *  
-     *  A concrete table alias has the following traits:
-     *  - is derived from `alias_tag`.
-     *  - has a `type` typename, which refers to another mapped object (i.e. doesn't refer to itself).
-     */
-    template<class A>
-    concept orm_table_alias = (orm_recordset_alias<A> && !std::same_as<typename A::type, std::remove_const_t<A>>);
-
-    /** @short Moniker of a CTE.
-     *  
-     *  A CTE moniker has the following traits:
-     *  - is derived from `alias_tag`.
-     *  - has a `type` typename, which refers to itself.
-     */
-    template<class A>
-    concept orm_cte_moniker = (orm_recordset_alias<A> && std::same_as<typename A::type, std::remove_const_t<A>>);
-
-    /** @short Specifies that a type refers to a mapped table (possibly aliased).
-     */
-    template<class T>
-    concept orm_refers_to_table = (orm_table_reference<T> || orm_table_alias<T>);
-
-    /** @short Specifies that a type refers to a recordset.
-     */
-    template<class T>
-    concept orm_refers_to_recordset = (orm_table_reference<T> || orm_recordset_alias<T>);
-
-    /** @short Specifies that a type is a mapped recordset (table reference).
-     */
-    template<class T>
-    concept orm_mapped_recordset = (orm_table_reference<T> || orm_cte_moniker<T>);
-#endif
-}
-//  orm_table_reference, auto_decay_table_ref_t
 // #include "../vocabulary/node_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
@@ -6921,7 +6923,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/type_traits.h"
 
-// #include "../alias_traits.h"
+// #include "../vocabulary/node_traits.h"
 //  orm_table_reference, auto_decay_table_ref_t
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -7077,8 +7079,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
-// #include "../alias_traits.h"
-//  orm_table_reference, auto_decay_table_ref_t
 // #include "column.h"
 // sqlite_orm::make_column
 // #include "table_base.h"
@@ -7683,8 +7683,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../member_traits/field_of.h"
 
-// #include "../../alias_traits.h"
-
+// #include "../../vocabulary/node_traits.h"
+//  orm_table_reference, auto_decay_table_ref_t
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 
@@ -7909,8 +7909,6 @@ namespace sqlite_orm::internal {
 }
 
 // #include "../../member_traits/field_of.h"
-
-// #include "../../alias_traits.h"
 
 // #include "../../vocabulary/node_traits.h"
 
@@ -8479,8 +8477,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "../../alias_traits.h"
-
+// #include "../../vocabulary/node_traits.h"
+//  orm_table_reference, auto_decay_table_ref_t
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 
@@ -8889,107 +8887,6 @@ namespace sqlite_orm::internal {
 // #include "../builtin/collations.h"
 //  collate_argument
 // #include "../tags.h"
-
-// #include "table_reference.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::remove_const, std::type_identity
-#include <utility>  // std::move
-#include <tuple>
-#endif
-
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../alias_traits.h"
-
-// #include "../vocabulary/traits/grammar_traits_fwd.h"
-// Included to specialize traits
-// #include "../vocabulary/traits/structural_traits_fwd.h"
-// Included to specialize traits
-// #include "literal.h"
-
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../vocabulary/traits/structural_traits_fwd.h"
-// Included to specialize traits
-
-namespace sqlite_orm::internal {
-
-    /*
-     *  Protect an otherwise bindable element so that it is always serialized as a literal value.
-     */
-    template<class T>
-    struct literal_holder {
-        using type = T;
-
-        type value;
-    };
-
-    template<class T>
-    constexpr bool is_literal_v = polyfill::is_specialization_of_v<T, literal_holder>;
-}
-
-namespace sqlite_orm::internal {
-    /*
-     *  Bound input arguments for eponymous virtual tables used in table-valued function calls.
-     */
-    template<class Table, class... Args>
-    struct table_valued_expression {
-        using type = Table;
-        using constraints_type = std::tuple<Args...>;
-
-        constraints_type table_values;
-    };
-
-    template<class T>
-    constexpr bool is_table_valued_expression_v = polyfill::is_specialization_of_v<T, table_valued_expression>;
-
-    /*
-     *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions and virtual tables usable as table-valued functions.
-     */
-    template<class O>
-    struct table_reference : polyfill::type_identity<O> {
-        /** 
-         *  Make a table-valued function call.
-         */
-        template<class... Args>
-        constexpr SQLITE_ORM_STATIC_CALLOP table_valued_expression<O, Args...>
-        operator()(Args... arguments) SQLITE_ORM_OR_CONST_CALLOP {
-            return {{{std::move(arguments)}...}};
-        }
-    };
-
-    template<class T>
-    constexpr bool is_table_reference_v = polyfill::is_specialization_of_v<std::remove_const_t<T>, table_reference>;
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    template<class T>
-    concept orm_table_valued_expression = internal::is_table_valued_expression_v<T>;
-#endif
-
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    /**
-     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
-     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
-     */
-    template<class O>
-        requires (!orm_recordset_alias<O>)
-    consteval internal::table_reference<O> c() {
-        return {};
-    }
-#else
-    /**
-     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
-     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
-     */
-    template<class O, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
-    constexpr internal::table_reference<O> c() {
-        return {};
-    }
-#endif
-}
 
 // #include "operators.h"
 
@@ -10285,8 +10182,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../member_traits/field_of.h"
 
-// #include "../alias_traits.h"
-
 // #include "../vocabulary/node_traits.h"
 
 // #include "column_pointer.h"
@@ -10299,10 +10194,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../functional/type_traits.h"
-
-// #include "table_reference.h"
-
-// #include "../alias_traits.h"
 
 // #include "../vocabulary/node_traits.h"
 //  node projections, is_alias_holder
@@ -10457,6 +10348,50 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // Included to specialize traits
 // #include "../vocabulary/traits/operand_traits_fwd.h"
 // Included to specialize traits
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /** @short Base class for a custom table alias, column alias or expression alias.
+     */
+    struct alias_tag {};
+}
+
+namespace sqlite_orm::internal {
+    template<class T>
+    constexpr bool is_alias_v = std::is_base_of<alias_tag, T>::value;
+
+    //  note: the definitions below are written in terms of the variable templates rather than of the `is_*` alias
+    //  templates of the traits - msvc 141 fails to resolve an alias template in the initializer of a variable template
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR];
+    //  and they name their template parameter like the declarations in `grammar_traits_fwd.h` do - msvc 141 resolves
+    //  the initializer of a redeclared variable template with the parameter names of the first declaration
+
+    /** @short Alias of a column in a record set, see `orm_column_alias`.
+     */
+    template<class T>
+    constexpr bool is_column_alias_v = is_alias_v<T> && !polyfill::is_detected_v<type_t, T>;
+
+    /** @short Alias of any type of record set, see `orm_recordset_alias`.
+     */
+    template<class T>
+    constexpr bool is_recordset_alias_v = is_alias_v<T> && polyfill::is_detected_v<type_t, T>;
+
+    /** @short Alias of a concrete table, see `orm_table_alias`.
+     */
+    template<class T>
+    constexpr bool is_table_alias_v =
+        is_recordset_alias_v<T> && !std::is_same<polyfill::detected_t<type_t, T>, std::remove_const_t<T>>::value;
+
+    /** @short Moniker of a CTE, see `orm_cte_moniker`.
+     */
+    template<class T>
+    constexpr bool is_cte_moniker_v =
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+        is_recordset_alias_v<T> && std::is_same<polyfill::detected_t<type_t, T>, std::remove_const_t<T>>::value;
+#else
+        false;
+#endif
+}
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -12146,8 +12081,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "alias.h"
 
-// #include "../alias_traits.h"
-
 // #include "../cte_moniker.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -12753,8 +12686,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../tuple_helper/tuple_filter.h"
 
-// #include "../table_reference.h"
-
 // #include "../../mapped_type_proxy.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -12762,8 +12693,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
 // #include "functional/type_traits.h"
-
-// #include "alias_traits.h"
 
 // #include "vocabulary/node_traits.h"
 // projections
@@ -13091,8 +13020,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../tuple_helper/tuple_traits.h"
-
-// #include "../alias_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
 // is_select_clause
@@ -13500,8 +13427,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "../table_reference.h"
-
+// #include "../../vocabulary/node_traits.h"
+//  orm_table_reference, auto_decay_table_ref_t
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 
@@ -13977,8 +13904,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 //  value_unref_type_t
 // #include "../../tuple_helper/tuple_traits.h"
 
-// #include "../../alias_traits.h"
-
 // #include "../../vocabulary/node_traits.h"
 
 // #include "../../vocabulary/node_algorithms.h"
@@ -14261,10 +14186,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "table_reference.h"
-
-// #include "../alias_traits.h"
-
+// #include "../vocabulary/node_algorithms.h"
+//  record set concepts, auto_decay_table_ref_t
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 
@@ -14488,10 +14411,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "table_reference.h"
-
 // #include "column_pointer.h"
 
+// #include "../vocabulary/node_algorithms.h"
+//  orm_refers_to_recordset, auto_decay_table_ref_t
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 
@@ -15188,6 +15111,27 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/literal.h"
 
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../vocabulary/traits/structural_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+
+    /*
+     *  Protect an otherwise bindable element so that it is always serialized as a literal value.
+     */
+    template<class T>
+    struct literal_holder {
+        using type = T;
+
+        type value;
+    };
+
+    template<class T>
+    constexpr bool is_literal_v = polyfill::is_specialization_of_v<T, literal_holder>;
+}
+
 // #include "ast/limit.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -15883,6 +15827,78 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 // #include "ast/table_reference.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::remove_const, std::type_identity
+#include <utility>  // std::move
+#include <tuple>
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../vocabulary/node_traits.h"
+//  orm_recordset_alias
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../vocabulary/traits/structural_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    /*
+     *  Bound input arguments for eponymous virtual tables used in table-valued function calls.
+     */
+    template<class Table, class... Args>
+    struct table_valued_expression {
+        using type = Table;
+        using constraints_type = std::tuple<Args...>;
+
+        constraints_type table_values;
+    };
+
+    template<class T>
+    constexpr bool is_table_valued_expression_v = polyfill::is_specialization_of_v<T, table_valued_expression>;
+
+    /*
+     *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions and virtual tables usable as table-valued functions.
+     */
+    template<class O>
+    struct table_reference : polyfill::type_identity<O> {
+        /** 
+         *  Make a table-valued function call.
+         */
+        template<class... Args>
+        constexpr SQLITE_ORM_STATIC_CALLOP table_valued_expression<O, Args...>
+        operator()(Args... arguments) SQLITE_ORM_OR_CONST_CALLOP {
+            return {{{std::move(arguments)}...}};
+        }
+    };
+
+    template<class T>
+    constexpr bool is_table_reference_v = polyfill::is_specialization_of_v<std::remove_const_t<T>, table_reference>;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    /**
+     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
+     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
+     */
+    template<class O>
+        requires (!orm_recordset_alias<O>)
+    consteval internal::table_reference<O> c() {
+        return {};
+    }
+#else
+    /**
+     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
+     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
+     */
+    template<class O, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
+    constexpr internal::table_reference<O> c() {
+        return {};
+    }
+#endif
+}
 
 // #include "ast/app_function.h"
 
@@ -17007,10 +17023,8 @@ namespace sqlite_orm {
 #include <string_view>  //  std::string_view
 #endif
 
-// #include "../../alias_traits.h"
-//  orm_refers_to_recordset, auto_decay_table_ref_t
 // #include "../../vocabulary/node_algorithms.h"
-//  argument
+//  argument, orm_refers_to_recordset
 // #include "../../ast/builtin_function.h"
 //  count_asterisk_t, count_asterisk_without_type
 
@@ -17840,7 +17854,8 @@ namespace sqlite_orm::internal {
 
 // #include "../tuple_helper/tuple_transformer.h"
 
-// #include "../ast/table_reference.h"
+// #include "../vocabulary/node_traits.h"
+//  is_table_reference
 
 namespace sqlite_orm::internal {
     /*
@@ -20777,8 +20792,8 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_v
 
 // #include "../tuple_helper/tuple_transformer.h"
 
-// #include "../ast/table_reference.h"
-
+// #include "../vocabulary/node_traits.h"
+//  table_reference, is_table_reference_v
 // #include "../schema/algorithms/table_lookup.h"
 
 // #include "column_result_proxy.h"
@@ -24568,8 +24583,6 @@ namespace sqlite_orm::internal {
 // #include "../error_code.h"
 
 // #include "../mapped_type_proxy.h"
-
-// #include "../alias_traits.h"
 
 // #include "../schema/algorithms/table_lookup.h"
 //  pick_table
@@ -34346,8 +34359,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #include <sqlite3.h>
 
-// #include "../../alias_traits.h"
-//  is_recordset_alias_v
 // #include "../../ast/column_pointer.h"
 //  column
 // #include "../../vocabulary/node_algorithms.h"
@@ -34623,7 +34634,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../tags.h"
 //  negatable_t
-// #include "../../alias_traits.h"
+// #include "../../vocabulary/node_traits.h"
 //  is_recordset_alias_v
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits

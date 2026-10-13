@@ -13,7 +13,6 @@
 #include "../functional/meta_util.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
-#include "../alias_traits.h"  //  orm_table_reference, auto_decay_table_ref_t
 #include "column.h"  // sqlite_orm::make_column
 #include "table_base.h"
 #include "dbo_name.h"

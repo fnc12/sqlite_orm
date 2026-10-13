@@ -7,8 +7,6 @@
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/type_traits.h"
-#include "table_reference.h"
-#include "../alias_traits.h"
 #include "../vocabulary/node_traits.h"  //  node projections, is_alias_holder
 #include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
