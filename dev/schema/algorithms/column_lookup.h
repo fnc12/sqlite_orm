@@ -8,7 +8,8 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
-#include <tuple>  //  std::tuple_size, std::tuple_element, std::get
+#include <tuple>  //  std::tuple_size, std::tuple_element, std::get, std::make_tuple
+#include <utility>  //  std::index_sequence
 #endif
 
 #include "../../functional/index_sequence_util.h"
@@ -133,5 +134,18 @@ namespace sqlite_orm::internal {
                 });
         }
         return result;
+    }
+
+    template<class Elements, size_t... Idx>
+    auto get_table_column_fields(const Elements& elements, std::index_sequence<Idx...>) {
+        return std::make_tuple(std::get<Idx>(elements).member_pointer...);
+    }
+
+    /**
+     *  Return a tuple of the member pointers of all columns of a table.
+     */
+    template<class Table>
+    auto get_table_column_fields(const Table& table) {
+        return get_table_column_fields(table.elements, col_index_sequence_of<elements_type_t<Table>>{});
     }
 }

@@ -6,6 +6,7 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::remove_reference, std::remove_const, std::void_t
+#include <tuple>  //  std::get
 #include <utility>  //  std::declval, std::move
 #endif
 
@@ -100,6 +101,22 @@ namespace sqlite_orm::internal {
 
     template<class Select>
     using main_select_t = polyfill::remove_cvref_t<decltype(access_main_select(std::declval<Select>()))>;
+
+    /*
+     *  Access the left-most select expression of a compound select statement or the passed in select expression.
+     *
+     *  The columns of a table formed from a subselect, like a CTE, are those of its left-most select expression.
+     *  This is all that is needed to define such a table, and the rest of a compound statement may not even be
+     *  resolvable yet - a recursive CTE refers to itself.
+     */
+    template<class Select, std::enable_if_t<is_select_v<Select>, bool> = true>
+    constexpr decltype(auto) access_leftmost_select(const Select& select) {
+        if constexpr (is_compound_operator_v<return_type_t<Select>>) {
+            return std::get<0>(select.col.compound);
+        } else {
+            return select;
+        }
+    }
 
     /*
      *  Move a possibly quoted plain expression or the expression itself.

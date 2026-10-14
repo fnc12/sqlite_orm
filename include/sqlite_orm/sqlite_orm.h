@@ -5530,6 +5530,7 @@ namespace sqlite_orm::internal {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::remove_reference, std::remove_const, std::void_t
+#include <tuple>  //  std::get
 #include <utility>  //  std::declval, std::move
 #endif
 
@@ -5626,6 +5627,22 @@ namespace sqlite_orm::internal {
 
     template<class Select>
     using main_select_t = polyfill::remove_cvref_t<decltype(access_main_select(std::declval<Select>()))>;
+
+    /*
+     *  Access the left-most select expression of a compound select statement or the passed in select expression.
+     *
+     *  The columns of a table formed from a subselect, like a CTE, are those of its left-most select expression.
+     *  This is all that is needed to define such a table, and the rest of a compound statement may not even be
+     *  resolvable yet - a recursive CTE refers to itself.
+     */
+    template<class Select, std::enable_if_t<is_select_v<Select>, bool> = true>
+    constexpr decltype(auto) access_leftmost_select(const Select& select) {
+        if constexpr (is_compound_operator_v<return_type_t<Select>>) {
+            return std::get<0>(select.col.compound);
+        } else {
+            return select;
+        }
+    }
 
     /*
      *  Move a possibly quoted plain expression or the expression itself.
@@ -12391,8 +12408,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
-        using builder_type =
-            cte_builder<Moniker, transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
+        using builder_type = cte_builder<std::remove_const_t<Moniker>,
+                                         transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 
@@ -17885,11 +17902,27 @@ namespace sqlite_orm::internal {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <tuple>
+#include <type_traits>  //  std::is_member_pointer_v
+#include <tuple>  //  std::tuple, std::make_tuple, std::get, std::tuple_element_t
+#include <string>  //  std::string
+#include <utility>  //  std::index_sequence, std::forward, std::move
+#include <vector>  //  std::vector
 #endif
 #endif
 
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../functional/type_traits.h"
+
 // #include "../tuple_helper/tuple_fy.h"
+
+// #include "../vocabulary/node_traits.h"
+
+// #include "column.h"
+
+// #include "table_base.h"
+
+// #include "table_identifier.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm::internal {
@@ -17916,14 +17949,14 @@ namespace sqlite_orm::internal {
              typename Expression,
              typename SubselectColRefs,
              typename FinalColRefs,
-             typename... Fs>
+             typename ColumnResults>
     class cte_mapper {
       public:
         cte_mapper() = delete;
 
         // this type name is used to detect the mapping from moniker to object
         using cte_moniker_type = Moniker;
-        using fields_type = std::tuple<Fs...>;
+        using fields_type = tuplify_t<ColumnResults>;
         // this type captures the expressions forming the columns in a subselect;
         // it is currently unused, however proves to be useful in compilation errors,
         // as it simplifies recognizing errors in column expressions
@@ -17937,6 +17970,54 @@ namespace sqlite_orm::internal {
         // this type captures column reference expressions merged from SubselectColRefs and ExplicitColRefs
         using final_colrefs_tuple = FinalColRefs;
     };
+
+    /**
+     *  A CTE mapped as a table, its object type being the CTE moniker.
+     */
+    template<class Mapper, class... Cs>
+    struct cte_table : table_identifier, table_definition<Cs...> {
+        using definition_type = table_definition<Cs...>;
+        using cte_mapper_type = Mapper;
+        using cte_moniker_type = typename cte_mapper_type::cte_moniker_type;
+        using object_type = cte_moniker_type;
+        using elements_type = typename definition_type::elements_type;
+    };
+
+    template<class Mapper, class... Cs>
+    cte_table<Mapper, Cs...> make_cte_table(std::string name, Cs... args) {
+        return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
+    }
+
+    /**
+     *  Make the column of a CTE table from its final column reference:
+     *  - an aliased column expression, explicit or implicitly numbered, is stored as a field of `aliased_field<>`;
+     *  - a member pointer is used as is.
+     */
+    template<typename F, typename ColRef>
+    auto make_cte_column(std::string name, [[maybe_unused]] const ColRef& finalColRef) {
+        if constexpr (is_alias_holder_v<ColRef>) {
+            using object_type = aliased_field<type_t<ColRef>, F>;
+
+            return sqlite_orm::make_column<>(std::move(name), &object_type::field);
+        } else if constexpr (std::is_member_pointer_v<ColRef>) {
+            using column_type = column_t<ColRef, empty_setter>;
+
+            return column_type{std::move(name), finalColRef, empty_setter{}, std::tuple<>{}};
+        } else {
+            static_assert(polyfill::always_false_v<ColRef>, "Invalid final column reference");
+        }
+    }
+
+    template<typename Mapper, typename ColRefs, size_t... CIs>
+    auto make_cte_table_using_column_indices(std::string tableName,
+                                             std::vector<std::string> columnNames,
+                                             const ColRefs& finalColRefs,
+                                             std::index_sequence<CIs...>) {
+        return make_cte_table<Mapper>(
+            std::move(tableName),
+            make_cte_column<std::tuple_element_t<CIs, typename Mapper::fields_type>>(std::move(columnNames.at(CIs)),
+                                                                                     std::get<CIs>(finalColRefs))...);
+    }
 }
 #endif
 
@@ -17981,7 +18062,8 @@ namespace sqlite_orm::internal {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::true_type, std::false_type
-#include <tuple>  //  std::tuple
+#include <tuple>  //  std::tuple, std::get, std::tuple_size_v
+#include <utility>  //  std::index_sequence, std::make_index_sequence, std::forward
 #endif
 
 // #include "../functional/type_traits.h"
@@ -18003,10 +18085,36 @@ namespace sqlite_orm::internal {
     template<class... DBO>
     struct is_db_objects<const std::tuple<DBO...>> : std::true_type {};
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+    /**
+     *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
+     */
+    template<typename DBOs, typename... Tables>
+    auto db_objects_cat(const DBOs& dbObjects, Tables&&... tables) {
+        auto& [... elements] = dbObjects;
+        return std::tuple{std::forward<Tables>(tables)..., elements...};
+    }
+#else
+    template<typename DBOs, size_t... Idx, typename... Tables>
+    auto db_objects_cat(const DBOs& dbObjects, std::index_sequence<Idx...>, Tables&&... tables) {
+        return std::tuple{std::forward<Tables>(tables)..., std::get<Idx>(dbObjects)...};
+    }
+
+    /**
+     *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
+     */
+    template<typename DBOs, typename... Tables>
+    auto db_objects_cat(const DBOs& dbObjects, Tables&&... tables) {
+        return db_objects_cat(dbObjects,
+                              std::make_index_sequence<std::tuple_size_v<DBOs>>{},
+                              std::forward<Tables>(tables)...);
+    }
+#endif
+
     /**
      *  Return passed in DBOs.
      *
-     *  Note: A WITH clause prepends the database objects of its CTEs, see `cte_storage.h`.
+     *  Note: A WITH clause prepends the database objects of its CTEs, see `cte_db_objects.h`.
      */
     template<class DBOs,
              class E,
@@ -18666,7 +18774,8 @@ namespace sqlite_orm::internal {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
-#include <tuple>  //  std::tuple_size, std::tuple_element, std::get
+#include <tuple>  //  std::tuple_size, std::tuple_element, std::get, std::make_tuple
+#include <utility>  //  std::index_sequence
 #endif
 
 // #include "../../functional/index_sequence_util.h"
@@ -18800,6 +18909,19 @@ namespace sqlite_orm::internal {
                 });
         }
         return result;
+    }
+
+    template<class Elements, size_t... Idx>
+    auto get_table_column_fields(const Elements& elements, std::index_sequence<Idx...>) {
+        return std::make_tuple(std::get<Idx>(elements).member_pointer...);
+    }
+
+    /**
+     *  Return a tuple of the member pointers of all columns of a table.
+     */
+    template<class Table>
+    auto get_table_column_fields(const Table& table) {
+        return get_table_column_fields(table.elements, col_index_sequence_of<elements_type_t<Table>>{});
     }
 }
 
@@ -25691,7 +25813,7 @@ namespace sqlite_orm::internal {
             ss << streaming_identifier(alias_extractor<cte_moniker_type_t<CTE>>::extract());
             {
                 std::vector<std::string> columnNames =
-                    resolve_cte_column_names(get_cte_driving_subselect(cte.subselect), cte.explicitColumns, context);
+                    resolve_cte_column_names(access_leftmost_select(cte.subselect), cte.explicitColumns, context);
                 ss << '(' << streaming_identifiers(columnNames) << ')';
             }
             ss << " AS" << streaming_constraints_tuple(cte.hints, context) << " ("
@@ -27420,40 +27542,38 @@ namespace sqlite_orm::internal {
 // make_row_extractor
 // #include "schema/constraints/generated_always.h"
 // basic_generated_always
-// #include "cte_storage.h"
+// #include "cte_db_objects.h"
+
+/** @file The database objects of a WITH clause: its CTEs mapped as tables, prepended to the schema's database objects.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <type_traits>  //  std::remove_const
-#include <tuple>
-#include <string>
-#include <vector>
+#include <type_traits>  //  std::is_member_pointer_v, std::is_same_v
+#include <tuple>  //  std::tuple, std::get, std::ignore, std::tuple_size_v, std::tuple_element_t
+#include <string>  //  std::string
+#include <vector>  //  std::vector
+#include <utility>  //  std::index_sequence, std::make_index_sequence, std::move
 #endif
 #endif
+
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "tuple_helper/tuple_fy.h"
 
-// #include "result_set/column_result.h"
-
 // #include "vocabulary/node_traits.h"
 
-// #include "schema/column.h"
-
-// #include "schema/table_base.h"
-
-// #include "ast/quoted_expression.h"
-
-// #include "ast/result_columns.h"
-
-// #include "ast/select.h"
-
+// #include "vocabulary/node_algorithms.h"
+//  access_leftmost_select
 // #include "ast/cte.h"
 
 // #include "ast/alias.h"
 
 // #include "schema/cte_mapping.h"
 
-// #include "serialization/cte_column_names_collector.h"
+// #include "schema/db_objects.h"
+
+// #include "result_set/column_result.h"
 
 // #include "result_set/column_expression.h"
 
@@ -27571,142 +27691,45 @@ namespace sqlite_orm::internal {
     struct column_expression_of<DBOs, T, match_if<is_select, T>> : column_expression_of<DBOs, return_type_t<T>> {};
 }
 
-// #include "schema/db_objects.h"
+// #include "result_set/column_references.h"
 
-// #include "schema/algorithms/table_lookup.h"
+/** @file The references to the columns of a subselect, by which an outer statement refers to them.
+ *
+ *  Siblings to the expressions forming those columns (`column_expression.h`): a column formed by an aliased
+ *  expression is referred to by its alias, a column of a mapped object by its member pointer, and any other
+ *  expression by a numeric column alias.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#include <type_traits>  //  std::is_member_pointer_v
+#include <tuple>  //  std::tuple, std::make_tuple, std::tuple_cat, std::get, std::tuple_size_v
+#include <utility>  //  std::index_sequence, std::make_index_sequence
+#endif
+#endif
+
+// #include "../functional/type_traits.h"
+
+// #include "../vocabulary/node_traits.h"
+
+// #include "../ast/alias.h"
+
+// #include "../schema/algorithms/table_lookup.h"
+
+// #include "../schema/algorithms/column_lookup.h"
 
 namespace sqlite_orm::internal {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-    // F = field_type
-    template<typename Moniker,
-             typename ExplicitColRefs,
-             typename Expression,
-             typename SubselectColRefs,
-             typename FinalColRefs,
-             typename F>
-    struct create_cte_mapper {
-        using type = cte_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, F>;
-    };
-
-    // std::tuple<Fs...>
-    template<typename Moniker,
-             typename ExplicitColRefs,
-             typename Expression,
-             typename SubselectColRefs,
-             typename FinalColRefs,
-             typename... Fs>
-    struct create_cte_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, std::tuple<Fs...>> {
-        using type = cte_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, Fs...>;
-    };
-
-    template<typename Moniker,
-             typename ExplicitColRefs,
-             typename Expression,
-             typename SubselectColRefs,
-             typename FinalColRefs,
-             typename Result>
-    using create_cte_mapper_t = typename create_cte_mapper<std::remove_const_t<Moniker>,
-                                                           ExplicitColRefs,
-                                                           Expression,
-                                                           SubselectColRefs,
-                                                           FinalColRefs,
-                                                           Result>::type;
-
-    template<class Mapper, class... Cs>
-    struct cte_table : table_identifier, table_definition<Cs...> {
-        using definition_type = table_definition<Cs...>;
-        using cte_mapper_type = Mapper;
-        using cte_moniker_type = typename cte_mapper_type::cte_moniker_type;
-        using object_type = cte_moniker_type;
-        using elements_type = typename definition_type::elements_type;
-    };
-
-    template<class Mapper, class... Cs>
-    cte_table<Mapper, Cs...> make_cte_table(std::string name, Cs... args) {
-        return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
-    }
-
-    // aliased column expressions, explicit or implicitly numbered
-    template<typename F, typename ColRef, satisfies<is_alias_holder, ColRef> = true>
-    auto make_cte_column(std::string name, const ColRef& /*finalColRef*/) {
-        using object_type = aliased_field<type_t<ColRef>, F>;
-
-        return sqlite_orm::make_column<>(std::move(name), &object_type::field);
-    }
-
-    // F O::*
-    template<typename F, typename ColRef, satisfies<std::is_member_pointer, ColRef> = true>
-    auto make_cte_column(std::string name, const ColRef& finalColRef) {
-        using column_type = column_t<ColRef, empty_setter>;
-
-        return column_type{std::move(name), finalColRef, empty_setter{}, std::tuple<>{}};
-    }
-
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
-    /**
-     *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
-     */
-    template<typename DBOs, typename... CTETables>
-    auto db_objects_cat(const DBOs& dbObjects, CTETables&&... cteTables) {
-        auto& [... elements] = dbObjects;
-        return std::tuple{std::forward<CTETables>(cteTables)..., elements...};
-    }
-#else
-    /**
-     *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
-     */
-    template<typename DBOs, size_t... Idx, typename... CTETables>
-    auto db_objects_cat(const DBOs& dbObjects, std::index_sequence<Idx...>, CTETables&&... cteTables) {
-        return std::tuple{std::forward<CTETables>(cteTables)..., std::get<Idx>(dbObjects)...};
-    }
-
-    /**
-     *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
-     */
-    template<typename DBOs, typename... CTETables>
-    auto db_objects_cat(const DBOs& dbObjects, CTETables&&... cteTables) {
-        return db_objects_cat(dbObjects,
-                              std::make_index_sequence<std::tuple_size_v<DBOs>>{},
-                              std::forward<CTETables>(cteTables)...);
-    }
-#endif
-
-    /**
-     *  This function returns the expression contained in a subselect that is relevant for
-     *  creating the definition of a CTE table.
-     *  Because CTEs can recursively refer to themselves in a compound statement, parsing
-     *  the whole compound statement would lead to compiler errors if a column_pointer<>
-     *  can't be resolved. Therefore, at the time of building a CTE table, we are only
-     *  interested in the column results of the left-most select expression.
-     */
-    template<class Select, satisfies<is_select, Select> = true>
-    decltype(auto) get_cte_driving_subselect(const Select& subSelect) {
-        if constexpr (is_compound_operator_v<return_type_t<Select>>) {
-            // left-most select expression of compound statement
-            return std::get<0>(subSelect.col.compound);
-        } else {
-            return subSelect;
-        }
-    }
-
-    /**
-     *  Return a tuple of member pointers of all columns
-     */
-    template<class C, size_t... Idx>
-    auto get_table_columns_fields(const C& coldef, std::index_sequence<Idx...>) {
-        return std::make_tuple(get<Idx>(coldef).member_pointer...);
-    }
-
     /**
      *  Return the column reference of a single result column expression, as a 1-tuple.
      *  `Idx` is the position of the result column, by which an expression without a name of its own is referenced.
      */
-    template<size_t Idx, class DBOs, class E>
-    auto extract_colref_expression(const DBOs& dbObjects, const E& col) {
+    template<size_t Idx, class E>
+    auto get_column_reference(const E& col) {
         if constexpr (is_quoted_expression_v<E>) {
-            return extract_colref_expression<Idx>(dbObjects, col._value);
+            return get_column_reference<Idx>(col._value);
         } else if constexpr (is_column_pointer_v<E>) {
-            return extract_colref_expression<Idx>(dbObjects, col.field);
+            return get_column_reference<Idx>(col.field);
         } else if constexpr (std::is_member_pointer_v<E>) {
             // field/getter -> field/getter
             return std::make_tuple(col);
@@ -27722,50 +27745,50 @@ namespace sqlite_orm::internal {
         }
     }
 
-    template<class DBOs, class Tpl, size_t... Idx>
-    auto extract_colref_expressions(const DBOs& dbObjects, const Tpl& cols, std::index_sequence<Idx...>) {
-        return std::tuple_cat(extract_colref_expression<Idx>(dbObjects, std::get<Idx>(cols))...);
+    template<class Tpl, size_t... Idx>
+    auto get_column_references(const Tpl& cols, std::index_sequence<Idx...>) {
+        return std::tuple_cat(get_column_reference<Idx>(std::get<Idx>(cols))...);
     }
 
     /**
      *  Return a tuple of the column references of a select's result columns.
      */
-    template<class DBOs, class E>
-    auto extract_colref_expressions(const DBOs& dbObjects, const E& col) {
+    template<class DBOs, class Select, std::enable_if_t<is_select_v<Select>, bool> = true>
+    auto get_column_references_of([[maybe_unused]] const DBOs& dbObjects, const Select& select) {
+        using E = return_type_t<Select>;
         static_assert(!is_select_v<E> && !is_compound_operator_v<E>,
                       "A select statement cannot be a result column of a CTE's select statement");
 
         if constexpr (is_columns_v<E>) {
-            return extract_colref_expressions(dbObjects,
-                                              col.columns,
-                                              std::make_index_sequence<std::tuple_size_v<columns_type_t<E>>>{});
+            return get_column_references(select.col.columns,
+                                         std::make_index_sequence<std::tuple_size_v<columns_type_t<E>>>{});
         } else if constexpr (is_asterisk_v<E>) {
             // -> fields
-            using O = type_t<E>;
-            using table_type = schema_pick_table_t<O, DBOs>;
-            using elements_type = elements_type_t<table_type>;
-            using column_idxs = filter_tuple_sequence_t<elements_type, is_column>;
-
-            auto& table = pick_table<O>(dbObjects);
-            return get_table_columns_fields(table.elements, column_idxs{});
+            return get_table_column_fields(pick_table<type_t<E>>(dbObjects));
         } else {
-            return extract_colref_expression<0>(dbObjects, col);
+            return get_column_reference<0>(select.col);
         }
     }
+#endif
+}
 
+// #include "serialization/serializer_context.h"
+
+// #include "serialization/cte_column_names_collector.h"
+
+namespace sqlite_orm::internal {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /*
      *  Depending on ExplicitColRef's type returns either the explicit column reference
      *  or the expression's column reference otherwise.
      */
-    template<typename DBOs, typename SubselectColRef, typename ExplicitColRef>
-    auto determine_cte_colref(const DBOs& /*dbObjects*/,
-                              const SubselectColRef& subselectColRef,
-                              const ExplicitColRef& explicitColRef) {
+    template<typename SubselectColRef, typename ExplicitColRef>
+    auto resolve_cte_colref(const SubselectColRef& subselectColRef, const ExplicitColRef& explicitColRef) {
         if constexpr (is_alias_holder_v<ExplicitColRef>) {
             return explicitColRef;
-        } else if constexpr (std::is_member_pointer<ExplicitColRef>::value) {
+        } else if constexpr (std::is_member_pointer_v<ExplicitColRef>) {
             return explicitColRef;
-        } else if constexpr (is_column<ExplicitColRef>::value) {
+        } else if constexpr (is_column_v<ExplicitColRef>) {
             return explicitColRef.member_pointer;
         } else if constexpr (std::is_same_v<ExplicitColRef, std::string>) {
             return subselectColRef;
@@ -27776,41 +27799,27 @@ namespace sqlite_orm::internal {
         }
     }
 
-    template<typename DBOs, typename SubselectColRefs, typename ExplicitColRefs, size_t... Idx>
-    auto determine_cte_colrefs([[maybe_unused]] const DBOs& dbObjects,
-                               const SubselectColRefs& subselectColRefs,
-                               [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
-                               std::index_sequence<Idx...>) {
+    template<typename SubselectColRefs, typename ExplicitColRefs, size_t... Idx>
+    auto resolve_cte_colrefs(const SubselectColRefs& subselectColRefs,
+                             [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
+                             std::index_sequence<Idx...>) {
         if constexpr (std::tuple_size_v<ExplicitColRefs> != 0) {
             static_assert((!is_builtin_numeric_column_alias_v<
                                alias_holder_type_or_none_t<std::tuple_element_t<Idx, ExplicitColRefs>>> &&
                            ...),
                           "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
-            return std::tuple{
-                determine_cte_colref(dbObjects, std::get<Idx>(subselectColRefs), std::get<Idx>(explicitColRefs))...};
+            return std::tuple{resolve_cte_colref(std::get<Idx>(subselectColRefs), std::get<Idx>(explicitColRefs))...};
         } else {
             return subselectColRefs;
         }
-    }
-
-    template<typename Mapper, typename DBOs, typename ColRefs, size_t... CIs>
-    auto make_cte_table_using_column_indices(const DBOs& /*dbObjects*/,
-                                             std::string tableName,
-                                             std::vector<std::string> columnNames,
-                                             const ColRefs& finalColRefs,
-                                             std::index_sequence<CIs...>) {
-        return make_cte_table<Mapper>(
-            std::move(tableName),
-            make_cte_column<std::tuple_element_t<CIs, typename Mapper::fields_type>>(std::move(columnNames.at(CIs)),
-                                                                                     std::get<CIs>(finalColRefs))...);
     }
 
     template<typename DBOs, typename CTE>
     auto make_cte_db_object(const DBOs& dbObjects, const CTE& cte) {
         using cte_type = CTE;
 
-        auto subSelect = get_cte_driving_subselect(cte.subselect);
+        auto subSelect = access_leftmost_select(cte.subselect);
 
         using subselect_type = decltype(subSelect);
         using column_results = column_result_of_t<DBOs, subselect_type>;
@@ -27820,21 +27829,19 @@ namespace sqlite_orm::internal {
                       "in the subselect.");
 
         std::string tableName = alias_extractor<cte_moniker_type_t<cte_type>>::extract();
-        auto subselectColRefs = extract_colref_expressions(dbObjects, subSelect.col);
-        const auto& finalColRefs =
-            determine_cte_colrefs(dbObjects, subselectColRefs, cte.explicitColumns, index_sequence{});
+        auto subselectColRefs = get_column_references_of(dbObjects, subSelect);
+        const auto& finalColRefs = resolve_cte_colrefs(subselectColRefs, cte.explicitColumns, index_sequence{});
 
         serializer_context context{dbObjects};
         std::vector<std::string> columnNames = resolve_cte_column_names(subSelect, cte.explicitColumns, context);
 
-        using mapper_type = create_cte_mapper_t<cte_moniker_type_t<cte_type>,
-                                                explicit_colrefs_tuple_t<cte_type>,
-                                                column_expression_of_t<DBOs, subselect_type>,
-                                                decltype(subselectColRefs),
-                                                polyfill::remove_cvref_t<decltype(finalColRefs)>,
-                                                column_results>;
-        return make_cte_table_using_column_indices<mapper_type>(dbObjects,
-                                                                std::move(tableName),
+        using mapper_type = cte_mapper<cte_moniker_type_t<cte_type>,
+                                       explicit_colrefs_tuple_t<cte_type>,
+                                       column_expression_of_t<DBOs, subselect_type>,
+                                       decltype(subselectColRefs),
+                                       polyfill::remove_cvref_t<decltype(finalColRefs)>,
+                                       column_results>;
+        return make_cte_table_using_column_indices<mapper_type>(std::move(tableName),
                                                                 std::move(columnNames),
                                                                 finalColRefs,
                                                                 index_sequence{});

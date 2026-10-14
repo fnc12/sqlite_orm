@@ -65,7 +65,7 @@
 #include "marshaling/object_from_column_builder.h"
 #include "marshaling/struct_extractor.h"  // make_row_extractor
 #include "schema/constraints/generated_always.h"  // basic_generated_always
-#include "cte_storage.h"
+#include "cte_db_objects.h"
 #include "udf_existence_checker.h"
 
 namespace sqlite_orm::internal {

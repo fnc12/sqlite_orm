@@ -277,7 +277,7 @@ Nothing is being composed into a judgment; it is still extraction.
 | `algorithms/operand_predicates.h` | Closed checks of whether a type may appear as an operand of a named expression factory (`eq()`, `and_()`, `add()`, `assign()`, …): `is_referencable_operand`, `is_operand_or_bindable`, `are_valid_operands`. Composes the operand traits with grammar traits and the field-level `is_bindable` — which is why it takes `field_predicates_fwd.h` rather than the definition file. |
 | `algorithms/column_field_types.h` | Closed alias templates computing a type tuple over the columns of a single table definition, in column order: `column_field_types_t` (their field types) and `column_field_expressions_t` (the member pointers they are mapped by). Locating the table for a lookup type first is schema-wide, done by `schema_mapped_column_field_types` / `schema_mapped_column_field_expressions` in `schema/algorithms/table_lookup.h`. |
 | `algorithms/index_filters.h` | Closed alias templates that scan a tuple of nodes and yield an `index_sequence` of matching positions — **not** a filtered tuple. Sectioned by what is scanned: the `Elements` tuple of a table or view definition, e.g. `col_index_sequence_of`, `col_index_sequence_with_field_type`; and the nodes of an expression as flattened by `node_tuple`, e.g. `bindable_index_sequence_of`, the positions of the bindable leaves. Built on `filter_tuple_sequence_t` + grammar traits + projections. |
-| `algorithms/accessors.h` | Closed runtime and compile-time accessors that retrieve a node's relevant sub-part, or the node itself, uniformly across dissimilar grammar families: `access_main_select`/`main_select_t`, `access_main_dml`/`main_dml_t`, `access_column_expression`, `expression_object_type`/`statement_object_type_t` and `access_dml_object`. This is the concrete payoff of the semantic traits. `mapped_type_of_t` is the record-set counterpart: the mapped object a table reference, table-valued expression, record set alias or struct with hidden columns stands for - the input to a schema lookup. |
+| `algorithms/accessors.h` | Closed runtime and compile-time accessors that retrieve a node's relevant sub-part, or the node itself, uniformly across dissimilar grammar families: `access_main_select`/`main_select_t`, `access_leftmost_select`, `access_main_dml`/`main_dml_t`, `access_column_expression`, `expression_object_type`/`statement_object_type_t` and `access_dml_object`. This is the concrete payoff of the semantic traits. `mapped_type_of_t` is the record-set counterpart: the mapped object a table reference, table-valued expression, record set alias or struct with hidden columns stands for - the input to a schema lookup. |
 | `algorithms/field_accessors.h` | The field-level counterpart of `accessors.h`: closed accessors keyed on a raw C++ type rather than a node. `held_object_t` is the object a holder type holds - owned by a `std::unique_ptr`, held by a `std::optional`, or the object itself - and `emplace_held_object` default-constructs it in place. A get statement's result type is such a holder. |
 | `algorithms/argument_placeholders.h` | The return type placeholders of the built-in functions — `argument<I>` for the result of the I-th call argument, `common_argument_type<I...>` for the common type of the given (or, with no index, all) arguments — and `substitute_arguments_t`, which replaces them structurally throughout a declared return type (`std::unique_ptr<argument<0>>`) given the call's argument tuple and a quoted metafunction that resolves one argument. Closed computation over a node's `args_tuple`; who resolves an argument and how — `column_result_of` with the schema at hand — is not its business. |
 | `algorithms/field_predicates_fwd.h` | Declarations of the closed field-level predicates, split off for dependency weight and grouped by what they read: `is_rowid_alias_capable_v`, `is_text_value_v`, `is_integer_mapped_v`, `is_bindable_v`, `is_printable_v`, `is_pointer_arg_v`, `is_pointer_binding_v`. |
@@ -377,7 +377,8 @@ sense there, covering base tables, views and virtual tables alike. Built on that
 feed the table found into the vocabulary algorithms of `column_field_types.h`.
 
 Alongside them, `schema/algorithms/column_lookup.h` finds a column's name across the schema
-(`find_column_name`, `materialize_column_pointer` for CTE column aliases, `is_column_unique`),
+(`find_column_name`, `materialize_column_pointer` for CTE column aliases, `is_column_unique`)
+and yields the member pointers of a table's columns (`get_table_column_fields`),
 and `schema/algorithms/table_filters.h` selects the base tables or views of a schema
 (`tables_index_sequence`, `views_index_sequence`) and computes over them (`foreign_keys_count`).
 
@@ -386,8 +387,9 @@ not on the `storage_t` object, so they are named `schema_*`. Apply the same reas
 anything that joins them; `storage_` is the wrong prefix at this tier.
 
 The generic facilities for recognizing and passing around the tuple itself —
-`db_objects_tuple`, `is_db_objects`, `db_objects_for_expression` — are not algorithms and
-sit one level up, in `schema/db_objects.h`.
+`db_objects_tuple`, `is_db_objects`, `db_objects_cat`, `db_objects_for_expression` — are not
+algorithms and sit one level up, in `schema/db_objects.h`. The overload of `db_objects_for_expression`
+for a WITH clause lives in `cte_db_objects.h`.
 
 ## The manifests
 

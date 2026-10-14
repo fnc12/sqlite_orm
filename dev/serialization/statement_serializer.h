@@ -749,7 +749,7 @@ namespace sqlite_orm::internal {
             ss << streaming_identifier(alias_extractor<cte_moniker_type_t<CTE>>::extract());
             {
                 std::vector<std::string> columnNames =
-                    resolve_cte_column_names(get_cte_driving_subselect(cte.subselect), cte.explicitColumns, context);
+                    resolve_cte_column_names(access_leftmost_select(cte.subselect), cte.explicitColumns, context);
                 ss << '(' << streaming_identifiers(columnNames) << ')';
             }
             ss << " AS" << streaming_constraints_tuple(cte.hints, context) << " ("
