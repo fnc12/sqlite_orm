@@ -6,7 +6,7 @@
 #endif
 #endif
 
-#include "tuple_helper/tuple_fy.h"
+#include "../tuple_helper/tuple_fy.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm::internal {
@@ -25,6 +25,8 @@ namespace sqlite_orm::internal {
     /**
      *  This class captures various properties and aspects of a subselect's column expression,
      *  and is used as a proxy in base_table<>.
+     *
+     *  Named after CTEs, the only subselects mapped as a table so far.
      */
     template<typename Moniker,
              typename ExplicitColRefs,
@@ -32,9 +34,9 @@ namespace sqlite_orm::internal {
              typename SubselectColRefs,
              typename FinalColRefs,
              typename... Fs>
-    class subselect_mapper {
+    class cte_mapper {
       public:
-        subselect_mapper() = delete;
+        cte_mapper() = delete;
 
         // this type name is used to detect the mapping from moniker to object
         using cte_moniker_type = Moniker;

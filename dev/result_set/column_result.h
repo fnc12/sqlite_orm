@@ -18,7 +18,7 @@
 #include "../vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value, mapped_type_of_t
 #include "../marshaling/column_result_proxy.h"
 #include "../ast/alias.h"
-#include "../cte_types.h"
+#include "../schema/cte_mapping.h"
 #include "../schema/algorithms/table_lookup.h"  // schema_pick_table_t, schema_mapped_column_field_types
 #include "../ast/app_function.h"
 #include "../sqlite3/sqlite3_types.h"  //  int64

@@ -12110,109 +12110,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/type_traits.h"
 
+// #include "../functional/cstring_literal.h"
+
 // #include "../tuple_helper/tuple_transformer.h"
 
 // #include "alias.h"
-
-// #include "../cte_moniker.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-#include <concepts>
-#include <utility>  //  std::make_index_sequence
-#endif
-#include <type_traits>  //  std::enable_if, std::is_member_pointer, std::is_same, std::is_convertible
-#include <tuple>  //  std::ignore
-#include <string>
-#endif
-#endif
-
-// #include "functional/cstring_literal.h"
-
-// #include "ast/alias.h"
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-namespace sqlite_orm::internal {
-    /** 
-     *  A special record set alias that is both, a storage lookup type (mapping type) and an alias.
-     */
-    template<char A, char... X>
-    struct cte_moniker
-        : recordset_alias<cte_moniker<A, X...> /* refer to self, since a moniker is both, an alias and a mapped type */,
-                          A,
-                          X...> {
-        /** 
-         *  Introduce the construction of a common table expression using this moniker.
-         *  
-         *  The list of explicit columns is optional;
-         *  if provided the number of columns must match the number of columns of the subselect.
-         *  The column names will be merged with the subselect:
-         *  1. column names of subselect
-         *  2. explicit columns
-         *  3. fill in empty column names with column index
-         *  
-         *  Example:
-         *  1_ctealias()(select(&Object::id));
-         *  1_ctealias(&Object::name)(select("object"));
-         *  
-         *  @return A `cte_builder` instance.
-         *  @note (internal): Defined in ast/cte.h in order to keep this member function in the same place as the named factory function `cte()`,
-         *  and to keep the actual creation of the builder in one place.
-         */
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        template<class... ExplicitCols>
-            requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
-                       std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
-                       std::convertible_to<ExplicitCols, std::string>) &&
-                      ...)
-        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
-#else
-        template<class... ExplicitCols,
-                 std::enable_if_t<std::conjunction_v<std::disjunction<
-                                      is_column_alias<ExplicitCols>,
-                                      std::is_member_pointer<ExplicitCols>,
-                                      std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
-                                      std::is_convertible<ExplicitCols, std::string>>...>,
-                                  bool> = true>
-        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
-#endif
-    };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    inline namespace literals {
-        /**
-         *  cte_moniker<'n'> from a numeric literal.
-         *  E.g. 1_ctealias, 2_ctealias
-         */
-        template<char... Chars>
-        [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator""_ctealias() {
-#ifdef SQLITE_ORM_PACK_INDEXING_SUPPORTED
-            // numeric monikers are used for automatically assigning implicit aliases to unaliased column expressions,
-            // which start at "1".
-            // note: hoisted into a variable because clang before 20.1 fails to treat an indexed non-type
-            // template parameter pack as dependent when its value is converted in place [e.g. Apple clang 17:
-            // "invalid operands to binary expression ('<dependent type>' and 'char')"]
-            constexpr auto first = Chars...[0];
-            static_assert(first > '0');
-#endif
-            return internal::cte_moniker<Chars...>{};
-        }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        /**
-         *  cte_moniker<'1'[, ...]> from a string literal.
-         *  E.g. "1"_cte, "2"_cte
-         */
-        template<internal::cstring_literal moniker>
-        [[nodiscard]] consteval auto operator""_cte() {
-            return internal::explode_into<internal::cte_moniker, moniker>(std::make_index_sequence<moniker.size()>{});
-        }
-#endif
-    }
-}
-#endif
 
 // #include "select.h"
 
@@ -12294,6 +12196,88 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../vocabulary/traits/semantic_traits_fwd.h"
 // Included to specialize traits
 
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+namespace sqlite_orm::internal {
+    /** 
+     *  A special record set alias that is both, a storage lookup type (mapping type) and an alias.
+     */
+    template<char A, char... X>
+    struct cte_moniker
+        : recordset_alias<cte_moniker<A, X...> /* refer to self, since a moniker is both, an alias and a mapped type */,
+                          A,
+                          X...> {
+        /** 
+         *  Introduce the construction of a common table expression using this moniker.
+         *  
+         *  The list of explicit columns is optional;
+         *  if provided the number of columns must match the number of columns of the subselect.
+         *  The column names will be merged with the subselect:
+         *  1. column names of subselect
+         *  2. explicit columns
+         *  3. fill in empty column names with column index
+         *  
+         *  Example:
+         *  1_ctealias()(select(&Object::id));
+         *  1_ctealias(&Object::name)(select("object"));
+         *  
+         *  @return A `cte_builder` instance.
+         *  @note (internal): Defined out of line, after the named factory function `cte()` it forwards to,
+         *  so that the actual creation of the builder stays in one place.
+         */
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<class... ExplicitCols>
+            requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
+                       std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
+                       std::convertible_to<ExplicitCols, std::string>) &&
+                      ...)
+        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
+#else
+        template<class... ExplicitCols,
+                 std::enable_if_t<std::conjunction_v<std::disjunction<
+                                      is_column_alias<ExplicitCols>,
+                                      std::is_member_pointer<ExplicitCols>,
+                                      std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
+                                      std::is_convertible<ExplicitCols, std::string>>...>,
+                                  bool> = true>
+        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
+#endif
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    inline namespace literals {
+        /**
+         *  cte_moniker<'n'> from a numeric literal.
+         *  E.g. 1_ctealias, 2_ctealias
+         */
+        template<char... Chars>
+        [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator""_ctealias() {
+#ifdef SQLITE_ORM_PACK_INDEXING_SUPPORTED
+            // numeric monikers are used for automatically assigning implicit aliases to unaliased column expressions,
+            // which start at "1".
+            // note: hoisted into a variable because clang before 20.1 fails to treat an indexed non-type
+            // template parameter pack as dependent when its value is converted in place [e.g. Apple clang 17:
+            // "invalid operands to binary expression ('<dependent type>' and 'char')"]
+            constexpr auto first = Chars...[0];
+            static_assert(first > '0');
+#endif
+            return internal::cte_moniker<Chars...>{};
+        }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        /**
+         *  cte_moniker<'1'[, ...]> from a string literal.
+         *  E.g. "1"_cte, "2"_cte
+         */
+        template<internal::cstring_literal moniker>
+        [[nodiscard]] consteval auto operator""_cte() {
+            return internal::explode_into<internal::cte_moniker, moniker>(std::make_index_sequence<moniker.size()>{});
+        }
+#endif
+    }
+}
+#endif
+
 namespace sqlite_orm::internal {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /*
@@ -12313,33 +12297,6 @@ namespace sqlite_orm::internal {
     };
     template<class T>
     using decay_explicit_column_t = typename decay_explicit_column<T>::type;
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /*
-     *  Materialization hint to instruct SQLite to materialize the select statement of a CTE into an ephemeral table as an "optimization fence".
-     */
-    struct materialized_t {
-        constexpr operator std::string_view() const {
-            return "MATERIALIZED";
-        }
-    };
-
-    /*
-     *  Materialization hint to instruct SQLite to substitute a CTE's select statement as a subquery subject to optimization.
-     */
-    struct not_materialized_t {
-        constexpr operator std::string_view() const {
-            return "NOT MATERIALIZED";
-        }
-    };
-
-    template<class T>
-    constexpr bool is_materialization_hint_v =
-        std::disjunction<std::is_same<T, materialized_t>, std::is_same<T, not_materialized_t>>::value;
-#else
-    template<class T>
-    constexpr bool is_materialization_hint_v = false;
-#endif
 
     /**
      *  Monikered (aliased) CTE expression.
@@ -12396,72 +12353,14 @@ namespace sqlite_orm::internal {
         }
 #endif
     };
-
-    /**
-     *  WITH object type - expression with prepended CTEs.
-     */
-    template<class E, class... CTEs>
-    struct with_t {
-        using cte_type = common_table_expressions<CTEs...>;
-        using expression_type = E;
-
-        bool recursiveIndicated;
-        cte_type cte;
-        expression_type expression;
-
-        with_t(bool recursiveIndicated, cte_type cte, expression_type expression) :
-            recursiveIndicated{recursiveIndicated}, cte{std::move(cte)}, expression{std::move(expression)} {
-            if constexpr (is_select_v<expression_type>) {
-                this->expression.highest_level = true;
-            }
-        }
-    };
-
-    template<class T>
-    constexpr bool is_with_clause_v = polyfill::is_specialization_of<T, with_t>::value;
 #else
     template<class T>
     constexpr bool is_cte_binding_v = false;
-
-    template<class T>
-    constexpr bool is_materialization_hint_v = false;
-
-    template<class T>
-    constexpr bool is_with_clause_v = false;
 #endif
-
-    template<class With>
-    constexpr bool is_select_expression_v<
-        With,
-        std::enable_if_t<std::conjunction_v<is_with_clause<With>, is_select<expression_type_t<With>>>>> = true;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#if SQLITE_VERSION_NUMBER >= 3035003
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /*
-     *  Materialization hint to instruct SQLite to materialize the select statement of a CTE into an ephemeral table as an "optimization fence".
-     *
-     *  Example:
-     *  1_ctealias().as<materialized()>(select(1));
-     */
-    consteval internal::materialized_t materialized() {
-        return {};
-    }
-
-    /*
-     *  Materialization hint to instruct SQLite to substitute a CTE's select statement as a subquery subject to optimization.
-     *
-     *  Example:
-     *  1_ctealias().as<not_materialized()>(select(1));
-     */
-    consteval internal::not_materialized_t not_materialized() {
-        return {};
-    }
-#endif
-#endif
-
     /**
      *  Introduce the construction of a common table expression using the specified moniker.
      *
@@ -12514,7 +12413,132 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return builder_type{{std::move(explicitColumns)...}};
     }
 #endif
+#endif
+}
 
+// Implementation of cte_moniker's call operator which depends on `cte<>()`
+namespace sqlite_orm::internal {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<char A, char... X>
+    template<class... ExplicitCols>
+        requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
+                   std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
+                   std::convertible_to<ExplicitCols, std::string>) &&
+                  ...)
+    constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
+        return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
+    }
+#else
+    template<char A, char... X>
+    template<class... ExplicitCols,
+             std::enable_if_t<std::conjunction_v<std::disjunction<
+                                  is_column_alias<ExplicitCols>,
+                                  std::is_member_pointer<ExplicitCols>,
+                                  std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
+                                  std::is_convertible<ExplicitCols, std::string>>...>,
+                              bool>>
+    constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
+        return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
+    }
+#endif
+#endif
+}
+
+namespace sqlite_orm::internal {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE) && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
+    /*
+     *  Materialization hint to instruct SQLite to materialize the select statement of a CTE into an ephemeral table as an "optimization fence".
+     */
+    struct materialized_t {
+        constexpr operator std::string_view() const {
+            return "MATERIALIZED";
+        }
+    };
+
+    /*
+     *  Materialization hint to instruct SQLite to substitute a CTE's select statement as a subquery subject to optimization.
+     */
+    struct not_materialized_t {
+        constexpr operator std::string_view() const {
+            return "NOT MATERIALIZED";
+        }
+    };
+
+    template<class T>
+    constexpr bool is_materialization_hint_v =
+        std::disjunction<std::is_same<T, materialized_t>, std::is_same<T, not_materialized_t>>::value;
+#else
+    template<class T>
+    constexpr bool is_materialization_hint_v = false;
+#endif
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if SQLITE_VERSION_NUMBER >= 3035003
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /*
+     *  Materialization hint to instruct SQLite to materialize the select statement of a CTE into an ephemeral table as an "optimization fence".
+     *
+     *  Example:
+     *  1_ctealias().as<materialized()>(select(1));
+     */
+    consteval internal::materialized_t materialized() {
+        return {};
+    }
+
+    /*
+     *  Materialization hint to instruct SQLite to substitute a CTE's select statement as a subquery subject to optimization.
+     *
+     *  Example:
+     *  1_ctealias().as<not_materialized()>(select(1));
+     */
+    consteval internal::not_materialized_t not_materialized() {
+        return {};
+    }
+#endif
+#endif
+#endif
+}
+
+namespace sqlite_orm::internal {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+    /**
+     *  WITH object type - expression with prepended CTEs.
+     */
+    template<class E, class... CTEs>
+    struct with_t {
+        using cte_type = common_table_expressions<CTEs...>;
+        using expression_type = E;
+
+        bool recursiveIndicated;
+        cte_type cte;
+        expression_type expression;
+
+        with_t(bool recursiveIndicated, cte_type cte, expression_type expression) :
+            recursiveIndicated{recursiveIndicated}, cte{std::move(cte)}, expression{std::move(expression)} {
+            if constexpr (is_select_v<expression_type>) {
+                this->expression.highest_level = true;
+            }
+        }
+    };
+
+    template<class T>
+    constexpr bool is_with_clause_v = polyfill::is_specialization_of<T, with_t>::value;
+#else
+    template<class T>
+    constexpr bool is_with_clause_v = false;
+#endif
+
+    template<class With>
+    constexpr bool is_select_expression_v<
+        With,
+        std::enable_if_t<std::conjunction_v<is_with_clause<With>, is_select<expression_type_t<With>>>>> = true;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /**
      *  With-clause for a tuple of ordinary CTEs.
      *
@@ -12624,35 +12648,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::with_t<internal::select_t<Compound>, CTE> with_recursive(CTE cte, Compound sel) {
         return {true, {std::move(cte)}, sqlite_orm::select(std::move(sel))};
     }
-#endif
-}
-
-// Implementation of cte_moniker's call operator which depends on `cte<>()`
-namespace sqlite_orm::internal {
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<char A, char... X>
-    template<class... ExplicitCols>
-        requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
-                   std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
-                   std::convertible_to<ExplicitCols, std::string>) &&
-                  ...)
-    constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
-        return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
-    }
-#else
-    template<char A, char... X>
-    template<class... ExplicitCols,
-             std::enable_if_t<std::conjunction_v<std::disjunction<
-                                  is_column_alias<ExplicitCols>,
-                                  std::is_member_pointer<ExplicitCols>,
-                                  std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
-                                  std::is_convertible<ExplicitCols, std::string>>...>,
-                              bool>>
-    constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
-        return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
-    }
-#endif
 #endif
 }
 
@@ -17886,7 +17881,7 @@ namespace sqlite_orm::internal {
 
 // #include "../ast/alias.h"
 
-// #include "../cte_types.h"
+// #include "../schema/cte_mapping.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
@@ -17894,7 +17889,7 @@ namespace sqlite_orm::internal {
 #endif
 #endif
 
-// #include "tuple_helper/tuple_fy.h"
+// #include "../tuple_helper/tuple_fy.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm::internal {
@@ -17913,6 +17908,8 @@ namespace sqlite_orm::internal {
     /**
      *  This class captures various properties and aspects of a subselect's column expression,
      *  and is used as a proxy in base_table<>.
+     *
+     *  Named after CTEs, the only subselects mapped as a table so far.
      */
     template<typename Moniker,
              typename ExplicitColRefs,
@@ -17920,9 +17917,9 @@ namespace sqlite_orm::internal {
              typename SubselectColRefs,
              typename FinalColRefs,
              typename... Fs>
-    class subselect_mapper {
+    class cte_mapper {
       public:
-        subselect_mapper() = delete;
+        cte_mapper() = delete;
 
         // this type name is used to detect the mapping from moniker to object
         using cte_moniker_type = Moniker;
@@ -18686,7 +18683,7 @@ namespace sqlite_orm::internal {
 
 // #include "../../vocabulary/node_algorithms.h"
 //  col_index_sequence_of, col_index_sequence_with, mapped_type_of_t
-// #include "../../cte_types.h"
+// #include "../cte_mapping.h"
 
 // #include "../db_objects.h"
 
@@ -27454,7 +27451,7 @@ namespace sqlite_orm::internal {
 
 // #include "ast/alias.h"
 
-// #include "cte_types.h"
+// #include "schema/cte_mapping.h"
 
 // #include "serialization/cte_column_names_collector.h"
 
@@ -27588,7 +27585,7 @@ namespace sqlite_orm::internal {
              typename FinalColRefs,
              typename F>
     struct create_cte_mapper {
-        using type = subselect_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, F>;
+        using type = cte_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, F>;
     };
 
     // std::tuple<Fs...>
@@ -27599,7 +27596,7 @@ namespace sqlite_orm::internal {
              typename FinalColRefs,
              typename... Fs>
     struct create_cte_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, std::tuple<Fs...>> {
-        using type = subselect_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, Fs...>;
+        using type = cte_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, Fs...>;
     };
 
     template<typename Moniker,

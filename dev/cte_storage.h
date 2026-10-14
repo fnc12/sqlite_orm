@@ -19,7 +19,7 @@
 #include "ast/select.h"
 #include "ast/cte.h"
 #include "ast/alias.h"
-#include "cte_types.h"
+#include "schema/cte_mapping.h"
 #include "serialization/cte_column_names_collector.h"
 #include "result_set/column_expression.h"
 #include "schema/db_objects.h"
@@ -35,7 +35,7 @@ namespace sqlite_orm::internal {
              typename FinalColRefs,
              typename F>
     struct create_cte_mapper {
-        using type = subselect_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, F>;
+        using type = cte_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, F>;
     };
 
     // std::tuple<Fs...>
@@ -46,7 +46,7 @@ namespace sqlite_orm::internal {
              typename FinalColRefs,
              typename... Fs>
     struct create_cte_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, std::tuple<Fs...>> {
-        using type = subselect_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, Fs...>;
+        using type = cte_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, Fs...>;
     };
 
     template<typename Moniker,
