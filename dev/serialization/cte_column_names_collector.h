@@ -17,7 +17,7 @@
 #include "../error_code.h"
 #include "../ast/alias.h"
 #include "../vocabulary/node_traits.h"
-#include "../vocabulary/node_algorithms.h"  // access_column_expression
+#include "../vocabulary/node_algorithms.h"  // access_column_expression, mapped_type_of_t
 #include "../schema/column_identifier.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
@@ -65,7 +65,8 @@ namespace sqlite_orm::internal {
             }
             // ...
             else if constexpr (is_asterisk_v<E>) {
-                auto& table = pick_table<type_t<E>>(context.db_objects);
+                using recordset_type = type_t<E>;
+                auto& table = pick_table<mapped_type_of_t<recordset_type>>(context.db_objects);
 
                 using table_type = polyfill::remove_cvref_t<decltype(table)>;
                 using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;

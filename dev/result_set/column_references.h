@@ -17,6 +17,7 @@
 
 #include "../functional/type_traits.h"
 #include "../vocabulary/node_traits.h"
+#include "../vocabulary/node_algorithms.h"  //  mapped_type_of_t
 #include "../ast/alias.h"
 #include "../schema/algorithms/table_lookup.h"
 #include "../schema/algorithms/column_lookup.h"
@@ -66,8 +67,9 @@ namespace sqlite_orm::internal {
             return get_column_references(select.col.columns,
                                          std::make_index_sequence<std::tuple_size_v<columns_type_t<E>>>{});
         } else if constexpr (is_asterisk_v<E>) {
-            // -> fields
-            return get_table_column_fields(pick_table<type_t<E>>(dbObjects));
+            // -> fields of the mapped object or CTE, also for an alias of it
+            using recordset_type = type_t<E>;
+            return get_table_column_fields(pick_table<mapped_type_of_t<recordset_type>>(dbObjects));
         } else {
             return get_column_reference<0>(select.col);
         }

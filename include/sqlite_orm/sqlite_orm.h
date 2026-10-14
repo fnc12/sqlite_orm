@@ -24817,7 +24817,7 @@ namespace sqlite_orm::internal {
 // #include "../vocabulary/node_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
-// access_column_expression
+// access_column_expression, mapped_type_of_t
 // #include "../schema/column_identifier.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
@@ -24865,7 +24865,8 @@ namespace sqlite_orm::internal {
             }
             // ...
             else if constexpr (is_asterisk_v<E>) {
-                auto& table = pick_table<type_t<E>>(context.db_objects);
+                using recordset_type = type_t<E>;
+                auto& table = pick_table<mapped_type_of_t<recordset_type>>(context.db_objects);
 
                 using table_type = polyfill::remove_cvref_t<decltype(table)>;
                 using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
@@ -27712,6 +27713,8 @@ namespace sqlite_orm::internal {
 
 // #include "../vocabulary/node_traits.h"
 
+// #include "../vocabulary/node_algorithms.h"
+//  mapped_type_of_t
 // #include "../ast/alias.h"
 
 // #include "../schema/algorithms/table_lookup.h"
@@ -27763,8 +27766,9 @@ namespace sqlite_orm::internal {
             return get_column_references(select.col.columns,
                                          std::make_index_sequence<std::tuple_size_v<columns_type_t<E>>>{});
         } else if constexpr (is_asterisk_v<E>) {
-            // -> fields
-            return get_table_column_fields(pick_table<type_t<E>>(dbObjects));
+            // -> fields of the mapped object or CTE, also for an alias of it
+            using recordset_type = type_t<E>;
+            return get_table_column_fields(pick_table<mapped_type_of_t<recordset_type>>(dbObjects));
         } else {
             return get_column_reference<0>(select.col);
         }
