@@ -17858,7 +17858,7 @@ namespace sqlite_orm::internal {
     };
 
     /*
-     *  Determine the actual and final result type of an intermediate column result produced by `column_result_t`,
+     *  Determine the actual and final result type of an intermediate column result produced by `column_result_of`,
      *  unwrapping `table_reference` and `structure`, and transforming tuples element-wise.
      */
     template<class T, class SFINAE = void>
@@ -18190,14 +18190,14 @@ namespace sqlite_orm::internal {
      *  This is a proxy class used to define what type must have result type depending on select
      *  arguments (member pointer, aggregate functions, etc). Below you can see specializations
      *  for different types. E.g. specialization for internal::length_t has `type` int cause
-     *  LENGTH returns INTEGER in sqlite. Every column_result_t must have `type` type that equals
+     *  LENGTH returns INTEGER in sqlite. Every column_result_of must have `type` type that equals
      *  c++ SELECT return type for T
      *  DBOs - db_objects_tuple type
      *  T - C++ type
      *  SFINAE - sfinae argument
      */
     template<class DBOs, class T, class SFINAE = void>
-    struct column_result_t {
+    struct column_result_of {
 #ifdef __FUNCTION__
         // produce an error message that reveals `T` and `DBOs`
         static constexpr bool reveal() {
@@ -18208,18 +18208,18 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    using column_result_of_t = typename column_result_t<DBOs, T>::type;
+    using column_result_of_t = typename column_result_of<DBOs, T>::type;
 
     template<class DBOs, class Tpl>
     using column_result_for_tuple_t = transform_tuple_t<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_as_optional, T>> {
+    struct column_result_of<DBOs, T, match_if<is_as_optional, T>> {
         using type = std::optional<column_result_of_t<DBOs, expression_type_t<T>>>;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, std::optional<T>, void> {
+    struct column_result_of<DBOs, std::optional<T>, void> {
         using type = std::optional<T>;
     };
 
@@ -18227,7 +18227,7 @@ namespace sqlite_orm::internal {
      *  Result for the most simple queries like `SELECT 1`
      */
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<std::is_arithmetic, T>> {
+    struct column_result_of<DBOs, T, match_if<std::is_arithmetic, T>> {
         using type = T;
     };
 
@@ -18235,7 +18235,7 @@ namespace sqlite_orm::internal {
      *  Result for the most simple queries like `SELECT 'ototo'`
      */
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_text_value, T>> {
+    struct column_result_of<DBOs, T, match_if<is_text_value, T>> {
         using type = std::string;
     };
 
@@ -18244,11 +18244,11 @@ namespace sqlite_orm::internal {
      *  spliced into the sequence rather than nested in it.
      */
     template<class DBOs, class... Args>
-    struct column_result_t<DBOs, std::tuple<Args...>, void> : conc_tuple<tuplify_t<column_result_of_t<DBOs, Args>>...> {
-    };
+    struct column_result_of<DBOs, std::tuple<Args...>, void>
+        : conc_tuple<tuplify_t<column_result_of_t<DBOs, Args>>...> {};
 
     template<class DBOs, class T>
-    struct column_result_t<
+    struct column_result_of<
         DBOs,
         T,
         std::enable_if_t<std::disjunction<is_any_in<T>, is_between<T>, is_is_null<T>, is_is_not_null<T>>::value>> {
@@ -18256,7 +18256,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    struct column_result_t<
+    struct column_result_of<
         DBOs,
         T,
         std::enable_if_t<std::disjunction<is_current_time<T>, is_current_date<T>, is_current_timestamp<T>>::value>> {
@@ -18264,7 +18264,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<std::is_member_pointer, T>> : member_field_type<T> {};
+    struct column_result_of<DBOs, T, match_if<std::is_member_pointer, T>> : member_field_type<T> {};
 
     /*
      *  The result type of a built-in function's call argument, as the return type placeholders see it:
@@ -18275,75 +18275,75 @@ namespace sqlite_orm::internal {
     template<class DBOs, class Arg>
     using argument_result_of_t = typename std::conditional_t<is_bindable_v<Arg> && !is_text_value<Arg>::value,
                                                              polyfill::type_identity<Arg>,
-                                                             column_result_t<DBOs, Arg>>::type;
+                                                             column_result_of<DBOs, Arg>>::type;
 
     /**
      *  The declared return type of a built-in function, with the `argument<I>` and `common_argument_type<I...>`
      *  placeholders replaced by the results of the call arguments.
      */
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_builtin_function_call, T>>
+    struct column_result_of<DBOs, T, match_if<is_builtin_function_call, T>>
         : substitute_arguments<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<argument_result_of_t, DBOs>> {};
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_app_function_call, T>> {
+    struct column_result_of<DBOs, T, match_if<is_app_function_call, T>> {
         using type = typename callable_arguments<udf_type_t<T>>::return_type;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_count_asterisk, T>> {
+    struct column_result_of<DBOs, T, match_if<is_count_asterisk, T>> {
         using type = int;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_filtered_aggregate_function, T>>
-        : column_result_t<DBOs, function_type_t<T>> {};
+    struct column_result_of<DBOs, T, match_if<is_filtered_aggregate_function, T>>
+        : column_result_of<DBOs, function_type_t<T>> {};
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_over, T>> : column_result_t<DBOs, function_type_t<T>> {};
+    struct column_result_of<DBOs, T, match_if<is_over, T>> : column_result_of<DBOs, function_type_t<T>> {};
 
     template<class DBOs>
-    struct column_result_t<DBOs, std::nullptr_t, void> {
+    struct column_result_of<DBOs, std::nullptr_t, void> {
         using type = std::nullptr_t;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_rowset_deduplicator, T>> : column_result_t<DBOs, expression_type_t<T>> {
-    };
+    struct column_result_of<DBOs, T, match_if<is_rowset_deduplicator, T>>
+        : column_result_of<DBOs, expression_type_t<T>> {};
 
     //  note: an assignment has no result type - it is no column expression
     template<class DBOs, class T>
-    struct column_result_t<DBOs,
-                           T,
-                           std::enable_if_t<std::disjunction<is_binary_operator<T>, is_unary_operator<T>>::value>> {
+    struct column_result_of<DBOs,
+                            T,
+                            std::enable_if_t<std::disjunction<is_binary_operator<T>, is_unary_operator<T>>::value>> {
         using type = result_type_t<T>;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_any_rowid, T>> {
+    struct column_result_of<DBOs, T, match_if<is_any_rowid, T>> {
         using type = int64;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_alias_qualified_column, T>> : column_result_t<DBOs, column_type_t<T>> {
-    };
+    struct column_result_of<DBOs, T, match_if<is_alias_qualified_column, T>>
+        : column_result_of<DBOs, column_type_t<T>> {};
 
     /*
      *  The result of a column pointer: that of its field.
      */
     template<class DBOs, class T>
-    struct column_result_t<DBOs,
-                           T,
-                           std::enable_if_t<std::conjunction<is_column_pointer<T>,
-                                                             std::negation<is_alias_holder<field_type_t<T>>>>::value>>
-        : column_result_t<DBOs, field_type_t<T>> {};
+    struct column_result_of<DBOs,
+                            T,
+                            std::enable_if_t<std::conjunction<is_column_pointer<T>,
+                                                              std::negation<is_alias_holder<field_type_t<T>>>>::value>>
+        : column_result_of<DBOs, field_type_t<T>> {};
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /*
      *  The result of a column pointer referring to a column alias in a CTE: the type of the column the CTE maps it to.
      */
     template<class DBOs, class T>
-    struct column_result_t<
+    struct column_result_of<
         DBOs,
         T,
         std::enable_if_t<std::conjunction<is_column_pointer<T>, is_alias_holder<field_type_t<T>>>::value>> {
@@ -18360,59 +18360,60 @@ namespace sqlite_orm::internal {
 #endif
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_columns, T>> : column_result_t<DBOs, columns_type_t<T>> {};
+    struct column_result_of<DBOs, T, match_if<is_columns, T>> : column_result_of<DBOs, columns_type_t<T>> {};
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_struct, T>> {
+    struct column_result_of<DBOs, T, match_if<is_struct, T>> {
         using type = structure<object_type_t<T>, column_result_of_t<DBOs, columns_type_t<T>>>;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_select, T>> : column_result_t<DBOs, return_type_t<T>> {};
+    struct column_result_of<DBOs, T, match_if<is_select, T>> : column_result_of<DBOs, return_type_t<T>> {};
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_compound_operator, T>> {
+    struct column_result_of<DBOs, T, match_if<is_compound_operator, T>> {
         using type = polyfill::detected_t<common_type_of_t, column_result_for_tuple_t<DBOs, expressions_tuple_t<T>>>;
         static_assert(!std::is_same<type, polyfill::nonesuch>::value,
                       "Compound select statements must return a common type");
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_binary_condition, T>> {
+    struct column_result_of<DBOs, T, match_if<is_binary_condition, T>> {
         using type = result_type_t<T>;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_as_node, T>> : column_result_t<DBOs, expression_type_t<T>> {};
+    struct column_result_of<DBOs, T, match_if<is_as_node, T>> : column_result_of<DBOs, expression_type_t<T>> {};
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_asterisk, T>>
+    struct column_result_of<DBOs, T, match_if<is_asterisk, T>>
         : schema_mapped_column_field_types<DBOs, mapped_type_of_t<type_t<T>>> {};
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_object_node, T>> {
+    struct column_result_of<DBOs, T, match_if<is_object_node, T>> {
         using type = table_reference<type_t<T>>;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_cast, T>> {
+    struct column_result_of<DBOs, T, match_if<is_cast, T>> {
         using type = to_type_t<T>;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_case_expression, T>> {
+    struct column_result_of<DBOs, T, match_if<is_case_expression, T>> {
         using type = return_type_t<T>;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs,
-                           T,
-                           std::enable_if_t<std::disjunction<is_like<T>, is_glob<T>, is_negated_condition<T>>::value>> {
+    struct column_result_of<
+        DBOs,
+        T,
+        std::enable_if_t<std::disjunction<is_like<T>, is_glob<T>, is_negated_condition<T>>::value>> {
         using type = bool;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, std::reference_wrapper<T>, void> : column_result_t<DBOs, T> {};
+    struct column_result_of<DBOs, std::reference_wrapper<T>, void> : column_result_of<DBOs, T> {};
 }
 
 // #include "sync_schema_result.h"
@@ -27483,13 +27484,13 @@ namespace sqlite_orm::internal {
 
 namespace sqlite_orm::internal {
     template<class DBOs, class E, class SFINAE = void>
-    struct column_expression_type;
+    struct column_expression_of;
 
     /**
      *  Obtains the expressions that form the columns of a subselect statement.
      */
     template<class DBOs, class E>
-    using column_expression_of_t = typename column_expression_type<DBOs, E>::type;
+    using column_expression_of_t = typename column_expression_of<DBOs, E>::type;
 
     template<class A>
     struct qualify_by_alias {
@@ -27501,7 +27502,7 @@ namespace sqlite_orm::internal {
      *  Identity.
      */
     template<class DBOs, class E, class SFINAE>
-    struct column_expression_type {
+    struct column_expression_of {
         using type = E;
     };
 
@@ -27510,7 +27511,7 @@ namespace sqlite_orm::internal {
      *  as_t<Alias, E> -> as_t<Alias, ColExpr>
      */
     template<class DBOs, class As>
-    struct column_expression_type<DBOs, As, match_if<is_as_node, As>> {
+    struct column_expression_of<DBOs, As, match_if<is_as_node, As>> {
         using type = as_t<alias_type_t<As>, column_expression_of_t<DBOs, expression_type_t<As>>>;
     };
 
@@ -27519,12 +27520,12 @@ namespace sqlite_orm::internal {
      *  reference_wrapper<T> -> T&
      */
     template<class DBOs, class E>
-    struct column_expression_type<DBOs, std::reference_wrapper<E>, void>
+    struct column_expression_of<DBOs, std::reference_wrapper<E>, void>
         : std::add_lvalue_reference<column_expression_of_t<DBOs, E>> {};
 
     // No CTE for object expression.
     template<class DBOs, class T>
-    struct column_expression_type<DBOs, T, match_if<is_object_node, T>> {
+    struct column_expression_of<DBOs, T, match_if<is_object_node, T>> {
         static_assert(polyfill::always_false_v<T>, "Selecting an object in a subselect is not allowed");
     };
 
@@ -27533,7 +27534,7 @@ namespace sqlite_orm::internal {
      *  asterisk_t<O> -> tuple<ColExpr...>
      */
     template<class DBOs, class T>
-    struct column_expression_type<
+    struct column_expression_of<
         DBOs,
         T,
         std::enable_if_t<is_asterisk_v<T> &&
@@ -27545,7 +27546,7 @@ namespace sqlite_orm::internal {
      *  asterisk_t<Alias> -> tuple<alias_qualified_column_t<Alias, ColExpr>...>
      */
     template<class DBOs, class T>
-    struct column_expression_type<DBOs, T, std::enable_if_t<is_asterisk_v<T> && is_table_alias_v<type_t<T>>>>
+    struct column_expression_of<DBOs, T, std::enable_if_t<is_asterisk_v<T> && is_table_alias_v<type_t<T>>>>
         : tuple_transformer<typename schema_mapped_column_field_expressions<DBOs, type_t<type_t<T>>>::type,
                             qualify_by_alias<type_t<T>>::template apply_t> {};
 
@@ -27554,7 +27555,7 @@ namespace sqlite_orm::internal {
      *  columns_t<C...> -> tuple<ColExpr...>
      */
     template<class DBOs, class T>
-    struct column_expression_type<DBOs, T, match_if<is_columns, T>>
+    struct column_expression_of<DBOs, T, match_if<is_columns, T>>
         : tuple_transformer<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn> {};
 
     /**
@@ -27562,7 +27563,7 @@ namespace sqlite_orm::internal {
      *  struct_t<T, C...> -> tuple<ColExpr...>
      */
     template<class DBOs, class T>
-    struct column_expression_type<DBOs, T, match_if<is_struct, T>>
+    struct column_expression_of<DBOs, T, match_if<is_struct, T>>
         : tuple_transformer<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn> {};
 
     /**
@@ -27570,7 +27571,7 @@ namespace sqlite_orm::internal {
      *  select_t<E, Args...> -> ColExpr, tuple<ColExpr....>
      */
     template<class DBOs, class T>
-    struct column_expression_type<DBOs, T, match_if<is_select, T>> : column_expression_type<DBOs, return_type_t<T>> {};
+    struct column_expression_of<DBOs, T, match_if<is_select, T>> : column_expression_of<DBOs, return_type_t<T>> {};
 }
 
 // #include "schema/db_objects.h"

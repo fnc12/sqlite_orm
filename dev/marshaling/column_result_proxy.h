@@ -20,7 +20,7 @@ namespace sqlite_orm::internal {
     };
 
     /*
-     *  Determine the actual and final result type of an intermediate column result produced by `column_result_t`,
+     *  Determine the actual and final result type of an intermediate column result produced by `column_result_of`,
      *  unwrapping `table_reference` and `structure`, and transforming tuples element-wise.
      */
     template<class T, class SFINAE = void>
