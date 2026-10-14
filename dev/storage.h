@@ -302,7 +302,7 @@ namespace sqlite_orm::internal {
          *  The returned C++ view models a C++ input range and is also a 'borrowed range',
          *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
          */
-        template<class T, class O = mapped_type_proxy_t<T>, class... Args>
+        template<class T, class O = mapped_type_of_t<T>, class... Args>
         mapped_view<O, storage_t, Args...> iterate(Args&&... args) {
             this->assert_mapped_type<O>();
 
@@ -349,7 +349,7 @@ namespace sqlite_orm::internal {
         /*  
          *  Iterate over objects of a type mapped as a table, lazily fetched from a result set in a coroutine.
          */
-        template<class T, class O = mapped_type_proxy_t<T>, class... Args>
+        template<class T, class O = mapped_type_of_t<T>, class... Args>
         std::generator<O> yield(Args&&... args) {
             this->assert_mapped_type<O>();
             // implementation note: instead of using `this->iterate<O>()` we iterate over a select statement,
@@ -363,7 +363,7 @@ namespace sqlite_orm::internal {
         /*  
          *  Iterate over objects of a type mapped as a table, lazily fetched from a result set in a coroutine.
          */
-        template<orm_refers_to_table auto mapped, class O = mapped_type_proxy_t<decltype(mapped)>, class... Args>
+        template<orm_refers_to_table auto mapped, class O = mapped_type_of_t<decltype(mapped)>, class... Args>
         std::generator<O> yield(Args&&... args) {
             this->assert_mapped_type<O>();
             // implementation note: instead of using `this->iterate<O>()` we iterate over a select statement,
@@ -475,9 +475,9 @@ namespace sqlite_orm::internal {
          *  @example: storage.get_all<User, std::list<User>>(); - SELECT * FROM users
          *  @example: storage.get_all<User, std::list<User>>(where(like(&User::name, "N%")), order_by(&User::id)); - SELECT * FROM users WHERE name LIKE 'N%' ORDER BY id
          */
-        template<class T, class R = std::vector<mapped_type_proxy_t<T>>, class... Args>
+        template<class T, class R = std::vector<mapped_type_of_t<T>>, class... Args>
         R get_all(Args&&... args) {
-            this->assert_mapped_type<mapped_type_proxy_t<T>>();
+            this->assert_mapped_type<mapped_type_of_t<T>>();
             auto statement = this->prepare(sqlite_orm::get_all<T, R>(std::forward<Args>(args)...));
             return this->execute(statement);
         }
@@ -491,10 +491,10 @@ namespace sqlite_orm::internal {
          *  @example: storage.get_all<sqlite_schema, std::list<sqlite_master>>(); - SELECT sqlite_schema.* FROM sqlite_master AS sqlite_schema
          */
         template<orm_refers_to_table auto mapped,
-                 class R = std::vector<mapped_type_proxy_t<decltype(mapped)>>,
+                 class R = std::vector<mapped_type_of_t<decltype(mapped)>>,
                  class... Args>
         R get_all(Args&&... args) {
-            this->assert_mapped_type<mapped_type_proxy_t<decltype(mapped)>>();
+            this->assert_mapped_type<mapped_type_of_t<decltype(mapped)>>();
             auto statement = this->prepare(sqlite_orm::get_all<mapped, R>(std::forward<Args>(args)...));
             return this->execute(statement);
         }
@@ -636,7 +636,7 @@ namespace sqlite_orm::internal {
          */
         template<class O, class... Args>
         int count(Args&&... args) {
-            using R = mapped_type_proxy_t<O>;
+            using R = mapped_type_of_t<O>;
             this->assert_mapped_type<R>();
             auto rows = this->select(sqlite_orm::count<R>(), std::forward<Args>(args)...);
             if (!rows.empty()) {

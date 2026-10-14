@@ -6,7 +6,7 @@
 #include <utility>  //  std::pair, std::move
 #endif
 
-#include "../vocabulary/node_algorithms.h"  //  mapped_type_proxy_t
+#include "../vocabulary/node_algorithms.h"  //  mapped_type_of_t
 #include "../vocabulary/node_traits.h"
 #include "../ast/alias.h"
 #include "../schema/algorithms/table_lookup.h"  // lookup_table_name
@@ -30,20 +30,20 @@ namespace sqlite_orm::internal {
         void operator()(const ColRef&) {
             if constexpr (std::is_member_pointer<ColRef>::value) {
                 using table_type = table_type_of_t<ColRef>;
-                auto tableName = lookup_table_name<mapped_type_proxy_t<table_type>>(this->db_objects);
+                auto tableName = lookup_table_name<mapped_type_of_t<table_type>>(this->db_objects);
                 this->table_names.emplace(std::move(tableName), "");
             }
             // ...
             else if constexpr (is_column_pointer_v<ColRef>) {
                 using table_type = table_type_of_t<ColRef>;
-                auto tableName = lookup_table_name<mapped_type_proxy_t<table_type>>(this->db_objects);
+                auto tableName = lookup_table_name<mapped_type_of_t<table_type>>(this->db_objects);
                 this->table_names.emplace(std::move(tableName), alias_extractor<table_type>::as_alias());
             }
             // ...
             else if constexpr (is_alias_column_v<ColRef>) {
                 // note: instead of accessing the column, we are interested in the type the column is aliased into
                 using A = alias_type_t<ColRef>;
-                auto tableName = lookup_table_name<mapped_type_proxy_t<A>>(this->db_objects);
+                auto tableName = lookup_table_name<mapped_type_of_t<A>>(this->db_objects);
                 this->table_names.emplace(std::move(tableName), alias_extractor<A>::as_alias());
             }
             // ...
@@ -57,7 +57,7 @@ namespace sqlite_orm::internal {
             // ...
             else if constexpr (is_asterisk_v<ColRef>) {
                 using recordset_type = type_t<ColRef>;
-                auto tableName = lookup_table_name<mapped_type_proxy_t<recordset_type>>(this->db_objects);
+                auto tableName = lookup_table_name<mapped_type_of_t<recordset_type>>(this->db_objects);
                 this->table_names.emplace(std::move(tableName), alias_extractor<recordset_type>::as_alias());
             }
             // ...

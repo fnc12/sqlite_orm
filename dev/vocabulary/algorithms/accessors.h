@@ -146,22 +146,22 @@ namespace sqlite_orm::internal {
      *  - ... otherwise unqualified T.
      */
     template<class T, class SFINAE = void>
-    struct mapped_type_proxy : std::remove_const<T> {};
+    struct mapped_type_of : std::remove_const<T> {};
 
     template<class T>
-    struct mapped_type_proxy<T, std::void_t<enclosing_type_t<T>>> {
+    struct mapped_type_of<T, std::void_t<enclosing_type_t<T>>> {
         using type = enclosing_type_t<T>;
     };
 
     template<class R>
-    struct mapped_type_proxy<R, match_if<is_table_reference, R>> : R {};
+    struct mapped_type_of<R, match_if<is_table_reference, R>> : R {};
 
     template<class E>
-    struct mapped_type_proxy<E, match_if<is_table_valued_expression, E>> : E {};
+    struct mapped_type_of<E, match_if<is_table_valued_expression, E>> : E {};
 
     template<class A>
-    struct mapped_type_proxy<A, match_if<is_recordset_alias, A>> : std::remove_const<type_t<A>> {};
+    struct mapped_type_of<A, match_if<is_recordset_alias, A>> : std::remove_const<type_t<A>> {};
 
     template<class T>
-    using mapped_type_proxy_t = typename mapped_type_proxy<T>::type;
+    using mapped_type_of_t = typename mapped_type_of<T>::type;
 }

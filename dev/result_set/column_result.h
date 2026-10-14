@@ -15,7 +15,7 @@
 #include "../tuple_helper/tuple_transformer.h"
 #include "../member_traits/member_traits.h"
 #include "../vocabulary/node_traits.h"
-#include "../vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value, mapped_type_proxy_t
+#include "../vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value, mapped_type_of_t
 #include "../marshaling/column_result_proxy.h"
 #include "../ast/alias.h"
 #include "../cte_types.h"
@@ -226,7 +226,7 @@ namespace sqlite_orm::internal {
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_asterisk, T>>
-        : schema_mapped_column_field_types<DBOs, mapped_type_proxy_t<type_t<T>>> {};
+        : schema_mapped_column_field_types<DBOs, mapped_type_of_t<type_t<T>>> {};
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_object_node, T>> {

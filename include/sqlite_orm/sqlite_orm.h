@@ -5672,24 +5672,24 @@ namespace sqlite_orm::internal {
      *  - ... otherwise unqualified T.
      */
     template<class T, class SFINAE = void>
-    struct mapped_type_proxy : std::remove_const<T> {};
+    struct mapped_type_of : std::remove_const<T> {};
 
     template<class T>
-    struct mapped_type_proxy<T, std::void_t<enclosing_type_t<T>>> {
+    struct mapped_type_of<T, std::void_t<enclosing_type_t<T>>> {
         using type = enclosing_type_t<T>;
     };
 
     template<class R>
-    struct mapped_type_proxy<R, match_if<is_table_reference, R>> : R {};
+    struct mapped_type_of<R, match_if<is_table_reference, R>> : R {};
 
     template<class E>
-    struct mapped_type_proxy<E, match_if<is_table_valued_expression, E>> : E {};
+    struct mapped_type_of<E, match_if<is_table_valued_expression, E>> : E {};
 
     template<class A>
-    struct mapped_type_proxy<A, match_if<is_recordset_alias, A>> : std::remove_const<type_t<A>> {};
+    struct mapped_type_of<A, match_if<is_recordset_alias, A>> : std::remove_const<type_t<A>> {};
 
     template<class T>
-    using mapped_type_proxy_t = typename mapped_type_proxy<T>::type;
+    using mapped_type_of_t = typename mapped_type_of<T>::type;
 }
 
 // #include "algorithms/field_accessors.h"
@@ -12721,7 +12721,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../../vocabulary/node_traits.h"
 
 // #include "../../vocabulary/node_algorithms.h"
-//  is_bindable_v, mapped_type_proxy_t
+//  is_bindable_v, mapped_type_of_t
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 // #include "../select.h"
@@ -12767,7 +12767,7 @@ namespace sqlite_orm::internal {
     template<class T, class R, class... Args>
     struct get_all_t {
         using type = T;
-        using result_type = mapped_type_proxy_t<T>;
+        using result_type = mapped_type_of_t<T>;
         using return_type = R;
 
         using conditions_type = std::tuple<Args...>;
@@ -12893,7 +12893,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  R is a container type. std::vector<T> is default
      *  Usage: storage.prepare(get_all<User>(...));
      */
-    template<class T, class R = std::vector<internal::mapped_type_proxy_t<T>>, class... Args>
+    template<class T, class R = std::vector<internal::mapped_type_of_t<T>>, class... Args>
     internal::get_all_t<T, R, Args...> get_all(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
         internal::validate_select_clauses<conditions_tuple>();
@@ -12909,7 +12909,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Usage: storage.get_all<sqlite_schema>(...);
      */
     template<orm_refers_to_table auto mapped,
-             class R = std::vector<internal::mapped_type_proxy_t<decltype(mapped)>>,
+             class R = std::vector<internal::mapped_type_of_t<decltype(mapped)>>,
              class... Args>
     auto get_all(Args&&... conditions) {
         return get_all<internal::auto_decay_table_ref_t<mapped>, R>(std::forward<Args>(conditions)...);
@@ -17830,7 +17830,7 @@ namespace sqlite_orm::internal {
 // #include "../vocabulary/node_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
-//  substitute_arguments, is_bindable_v, is_text_value, mapped_type_proxy_t
+//  substitute_arguments, is_bindable_v, is_text_value, mapped_type_of_t
 // #include "../marshaling/column_result_proxy.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -18385,7 +18385,7 @@ namespace sqlite_orm::internal {
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_asterisk, T>>
-        : schema_mapped_column_field_types<DBOs, mapped_type_proxy_t<type_t<T>>> {};
+        : schema_mapped_column_field_types<DBOs, mapped_type_of_t<type_t<T>>> {};
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, T, match_if<is_object_node, T>> {
@@ -18682,7 +18682,7 @@ namespace sqlite_orm::internal {
 // #include "../../vocabulary/node_traits.h"
 
 // #include "../../vocabulary/node_algorithms.h"
-//  col_index_sequence_of, col_index_sequence_with, mapped_type_proxy_t
+//  col_index_sequence_of, col_index_sequence_with, mapped_type_of_t
 // #include "../../cte_types.h"
 
 // #include "../db_objects.h"
@@ -18695,7 +18695,7 @@ namespace sqlite_orm::internal {
      */
     template<class Lookup, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
     const std::string* find_column_name(const DBOs& dbObjects, F Lookup::* field) {
-        return pick_table<mapped_type_proxy_t<Lookup>>(dbObjects).find_column_name(field);
+        return pick_table<mapped_type_of_t<Lookup>>(dbObjects).find_column_name(field);
     }
 
     /**
@@ -24477,7 +24477,7 @@ namespace sqlite_orm::internal {
 #endif
 
 // #include "../vocabulary/node_algorithms.h"
-//  mapped_type_proxy_t
+//  mapped_type_of_t
 // #include "../vocabulary/node_traits.h"
 
 // #include "../ast/alias.h"
@@ -24504,20 +24504,20 @@ namespace sqlite_orm::internal {
         void operator()(const ColRef&) {
             if constexpr (std::is_member_pointer<ColRef>::value) {
                 using table_type = table_type_of_t<ColRef>;
-                auto tableName = lookup_table_name<mapped_type_proxy_t<table_type>>(this->db_objects);
+                auto tableName = lookup_table_name<mapped_type_of_t<table_type>>(this->db_objects);
                 this->table_names.emplace(std::move(tableName), "");
             }
             // ...
             else if constexpr (is_column_pointer_v<ColRef>) {
                 using table_type = table_type_of_t<ColRef>;
-                auto tableName = lookup_table_name<mapped_type_proxy_t<table_type>>(this->db_objects);
+                auto tableName = lookup_table_name<mapped_type_of_t<table_type>>(this->db_objects);
                 this->table_names.emplace(std::move(tableName), alias_extractor<table_type>::as_alias());
             }
             // ...
             else if constexpr (is_alias_column_v<ColRef>) {
                 // note: instead of accessing the column, we are interested in the type the column is aliased into
                 using A = alias_type_t<ColRef>;
-                auto tableName = lookup_table_name<mapped_type_proxy_t<A>>(this->db_objects);
+                auto tableName = lookup_table_name<mapped_type_of_t<A>>(this->db_objects);
                 this->table_names.emplace(std::move(tableName), alias_extractor<A>::as_alias());
             }
             // ...
@@ -24531,7 +24531,7 @@ namespace sqlite_orm::internal {
             // ...
             else if constexpr (is_asterisk_v<ColRef>) {
                 using recordset_type = type_t<ColRef>;
-                auto tableName = lookup_table_name<mapped_type_proxy_t<recordset_type>>(this->db_objects);
+                auto tableName = lookup_table_name<mapped_type_of_t<recordset_type>>(this->db_objects);
                 this->table_names.emplace(std::move(tableName), alias_extractor<recordset_type>::as_alias());
             }
             // ...
@@ -24574,7 +24574,7 @@ namespace sqlite_orm::internal {
 // #include "../vocabulary/node_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
-// access_column_expression, mapped_type_proxy_t
+// access_column_expression, mapped_type_of_t
 // #include "../schema/column_identifier.h"
 
 // #include "../schema/table_identifier.h"
@@ -24588,7 +24588,7 @@ namespace sqlite_orm::internal {
                                                                bool definedOrder,
                                                                const Ctx& context) {
         if (definedOrder) {
-            auto& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
+            auto& table = pick_table<mapped_type_of_t<T>>(context.db_objects);
             collectedExpressions.reserve(collectedExpressions.size() + table.template count_of<is_column>());
             table.for_each_column([qualified = !context.omit_table_name,
                                    &tableName = table.name,
@@ -24607,7 +24607,7 @@ namespace sqlite_orm::internal {
             if constexpr (is_alias_v<T>) {
                 collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + ".*");
             } else if (!context.omit_table_name) {
-                const table_identifier& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
+                const table_identifier& table = pick_table<mapped_type_of_t<T>>(context.db_objects);
                 collectedExpressions.push_back(quote_identifier(table.name) + ".*");
             } else {
                 collectedExpressions.emplace_back("*");
@@ -26768,7 +26768,7 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& getAll,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             using table_type = type_t<statement_type>;
-            using mapped_type = mapped_type_proxy_t<table_type>;
+            using mapped_type = mapped_type_of_t<table_type>;
             constexpr bool hasExplicitFrom2 = tuple_has<conditions_type_t<statement_type>, is_from2>::value;
 
             auto& table = pick_table<mapped_type>(context.db_objects);
@@ -26874,7 +26874,7 @@ namespace sqlite_orm::internal {
                 //  a table is referred to by its name and its alias, so an aliased self-join keeps the table it joins
                 iterate_tuple(sel.conditions, joins_index_sequence{}, [&tableNames, &context](auto& join) {
                     using original_join_type = typename std::remove_reference_t<decltype(join)>::type;
-                    using join_type = mapped_type_proxy_t<original_join_type>;
+                    using join_type = mapped_type_of_t<original_join_type>;
 
                     tableNames.erase(std::make_pair(lookup_table_name<join_type>(context.db_objects),
                                                     alias_extractor<original_join_type>::as_alias()));
@@ -26973,7 +26973,7 @@ namespace sqlite_orm::internal {
 
                 static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)]
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
+                   << streaming_identifier(lookup_table_name<mapped_type_of_t<table_type>>(context.db_objects),
                                            alias_extractor<table_type>::as_alias());
             });
             return ss.str();
@@ -26994,7 +26994,7 @@ namespace sqlite_orm::internal {
 
                 static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)]
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<expression_type>>(context.db_objects),
+                   << streaming_identifier(lookup_table_name<mapped_type_of_t<expression_type>>(context.db_objects),
                                            alias_extractor<expression_type>::as_alias());
 
                 if constexpr (is_table_valued_expression_v<expression_type>) {
@@ -27233,7 +27233,7 @@ namespace sqlite_orm::internal {
 
             std::stringstream ss;
             ss << static_cast<std::string>(join) << " "
-               << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
+               << streaming_identifier(lookup_table_name<mapped_type_of_t<table_type>>(context.db_objects),
                                        alias_extractor<table_type>::as_alias());
             //  the constraint, unless it is the implicit one of CROSS JOIN and NATURAL JOIN
             if constexpr (!is_implicit_join_constraint_v<on_type_t<statement_type>>) {
@@ -28173,7 +28173,7 @@ namespace sqlite_orm::internal {
          *  The returned C++ view models a C++ input range and is also a 'borrowed range',
          *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
          */
-        template<class T, class O = mapped_type_proxy_t<T>, class... Args>
+        template<class T, class O = mapped_type_of_t<T>, class... Args>
         mapped_view<O, storage_t, Args...> iterate(Args&&... args) {
             this->assert_mapped_type<O>();
 
@@ -28220,7 +28220,7 @@ namespace sqlite_orm::internal {
         /*  
          *  Iterate over objects of a type mapped as a table, lazily fetched from a result set in a coroutine.
          */
-        template<class T, class O = mapped_type_proxy_t<T>, class... Args>
+        template<class T, class O = mapped_type_of_t<T>, class... Args>
         std::generator<O> yield(Args&&... args) {
             this->assert_mapped_type<O>();
             // implementation note: instead of using `this->iterate<O>()` we iterate over a select statement,
@@ -28234,7 +28234,7 @@ namespace sqlite_orm::internal {
         /*  
          *  Iterate over objects of a type mapped as a table, lazily fetched from a result set in a coroutine.
          */
-        template<orm_refers_to_table auto mapped, class O = mapped_type_proxy_t<decltype(mapped)>, class... Args>
+        template<orm_refers_to_table auto mapped, class O = mapped_type_of_t<decltype(mapped)>, class... Args>
         std::generator<O> yield(Args&&... args) {
             this->assert_mapped_type<O>();
             // implementation note: instead of using `this->iterate<O>()` we iterate over a select statement,
@@ -28346,9 +28346,9 @@ namespace sqlite_orm::internal {
          *  @example: storage.get_all<User, std::list<User>>(); - SELECT * FROM users
          *  @example: storage.get_all<User, std::list<User>>(where(like(&User::name, "N%")), order_by(&User::id)); - SELECT * FROM users WHERE name LIKE 'N%' ORDER BY id
          */
-        template<class T, class R = std::vector<mapped_type_proxy_t<T>>, class... Args>
+        template<class T, class R = std::vector<mapped_type_of_t<T>>, class... Args>
         R get_all(Args&&... args) {
-            this->assert_mapped_type<mapped_type_proxy_t<T>>();
+            this->assert_mapped_type<mapped_type_of_t<T>>();
             auto statement = this->prepare(sqlite_orm::get_all<T, R>(std::forward<Args>(args)...));
             return this->execute(statement);
         }
@@ -28362,10 +28362,10 @@ namespace sqlite_orm::internal {
          *  @example: storage.get_all<sqlite_schema, std::list<sqlite_master>>(); - SELECT sqlite_schema.* FROM sqlite_master AS sqlite_schema
          */
         template<orm_refers_to_table auto mapped,
-                 class R = std::vector<mapped_type_proxy_t<decltype(mapped)>>,
+                 class R = std::vector<mapped_type_of_t<decltype(mapped)>>,
                  class... Args>
         R get_all(Args&&... args) {
-            this->assert_mapped_type<mapped_type_proxy_t<decltype(mapped)>>();
+            this->assert_mapped_type<mapped_type_of_t<decltype(mapped)>>();
             auto statement = this->prepare(sqlite_orm::get_all<mapped, R>(std::forward<Args>(args)...));
             return this->execute(statement);
         }
@@ -28507,7 +28507,7 @@ namespace sqlite_orm::internal {
          */
         template<class O, class... Args>
         int count(Args&&... args) {
-            using R = mapped_type_proxy_t<O>;
+            using R = mapped_type_of_t<O>;
             this->assert_mapped_type<R>();
             auto rows = this->select(sqlite_orm::count<R>(), std::forward<Args>(args)...);
             if (!rows.empty()) {

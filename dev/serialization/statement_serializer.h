@@ -1826,7 +1826,7 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& getAll,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             using table_type = type_t<statement_type>;
-            using mapped_type = mapped_type_proxy_t<table_type>;
+            using mapped_type = mapped_type_of_t<table_type>;
             constexpr bool hasExplicitFrom2 = tuple_has<conditions_type_t<statement_type>, is_from2>::value;
 
             auto& table = pick_table<mapped_type>(context.db_objects);
@@ -1932,7 +1932,7 @@ namespace sqlite_orm::internal {
                 //  a table is referred to by its name and its alias, so an aliased self-join keeps the table it joins
                 iterate_tuple(sel.conditions, joins_index_sequence{}, [&tableNames, &context](auto& join) {
                     using original_join_type = typename std::remove_reference_t<decltype(join)>::type;
-                    using join_type = mapped_type_proxy_t<original_join_type>;
+                    using join_type = mapped_type_of_t<original_join_type>;
 
                     tableNames.erase(std::make_pair(lookup_table_name<join_type>(context.db_objects),
                                                     alias_extractor<original_join_type>::as_alias()));
@@ -2031,7 +2031,7 @@ namespace sqlite_orm::internal {
 
                 static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)]
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
+                   << streaming_identifier(lookup_table_name<mapped_type_of_t<table_type>>(context.db_objects),
                                            alias_extractor<table_type>::as_alias());
             });
             return ss.str();
@@ -2052,7 +2052,7 @@ namespace sqlite_orm::internal {
 
                 static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)]
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<expression_type>>(context.db_objects),
+                   << streaming_identifier(lookup_table_name<mapped_type_of_t<expression_type>>(context.db_objects),
                                            alias_extractor<expression_type>::as_alias());
 
                 if constexpr (is_table_valued_expression_v<expression_type>) {
@@ -2291,7 +2291,7 @@ namespace sqlite_orm::internal {
 
             std::stringstream ss;
             ss << static_cast<std::string>(join) << " "
-               << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
+               << streaming_identifier(lookup_table_name<mapped_type_of_t<table_type>>(context.db_objects),
                                        alias_extractor<table_type>::as_alias());
             //  the constraint, unless it is the implicit one of CROSS JOIN and NATURAL JOIN
             if constexpr (!is_implicit_join_constraint_v<on_type_t<statement_type>>) {

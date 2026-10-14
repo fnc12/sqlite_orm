@@ -17,7 +17,7 @@
 #include "../../tuple_helper/tuple_filter.h"
 #include "../../tuple_helper/tuple_iteration.h"
 #include "../../vocabulary/node_traits.h"
-#include "../../vocabulary/node_algorithms.h"  //  col_index_sequence_of, col_index_sequence_with, mapped_type_proxy_t
+#include "../../vocabulary/node_algorithms.h"  //  col_index_sequence_of, col_index_sequence_with, mapped_type_of_t
 #include "../../cte_types.h"
 #include "../db_objects.h"
 #include "table_lookup.h"
@@ -28,7 +28,7 @@ namespace sqlite_orm::internal {
      */
     template<class Lookup, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
     const std::string* find_column_name(const DBOs& dbObjects, F Lookup::* field) {
-        return pick_table<mapped_type_proxy_t<Lookup>>(dbObjects).find_column_name(field);
+        return pick_table<mapped_type_of_t<Lookup>>(dbObjects).find_column_name(field);
     }
 
     /**
