@@ -27457,28 +27457,28 @@ namespace sqlite_orm::internal {
 
 // #include "serialization/cte_column_names_collector.h"
 
-// #include "column_expression.h"
+// #include "result_set/column_expression.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::add_lvalue_reference
 #include <functional>  //  std::reference_wrapper
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/mpl.h"
+// #include "../functional/mpl.h"
 
-// #include "functional/type_traits.h"
+// #include "../functional/type_traits.h"
 
-// #include "tuple_helper/tuple_transformer.h"
+// #include "../tuple_helper/tuple_transformer.h"
 
-// #include "vocabulary/node_traits.h"
+// #include "../vocabulary/node_traits.h"
 
-// #include "ast/result_columns.h"
+// #include "../ast/result_columns.h"
 
-// #include "ast/alias.h"
+// #include "../ast/alias.h"
 
-// #include "schema/algorithms/table_lookup.h"
+// #include "../schema/algorithms/table_lookup.h"
 //  schema_mapped_column_field_expressions
 
 namespace sqlite_orm::internal {
@@ -27486,13 +27486,13 @@ namespace sqlite_orm::internal {
     struct column_expression_type;
 
     /**
-     *  Obains the expressions that form the columns of a subselect statement.
+     *  Obtains the expressions that form the columns of a subselect statement.
      */
     template<class DBOs, class E>
     using column_expression_of_t = typename column_expression_type<DBOs, E>::type;
 
     template<class A>
-    struct add_column_alias {
+    struct qualify_by_alias {
         template<typename ColExpr>
         using apply_t = alias_qualified_column_t<A, ColExpr>;
     };
@@ -27547,7 +27547,7 @@ namespace sqlite_orm::internal {
     template<class DBOs, class T>
     struct column_expression_type<DBOs, T, std::enable_if_t<is_asterisk_v<T> && is_table_alias_v<type_t<T>>>>
         : tuple_transformer<typename schema_mapped_column_field_expressions<DBOs, type_t<type_t<T>>>::type,
-                            add_column_alias<type_t<T>>::template apply_t> {};
+                            qualify_by_alias<type_t<T>>::template apply_t> {};
 
     /**
      *  Resolve multiple columns.
