@@ -3887,13 +3887,13 @@ namespace sqlite_orm::internal {
     using is_alias_holder = std::bool_constant<is_alias_holder_v<T>>;
 
     /**
-     *  Nodes qualifying a column by a table alias: alias.column.
+     *  Column references qualified by a record set alias: `alias.column`, see `alias_column()`.
      */
     template<class T>
-    extern const bool is_alias_column_v;
+    extern const bool is_alias_qualified_column_v;
 
     template<class T>
-    using is_alias_column = std::bool_constant<is_alias_column_v<T>>;
+    using is_alias_qualified_column = std::bool_constant<is_alias_qualified_column_v<T>>;
 
     /**
      *  Nodes calling an eponymous virtual table as a table-valued function: table(arguments...).
@@ -10446,10 +10446,11 @@ namespace sqlite_orm::internal {
     };
 
     /**
-     *  Column expression with table alias attached like 'C.ID'. This is not a column alias
+     *  Column reference qualified by a record set alias: `"c"."id"`.
+     *  The alias is the qualifier, as opposed to a column alias naming an expression.
      */
     template<class T, class C>
-    struct alias_column_t {
+    struct alias_qualified_column_t {
         using alias_type = T;
         using column_type = C;
 
@@ -10457,10 +10458,10 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool is_alias_column_v = polyfill::is_specialization_of_v<T, alias_column_t>;
+    constexpr bool is_alias_qualified_column_v = polyfill::is_specialization_of_v<T, alias_qualified_column_t>;
 
     template<class T>
-    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_alias_column_v<T>>> = true;
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_alias_qualified_column_v<T>>> = true;
 
     /*
      *  Encapsulates extracting the alias identifier of a non-alias.
@@ -10620,7 +10621,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using aliased_type = type_t<A>;
         static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
 
-        return alias_column_t<A, C>{std::move(field)};
+        return alias_qualified_column_t<A, C>{std::move(field)};
     }
 
     /**
@@ -10645,7 +10646,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         using C1 =
             mpl::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
-        return alias_column_t<A, C1>{C1{field}};
+        return alias_qualified_column_t<A, C1>{C1{field}};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -10667,13 +10668,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
 
         if constexpr (is_column_pointer_v<C>) {
-            return alias_column_t<A, C>{std::move(field)};
+            return alias_qualified_column_t<A, C>{std::move(field)};
         } else if constexpr (std::is_same_v<member_object_type_t<C>, aliased_type>) {
-            return alias_column_t<A, C>{field};
+            return alias_qualified_column_t<A, C>{field};
         } else {
             // wrap in column_pointer
             using C1 = column_pointer<aliased_type, C>;
-            return alias_column_t<A, C1>{{field}};
+            return alias_qualified_column_t<A, C1>{{field}};
         }
     }
 
@@ -10712,10 +10713,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         if constexpr (is_column_pointer_v<C>) {
             static_assert(std::is_same<table_type_of_t<C>, cte_moniker_t>::value,
                           "Column pointer must match aliased CTE");
-            return alias_column_t<A, C>{c};
+            return alias_qualified_column_t<A, C>{c};
         } else {
             auto cp = column<cte_moniker_t>(c);
-            return alias_column_t<A, decltype(cp)>{std::move(cp)};
+            return alias_qualified_column_t<A, decltype(cp)>{std::move(cp)};
         }
     }
 
@@ -18324,7 +18325,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_alias_column, T>> : column_result_t<DBOs, column_type_t<T>> {};
+    struct column_result_t<DBOs, T, match_if<is_alias_qualified_column, T>> : column_result_t<DBOs, column_type_t<T>> {
+    };
 
     /*
      *  The result of a column pointer: that of its field.
@@ -20007,7 +20009,7 @@ namespace sqlite_orm::internal {
      *  
      *  Note that not all leaves of the expression tree are visited:
      *  Column expressions can be more complex, but are passed as a whole to the callable.
-     *  Examples are `column_pointer<>` and `alias_column_t<>`.
+     *  Examples are `column_pointer<>` and `alias_qualified_column_t<>`.
      *  
      *  To use `ast_iterator` call `iterate_ast(object, callable);`
      *  
@@ -24514,7 +24516,7 @@ namespace sqlite_orm::internal {
                 this->table_names.emplace(std::move(tableName), alias_extractor<table_type>::as_alias());
             }
             // ...
-            else if constexpr (is_alias_column_v<ColRef>) {
+            else if constexpr (is_alias_qualified_column_v<ColRef>) {
                 // note: instead of accessing the column, we are interested in the type the column is aliased into
                 using A = alias_type_t<ColRef>;
                 auto tableName = lookup_table_name<mapped_type_of_t<A>>(this->db_objects);
@@ -25535,7 +25537,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<T, match_if<is_alias_column, T>> {
+    struct statement_serializer<T, match_if<is_alias_qualified_column, T>> {
         using statement_type = T;
 
         template<class Ctx>
@@ -27492,7 +27494,7 @@ namespace sqlite_orm::internal {
     template<class A>
     struct add_column_alias {
         template<typename ColExpr>
-        using apply_t = alias_column_t<A, ColExpr>;
+        using apply_t = alias_qualified_column_t<A, ColExpr>;
     };
 
     /**
@@ -27540,7 +27542,7 @@ namespace sqlite_orm::internal {
 
     /**
      *  Resolve all columns of an aliased object.
-     *  asterisk_t<Alias> -> tuple<alias_column_t<Alias, ColExpr>...>
+     *  asterisk_t<Alias> -> tuple<alias_qualified_column_t<Alias, ColExpr>...>
      */
     template<class DBOs, class T>
     struct column_expression_type<DBOs, T, std::enable_if_t<is_asterisk_v<T> && is_table_alias_v<type_t<T>>>>

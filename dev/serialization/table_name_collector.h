@@ -40,7 +40,7 @@ namespace sqlite_orm::internal {
                 this->table_names.emplace(std::move(tableName), alias_extractor<table_type>::as_alias());
             }
             // ...
-            else if constexpr (is_alias_column_v<ColRef>) {
+            else if constexpr (is_alias_qualified_column_v<ColRef>) {
                 // note: instead of accessing the column, we are interested in the type the column is aliased into
                 using A = alias_type_t<ColRef>;
                 auto tableName = lookup_table_name<mapped_type_of_t<A>>(this->db_objects);

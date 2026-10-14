@@ -27,7 +27,7 @@ namespace sqlite_orm::internal {
     template<class A>
     struct add_column_alias {
         template<typename ColExpr>
-        using apply_t = alias_column_t<A, ColExpr>;
+        using apply_t = alias_qualified_column_t<A, ColExpr>;
     };
 
     /**
@@ -75,7 +75,7 @@ namespace sqlite_orm::internal {
 
     /**
      *  Resolve all columns of an aliased object.
-     *  asterisk_t<Alias> -> tuple<alias_column_t<Alias, ColExpr>...>
+     *  asterisk_t<Alias> -> tuple<alias_qualified_column_t<Alias, ColExpr>...>
      */
     template<class DBOs, class T>
     struct column_expression_type<DBOs, T, std::enable_if_t<is_asterisk_v<T> && is_table_alias_v<type_t<T>>>>

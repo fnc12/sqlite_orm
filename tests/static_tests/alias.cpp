@@ -6,8 +6,8 @@
 #include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
-using internal::alias_column_t;
 using internal::alias_holder;
+using internal::alias_qualified_column_t;
 using internal::as_t;
 using internal::column_alias;
 using internal::column_pointer;
@@ -57,13 +57,13 @@ TEST_CASE("aliases") {
     SECTION("column alias expressions") {
         runTest<alias_holder<column_alias<'a'>>>(get<colalias_a>());
         runTest<as_t<column_alias<'a'>, int User::*>>(as<colalias_a>(&User::id));
-        runTest<alias_column_t<alias_z<User>, int User::*>>(alias_column<alias_z<User>>(&User::id));
-        runTest<alias_column_t<alias_z<User>, column_pointer<User, int User::*>>>(
+        runTest<alias_qualified_column_t<alias_z<User>, int User::*>>(alias_column<alias_z<User>>(&User::id));
+        runTest<alias_qualified_column_t<alias_z<User>, column_pointer<User, int User::*>>>(
             alias_column<alias_z<User>>(column<User>(&User::id)));
-        runTest<alias_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(
+        runTest<alias_qualified_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(
             alias_column<alias_d<DerivedUser>>(column<DerivedUser>(&User::id)));
         // must implicitly create column pointer
-        runTest<alias_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(
+        runTest<alias_qualified_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(
             alias_column<alias_d<DerivedUser>>(&User::id));
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         constexpr auto a_col = "a"_col;
@@ -74,31 +74,33 @@ TEST_CASE("aliases") {
         runTest<recordset_alias<User, 'a', 'l', 's'>>(alias<'a', 'l', 's'>.for_<User>());
         constexpr auto z_alias = "z"_alias.for_<User>();
         runTest<recordset_alias<User, 'z'>>(z_alias);
-        runTest<alias_column_t<alias_z<User>, int User::*>>(alias_column<z_alias>(&User::id));
-        runTest<alias_column_t<alias_z<User>, int User::*>>(z_alias->*&User::id);
-        runTest<alias_column_t<alias_z<User>, column_pointer<User, int User::*>>>(z_alias->*column<User>(&User::id));
-        runTest<alias_column_t<alias_z<User>, column_pointer<User, int User::*>>>(
+        runTest<alias_qualified_column_t<alias_z<User>, int User::*>>(alias_column<z_alias>(&User::id));
+        runTest<alias_qualified_column_t<alias_z<User>, int User::*>>(z_alias->*&User::id);
+        runTest<alias_qualified_column_t<alias_z<User>, column_pointer<User, int User::*>>>(
+            z_alias->*column<User>(&User::id));
+        runTest<alias_qualified_column_t<alias_z<User>, column_pointer<User, int User::*>>>(
             alias_column<z_alias>(column<User>(&User::id)));
         constexpr auto d_alias = "d"_alias.for_<DerivedUser>();
-        runTest<alias_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(
+        runTest<alias_qualified_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(
             alias_column<d_alias>(column<DerivedUser>(&User::id)));
         // must implicitly create column pointer
-        runTest<alias_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(
+        runTest<alias_qualified_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(
             alias_column<d_alias>(&User::id));
-        runTest<alias_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(d_alias->*&User::id);
+        runTest<alias_qualified_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(
+            d_alias->*&User::id);
 #endif
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         runTest<column_alias<'1'>>(1_colalias);
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         using cte_1 = decltype(1_ctealias);
         constexpr auto c_alias = "c"_alias.for_<"1"_cte>();
-        runTest<alias_column_t<alias_c<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'a'>>>>>(
+        runTest<alias_qualified_column_t<alias_c<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'a'>>>>>(
             alias_column<c_alias>("a"_col));
-        runTest<alias_column_t<alias_c<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'a'>>>>>(
+        runTest<alias_qualified_column_t<alias_c<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'a'>>>>>(
             alias_column<c_alias>("1"_cte->*"a"_col));
-        runTest<alias_column_t<alias_c<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'a'>>>>>(
+        runTest<alias_qualified_column_t<alias_c<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'a'>>>>>(
             c_alias->*"a"_col);
-        runTest<alias_column_t<alias_c<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'a'>>>>>(
+        runTest<alias_qualified_column_t<alias_c<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'a'>>>>>(
             c_alias->*("1"_cte->*"a"_col));
 #endif
 #endif

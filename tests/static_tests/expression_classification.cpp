@@ -89,8 +89,8 @@ TEST_CASE("expression classification") {
 
         STATIC_REQUIRE(internal::is_alias_holder_v<decltype(get<colalias_a>())>);
         STATIC_REQUIRE_FALSE(internal::is_alias_holder_v<colalias_a>);
-        STATIC_REQUIRE(internal::is_alias_column_v<decltype(alias_column<als>(&User::id))>);
-        STATIC_REQUIRE_FALSE(internal::is_alias_column_v<decltype(&User::id)>);
+        STATIC_REQUIRE(internal::is_alias_qualified_column_v<decltype(alias_column<als>(&User::id))>);
+        STATIC_REQUIRE_FALSE(internal::is_alias_qualified_column_v<decltype(&User::id)>);
 
         STATIC_REQUIRE(internal::is_literal_v<internal::literal_holder<int>>);
         STATIC_REQUIRE_FALSE(internal::is_literal_v<int>);

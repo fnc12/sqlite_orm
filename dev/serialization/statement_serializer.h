@@ -593,7 +593,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<T, match_if<is_alias_column, T>> {
+    struct statement_serializer<T, match_if<is_alias_qualified_column, T>> {
         using statement_type = T;
 
         template<class Ctx>

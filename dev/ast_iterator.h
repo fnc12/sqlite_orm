@@ -24,7 +24,7 @@ namespace sqlite_orm::internal {
      *  
      *  Note that not all leaves of the expression tree are visited:
      *  Column expressions can be more complex, but are passed as a whole to the callable.
-     *  Examples are `column_pointer<>` and `alias_column_t<>`.
+     *  Examples are `column_pointer<>` and `alias_qualified_column_t<>`.
      *  
      *  To use `ast_iterator` call `iterate_ast(object, callable);`
      *  

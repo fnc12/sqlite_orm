@@ -165,7 +165,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_alias_column, T>> : column_result_t<DBOs, column_type_t<T>> {};
+    struct column_result_t<DBOs, T, match_if<is_alias_qualified_column, T>> : column_result_t<DBOs, column_type_t<T>> {
+    };
 
     /*
      *  The result of a column pointer: that of its field.

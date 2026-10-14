@@ -952,13 +952,13 @@ namespace sqlite_orm::internal {
     using is_alias_holder = std::bool_constant<is_alias_holder_v<T>>;
 
     /**
-     *  Nodes qualifying a column by a table alias: alias.column.
+     *  Column references qualified by a record set alias: `alias.column`, see `alias_column()`.
      */
     template<class T>
-    extern const bool is_alias_column_v;
+    extern const bool is_alias_qualified_column_v;
 
     template<class T>
-    using is_alias_column = std::bool_constant<is_alias_column_v<T>>;
+    using is_alias_qualified_column = std::bool_constant<is_alias_qualified_column_v<T>>;
 
     /**
      *  Nodes calling an eponymous virtual table as a table-valued function: table(arguments...).
