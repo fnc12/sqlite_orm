@@ -11,7 +11,7 @@
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../builtin/collations.h"  //  collate_argument
-#include "../tags.h"
+#include "operand_tags.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {

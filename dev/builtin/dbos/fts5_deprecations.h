@@ -27,7 +27,7 @@
 #endif
 
 #include "../../functional/cxx_type_traits_polyfill.h"
-#include "../../tags.h"  //  negatable_t
+#include "../../ast/operand_tags.h"  //  negatable_t
 #include "../../vocabulary/node_traits.h"  //  is_recordset_alias_v
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../functions/window.h"  //  rank

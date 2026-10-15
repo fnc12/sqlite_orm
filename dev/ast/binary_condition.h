@@ -16,7 +16,7 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/is_base_template_of.h"
 #include "../builtin/collations.h"  //  collate_argument
-#include "../tags.h"
+#include "operand_tags.h"
 #include "operators.h"  //  conc_t
 #include "../vocabulary/node_algorithms.h"  // unwrap_expression, are_valid_operands
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits

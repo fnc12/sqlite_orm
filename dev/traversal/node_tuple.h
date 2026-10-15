@@ -7,11 +7,11 @@
 #include <functional>  //  std::reference_wrapper
 #endif
 
-#include "functional/type_traits.h"
-#include "tuple_helper/tuple_filter.h"
-#include "execution/prepared_statement.h"
-#include "optional_container.h"
-#include "vocabulary/node_traits.h"
+#include "../functional/type_traits.h"
+#include "../tuple_helper/tuple_filter.h"
+#include "../execution/prepared_statement.h"
+#include "../functional/optional_container.h"
+#include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
     template<class T, class SFINAE = void>

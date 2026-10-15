@@ -116,7 +116,7 @@ The library uses a **storage-centric architecture** with compile-time type safet
 
 **Utilities:**
 - `dev/sqlite3/` - sqlite_orm's interface to the SQLite C library: the configuration derived from `<sqlite3.h>` (`sqlite3_config.h`), the types republished from it as sqlite_orm's own (`sqlite3_types.h`: `int64`, `uint64`), its result codes as `std::error_code`s (`sqlite3_errors.h`), the deleters of what it allocates (`sqlite3_deleters.h`: `statement_finalizer`), its destructor callback convention and the adaptation of C++ deleters to it (`sqlite3_xdestroy.h`: `xdestroy_fn_t`, `obtain_xdestroy_for()`), and the execution of statements through it (`sqlite3_statements.h`); umbrella `sqlite3_interface.h`. A header belongs here only if both hold: it depends on nothing in sqlite_orm but `functional/` and other `sqlite3/` headers (no DSL, schema, storage or connection), and its content is the C library's vocabulary - handles, calls, result codes, callback conventions - rather than sqlite_orm's own concepts. Merely using the C API does not qualify: `prepared_statement.h` owns a `sqlite3_stmt`, but it is a storage concept carrying a DSL expression.
-- `dev/ast_iterator.h` - Traverses expression ASTs
+- `dev/traversal/` - Walking an expression tree: `ast_iterator.h` visits its nodes, `node_tuple.h` flattens it into a tuple of nodes. Traversal, not vocabulary: neither classifies a node
 - `dev/cte_db_objects.h` - The database objects of a WITH clause: its CTEs mapped as tables (`schema/cte_mapping.h`), prepended to the schema's database objects
 
 ### Header Organization

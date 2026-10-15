@@ -22,7 +22,7 @@
 #include "../functional/type_traits.h"  //  satisfies, orm_function_sig
 #include "../functional/cstring_literal.h"
 #include "../functional/function_traits.h"  //  function_arguments, function_return_type_t
-#include "../tags.h"  //  arithmetic_t
+#include "operand_tags.h"  //  arithmetic_t
 #include "../vocabulary/node_traits.h"  //  is_where, expression_type_t
 #include "../vocabulary/node_algorithms.h"  //  argument, common_argument_type
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits

@@ -4,7 +4,7 @@
 #include <type_traits>  //  std::is_base_of, std::enable_if_t
 #endif
 
-#include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
+#include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     struct negatable_t {};
