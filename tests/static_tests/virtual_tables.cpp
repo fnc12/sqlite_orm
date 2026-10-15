@@ -83,6 +83,65 @@ TEST_CASE("generate_series layout tests") {
 }
 #endif
 
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
+TEST_CASE("pragma_table_info layout tests") {
+    using internal::pragma_table_info_module_tag;
+
+    STATIC_REQUIRE(is_table_reference_v<decltype(pragma_table_info_table)>);
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    STATIC_REQUIRE(orm_table_reference<decltype(pragma_table_info_table)>);
+#endif
+
+    SECTION("default table definition") {
+        auto table = make_pragma_table_info_table();
+        using table_type = decltype(table);
+        using elements_type = decltype(table.elements);
+        STATIC_REQUIRE(std::is_same<table_type::module_type, pragma_table_info_module_tag>::value);
+        STATIC_REQUIRE(std::is_same<table_type::object_type, table_info>::value);
+        STATIC_REQUIRE(std::is_same<table_type::object_type::hidden::enclosing_type, table_info>::value);
+        STATIC_REQUIRE(is_base_template_of_v<table_definition, table_type>);
+        STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 6);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 2);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, bool>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, std::string>::size() == 3);
+        STATIC_REQUIRE(all_col_index_sequence_with_field_type<elements_type, std::string>::size() == 5);
+        STATIC_REQUIRE(hidden_col_index_sequence_of<elements_type>::size() == 2);
+    }
+}
+
+#if SQLITE_VERSION_NUMBER >= 3026000
+TEST_CASE("pragma_table_xinfo layout tests") {
+    using internal::pragma_table_xinfo_module_tag;
+
+    STATIC_REQUIRE(is_table_reference_v<decltype(pragma_table_xinfo_table)>);
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    STATIC_REQUIRE(orm_table_reference<decltype(pragma_table_xinfo_table)>);
+#endif
+
+    SECTION("data member and nested struct named `hidden`") {
+        STATIC_REQUIRE(std::is_same<decltype(&table_xinfo::hidden), int table_xinfo::*>::value);
+        STATIC_REQUIRE(std::is_same<decltype(&table_xinfo::hidden::arg), std::string table_xinfo::hidden::*>::value);
+        STATIC_REQUIRE(std::is_same<internal::mapped_type_of_t<struct table_xinfo::hidden>, table_xinfo>::value);
+    }
+    SECTION("default table definition") {
+        auto table = make_pragma_table_xinfo_table();
+        using table_type = decltype(table);
+        using elements_type = decltype(table.elements);
+        STATIC_REQUIRE(std::is_same<table_type::module_type, pragma_table_xinfo_module_tag>::value);
+        STATIC_REQUIRE(std::is_same<table_type::object_type, table_xinfo>::value);
+        STATIC_REQUIRE(std::is_same<table_type::object_type::hidden::enclosing_type, table_xinfo>::value);
+        STATIC_REQUIRE(is_base_template_of_v<table_definition, table_type>);
+        STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 7);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 3);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, bool>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, std::string>::size() == 3);
+        STATIC_REQUIRE(all_col_index_sequence_with_field_type<elements_type, std::string>::size() == 5);
+        STATIC_REQUIRE(hidden_col_index_sequence_of<elements_type>::size() == 2);
+    }
+}
+#endif
+#endif
+
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 TEST_CASE("fts5 layout tests") {
     using internal::fts5_module_tag;

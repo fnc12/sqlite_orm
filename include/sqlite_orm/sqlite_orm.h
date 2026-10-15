@@ -6138,132 +6138,45 @@ namespace sqlite_orm::internal {
 
 // #include "../tuple_helper/tuple_transformer.h"
 
-// #include "../execution/table_info.h"
+// #include "../builtin/dbos/pragma_table_info.h"
+
+/** @file The rows of `PRAGMA table_info` and `PRAGMA table_xinfo`, and the eponymous virtual tables
+ *        `pragma_table_info` and `pragma_table_xinfo` of their PRAGMA functions.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <utility>  //  std::move
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
+#include <type_traits>  //  std::true_type, std::false_type
+#include <tuple>  //  std::make_tuple
+#endif
 #endif
 
-SQLITE_ORM_EXPORT namespace sqlite_orm {
+// #include "../../functional/gsl.h"
 
-    struct table_info {
-        int cid = 0;
-        std::string name;
-        std::string type;
-        bool notnull = false;
-        std::string dflt_value;
-        int pk = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
-        table_info(decltype(cid) cid_,
-                   decltype(name) name_,
-                   decltype(type) type_,
-                   decltype(notnull) notnull_,
-                   decltype(dflt_value) dflt_value_,
-                   decltype(pk) pk_) :
-            cid(cid_), name(std::move(name_)), type(std::move(type_)), notnull(notnull_),
-            dflt_value(std::move(dflt_value_)), pk(pk_) {}
-#endif
-    };
-
-    struct table_xinfo {
-        int cid = 0;
-        std::string name;
-        std::string type;
-        bool notnull = false;
-        std::string dflt_value;
-        int pk = 0;
-        //  as reported by `PRAGMA table_xinfo`: 0 = normal column, 1 = hidden column in a virtual table,
-        //  2 = VIRTUAL generated column, 3 = STORED generated column;
-        //  `get_table_info()` stores 1 for a generated column, so only zero vs non-zero may be compared
-        int hidden = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
-        table_xinfo(decltype(cid) cid_,
-                    decltype(name) name_,
-                    decltype(type) type_,
-                    decltype(notnull) notnull_,
-                    decltype(dflt_value) dflt_value_,
-                    decltype(pk) pk_,
-                    decltype(hidden) hidden_) :
-            cid(cid_), name(std::move(name_)), type(std::move(type_)), notnull(notnull_),
-            dflt_value(std::move(dflt_value_)), pk(pk_), hidden{hidden_} {}
-#endif
-    };
-}
-
-// #include "../vocabulary/node_traits.h"
-
-// #include "../vocabulary/node_algorithms.h"
-
-// #include "../vocabulary/traits/grammar_traits_fwd.h"
-// Included to specialize traits
-// #include "constraints/generated_always.h"
+// #include "../../schema/column.h"
+//  make_column, make_hidden_column
+// #include "../../schema/virtual_table.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#include <concepts>  // std::convertible_to
+#endif
+#include <string>  //  std::string
 #include <utility>  //  std::move
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../../vocabulary/traits/grammar_traits_fwd.h"
+// #include "../functional/gsl.h"
+
+// #include "../functional/type_traits.h"
+
+// #include "../vocabulary/node_traits.h"
+//  orm_table_reference, auto_decay_table_ref_t
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
-
-namespace sqlite_orm::internal {
-    struct basic_generated_always {
-        enum class storage_type {
-            not_specified,
-            virtual_,
-            stored,
-        };
-
-#if SQLITE_VERSION_NUMBER >= 3031000
-        bool _full = true;
-        storage_type _storage = storage_type::not_specified;
-#endif
-    };
-
-#if SQLITE_VERSION_NUMBER >= 3031000
-    template<class T>
-    struct generated_always_t : basic_generated_always {
-        using expression_type = T;
-
-        expression_type _expression;
-
-        constexpr generated_always_t<T> virtual_() && {
-            return {_full, storage_type::virtual_, std::move(_expression)};
-        }
-
-        constexpr generated_always_t<T> stored() && {
-            return {_full, storage_type::stored, std::move(_expression)};
-        }
-    };
-#endif
-
-    template<class T>
-    constexpr bool is_generated_always_v =
-#if SQLITE_VERSION_NUMBER >= 3031000
-        polyfill::is_specialization_of<T, generated_always_t>::value;
-#else
-        false;
-#endif
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-#if SQLITE_VERSION_NUMBER >= 3031000
-    template<class T>
-    constexpr internal::generated_always_t<T> generated_always_as(T expression) {
-        return {true, internal::basic_generated_always::storage_type::not_specified, std::move(expression)};
-    }
-
-    template<class T>
-    constexpr internal::generated_always_t<T> as(T expression) {
-        return {false, internal::basic_generated_always::storage_type::not_specified, std::move(expression)};
-    }
-#endif
-}
-
 // #include "table_base.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -6631,6 +6544,494 @@ namespace sqlite_orm::internal {
     };
 }
 
+namespace sqlite_orm::internal {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    template<class T>
+    concept module_tag = requires {
+        typename T::module_type;
+        { T::name() } -> std::convertible_to<orm_gsl::czstring>;
+    };
+#endif
+
+    /** 
+     *  Default base traits of a "normal" virtual table module.
+     *  
+     *  Particularly this means:
+     *  - It is not eponymous.
+     *    The definition of eponymous virtual tables is built-in, fixed and implicit,
+     *    and they can only be created with optional table-values for their hidden columns.
+     *  - It is not a WITHOUT ROWID table (i.e. it has an implicit `rowid` column).
+     *  - Omits the column type in the SQL creation statement.
+     *  
+     *  Specific virtual table modules can specialize this struct to provide their own traits.
+     */
+    template<class M>
+    struct virtual_table_module_traits {
+        using module_type = M;
+        using is_eponymous = std::false_type;
+        using is_without_rowid = std::false_type;
+        using omit_column_type = std::true_type;
+    };
+
+    /** 
+     *  Default traits of a "normal" virtual table.
+     *  
+     *  Particularly this means :
+     *  - Its definition is a `insertable_table_definition`.
+     *  
+     *  Specific virtual table modules can specialize this struct to provide their own traits.
+     */
+    template<class M, class... Cs>
+    struct virtual_table_traits : virtual_table_module_traits<M> {
+        using definition_type = insertable_table_definition<Cs...>;
+        using elements_type = elements_type_t<definition_type>;
+    };
+
+    /** 
+     *  Encapsulates the intermediary (and temporary) (and deprecated) `using_module<Object>(...)` expression.
+     */
+    template<class O, class M, class... Cs>
+    struct virtual_table_description : virtual_table_traits<M, Cs...>::definition_type {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+        static_assert(module_tag<M>, "Template parameter M must be a module tag");
+#endif
+    };
+
+    /** 
+     *  Encapsulates the intermediary (and temporary) `using_module(...)` expression.
+     *  
+     *  Implementation note: When making the virtual table this virtual table definition is unpacked into the virtual table type itself.
+     *  If desired or necessary one day, derive `virtual_table` from it, similar to `base_table` deriving from `base_table_definition`.
+     */
+    template<class M, class... Cs>
+    struct virtual_table_definition : virtual_table_traits<M, Cs...>::definition_type {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+        static_assert(module_tag<M>, "Template parameter M must be a module tag");
+#endif
+        using module_type = M;
+    };
+
+    /**
+     *  Represents an SQLite virtual table.
+     */
+    template<class O, class M, class... Cs>
+    struct virtual_table : table_identifier, virtual_table_traits<M, Cs...>::definition_type {
+        using traits_type = virtual_table_traits<M, Cs...>;
+        using module_traits_type = virtual_table_module_traits<M>;
+        using module_type = M;
+        using object_type = O;
+        using elements_type = typename traits_type::elements_type;
+        using is_without_rowid = typename traits_type::is_without_rowid;
+    };
+
+    template<class T>
+    constexpr bool is_virtual_table_v = polyfill::is_specialization_of_v<T, virtual_table>;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Factory function for a virtual table.
+     *  
+     *  [Deprecation notice] This factory function is deprecated and will be removed in v1.11.
+     */
+    template<class O, class M, class... Cs>
+    internal::virtual_table<O, M, Cs...>
+    make_virtual_table(std::string name, internal::virtual_table_description<O, M, Cs...> description) {
+        return {std::move(name), std::move(description)};
+    }
+
+    /**
+     *  Factory function for a virtual table.
+     *  
+     *  The mapped object type is explicitly specified.
+     */
+    template<class O, class M, class... Cs>
+    internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
+                                                            internal::virtual_table_definition<M, Cs...> definition) {
+        return {std::move(name), std::move(definition)};
+    }
+
+    /**
+     *  Factory function for a virtual table.
+     *  
+     *  The mapped object type is determined implicitly from the first column definition.
+     */
+    template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
+    internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
+                                                            internal::virtual_table_definition<M, Cs...> definition) {
+        return make_virtual_table<O>(std::move(name), std::move(definition));
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Factory function for a virtual table.
+     *  
+     *  The mapped object type is explicitly specified.
+     */
+    template<orm_table_reference auto table, class M, class... Cs>
+    auto make_virtual_table(std::string name, internal::virtual_table_definition<M, Cs...> definition) {
+        return make_virtual_table<internal::auto_decay_table_ref_t<table>>(std::move(name), std::move(definition));
+    }
+#endif
+}
+
+// #include "../../ast/table_reference.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::remove_const, std::type_identity
+#include <utility>  // std::move
+#include <tuple>
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../vocabulary/node_traits.h"
+//  orm_recordset_alias
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../vocabulary/traits/structural_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    /*
+     *  Bound input arguments for eponymous virtual tables used in table-valued function calls.
+     */
+    template<class Table, class... Args>
+    struct table_valued_expression {
+        using type = Table;
+        using constraints_type = std::tuple<Args...>;
+
+        constraints_type table_values;
+    };
+
+    template<class T>
+    constexpr bool is_table_valued_expression_v = polyfill::is_specialization_of_v<T, table_valued_expression>;
+
+    /*
+     *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions and virtual tables usable as table-valued functions.
+     */
+    template<class O>
+    struct table_reference : polyfill::type_identity<O> {
+        /** 
+         *  Make a table-valued function call.
+         */
+        template<class... Args>
+        constexpr SQLITE_ORM_STATIC_CALLOP table_valued_expression<O, Args...>
+        operator()(Args... arguments) SQLITE_ORM_OR_CONST_CALLOP {
+            return {{{std::move(arguments)}...}};
+        }
+    };
+
+    template<class T>
+    constexpr bool is_table_reference_v = polyfill::is_specialization_of_v<std::remove_const_t<T>, table_reference>;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    /**
+     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
+     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
+     */
+    template<class O>
+        requires (!orm_recordset_alias<O>)
+    consteval internal::table_reference<O> c() {
+        return {};
+    }
+#else
+    /**
+     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
+     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
+     */
+    template<class O, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
+    constexpr internal::table_reference<O> c() {
+        return {};
+    }
+#endif
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  A row of `PRAGMA table_info`, and data structure for the `pragma_table_info` eponymous virtual table.
+     */
+    struct table_info {
+        int cid = 0;
+        std::string name;
+        std::string type;
+        bool notnull = false;
+        std::string dflt_value;
+        int pk = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+        table_info(decltype(cid) cid_,
+                   decltype(name) name_,
+                   decltype(type) type_,
+                   decltype(notnull) notnull_,
+                   decltype(dflt_value) dflt_value_,
+                   decltype(pk) pk_) :
+            cid(cid_), name(std::move(name_)), type(std::move(type_)), notnull(notnull_),
+            dflt_value(std::move(dflt_value_)), pk(pk_) {}
+#endif
+
+        /**
+         *  Hidden columns of the `pragma_table_info` virtual table: the PRAGMA argument (the table name) and the schema.
+         */
+        struct hidden {
+            std::string arg;
+            std::string schema;
+
+            using enclosing_type = table_info;
+        };
+    };
+
+    /**
+     *  A row of `PRAGMA table_xinfo`, and data structure for the `pragma_table_xinfo` eponymous virtual table.
+     */
+    struct table_xinfo {
+        int cid = 0;
+        std::string name;
+        std::string type;
+        bool notnull = false;
+        std::string dflt_value;
+        int pk = 0;
+        //  as reported by `PRAGMA table_xinfo`: 0 = normal column, 1 = hidden column in a virtual table,
+        //  2 = VIRTUAL generated column, 3 = STORED generated column;
+        //  `get_table_info()` stores 1 for a generated column, so only zero vs non-zero may be compared
+        int hidden = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+        table_xinfo(decltype(cid) cid_,
+                    decltype(name) name_,
+                    decltype(type) type_,
+                    decltype(notnull) notnull_,
+                    decltype(dflt_value) dflt_value_,
+                    decltype(pk) pk_,
+                    decltype(hidden) hidden_) :
+            cid(cid_), name(std::move(name_)), type(std::move(type_)), notnull(notnull_),
+            dflt_value(std::move(dflt_value_)), pk(pk_), hidden{hidden_} {}
+#endif
+
+        /**
+         *  Hidden columns of the `pragma_table_xinfo` virtual table: the PRAGMA argument (the table name) and the schema.
+         *
+         *  The data member `hidden` hides this struct's name: `table_xinfo::hidden::arg` names a hidden column,
+         *  `struct table_xinfo::hidden` names the struct.
+         */
+        struct hidden {
+            std::string arg;
+            std::string schema;
+
+            using enclosing_type = table_xinfo;
+        };
+    };
+}
+
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
+namespace sqlite_orm::internal {
+    struct pragma_table_info_module_tag {
+        // simplify conceptual/meta programming
+        using module_type = pragma_table_info_module_tag;
+
+        static constexpr orm_gsl::czstring name() {
+            return "pragma_table_info";
+        }
+    };
+
+    template<>
+    struct virtual_table_module_traits<pragma_table_info_module_tag> {
+        using module_type = pragma_table_info_module_tag;
+        using is_eponymous = std::true_type;
+        using is_without_rowid = std::false_type;
+        using omit_column_type = std::true_type;
+    };
+
+    template<class... Cs>
+    struct virtual_table_traits<pragma_table_info_module_tag, Cs...>
+        : virtual_table_module_traits<pragma_table_info_module_tag> {
+        using definition_type = table_definition<Cs...>;
+        using elements_type = typename definition_type::elements_type;
+    };
+
+    template<class... Cs>
+    inline virtual_table_definition<pragma_table_info_module_tag, Cs...>
+    make_pragma_table_info_definition(Cs... columns) {
+        return {{std::make_tuple(std::move(columns)...)}};
+    }
+
+    /**
+     *  Factory function for a `pragma_table_info` virtual table definition.
+     *
+     *  The hidden columns 'arg' and 'schema' are mapped into each table definition.
+     */
+    inline auto using_pragma_table_info() {
+        return make_pragma_table_info_definition(make_column("cid", &table_info::cid),
+                                                 make_column("name", &table_info::name),
+                                                 make_column("type", &table_info::type),
+                                                 make_column("notnull", &table_info::notnull),
+                                                 make_column("dflt_value", &table_info::dflt_value),
+                                                 make_column("pk", &table_info::pk),
+                                                 make_hidden_column("arg", &table_info::hidden::arg),
+                                                 make_hidden_column("schema", &table_info::hidden::schema));
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    inline constexpr orm_table_reference auto pragma_table_info_table = c<table_info>();
+#else
+    inline constexpr auto pragma_table_info_table = c<table_info>();
+#endif
+
+    /**
+     *  Factory function for the `pragma_table_info` eponymous virtual table.
+     */
+    inline auto make_pragma_table_info_table() {
+        return make_virtual_table<table_info>(internal::pragma_table_info_module_tag::name(),
+                                              internal::using_pragma_table_info());
+    }
+}
+
+#if SQLITE_VERSION_NUMBER >= 3026000
+namespace sqlite_orm::internal {
+    struct pragma_table_xinfo_module_tag {
+        // simplify conceptual/meta programming
+        using module_type = pragma_table_xinfo_module_tag;
+
+        static constexpr orm_gsl::czstring name() {
+            return "pragma_table_xinfo";
+        }
+    };
+
+    template<>
+    struct virtual_table_module_traits<pragma_table_xinfo_module_tag> {
+        using module_type = pragma_table_xinfo_module_tag;
+        using is_eponymous = std::true_type;
+        using is_without_rowid = std::false_type;
+        using omit_column_type = std::true_type;
+    };
+
+    template<class... Cs>
+    struct virtual_table_traits<pragma_table_xinfo_module_tag, Cs...>
+        : virtual_table_module_traits<pragma_table_xinfo_module_tag> {
+        using definition_type = table_definition<Cs...>;
+        using elements_type = typename definition_type::elements_type;
+    };
+
+    template<class... Cs>
+    inline virtual_table_definition<pragma_table_xinfo_module_tag, Cs...>
+    make_pragma_table_xinfo_definition(Cs... columns) {
+        return {{std::make_tuple(std::move(columns)...)}};
+    }
+
+    /**
+     *  Factory function for a `pragma_table_xinfo` virtual table definition.
+     *
+     *  The hidden columns 'arg' and 'schema' are mapped into each table definition.
+     */
+    inline auto using_pragma_table_xinfo() {
+        return make_pragma_table_xinfo_definition(make_column("cid", &table_xinfo::cid),
+                                                  make_column("name", &table_xinfo::name),
+                                                  make_column("type", &table_xinfo::type),
+                                                  make_column("notnull", &table_xinfo::notnull),
+                                                  make_column("dflt_value", &table_xinfo::dflt_value),
+                                                  make_column("pk", &table_xinfo::pk),
+                                                  make_column("hidden", &table_xinfo::hidden),
+                                                  make_hidden_column("arg", &table_xinfo::hidden::arg),
+                                                  make_hidden_column("schema", &table_xinfo::hidden::schema));
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    inline constexpr orm_table_reference auto pragma_table_xinfo_table = c<table_xinfo>();
+#else
+    inline constexpr auto pragma_table_xinfo_table = c<table_xinfo>();
+#endif
+
+    /**
+     *  Factory function for the `pragma_table_xinfo` eponymous virtual table.
+     */
+    inline auto make_pragma_table_xinfo_table() {
+        return make_virtual_table<table_xinfo>(internal::pragma_table_xinfo_module_tag::name(),
+                                               internal::using_pragma_table_xinfo());
+    }
+}
+#endif
+#endif
+//  table_xinfo
+// #include "../vocabulary/node_traits.h"
+
+// #include "../vocabulary/node_algorithms.h"
+
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "constraints/generated_always.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <utility>  //  std::move
+#endif
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
+// #include "../../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    struct basic_generated_always {
+        enum class storage_type {
+            not_specified,
+            virtual_,
+            stored,
+        };
+
+#if SQLITE_VERSION_NUMBER >= 3031000
+        bool _full = true;
+        storage_type _storage = storage_type::not_specified;
+#endif
+    };
+
+#if SQLITE_VERSION_NUMBER >= 3031000
+    template<class T>
+    struct generated_always_t : basic_generated_always {
+        using expression_type = T;
+
+        expression_type _expression;
+
+        constexpr generated_always_t<T> virtual_() && {
+            return {_full, storage_type::virtual_, std::move(_expression)};
+        }
+
+        constexpr generated_always_t<T> stored() && {
+            return {_full, storage_type::stored, std::move(_expression)};
+        }
+    };
+#endif
+
+    template<class T>
+    constexpr bool is_generated_always_v =
+#if SQLITE_VERSION_NUMBER >= 3031000
+        polyfill::is_specialization_of<T, generated_always_t>::value;
+#else
+        false;
+#endif
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#if SQLITE_VERSION_NUMBER >= 3031000
+    template<class T>
+    constexpr internal::generated_always_t<T> generated_always_as(T expression) {
+        return {true, internal::basic_generated_always::storage_type::not_specified, std::move(expression)};
+    }
+
+    template<class T>
+    constexpr internal::generated_always_t<T> as(T expression) {
+        return {false, internal::basic_generated_always::storage_type::not_specified, std::move(expression)};
+    }
+#endif
+}
+
+// #include "table_base.h"
+
 // #include "column.h"
 //  sqlite_orm::make_column
 // #include "dbo_name.h"
@@ -6957,157 +7358,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // note: though the top-level sqlite_orm.h umbrella header will include all concrete virtual tables provided by sqlite_orm
 // we include it here to be independent and consistent with the other schema nodes
 // #include "schema/virtual_table.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-#include <concepts>  // std::convertible_to
-#endif
-#include <string>  //  std::string
-#include <utility>  //  std::move
-#endif
-
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../functional/gsl.h"
-
-// #include "../functional/type_traits.h"
-
-// #include "../vocabulary/node_traits.h"
-//  orm_table_reference, auto_decay_table_ref_t
-// #include "../vocabulary/traits/grammar_traits_fwd.h"
-// Included to specialize traits
-// #include "table_base.h"
-
-namespace sqlite_orm::internal {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    template<class T>
-    concept module_tag = requires {
-        typename T::module_type;
-        { T::name() } -> std::convertible_to<orm_gsl::czstring>;
-    };
-#endif
-
-    /** 
-     *  Default base traits of a "normal" virtual table module.
-     *  
-     *  Particularly this means:
-     *  - It is not eponymous.
-     *    The definition of eponymous virtual tables is built-in, fixed and implicit,
-     *    and they can only be created with optional table-values for their hidden columns.
-     *  - It is not a WITHOUT ROWID table (i.e. it has an implicit `rowid` column).
-     *  - Omits the column type in the SQL creation statement.
-     *  
-     *  Specific virtual table modules can specialize this struct to provide their own traits.
-     */
-    template<class M>
-    struct virtual_table_module_traits {
-        using module_type = M;
-        using is_eponymous = std::false_type;
-        using is_without_rowid = std::false_type;
-        using omit_column_type = std::true_type;
-    };
-
-    /** 
-     *  Default traits of a "normal" virtual table.
-     *  
-     *  Particularly this means :
-     *  - Its definition is a `insertable_table_definition`.
-     *  
-     *  Specific virtual table modules can specialize this struct to provide their own traits.
-     */
-    template<class M, class... Cs>
-    struct virtual_table_traits : virtual_table_module_traits<M> {
-        using definition_type = insertable_table_definition<Cs...>;
-        using elements_type = elements_type_t<definition_type>;
-    };
-
-    /** 
-     *  Encapsulates the intermediary (and temporary) (and deprecated) `using_module<Object>(...)` expression.
-     */
-    template<class O, class M, class... Cs>
-    struct virtual_table_description : virtual_table_traits<M, Cs...>::definition_type {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-        static_assert(module_tag<M>, "Template parameter M must be a module tag");
-#endif
-    };
-
-    /** 
-     *  Encapsulates the intermediary (and temporary) `using_module(...)` expression.
-     *  
-     *  Implementation note: When making the virtual table this virtual table definition is unpacked into the virtual table type itself.
-     *  If desired or necessary one day, derive `virtual_table` from it, similar to `base_table` deriving from `base_table_definition`.
-     */
-    template<class M, class... Cs>
-    struct virtual_table_definition : virtual_table_traits<M, Cs...>::definition_type {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-        static_assert(module_tag<M>, "Template parameter M must be a module tag");
-#endif
-        using module_type = M;
-    };
-
-    /**
-     *  Represents an SQLite virtual table.
-     */
-    template<class O, class M, class... Cs>
-    struct virtual_table : table_identifier, virtual_table_traits<M, Cs...>::definition_type {
-        using traits_type = virtual_table_traits<M, Cs...>;
-        using module_traits_type = virtual_table_module_traits<M>;
-        using module_type = M;
-        using object_type = O;
-        using elements_type = typename traits_type::elements_type;
-        using is_without_rowid = typename traits_type::is_without_rowid;
-    };
-
-    template<class T>
-    constexpr bool is_virtual_table_v = polyfill::is_specialization_of_v<T, virtual_table>;
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  Factory function for a virtual table.
-     *  
-     *  [Deprecation notice] This factory function is deprecated and will be removed in v1.11.
-     */
-    template<class O, class M, class... Cs>
-    internal::virtual_table<O, M, Cs...>
-    make_virtual_table(std::string name, internal::virtual_table_description<O, M, Cs...> description) {
-        return {std::move(name), std::move(description)};
-    }
-
-    /**
-     *  Factory function for a virtual table.
-     *  
-     *  The mapped object type is explicitly specified.
-     */
-    template<class O, class M, class... Cs>
-    internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
-                                                            internal::virtual_table_definition<M, Cs...> definition) {
-        return {std::move(name), std::move(definition)};
-    }
-
-    /**
-     *  Factory function for a virtual table.
-     *  
-     *  The mapped object type is determined implicitly from the first column definition.
-     */
-    template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
-    internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
-                                                            internal::virtual_table_definition<M, Cs...> definition) {
-        return make_virtual_table<O>(std::move(name), std::move(definition));
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Factory function for a virtual table.
-     *  
-     *  The mapped object type is explicitly specified.
-     */
-    template<orm_table_reference auto table, class M, class... Cs>
-    auto make_virtual_table(std::string name, internal::virtual_table_definition<M, Cs...> definition) {
-        return make_virtual_table<internal::auto_decay_table_ref_t<table>>(std::move(name), std::move(definition));
-    }
-#endif
-}
 
 // #include "schema/view.h"
 
@@ -15832,78 +16082,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 // #include "ast/table_reference.h"
 
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::remove_const, std::type_identity
-#include <utility>  // std::move
-#include <tuple>
-#endif
-
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../vocabulary/node_traits.h"
-//  orm_recordset_alias
-// #include "../vocabulary/traits/grammar_traits_fwd.h"
-// Included to specialize traits
-// #include "../vocabulary/traits/structural_traits_fwd.h"
-// Included to specialize traits
-
-namespace sqlite_orm::internal {
-    /*
-     *  Bound input arguments for eponymous virtual tables used in table-valued function calls.
-     */
-    template<class Table, class... Args>
-    struct table_valued_expression {
-        using type = Table;
-        using constraints_type = std::tuple<Args...>;
-
-        constraints_type table_values;
-    };
-
-    template<class T>
-    constexpr bool is_table_valued_expression_v = polyfill::is_specialization_of_v<T, table_valued_expression>;
-
-    /*
-     *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions and virtual tables usable as table-valued functions.
-     */
-    template<class O>
-    struct table_reference : polyfill::type_identity<O> {
-        /** 
-         *  Make a table-valued function call.
-         */
-        template<class... Args>
-        constexpr SQLITE_ORM_STATIC_CALLOP table_valued_expression<O, Args...>
-        operator()(Args... arguments) SQLITE_ORM_OR_CONST_CALLOP {
-            return {{{std::move(arguments)}...}};
-        }
-    };
-
-    template<class T>
-    constexpr bool is_table_reference_v = polyfill::is_specialization_of_v<std::remove_const_t<T>, table_reference>;
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    /**
-     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
-     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
-     */
-    template<class O>
-        requires (!orm_recordset_alias<O>)
-    consteval internal::table_reference<O> c() {
-        return {};
-    }
-#else
-    /**
-     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
-     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
-     */
-    template<class O, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
-    constexpr internal::table_reference<O> c() {
-        return {};
-    }
-#endif
-}
-
 // #include "ast/app_function.h"
 
 /** @file The node of a call of an application-defined function, and the definition of an application-defined
@@ -18714,7 +18892,7 @@ namespace sqlite_orm::internal {
     using sync_order_sequence_t = typename sync_order_of<Tpl>::type;
 }
 
-// #include "table_info.h"
+// #include "../builtin/dbos/pragma_table_info.h"
 
 // #include "../schema/algorithms/table_filters.h"
 
@@ -21244,7 +21422,7 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 
 // #include "../functional/gsl.h"
 
-// #include "table_info.h"
+// #include "../builtin/dbos/pragma_table_info.h"
 
 // #include "../marshaling/row_extractor.h"
 
@@ -23024,7 +23202,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../serialization/serializing_util.h"
 
-// #include "table_info.h"
+// #include "../builtin/dbos/pragma_table_info.h"
 
 // #include "storage_options.h"
 
@@ -33956,7 +34134,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 /** @file Umbrella header for the database objects SQLite provides itself:
  *        its schema table (`sqlite_master`/`sqlite_schema`), the eponymous virtual tables (`dbstat`,
- *        `generate_series`) and the virtual table modules (FTS5, R*Tree).
+ *        `generate_series`, `pragma_table_info`/`pragma_table_xinfo`) and the virtual table modules (FTS5, R*Tree).
  */
 
 // #include "dbos/sqlite_schema.h"
@@ -34201,6 +34379,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 #endif
+
+// #include "dbos/pragma_table_info.h"
 
 // #include "dbos/fts5.h"
 

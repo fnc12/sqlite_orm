@@ -12,7 +12,7 @@
 #endif
 
 #include "../functional/gsl.h"
-#include "table_info.h"
+#include "../builtin/dbos/pragma_table_info.h"
 #include "../marshaling/row_extractor.h"
 #include "journal_mode.h"
 #include "locking_mode.h"

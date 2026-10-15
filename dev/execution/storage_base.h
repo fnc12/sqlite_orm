@@ -40,7 +40,7 @@
 #include "transaction_state.h"
 #include "../serialization/quoting.h"
 #include "../serialization/serializing_util.h"
-#include "table_info.h"
+#include "../builtin/dbos/pragma_table_info.h"
 #include "storage_options.h"
 #include "../error_code.h"
 

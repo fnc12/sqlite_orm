@@ -46,7 +46,7 @@
 #include "../result_set/column_result.h"
 #include "sync_schema_result.h"
 #include "../schema/algorithms/sync_order.h"
-#include "table_info.h"
+#include "../builtin/dbos/pragma_table_info.h"
 #include "../schema/algorithms/table_filters.h"
 #include "../schema/algorithms/column_lookup.h"
 #include "../result_set/mapped_view.h"

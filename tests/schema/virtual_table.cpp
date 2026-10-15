@@ -310,6 +310,115 @@ TEST_CASE("generate_series virtual table schema") {
 }
 #endif
 
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
+TEST_CASE("pragma_table_info virtual table") {
+    using Catch::Matchers::Equals;
+    using row_type = std::tuple<int, std::string, std::string, bool, std::string, int>;
+    constexpr auto to_tuple = [](const table_info& row) {
+        return row_type{row.cid, row.name, row.type, row.notnull, row.dflt_value, row.pk};
+    };
+    struct User {
+        int64 id = 0;
+        std::string name;
+        std::string nickname;
+    };
+
+    auto storage = make_storage("",
+                                make_pragma_table_info_table(),
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name, default_value("")),
+                                           make_column("nickname", &User::nickname)));
+    storage.sync_schema();
+
+    SECTION("eponymous") {
+        REQUIRE_FALSE(storage.table_exists("pragma_table_info"));
+    }
+    SECTION("table-valued function") {
+        auto rows = storage.select(&table_info::name, from(pragma_table_info_table("users")));
+        REQUIRE_THAT(rows, Equals(std::vector<std::string>{"id", "name", "nickname"}));
+    }
+    SECTION("schema argument") {
+        auto rows = storage.select(&table_info::name, from(pragma_table_info_table("users", "main")));
+        REQUIRE_THAT(rows, Equals(std::vector<std::string>{"id", "name", "nickname"}));
+    }
+    SECTION("objects") {
+        auto rows = storage.select(object<table_info>(), from(pragma_table_info_table("users")));
+        auto expected = storage.pragma.table_info("users");
+        std::vector<row_type> actualRows, expectedRows;
+        for (const auto& row: rows) {
+            actualRows.push_back(to_tuple(row));
+        }
+        for (const auto& row: expected) {
+            expectedRows.push_back(to_tuple(row));
+        }
+        REQUIRE_THAT(actualRows, Equals(expectedRows));
+    }
+    SECTION("hidden columns") {
+        auto names = storage.select(&table_info::name, where(c(&table_info::hidden::arg) == "users"));
+        REQUIRE_THAT(names, Equals(std::vector<std::string>{"id", "name", "nickname"}));
+
+        auto args = storage.select(&table_info::hidden::arg, from(pragma_table_info_table("users")));
+        REQUIRE_THAT(args, Equals(std::vector<std::string>{"users", "users", "users"}));
+    }
+    SECTION("default value") {
+        //  `DEFAULT ''` is reported as the SQL expression text `''`, no default as an empty string (NULL)
+        auto rows =
+            storage.select(columns(&table_info::name, &table_info::dflt_value), from(pragma_table_info_table("users")));
+        REQUIRE_THAT(
+            rows,
+            Equals(std::vector<std::tuple<std::string, std::string>>{{"id", ""}, {"name", "''"}, {"nickname", ""}}));
+    }
+}
+
+#if SQLITE_VERSION_NUMBER >= 3026000
+TEST_CASE("pragma_table_xinfo virtual table") {
+    using Catch::Matchers::Equals;
+    using row_type = std::tuple<int, std::string, std::string, bool, std::string, int, int>;
+    constexpr auto to_tuple = [](const table_xinfo& row) {
+        return row_type{row.cid, row.name, row.type, row.notnull, row.dflt_value, row.pk, row.hidden};
+    };
+    struct User {
+        int64 id = 0;
+        std::string name;
+    };
+
+    auto storage = make_storage(
+        "",
+        make_pragma_table_xinfo_table(),
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
+    storage.sync_schema();
+
+    SECTION("eponymous") {
+        REQUIRE_FALSE(storage.table_exists("pragma_table_xinfo"));
+    }
+    SECTION("table-valued function") {
+        auto rows =
+            storage.select(columns(&table_xinfo::name, &table_xinfo::hidden), from(pragma_table_xinfo_table("users")));
+        REQUIRE_THAT(rows, Equals(std::vector<std::tuple<std::string, int>>{{"id", 0}, {"name", 0}}));
+    }
+    SECTION("objects") {
+        auto rows = storage.select(object<table_xinfo>(), from(pragma_table_xinfo_table("users", "main")));
+        auto expected = storage.pragma.table_xinfo("users");
+        std::vector<row_type> actualRows, expectedRows;
+        for (const auto& row: rows) {
+            actualRows.push_back(to_tuple(row));
+        }
+        for (const auto& row: expected) {
+            expectedRows.push_back(to_tuple(row));
+        }
+        REQUIRE_THAT(actualRows, Equals(expectedRows));
+    }
+    SECTION("hidden columns") {
+        auto names = storage.select(
+            &table_xinfo::name,
+            where(c(&table_xinfo::hidden::arg) == "users" and c(&table_xinfo::hidden::schema) == "main"));
+        REQUIRE_THAT(names, Equals(std::vector<std::string>{"id", "name"}));
+    }
+}
+#endif
+#endif
+
 #ifdef SQLITE_ENABLE_RTREE
 TEST_CASE("rtree virtual table schema") {
     struct DemoIndex {
