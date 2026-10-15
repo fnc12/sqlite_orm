@@ -61,7 +61,7 @@ cmake --build build
 ### Core Design Pattern
 The library uses a **storage-centric architecture** with compile-time type safety through template metaprogramming:
 
-1. **Storage object** (`dev/storage.h`, `dev/storage_base.h`): The main interface that provides CRUD operations, query building, and schema management. Created via `make_storage()`.
+1. **Storage object** (`dev/execution/storage.h`, `dev/execution/storage_base.h`): The main interface that provides CRUD operations, query building, and schema management. Created via `make_storage()`.
 
 2. **Table definitions** (`dev/schema/table.h`): Tables are defined using `make_table()` which maps C++ structs to database schema. Columns are mapped using member pointers.
 
@@ -73,10 +73,8 @@ The library uses a **storage-centric architecture** with compile-time type safet
 
 ### Key Implementation Files
 
-**Storage layer:**
-- `dev/storage.h` - Main storage template with CRUD operations
-- `dev/storage_base.h` - Base class with connection management, transactions, UDFs
-- `dev/connection_holder.h` - RAII wrapper for sqlite3 connections
+**Execution:**
+- `dev/execution/` - Running SQL against a live database: what holds or drives the state of a database connection. The connection and its options (`connection_holder.h`, `db_open_mode.h`, `storage_options.h`), its limits (`limit_accessor.h`) and backups (`backup.h`); transactions (`transaction_guard.h`, `savepoint.h`, `transaction_state.h`); PRAGMAs and the values they read and write (`pragma.h`, `journal_mode.h`, `locking_mode.h`, `table_info.h`); prepared statements (`prepared_statement.h`, `get_prepared_statement.h`); the function runtime (`udf_proxy.h`) and the check that the functions and collations a statement uses are registered (`udf_existence_checker.h`); and the storage on top of them: `storage.h` - the main storage template with CRUD operations, `storage_base.h` - its base class with connection management, transactions and UDFs, `sync_schema_result.h`. Converting values and iterating result rows also happen at runtime, but are not execution: they stay in `marshaling/` and `result_set/`.
 
 **Schema definition:**
 - `dev/schema/table.h` - Table definitions
@@ -111,16 +109,14 @@ The library uses a **storage-centric architecture** with compile-time type safet
 - `dev/type_mapping/` - The type-level mapping of C++ types onto SQLite's, public customization points and their helpers: the declared SQLite type of a C++ type (`type_printer.h`), whether it admits NULL (`type_is_nullable.h`), the smart pointers recognized as nullable holders (`is_std_ptr.h`), and the storage-class tag arithmetic values are dispatched on (`arithmetic_tag.h`). Conversions of values do not belong here, they are marshaling.
 
 **Marshaling:**
-- `dev/marshaling/` - Moving values across the boundary to the SQLite C library, in both directions, building on the type mapping. The public customization points: `statement_binder.h` binds C++ values to statement parameters and sets them as function results, `row_extractor.h` extracts C++ values from result columns, column text and function arguments, `field_printer.h` prints C++ values as text. On top of them, what assembles or disassembles several values at once: the parameters of a statement in sequence (`parameter_binders.h`), tuples, structures and objects from result rows (`struct_extractor.h`, mapped objects column by column with `object_from_column_builder.h`, the C++ value type of a column result in `column_result_proxy.h`), and the arguments of application-defined functions (`arg_values.h` as runtime-typed values, `values_to_tuple.h` as the typed parameter tuple). The pointer-passing interface's values (`pointer_value.h`: `pointer_arg`, `pointer_binding`) belong here too: they exist only to be bound and extracted. The function runtime (`udf_proxy.h`) does not marshal and stays at the top level.
+- `dev/marshaling/` - Moving values across the boundary to the SQLite C library, in both directions, building on the type mapping. The public customization points: `statement_binder.h` binds C++ values to statement parameters and sets them as function results, `row_extractor.h` extracts C++ values from result columns, column text and function arguments, `field_printer.h` prints C++ values as text. On top of them, what assembles or disassembles several values at once: the parameters of a statement in sequence (`parameter_binders.h`), tuples, structures and objects from result rows (`struct_extractor.h`, mapped objects column by column with `object_from_column_builder.h`, the C++ value type of a column result in `column_result_proxy.h`), and the arguments of application-defined functions (`arg_values.h` as runtime-typed values, `values_to_tuple.h` as the typed parameter tuple). The pointer-passing interface's values (`pointer_value.h`: `pointer_arg`, `pointer_binding`) belong here too: they exist only to be bound and extracted. The function runtime (`udf_proxy.h`) does not marshal and lives in `execution/`.
 
 **Result sets:**
 - `dev/result_set/` - What a query yields and how it is iterated, consuming the marshaling: the C++ result type of an expression (`column_result.h`: `column_result_of_t`) the column expressions a select yields, from which a CTE derives its columns (`column_expression.h`: `column_expression_of_t`), and the references by which an outer statement refers to them (`column_reference.h`: `get_column_references_of()`), the lazy views over a select (`result_set_view.h`, `result_set_iterator.h`) and over the mapped objects of a table (`mapped_view.h`, `mapped_iterator.h`).
 
 **Utilities:**
 - `dev/sqlite3/` - sqlite_orm's interface to the SQLite C library: the configuration derived from `<sqlite3.h>` (`sqlite3_config.h`), the types republished from it as sqlite_orm's own (`sqlite3_types.h`: `int64`, `uint64`), its result codes as `std::error_code`s (`sqlite3_errors.h`), the deleters of what it allocates (`sqlite3_deleters.h`: `statement_finalizer`), its destructor callback convention and the adaptation of C++ deleters to it (`sqlite3_xdestroy.h`: `xdestroy_fn_t`, `obtain_xdestroy_for()`), and the execution of statements through it (`sqlite3_statements.h`); umbrella `sqlite3_interface.h`. A header belongs here only if both hold: it depends on nothing in sqlite_orm but `functional/` and other `sqlite3/` headers (no DSL, schema, storage or connection), and its content is the C library's vocabulary - handles, calls, result codes, callback conventions - rather than sqlite_orm's own concepts. Merely using the C API does not qualify: `prepared_statement.h` owns a `sqlite3_stmt`, but it is a storage concept carrying a DSL expression.
-- `dev/prepared_statement.h` - Prepared statement support
 - `dev/ast_iterator.h` - Traverses expression ASTs
-- `dev/transaction_guard.h` - RAII transaction guards
 - `dev/cte_db_objects.h` - The database objects of a WITH clause: its CTEs mapped as tables (`schema/cte_mapping.h`), prepended to the schema's database objects
 
 ### Header Organization

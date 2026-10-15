@@ -10,7 +10,7 @@
 #include <string_view>  //  std::string_view
 #endif
 
-#include "builtin/vfs.h"  //  default_vfs_name
+#include "../builtin/vfs.h"  //  default_vfs_name
 #include "db_open_mode.h"
 
 namespace sqlite_orm::internal {

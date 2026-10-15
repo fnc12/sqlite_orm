@@ -12,9 +12,9 @@
 #include <system_error>  //  std::system_error
 #endif
 
-#include "functional/gsl.h"
-#include "error_code.h"
-#include "marshaling/row_extractor.h"
+#include "../functional/gsl.h"
+#include "../error_code.h"
+#include "../marshaling/row_extractor.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     enum class locking_mode : signed char {

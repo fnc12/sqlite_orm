@@ -9,9 +9,9 @@
 #include "../marshaling/parameter_binders.h"  //  expression_parameter_binder
 #include "mapped_iterator.h"
 #include "../ast_iterator.h"
-#include "../prepared_statement.h"
+#include "../execution/prepared_statement.h"
 #include "../ast/crud/get.h"
-#include "../connection_holder.h"
+#include "../execution/connection_holder.h"
 #include "../serialization/serializer_context.h"
 #include "../sqlite3/sqlite3_statements.h"
 #include "../sqlite3/sqlite3_deleters.h"  //  statement_finalizer

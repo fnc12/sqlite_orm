@@ -16,7 +16,7 @@
 #include "../functional/mpl.h"
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_transformer.h"
-#include "../table_info.h"
+#include "../execution/table_info.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits

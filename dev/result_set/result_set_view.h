@@ -13,7 +13,7 @@
 #include "result_set_iterator.h"
 #include "../marshaling/parameter_binders.h"  //  expression_parameter_binder
 #include "../ast_iterator.h"
-#include "../connection_holder.h"
+#include "../execution/connection_holder.h"
 #include "../serialization/serializer_context.h"
 #include "../sqlite3/sqlite3_statements.h"
 #include "../sqlite3/sqlite3_deleters.h"  //  statement_finalizer

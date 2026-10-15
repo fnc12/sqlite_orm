@@ -6138,7 +6138,7 @@ namespace sqlite_orm::internal {
 
 // #include "../tuple_helper/tuple_transformer.h"
 
-// #include "../table_info.h"
+// #include "../execution/table_info.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -16802,35 +16802,35 @@ namespace sqlite_orm::internal {
 #endif
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/cxx_functional_polyfill.h"
+// #include "../functional/cxx_functional_polyfill.h"
 //  polyfill::identity
-// #include "functional/gsl.h"
+// #include "../functional/gsl.h"
 
-// #include "functional/mpl.h"
+// #include "../functional/mpl.h"
 
-// #include "functional/type_traits.h"
+// #include "../functional/type_traits.h"
 
-// #include "tuple_helper/tuple_traits.h"
+// #include "../tuple_helper/tuple_traits.h"
 
-// #include "tuple_helper/tuple_filter.h"
+// #include "../tuple_helper/tuple_filter.h"
 
-// #include "tuple_helper/tuple_transformer.h"
+// #include "../tuple_helper/tuple_transformer.h"
 
-// #include "tuple_helper/tuple_iteration.h"
+// #include "../tuple_helper/tuple_iteration.h"
 
-// #include "vocabulary/node_traits.h"
+// #include "../vocabulary/node_traits.h"
 
-// #include "vocabulary/node_algorithms.h"
+// #include "../vocabulary/node_algorithms.h"
 
-// #include "vocabulary/node_fwd.h"
+// #include "../vocabulary/node_fwd.h"
 // column_field
-// #include "error_code.h"
+// #include "../error_code.h"
 
-// #include "ast/alias.h"
+// #include "../ast/alias.h"
 
-// #include "marshaling/field_printer.h"
+// #include "../marshaling/field_printer.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -16998,17 +16998,17 @@ namespace sqlite_orm {
     };
 }
 
-// #include "ast/operators.h"
+// #include "../ast/operators.h"
 
-// #include "ast/result_columns.h"
+// #include "../ast/result_columns.h"
 
-// #include "ast/cte.h"
+// #include "../ast/cte.h"
 
-// #include "sqlite3/sqlite3_types.h"
+// #include "../sqlite3/sqlite3_types.h"
 //  int64
-// #include "sqlite3/sqlite3_statements.h"
+// #include "../sqlite3/sqlite3_statements.h"
 
-// #include "builtin/functions/aggregate.h"
+// #include "../builtin/functions/aggregate.h"
 
 /** @file The built-in aggregate functions https://www.sqlite.org/lang_aggfunc.html: COUNT(), TOTAL(), SUM(),
  *        AVG(), MAX(), MIN(), GROUP_CONCAT(), STRING_AGG() and the percentile functions MEDIAN(), PERCENTILE(),
@@ -17412,7 +17412,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
-// #include "marshaling/statement_binder.h"
+// #include "../marshaling/statement_binder.h"
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -17693,7 +17693,7 @@ namespace sqlite_orm {
     };
 }
 
-// #include "marshaling/parameter_binders.h"
+// #include "../marshaling/parameter_binders.h"
 
 /** @file Binding a statement's parameters in sequence through `statement_binder`: an expression's bindable leaves,
  *        an object's fields, a tuple's elements.
@@ -17798,7 +17798,7 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "result_set/column_result.h"
+// #include "../result_set/column_result.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_arithmetic, std::is_base_of
@@ -18602,7 +18602,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-// #include "schema/algorithms/sync_order.h"
+// #include "../schema/algorithms/sync_order.h"
 
 /** @file Compile-time computation of the database object synchronization order.
  *
@@ -18716,7 +18716,7 @@ namespace sqlite_orm::internal {
 
 // #include "table_info.h"
 
-// #include "schema/algorithms/table_filters.h"
+// #include "../schema/algorithms/table_filters.h"
 
 /** @file Selection of the base tables or views within a tuple of database objects, and computations over them.
  */
@@ -18764,7 +18764,7 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "schema/algorithms/column_lookup.h"
+// #include "../schema/algorithms/column_lookup.h"
 
 /** @file Lookup of a column definition within a tuple of database objects.
  *
@@ -18925,7 +18925,7 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "result_set/mapped_view.h"
+// #include "../result_set/mapped_view.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <sqlite3.h>
@@ -19532,7 +19532,7 @@ namespace sqlite_orm::internal {
 
 // #include "ast/alias.h"
 
-// #include "prepared_statement.h"
+// #include "execution/prepared_statement.h"
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -19543,11 +19543,11 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::move, std::exchange
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/gsl.h"
+// #include "../functional/gsl.h"
 
-// #include "sqlite3/sqlite3_deleters.h"
+// #include "../sqlite3/sqlite3_deleters.h"
 //  sqlite3_memory_deleter
 // #include "connection_holder.h"
 
@@ -19561,7 +19561,7 @@ namespace sqlite_orm::internal {
 #include <string>  //  std::string
 #endif
 
-// #include "functional/cxx_scope_guard.h"
+// #include "../functional/cxx_scope_guard.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  // std::forward
@@ -19585,7 +19585,7 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "functional/interference_size.h"
+// #include "../functional/interference_size.h"
 
 namespace sqlite_orm::internal {
     /*
@@ -19613,11 +19613,11 @@ namespace sqlite_orm::internal {
 #endif
 }
 
-// #include "functional/gsl.h"
+// #include "../functional/gsl.h"
 
-// #include "sqlite3/sqlite3_errors.h"
+// #include "../sqlite3/sqlite3_errors.h"
 
-// #include "builtin/vfs.h"
+// #include "../builtin/vfs.h"
 
 /** @file The names of SQLite's built-in VFSes (OS interface layers), per platform, and the default one.
  *
@@ -19685,7 +19685,7 @@ namespace sqlite_orm::internal {
 #include <string_view>  //  std::string_view
 #endif
 
-// #include "builtin/vfs.h"
+// #include "../builtin/vfs.h"
 //  default_vfs_name
 // #include "db_open_mode.h"
 
@@ -20795,11 +20795,11 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "../prepared_statement.h"
+// #include "../execution/prepared_statement.h"
 
 // #include "../ast/crud/get.h"
 
-// #include "../connection_holder.h"
+// #include "../execution/connection_holder.h"
 
 // #include "../serialization/serializer_context.h"
 
@@ -20855,7 +20855,7 @@ template<class T, class S, class... Args>
 constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_view<T, S, Args...>> = true;
 #endif
 
-// #include "result_set/result_set_view.h"
+// #include "../result_set/result_set_view.h"
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -21117,7 +21117,7 @@ namespace sqlite_orm::internal {
 //  expression_parameter_binder
 // #include "../ast_iterator.h"
 
-// #include "../connection_holder.h"
+// #include "../execution/connection_holder.h"
 
 // #include "../serialization/serializer_context.h"
 
@@ -21193,7 +21193,7 @@ template<class Select, class DBOs>
 constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_set_view<Select, DBOs>> = true;
 #endif
 
-// #include "ast_iterator.h"
+// #include "../ast_iterator.h"
 
 // #include "storage_base.h"
 
@@ -21217,17 +21217,17 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 #include <tuple>  //  std::apply
 #endif
 
-// #include "sqlite3/sqlite3_types.h"
+// #include "../sqlite3/sqlite3_types.h"
 //  int64
-// #include "sqlite3/sqlite3_statements.h"
+// #include "../sqlite3/sqlite3_statements.h"
 
-// #include "sqlite3/sqlite3_errors.h"
+// #include "../sqlite3/sqlite3_errors.h"
 
-// #include "sqlite3/sqlite3_xdestroy.h"
+// #include "../sqlite3/sqlite3_xdestroy.h"
 
-// #include "tuple_helper/tuple_iteration.h"
+// #include "../tuple_helper/tuple_iteration.h"
 
-// #include "vocabulary/node_traits.h"
+// #include "../vocabulary/node_traits.h"
 // projections
 // #include "pragma.h"
 
@@ -21242,11 +21242,11 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 #include <sstream>  //  std::stringstream
 #endif
 
-// #include "functional/gsl.h"
+// #include "../functional/gsl.h"
 
 // #include "table_info.h"
 
-// #include "marshaling/row_extractor.h"
+// #include "../marshaling/row_extractor.h"
 
 // #include "journal_mode.h"
 
@@ -21262,11 +21262,11 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 #include <system_error>  //  std::system_error
 #endif
 
-// #include "functional/gsl.h"
+// #include "../functional/gsl.h"
 
-// #include "error_code.h"
+// #include "../error_code.h"
 
-// #include "marshaling/row_extractor.h"
+// #include "../marshaling/row_extractor.h"
 
 #if defined(_WINNT_)
 // DELETE is a macro defined in the Windows SDK (winnt.h)
@@ -21383,11 +21383,11 @@ namespace sqlite_orm {
 #include <system_error>  //  std::system_error
 #endif
 
-// #include "functional/gsl.h"
+// #include "../functional/gsl.h"
 
-// #include "error_code.h"
+// #include "../error_code.h"
 
-// #include "marshaling/row_extractor.h"
+// #include "../marshaling/row_extractor.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     enum class locking_mode : signed char {
@@ -21463,9 +21463,9 @@ namespace sqlite_orm {
 
 // #include "connection_holder.h"
 
-// #include "sqlite3/sqlite3_statements.h"
+// #include "../sqlite3/sqlite3_statements.h"
 
-// #include "serialization/serializing_util.h"
+// #include "../serialization/serializing_util.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::index_sequence, std::remove_cvref
@@ -22488,7 +22488,7 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "marshaling/row_extractor.h"
+// #include "../marshaling/row_extractor.h"
 
 // #include "connection_holder.h"
 
@@ -22502,7 +22502,7 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::move, std::exchange
 #endif
 
-// #include "error_code.h"
+// #include "../error_code.h"
 
 // #include "connection_holder.h"
 
@@ -22565,9 +22565,9 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "ast/app_function.h"
+// #include "../ast/app_function.h"
 
-// #include "marshaling/values_to_tuple.h"
+// #include "../marshaling/values_to_tuple.h"
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -22774,7 +22774,7 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::move, std::pair
 #endif
 
-// #include "sqlite3/sqlite3_xdestroy.h"
+// #include "../sqlite3/sqlite3_xdestroy.h"
 //  xdestroy_fn_t
 
 namespace sqlite_orm::internal {
@@ -22989,7 +22989,7 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "marshaling/arg_values.h"
+// #include "../marshaling/arg_values.h"
 
 // #include "transaction_state.h"
 
@@ -23020,15 +23020,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
-// #include "serialization/quoting.h"
+// #include "../serialization/quoting.h"
 
-// #include "serialization/serializing_util.h"
+// #include "../serialization/serializing_util.h"
 
 // #include "table_info.h"
 
 // #include "storage_options.h"
 
-// #include "error_code.h"
+// #include "../error_code.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -24510,19 +24510,19 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "ast/crud/get.h"
+// #include "../ast/crud/get.h"
 
-// #include "ast/crud/insert.h"
+// #include "../ast/crud/insert.h"
 
-// #include "ast/crud/replace.h"
+// #include "../ast/crud/replace.h"
 
-// #include "ast/crud/update.h"
+// #include "../ast/crud/update.h"
 
-// #include "ast/crud/remove.h"
+// #include "../ast/crud/remove.h"
 
 // #include "prepared_statement.h"
 
-// #include "serialization/statement_serializer.h"
+// #include "../serialization/statement_serializer.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref, std::disjunction
@@ -24582,7 +24582,7 @@ namespace sqlite_orm::internal {
 
 // #include "../ast/crud/set.h"
 
-// #include "../prepared_statement.h"
+// #include "../execution/prepared_statement.h"
 
 // #include "../type_mapping/type_printer.h"
 
@@ -27533,17 +27533,17 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "serialization/serializing_util.h"
+// #include "../serialization/serializing_util.h"
 
-// #include "serialization/serializer_context.h"
+// #include "../serialization/serializer_context.h"
 
-// #include "marshaling/object_from_column_builder.h"
+// #include "../marshaling/object_from_column_builder.h"
 
-// #include "marshaling/struct_extractor.h"
+// #include "../marshaling/struct_extractor.h"
 // make_row_extractor
-// #include "schema/constraints/generated_always.h"
+// #include "../schema/constraints/generated_always.h"
 // basic_generated_always
-// #include "cte_db_objects.h"
+// #include "../cte_db_objects.h"
 
 /** @file The database objects of a WITH clause: its CTEs mapped as tables, prepended to the schema's database objects.
  */
@@ -27889,15 +27889,15 @@ namespace sqlite_orm::internal {
 #include <string_view>  //  std::string_view
 #endif
 
-// #include "functional/type_traits.h"
+// #include "../functional/type_traits.h"
 //  satisfies
-// #include "vocabulary/node_traits.h"
+// #include "../vocabulary/node_traits.h"
 //  is_app_function_call, is_named_collate
-// #include "error_code.h"
+// #include "../error_code.h"
 
 // #include "storage_base.h"
 
-// #include "sqlite3/sqlite3_errors.h"
+// #include "../sqlite3/sqlite3_errors.h"
 
 namespace sqlite_orm::internal {
     /*
@@ -29882,7 +29882,7 @@ namespace sqlite_orm::internal {
 
 // #include "../serialization/serializing_util.h"
 
-// #include "../storage.h"
+// #include "../execution/storage.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -30147,21 +30147,21 @@ namespace sqlite_orm::internal {
 #include <tuple>  //  std::get
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 //  polyfill::remove_cvref_t
-// #include "functional/type_traits.h"
+// #include "../functional/type_traits.h"
 //  forward_lvalue_ref
-// #include "functional/index_sequence_util.h"
+// #include "../functional/index_sequence_util.h"
 //  index_sequence_value_at
-// #include "vocabulary/node_traits.h"
+// #include "../vocabulary/node_traits.h"
 //  traits, projections
-// #include "vocabulary/node_algorithms.h"
+// #include "../vocabulary/node_algorithms.h"
 //  is_bindable, bindable_index_sequence_of, access_dml_object
 // #include "prepared_statement.h"
 //  prepared_statement_t
-// #include "ast_iterator.h"
+// #include "../ast_iterator.h"
 //  iterate_ast
-// #include "node_tuple.h"
+// #include "../node_tuple.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if
@@ -30174,7 +30174,7 @@ namespace sqlite_orm::internal {
 
 // #include "tuple_helper/tuple_filter.h"
 
-// #include "prepared_statement.h"
+// #include "execution/prepared_statement.h"
 
 // #include "optional_container.h"
 

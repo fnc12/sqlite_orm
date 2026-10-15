@@ -27,9 +27,9 @@
 #include "../../dev/node_definitions.h"
 #include "../../dev/node_algorithm_definitions.h"
 // the storage, and the definitions of its interface
-#include "../../dev/storage.h"
+#include "../../dev/execution/storage.h"
 #include "../../dev/interface_definitions.h"
-#include "../../dev/get_prepared_statement.h"
+#include "../../dev/execution/get_prepared_statement.h"
 
 // what SQLite provides: built-in collations, VFSes, functions and database objects
 #include "../../dev/builtin/collations.h"
