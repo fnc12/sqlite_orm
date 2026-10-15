@@ -28,6 +28,8 @@ TEST_CASE("generic vtab and dbstat layout tests") {
         STATIC_REQUIRE(std::is_same<table_type::object_type, dbstat>::value);
         STATIC_REQUIRE(std::is_same<table_type::object_type::hidden::enclosing_type, dbstat>::value);
         STATIC_REQUIRE(is_base_template_of_v<table_definition, table_type>);
+        STATIC_REQUIRE_FALSE(is_base_template_of_v<insertable_table_definition, table_type>);
+        STATIC_REQUIRE(table_type::module_traits_type::is_eponymous::value);
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 10);
         STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, std::string>::size() == 3);
         STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 7);
@@ -75,6 +77,8 @@ TEST_CASE("generate_series layout tests") {
         STATIC_REQUIRE(std::is_same<table_type::object_type, generate_series>::value);
         STATIC_REQUIRE(std::is_same<table_type::object_type::hidden::enclosing_type, generate_series>::value);
         STATIC_REQUIRE(is_base_template_of_v<table_definition, table_type>);
+        STATIC_REQUIRE_FALSE(is_base_template_of_v<insertable_table_definition, table_type>);
+        STATIC_REQUIRE(table_type::module_traits_type::is_eponymous::value);
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 1);
         STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
         STATIC_REQUIRE(all_col_index_sequence_with_field_type<elements_type, int>::size() == 4);
@@ -100,6 +104,8 @@ TEST_CASE("pragma_table_info layout tests") {
         STATIC_REQUIRE(std::is_same<table_type::object_type, table_info>::value);
         STATIC_REQUIRE(std::is_same<table_type::object_type::hidden::enclosing_type, table_info>::value);
         STATIC_REQUIRE(is_base_template_of_v<table_definition, table_type>);
+        STATIC_REQUIRE_FALSE(is_base_template_of_v<insertable_table_definition, table_type>);
+        STATIC_REQUIRE(table_type::module_traits_type::is_eponymous::value);
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 6);
         STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 2);
         STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, bool>::size() == 1);
@@ -131,6 +137,8 @@ TEST_CASE("pragma_table_xinfo layout tests") {
         STATIC_REQUIRE(std::is_same<table_type::object_type, table_xinfo>::value);
         STATIC_REQUIRE(std::is_same<table_type::object_type::hidden::enclosing_type, table_xinfo>::value);
         STATIC_REQUIRE(is_base_template_of_v<table_definition, table_type>);
+        STATIC_REQUIRE_FALSE(is_base_template_of_v<insertable_table_definition, table_type>);
+        STATIC_REQUIRE(table_type::module_traits_type::is_eponymous::value);
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 7);
         STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 3);
         STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, bool>::size() == 1);

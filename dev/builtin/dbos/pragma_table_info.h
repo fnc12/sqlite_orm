@@ -7,10 +7,6 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <utility>  //  std::move
-#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
-#include <type_traits>  //  std::true_type, std::false_type
-#include <tuple>  //  std::make_tuple
-#endif
 #endif
 
 #include "../../functional/gsl.h"
@@ -97,7 +93,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
 namespace sqlite_orm::internal {
-    struct pragma_table_info_module_tag {
+    struct pragma_table_info_module_tag : eponymous_module {
         // simplify conceptual/meta programming
         using module_type = pragma_table_info_module_tag;
 
@@ -106,41 +102,21 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct virtual_table_module_traits<pragma_table_info_module_tag> {
-        using module_type = pragma_table_info_module_tag;
-        using is_eponymous = std::true_type;
-        using is_without_rowid = std::false_type;
-        using omit_column_type = std::true_type;
-    };
-
-    template<class... Cs>
-    struct virtual_table_traits<pragma_table_info_module_tag, Cs...>
-        : virtual_table_module_traits<pragma_table_info_module_tag> {
-        using definition_type = table_definition<Cs...>;
-        using elements_type = typename definition_type::elements_type;
-    };
-
-    template<class... Cs>
-    inline virtual_table_definition<pragma_table_info_module_tag, Cs...>
-    make_pragma_table_info_definition(Cs... columns) {
-        return {{std::make_tuple(std::move(columns)...)}};
-    }
-
     /**
      *  Factory function for a `pragma_table_info` virtual table definition.
      *
      *  The hidden columns 'arg' and 'schema' are mapped into each table definition.
      */
     inline auto using_pragma_table_info() {
-        return make_pragma_table_info_definition(make_column("cid", &table_info::cid),
-                                                 make_column("name", &table_info::name),
-                                                 make_column("type", &table_info::type),
-                                                 make_column("notnull", &table_info::notnull),
-                                                 make_column("dflt_value", &table_info::dflt_value),
-                                                 make_column("pk", &table_info::pk),
-                                                 make_hidden_column("arg", &table_info::hidden::arg),
-                                                 make_hidden_column("schema", &table_info::hidden::schema));
+        return make_virtual_table_definition<pragma_table_info_module_tag>(
+            make_column("cid", &table_info::cid),
+            make_column("name", &table_info::name),
+            make_column("type", &table_info::type),
+            make_column("notnull", &table_info::notnull),
+            make_column("dflt_value", &table_info::dflt_value),
+            make_column("pk", &table_info::pk),
+            make_hidden_column("arg", &table_info::hidden::arg),
+            make_hidden_column("schema", &table_info::hidden::schema));
     }
 }
 
@@ -162,7 +138,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3026000
 namespace sqlite_orm::internal {
-    struct pragma_table_xinfo_module_tag {
+    struct pragma_table_xinfo_module_tag : eponymous_module {
         // simplify conceptual/meta programming
         using module_type = pragma_table_xinfo_module_tag;
 
@@ -171,42 +147,22 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct virtual_table_module_traits<pragma_table_xinfo_module_tag> {
-        using module_type = pragma_table_xinfo_module_tag;
-        using is_eponymous = std::true_type;
-        using is_without_rowid = std::false_type;
-        using omit_column_type = std::true_type;
-    };
-
-    template<class... Cs>
-    struct virtual_table_traits<pragma_table_xinfo_module_tag, Cs...>
-        : virtual_table_module_traits<pragma_table_xinfo_module_tag> {
-        using definition_type = table_definition<Cs...>;
-        using elements_type = typename definition_type::elements_type;
-    };
-
-    template<class... Cs>
-    inline virtual_table_definition<pragma_table_xinfo_module_tag, Cs...>
-    make_pragma_table_xinfo_definition(Cs... columns) {
-        return {{std::make_tuple(std::move(columns)...)}};
-    }
-
     /**
      *  Factory function for a `pragma_table_xinfo` virtual table definition.
      *
      *  The hidden columns 'arg' and 'schema' are mapped into each table definition.
      */
     inline auto using_pragma_table_xinfo() {
-        return make_pragma_table_xinfo_definition(make_column("cid", &table_xinfo::cid),
-                                                  make_column("name", &table_xinfo::name),
-                                                  make_column("type", &table_xinfo::type),
-                                                  make_column("notnull", &table_xinfo::notnull),
-                                                  make_column("dflt_value", &table_xinfo::dflt_value),
-                                                  make_column("pk", &table_xinfo::pk),
-                                                  make_column("hidden", &table_xinfo::hidden),
-                                                  make_hidden_column("arg", &table_xinfo::hidden::arg),
-                                                  make_hidden_column("schema", &table_xinfo::hidden::schema));
+        return make_virtual_table_definition<pragma_table_xinfo_module_tag>(
+            make_column("cid", &table_xinfo::cid),
+            make_column("name", &table_xinfo::name),
+            make_column("type", &table_xinfo::type),
+            make_column("notnull", &table_xinfo::notnull),
+            make_column("dflt_value", &table_xinfo::dflt_value),
+            make_column("pk", &table_xinfo::pk),
+            make_column("hidden", &table_xinfo::hidden),
+            make_hidden_column("arg", &table_xinfo::hidden::arg),
+            make_hidden_column("schema", &table_xinfo::hidden::schema));
     }
 }
 

@@ -6147,10 +6147,6 @@ namespace sqlite_orm::internal {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <utility>  //  std::move
-#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
-#include <type_traits>  //  std::true_type, std::false_type
-#include <tuple>  //  std::make_tuple
-#endif
 #endif
 
 // #include "../../functional/gsl.h"
@@ -6163,7 +6159,9 @@ namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>  // std::convertible_to
 #endif
+#include <type_traits>  //  std::is_base_of, std::conditional_t, std::false_type, std::true_type
 #include <string>  //  std::string
+#include <tuple>  //  std::make_tuple
 #include <utility>  //  std::move
 #endif
 
@@ -6553,13 +6551,19 @@ namespace sqlite_orm::internal {
     };
 #endif
 
+    /**
+     *  Base class of the module tags of built-in eponymous virtual tables.
+     *
+     *  The definition of eponymous virtual tables is built-in, fixed and implicit,
+     *  and they can only be created with optional table-values for their hidden columns.
+     */
+    struct eponymous_module {};
+
     /** 
-     *  Default base traits of a "normal" virtual table module.
+     *  Default base traits of a virtual table module.
      *  
      *  Particularly this means:
-     *  - It is not eponymous.
-     *    The definition of eponymous virtual tables is built-in, fixed and implicit,
-     *    and they can only be created with optional table-values for their hidden columns.
+     *  - It is eponymous if the module tag derives from `eponymous_module`.
      *  - It is not a WITHOUT ROWID table (i.e. it has an implicit `rowid` column).
      *  - Omits the column type in the SQL creation statement.
      *  
@@ -6568,22 +6572,25 @@ namespace sqlite_orm::internal {
     template<class M>
     struct virtual_table_module_traits {
         using module_type = M;
-        using is_eponymous = std::false_type;
+        using is_eponymous = std::is_base_of<eponymous_module, M>;
         using is_without_rowid = std::false_type;
         using omit_column_type = std::true_type;
     };
 
     /** 
-     *  Default traits of a "normal" virtual table.
+     *  Default traits of a virtual table.
      *  
-     *  Particularly this means :
-     *  - Its definition is a `insertable_table_definition`.
+     *  Particularly this means:
+     *  - Its definition is a read-only `table_definition` for an eponymous module,
+     *    an `insertable_table_definition` otherwise.
      *  
      *  Specific virtual table modules can specialize this struct to provide their own traits.
      */
     template<class M, class... Cs>
     struct virtual_table_traits : virtual_table_module_traits<M> {
-        using definition_type = insertable_table_definition<Cs...>;
+        using definition_type = std::conditional_t<virtual_table_module_traits<M>::is_eponymous::value,
+                                                   table_definition<Cs...>,
+                                                   insertable_table_definition<Cs...>>;
         using elements_type = elements_type_t<definition_type>;
     };
 
@@ -6626,6 +6633,14 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_virtual_table_v = polyfill::is_specialization_of_v<T, virtual_table>;
+
+    /**
+     *  Factory function for a virtual table definition of module M.
+     */
+    template<class M, class... Cs>
+    virtual_table_definition<M, Cs...> make_virtual_table_definition(Cs... elements) {
+        return {{std::make_tuple(std::move(elements)...)}};
+    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -6828,7 +6843,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
 namespace sqlite_orm::internal {
-    struct pragma_table_info_module_tag {
+    struct pragma_table_info_module_tag : eponymous_module {
         // simplify conceptual/meta programming
         using module_type = pragma_table_info_module_tag;
 
@@ -6837,41 +6852,21 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct virtual_table_module_traits<pragma_table_info_module_tag> {
-        using module_type = pragma_table_info_module_tag;
-        using is_eponymous = std::true_type;
-        using is_without_rowid = std::false_type;
-        using omit_column_type = std::true_type;
-    };
-
-    template<class... Cs>
-    struct virtual_table_traits<pragma_table_info_module_tag, Cs...>
-        : virtual_table_module_traits<pragma_table_info_module_tag> {
-        using definition_type = table_definition<Cs...>;
-        using elements_type = typename definition_type::elements_type;
-    };
-
-    template<class... Cs>
-    inline virtual_table_definition<pragma_table_info_module_tag, Cs...>
-    make_pragma_table_info_definition(Cs... columns) {
-        return {{std::make_tuple(std::move(columns)...)}};
-    }
-
     /**
      *  Factory function for a `pragma_table_info` virtual table definition.
      *
      *  The hidden columns 'arg' and 'schema' are mapped into each table definition.
      */
     inline auto using_pragma_table_info() {
-        return make_pragma_table_info_definition(make_column("cid", &table_info::cid),
-                                                 make_column("name", &table_info::name),
-                                                 make_column("type", &table_info::type),
-                                                 make_column("notnull", &table_info::notnull),
-                                                 make_column("dflt_value", &table_info::dflt_value),
-                                                 make_column("pk", &table_info::pk),
-                                                 make_hidden_column("arg", &table_info::hidden::arg),
-                                                 make_hidden_column("schema", &table_info::hidden::schema));
+        return make_virtual_table_definition<pragma_table_info_module_tag>(
+            make_column("cid", &table_info::cid),
+            make_column("name", &table_info::name),
+            make_column("type", &table_info::type),
+            make_column("notnull", &table_info::notnull),
+            make_column("dflt_value", &table_info::dflt_value),
+            make_column("pk", &table_info::pk),
+            make_hidden_column("arg", &table_info::hidden::arg),
+            make_hidden_column("schema", &table_info::hidden::schema));
     }
 }
 
@@ -6893,7 +6888,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3026000
 namespace sqlite_orm::internal {
-    struct pragma_table_xinfo_module_tag {
+    struct pragma_table_xinfo_module_tag : eponymous_module {
         // simplify conceptual/meta programming
         using module_type = pragma_table_xinfo_module_tag;
 
@@ -6902,42 +6897,22 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct virtual_table_module_traits<pragma_table_xinfo_module_tag> {
-        using module_type = pragma_table_xinfo_module_tag;
-        using is_eponymous = std::true_type;
-        using is_without_rowid = std::false_type;
-        using omit_column_type = std::true_type;
-    };
-
-    template<class... Cs>
-    struct virtual_table_traits<pragma_table_xinfo_module_tag, Cs...>
-        : virtual_table_module_traits<pragma_table_xinfo_module_tag> {
-        using definition_type = table_definition<Cs...>;
-        using elements_type = typename definition_type::elements_type;
-    };
-
-    template<class... Cs>
-    inline virtual_table_definition<pragma_table_xinfo_module_tag, Cs...>
-    make_pragma_table_xinfo_definition(Cs... columns) {
-        return {{std::make_tuple(std::move(columns)...)}};
-    }
-
     /**
      *  Factory function for a `pragma_table_xinfo` virtual table definition.
      *
      *  The hidden columns 'arg' and 'schema' are mapped into each table definition.
      */
     inline auto using_pragma_table_xinfo() {
-        return make_pragma_table_xinfo_definition(make_column("cid", &table_xinfo::cid),
-                                                  make_column("name", &table_xinfo::name),
-                                                  make_column("type", &table_xinfo::type),
-                                                  make_column("notnull", &table_xinfo::notnull),
-                                                  make_column("dflt_value", &table_xinfo::dflt_value),
-                                                  make_column("pk", &table_xinfo::pk),
-                                                  make_column("hidden", &table_xinfo::hidden),
-                                                  make_hidden_column("arg", &table_xinfo::hidden::arg),
-                                                  make_hidden_column("schema", &table_xinfo::hidden::schema));
+        return make_virtual_table_definition<pragma_table_xinfo_module_tag>(
+            make_column("cid", &table_xinfo::cid),
+            make_column("name", &table_xinfo::name),
+            make_column("type", &table_xinfo::type),
+            make_column("notnull", &table_xinfo::notnull),
+            make_column("dflt_value", &table_xinfo::dflt_value),
+            make_column("pk", &table_xinfo::pk),
+            make_column("hidden", &table_xinfo::hidden),
+            make_hidden_column("arg", &table_xinfo::hidden::arg),
+            make_hidden_column("schema", &table_xinfo::hidden::schema));
     }
 }
 
@@ -34143,8 +34118,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
-#include <type_traits>  //  std::false_type, std::true_type, std::is_convertible
-#include <tuple>  //  std::tuple_size, std::make_tuple, std::tuple
+#include <type_traits>  //  std::is_convertible
+#include <tuple>  //  std::tuple_size, std::tuple
 #include <utility>  //  std::move, std::index_sequence_for
 #include <string>  //  std::string
 #endif
@@ -34164,7 +34139,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 namespace sqlite_orm::internal {
-    struct dbstat_module_tag {
+    struct dbstat_module_tag : eponymous_module {
         // simplify conceptual/meta programming
         using module_type = dbstat_module_tag;
 
@@ -34172,25 +34147,6 @@ namespace sqlite_orm::internal {
             return "dbstat";
         }
     };
-
-    template<>
-    struct virtual_table_module_traits<dbstat_module_tag> {
-        using module_type = dbstat_module_tag;
-        using is_eponymous = std::true_type;
-        using is_without_rowid = std::false_type;
-        using omit_column_type = std::true_type;
-    };
-
-    template<class... Cs>
-    struct virtual_table_traits<dbstat_module_tag, Cs...> : virtual_table_module_traits<dbstat_module_tag> {
-        using definition_type = table_definition<Cs...>;
-        using elements_type = typename definition_type::elements_type;
-    };
-
-    template<class... Cs>
-    inline virtual_table_definition<dbstat_module_tag, Cs...> make_dbstat_definition(Cs... columns) {
-        return {{std::make_tuple(std::move(columns)...)}};
-    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -34256,21 +34212,22 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert(std::is_convertible<input_value_types, final_expected_types>::value,
                       "The schema name must be a string value, the aggregate flag a boolean value");
 
-        return make_dbstat_definition(make_column("name", &dbstat::name),
-                                      make_column("path", &dbstat::path),
-                                      make_column("pageno", &dbstat::pageno),
-                                      make_column("pagetype", &dbstat::pagetype),
-                                      make_column("ncell", &dbstat::ncell),
-                                      make_column("payload", &dbstat::payload),
-                                      make_column("unused", &dbstat::unused),
-                                      make_column("mx_payload", &dbstat::mx_payload),
-                                      make_column("pgoffset", &dbstat::pgoffset),
-                                      make_column("pgsize", &dbstat::pgsize),
-                                      make_hidden_column("schema", &dbstat::hidden::schema),
+        return make_virtual_table_definition<dbstat_module_tag>(
+            make_column("name", &dbstat::name),
+            make_column("path", &dbstat::path),
+            make_column("pageno", &dbstat::pageno),
+            make_column("pagetype", &dbstat::pagetype),
+            make_column("ncell", &dbstat::ncell),
+            make_column("payload", &dbstat::payload),
+            make_column("unused", &dbstat::unused),
+            make_column("mx_payload", &dbstat::mx_payload),
+            make_column("pgoffset", &dbstat::pgoffset),
+            make_column("pgsize", &dbstat::pgsize),
+            make_hidden_column("schema", &dbstat::hidden::schema),
 #if SQLITE_VERSION_NUMBER >= 3031000
-                                      make_hidden_column("aggregate", &dbstat::hidden::aggregate),
+            make_hidden_column("aggregate", &dbstat::hidden::aggregate),
 #endif
-                                      literal_holder<Value>{std::move(tableValues)}...);
+            literal_holder<Value>{std::move(tableValues)}...);
     }
 
     /**
@@ -34284,13 +34241,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "dbos/generate_series.h"
 
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#if SQLITE_VERSION_NUMBER >= 3008012
-#include <tuple>  // std::tuple_element, std::make_tuple
-#include <utility>  // std::forward
-#endif
-#endif
-
 // #include "../../functional/gsl.h"
 
 // #include "../../schema/virtual_table.h"
@@ -34299,7 +34249,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3008012
 namespace sqlite_orm::internal {
-    struct generate_series_module_tag {
+    struct generate_series_module_tag : eponymous_module {
         // simplify conceptual/meta programming
         using module_type = generate_series_module_tag;
 
@@ -34307,26 +34257,6 @@ namespace sqlite_orm::internal {
             return "generate_series";
         }
     };
-
-    template<>
-    struct virtual_table_module_traits<generate_series_module_tag> {
-        using module_type = generate_series_module_tag;
-        using is_eponymous = std::true_type;
-        using is_without_rowid = std::false_type;
-        using omit_column_type = std::true_type;
-    };
-
-    template<class... Cs>
-    struct virtual_table_traits<generate_series_module_tag, Cs...>
-        : virtual_table_module_traits<generate_series_module_tag> {
-        using definition_type = table_definition<Cs...>;
-        using elements_type = typename definition_type::elements_type;
-    };
-
-    template<class... Cs>
-    inline virtual_table_definition<generate_series_module_tag, Cs...> make_generate_series_definition(Cs... columns) {
-        return {{std::make_tuple(std::move(columns)...)}};
-    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -34362,10 +34292,11 @@ namespace sqlite_orm::internal {
      *  The hidden generate_series columns 'start', 'stop' and 'step' are mapped into each table definition.
      */
     inline auto using_generate_series() {
-        return make_generate_series_definition(make_column("value", &generate_series::value),
-                                               make_hidden_column("start", &generate_series::hidden::start),
-                                               make_hidden_column("stop", &generate_series::hidden::stop),
-                                               make_hidden_column("step", &generate_series::hidden::step));
+        return make_virtual_table_definition<generate_series_module_tag>(
+            make_column("value", &generate_series::value),
+            make_hidden_column("start", &generate_series::hidden::start),
+            make_hidden_column("stop", &generate_series::hidden::stop),
+            make_hidden_column("step", &generate_series::hidden::step));
     }
 }
 

@@ -2,8 +2,8 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
-#include <type_traits>  //  std::false_type, std::true_type, std::is_convertible
-#include <tuple>  //  std::tuple_size, std::make_tuple, std::tuple
+#include <type_traits>  //  std::is_convertible
+#include <tuple>  //  std::tuple_size, std::tuple
 #include <utility>  //  std::move, std::index_sequence_for
 #include <string>  //  std::string
 #endif
@@ -18,7 +18,7 @@
 
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 namespace sqlite_orm::internal {
-    struct dbstat_module_tag {
+    struct dbstat_module_tag : eponymous_module {
         // simplify conceptual/meta programming
         using module_type = dbstat_module_tag;
 
@@ -26,25 +26,6 @@ namespace sqlite_orm::internal {
             return "dbstat";
         }
     };
-
-    template<>
-    struct virtual_table_module_traits<dbstat_module_tag> {
-        using module_type = dbstat_module_tag;
-        using is_eponymous = std::true_type;
-        using is_without_rowid = std::false_type;
-        using omit_column_type = std::true_type;
-    };
-
-    template<class... Cs>
-    struct virtual_table_traits<dbstat_module_tag, Cs...> : virtual_table_module_traits<dbstat_module_tag> {
-        using definition_type = table_definition<Cs...>;
-        using elements_type = typename definition_type::elements_type;
-    };
-
-    template<class... Cs>
-    inline virtual_table_definition<dbstat_module_tag, Cs...> make_dbstat_definition(Cs... columns) {
-        return {{std::make_tuple(std::move(columns)...)}};
-    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -110,21 +91,22 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert(std::is_convertible<input_value_types, final_expected_types>::value,
                       "The schema name must be a string value, the aggregate flag a boolean value");
 
-        return make_dbstat_definition(make_column("name", &dbstat::name),
-                                      make_column("path", &dbstat::path),
-                                      make_column("pageno", &dbstat::pageno),
-                                      make_column("pagetype", &dbstat::pagetype),
-                                      make_column("ncell", &dbstat::ncell),
-                                      make_column("payload", &dbstat::payload),
-                                      make_column("unused", &dbstat::unused),
-                                      make_column("mx_payload", &dbstat::mx_payload),
-                                      make_column("pgoffset", &dbstat::pgoffset),
-                                      make_column("pgsize", &dbstat::pgsize),
-                                      make_hidden_column("schema", &dbstat::hidden::schema),
+        return make_virtual_table_definition<dbstat_module_tag>(
+            make_column("name", &dbstat::name),
+            make_column("path", &dbstat::path),
+            make_column("pageno", &dbstat::pageno),
+            make_column("pagetype", &dbstat::pagetype),
+            make_column("ncell", &dbstat::ncell),
+            make_column("payload", &dbstat::payload),
+            make_column("unused", &dbstat::unused),
+            make_column("mx_payload", &dbstat::mx_payload),
+            make_column("pgoffset", &dbstat::pgoffset),
+            make_column("pgsize", &dbstat::pgsize),
+            make_hidden_column("schema", &dbstat::hidden::schema),
 #if SQLITE_VERSION_NUMBER >= 3031000
-                                      make_hidden_column("aggregate", &dbstat::hidden::aggregate),
+            make_hidden_column("aggregate", &dbstat::hidden::aggregate),
 #endif
-                                      literal_holder<Value>{std::move(tableValues)}...);
+            literal_holder<Value>{std::move(tableValues)}...);
     }
 
     /**

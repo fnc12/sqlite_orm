@@ -4,7 +4,9 @@
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>  // std::convertible_to
 #endif
+#include <type_traits>  //  std::is_base_of, std::conditional_t, std::false_type, std::true_type
 #include <string>  //  std::string
+#include <tuple>  //  std::make_tuple
 #include <utility>  //  std::move
 #endif
 
@@ -24,13 +26,19 @@ namespace sqlite_orm::internal {
     };
 #endif
 
+    /**
+     *  Base class of the module tags of built-in eponymous virtual tables.
+     *
+     *  The definition of eponymous virtual tables is built-in, fixed and implicit,
+     *  and they can only be created with optional table-values for their hidden columns.
+     */
+    struct eponymous_module {};
+
     /** 
-     *  Default base traits of a "normal" virtual table module.
+     *  Default base traits of a virtual table module.
      *  
      *  Particularly this means:
-     *  - It is not eponymous.
-     *    The definition of eponymous virtual tables is built-in, fixed and implicit,
-     *    and they can only be created with optional table-values for their hidden columns.
+     *  - It is eponymous if the module tag derives from `eponymous_module`.
      *  - It is not a WITHOUT ROWID table (i.e. it has an implicit `rowid` column).
      *  - Omits the column type in the SQL creation statement.
      *  
@@ -39,22 +47,25 @@ namespace sqlite_orm::internal {
     template<class M>
     struct virtual_table_module_traits {
         using module_type = M;
-        using is_eponymous = std::false_type;
+        using is_eponymous = std::is_base_of<eponymous_module, M>;
         using is_without_rowid = std::false_type;
         using omit_column_type = std::true_type;
     };
 
     /** 
-     *  Default traits of a "normal" virtual table.
+     *  Default traits of a virtual table.
      *  
-     *  Particularly this means :
-     *  - Its definition is a `insertable_table_definition`.
+     *  Particularly this means:
+     *  - Its definition is a read-only `table_definition` for an eponymous module,
+     *    an `insertable_table_definition` otherwise.
      *  
      *  Specific virtual table modules can specialize this struct to provide their own traits.
      */
     template<class M, class... Cs>
     struct virtual_table_traits : virtual_table_module_traits<M> {
-        using definition_type = insertable_table_definition<Cs...>;
+        using definition_type = std::conditional_t<virtual_table_module_traits<M>::is_eponymous::value,
+                                                   table_definition<Cs...>,
+                                                   insertable_table_definition<Cs...>>;
         using elements_type = elements_type_t<definition_type>;
     };
 
@@ -97,6 +108,14 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_virtual_table_v = polyfill::is_specialization_of_v<T, virtual_table>;
+
+    /**
+     *  Factory function for a virtual table definition of module M.
+     */
+    template<class M, class... Cs>
+    virtual_table_definition<M, Cs...> make_virtual_table_definition(Cs... elements) {
+        return {{std::make_tuple(std::move(elements)...)}};
+    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
