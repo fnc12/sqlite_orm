@@ -23,7 +23,7 @@
 #include "schema/db_objects.h"
 #include "result_set/column_result.h"
 #include "result_set/column_expression.h"
-#include "result_set/column_references.h"
+#include "result_set/column_reference.h"
 #include "serialization/serializer_context.h"
 #include "serialization/cte_column_names_collector.h"
 

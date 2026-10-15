@@ -27692,7 +27692,7 @@ namespace sqlite_orm::internal {
     struct column_expression_of<DBOs, T, match_if<is_select, T>> : column_expression_of<DBOs, return_type_t<T>> {};
 }
 
-// #include "result_set/column_references.h"
+// #include "result_set/column_reference.h"
 
 /** @file The references to the columns of a subselect, by which an outer statement refers to them.
  *
