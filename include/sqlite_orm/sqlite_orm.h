@@ -13733,7 +13733,7 @@ namespace sqlite_orm::internal {
 
         /**
          *  Serializes the assignment and collects the table named on its left-hand side.
-         *  Defined in `implementations/dynamic_set_definitions.h`.
+         *  Defined in `ast/crud/set_definitions.h`.
          */
         template<class T, satisfies<is_assign, T> = true>
         void push_back(T assign);
@@ -29729,14 +29729,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #pragma once
 
-/** @file Manifest of the out-of-class member definitions in `implementations/`.
+/** @file Manifest of the out-of-class member definitions, each in a `_definitions.h` header next to the class it completes.
  *
  *  Each of those files defines members of a schema, storage or AST node class whose bodies need headers the
  *  declaring header should not depend on itself - implementation machinery private to how the member does its work.
  *  They are included here once, after all declarations.
  */
 
-// #include "implementations/column_definitions.h"
+// #include "schema/column_definitions.h"
 
 /** @file Out-of-class definitions of column members, which need the statement serializer's machinery
  *  (`default_value_extractor.h`) that `schema/column.h` stays free of.
@@ -29777,7 +29777,7 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "../schema/column.h"
+// #include "column.h"
 
 namespace sqlite_orm::internal {
     template<class... Op>
@@ -29792,7 +29792,7 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "implementations/table_definitions.h"
+// #include "schema/table_definitions.h"
 
 /** @file Out-of-class definitions of table members, which need the column type printer (`type_printer.h`)
  *  that `schema/table.h` stays free of.
@@ -29810,7 +29810,7 @@ namespace sqlite_orm::internal {
 
 // #include "../type_mapping/type_printer.h"
 
-// #include "../schema/table.h"
+// #include "table.h"
 
 namespace sqlite_orm::internal {
     template<class T, class WithoutRowId, class... Cs>
@@ -29858,7 +29858,7 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "implementations/storage_definitions.h"
+// #include "execution/storage_definitions.h"
 
 /** @file Out-of-class definitions of the storage members synchronizing a base table's schema, which need the
  *  schema table (`builtin/dbos/sqlite_schema.h`); they also keep the lengthy schema synchronization apart from
@@ -29882,7 +29882,7 @@ namespace sqlite_orm::internal {
 
 // #include "../serialization/serializing_util.h"
 
-// #include "../execution/storage.h"
+// #include "storage.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -30100,7 +30100,7 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "implementations/dynamic_set_definitions.h"
+// #include "ast/crud/set_definitions.h"
 
 /** @file Out-of-class definitions of `dynamic_set_t` members, which need the statement serializer and the AST
  *  traversal machinery that `ast/crud/set.h` stays free of.
@@ -30110,17 +30110,17 @@ namespace sqlite_orm::internal {
 #include <sstream>  //  std::stringstream
 #endif
 
-// #include "../functional/type_traits.h"
+// #include "../../functional/type_traits.h"
 
-// #include "../vocabulary/node_traits.h"
+// #include "../../vocabulary/node_traits.h"
 
-// #include "../ast_iterator.h"
+// #include "../../ast_iterator.h"
 
-// #include "../serialization/table_name_collector.h"
+// #include "../../serialization/table_name_collector.h"
 
-// #include "../serialization/statement_serializer.h"
+// #include "../../serialization/statement_serializer.h"
 
-// #include "../ast/crud/set.h"
+// #include "set.h"
 
 namespace sqlite_orm::internal {
     template<class C>

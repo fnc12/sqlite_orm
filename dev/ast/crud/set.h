@@ -56,7 +56,7 @@ namespace sqlite_orm::internal {
 
         /**
          *  Serializes the assignment and collects the table named on its left-hand side.
-         *  Defined in `implementations/dynamic_set_definitions.h`.
+         *  Defined in `ast/crud/set_definitions.h`.
          */
         template<class T, satisfies<is_assign, T> = true>
         void push_back(T assign);
