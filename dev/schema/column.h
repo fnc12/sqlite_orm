@@ -248,5 +248,29 @@ namespace sqlite_orm::internal {
             };
         }(std::make_index_sequence<members.size()>{});
     }
+
+    /**
+     *  The hidden columns of the non-static data members of `O`'s nested `hidden` struct, if there is one,
+     *  named after the members' identifiers.
+     */
+    template<class O>
+    auto make_reflected_hidden_columns() {
+        static /*gcc*/ constexpr std::meta::info hidden = extract_nested_class<O>("hidden");
+
+        if constexpr (hidden == std::meta::info{}) {
+            return std::tuple<>{};
+        } else {
+            static /*gcc*/ constexpr auto members = extract_members<spliced_type_t<hidden>>();
+
+            return []<size_t... I>(std::index_sequence<I...>) static {
+                return std::tuple {
+                    []<std::meta::info member>() static {
+                        return make_hidden_column(std::string(std::meta::identifier_of(member)),
+                                                  splice_member_pointer<member>());
+                    }.template operator()<members[I]>()...
+                };
+            }(std::make_index_sequence<members.size()>{});
+        }
+    }
 }
 #endif

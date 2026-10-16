@@ -3,7 +3,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_RTREE
 #include <type_traits>  // std::is_same
-#include <tuple>  // std::tuple_element, std::make_tuple
+#include <tuple>  // std::tuple_element, std::make_tuple, std::apply
 #include <utility>  // std::forward
 #include <cstdint>  //  std::int32_t
 #endif
@@ -19,6 +19,24 @@
 
 #ifdef SQLITE_ENABLE_RTREE
 namespace sqlite_orm::internal {
+    struct rtree_module_tag {
+        // simplify conceptual/meta programming
+        using module_type = rtree_module_tag;
+
+        static constexpr orm_gsl::czstring name() {
+            return "rtree";
+        }
+    };
+
+    struct rtree_i32_module_tag {
+        // simplify conceptual/meta programming
+        using module_type = rtree_i32_module_tag;
+
+        static constexpr orm_gsl::czstring name() {
+            return "rtree_i32";
+        }
+    };
+
     template<class ExpectedValueType, class... Cs>
     constexpr void validate_rtree_definition() {
         using elements_type = std::tuple<Cs...>;
@@ -40,62 +58,63 @@ namespace sqlite_orm::internal {
         static_assert(std::is_same<field_type_t<std::tuple_element_t<0, elements_type>>, int64>::value,
                       "The type of the first column must be a 64-bit integer");
     }
-
-    struct rtree_module_tag {
-        // simplify conceptual/meta programming
-        using module_type = rtree_module_tag;
-
-        static constexpr orm_gsl::czstring name() {
-            return "rtree";
-        }
-
-        template<class... Cs>
-        static constexpr void validate_definition() {
-            validate_rtree_definition<float, Cs...>();
-        }
-    };
-
-    struct rtree_i32_module_tag {
-        // simplify conceptual/meta programming
-        using module_type = rtree_i32_module_tag;
-
-        static constexpr orm_gsl::czstring name() {
-            return "rtree_i32";
-        }
-
-        template<class... Cs>
-        static constexpr void validate_definition() {
-            validate_rtree_definition<std::int32_t, Cs...>();
-        }
-    };
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a RTREE virtual table definition.
-     *
-     *  Without elements, the definition takes the columns reflected by `make_virtual_table<O>(definition)`.
      */
     template<class... Cs>
     internal::virtual_table_definition<internal::rtree_module_tag, Cs...> using_rtree(Cs... definition) {
-        if constexpr (sizeof...(Cs) != 0) {
-            internal::rtree_module_tag::validate_definition<Cs...>();
-        }
+        internal::validate_rtree_definition<float, Cs...>();
 
         return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+    /**
+     *  Factory function for a RTREE virtual table definition.
+     *
+     *  The columns are reflected from the non-static data members of O and their annotations.
+     *
+     *  Example: `make_virtual_table(using_rtree<DemoIndex>())`
+     */
+    template<class O>
+    auto using_rtree() {
+        return std::apply(
+            [](auto&&... definition) {
+                return using_rtree(std::forward<decltype(definition)>(definition)...);
+            },
+            internal::make_reflected_columns<O>());
+    }
+#endif
+
     /**
      *  Factory function for a RTREE_I32 virtual table definition.
-     *
-     *  Without elements, the definition takes the columns reflected by `make_virtual_table<O>(definition)`.
      */
     template<class... Cs>
     internal::virtual_table_definition<internal::rtree_i32_module_tag, Cs...> using_rtree_i32(Cs... definition) {
-        if constexpr (sizeof...(Cs) != 0) {
-            internal::rtree_i32_module_tag::validate_definition<Cs...>();
-        }
+        internal::validate_rtree_definition<std::int32_t, Cs...>();
 
         return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+    /**
+     *  Factory function for a RTREE_I32 virtual table definition.
+     *
+     *  The columns are reflected from the non-static data members of O and their annotations.
+     *
+     *  Example: `make_virtual_table(using_rtree_i32<DemoIndex>())`
+     */
+    template<class O>
+    auto using_rtree_i32() {
+        return std::apply(
+            [](auto&&... definition) {
+                return using_rtree_i32(std::forward<decltype(definition)>(definition)...);
+            },
+            internal::make_reflected_columns<O>());
+    }
+#endif
 }
 #endif

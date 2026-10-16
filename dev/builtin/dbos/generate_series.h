@@ -49,11 +49,15 @@ namespace sqlite_orm::internal {
      *  The hidden generate_series columns 'start', 'stop' and 'step' are mapped into each table definition.
      */
     inline auto using_generate_series() {
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+        return make_reflected_virtual_table_definition<generate_series_module_tag, generate_series>();
+#else
         return make_virtual_table_definition<generate_series_module_tag>(
             make_column("value", &generate_series::value),
             make_hidden_column("start", &generate_series::hidden::start),
             make_hidden_column("stop", &generate_series::hidden::stop),
             make_hidden_column("step", &generate_series::hidden::step));
+#endif
     }
 }
 

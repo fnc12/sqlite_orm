@@ -6,8 +6,8 @@
 #endif
 #include <type_traits>  //  std::is_base_of, std::conditional_t, std::false_type, std::true_type
 #include <string>  //  std::string
-#include <tuple>  //  std::make_tuple
-#include <utility>  //  std::move
+#include <tuple>  //  std::make_tuple, std::tuple_cat, std::apply
+#include <utility>  //  std::move, std::forward
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
@@ -16,7 +16,7 @@
 #include "../vocabulary/node_traits.h"  //  orm_table_reference, auto_decay_table_ref_t
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "table_base.h"
-#include "column.h"  //  make_reflected_columns
+#include "column.h"  //  make_reflected_columns, make_reflected_hidden_columns
 #include "dbo_name.h"
 
 namespace sqlite_orm::internal {
@@ -173,21 +173,20 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
-    template<class O, class M, class... Cs>
-    auto make_reflected_virtual_table(virtual_table_definition<M, Cs...> moduleDefinition) {
-        auto classAnnotations = extract_type_annotations<O>();
-        std::string tableName{resolve_dbo_name<O>(classAnnotations)};
-
-        return [&tableName]<class... Es>(std::tuple<Es...>&& elements) {
-            if constexpr (requires { M::template validate_definition<Es...>(); }) {
-                M::template validate_definition<Es...>();
-            }
-            // unqualified: module-specific factories (fts5) are found by argument-dependent lookup
-            return make_virtual_table<O>(std::move(tableName),
-                                         virtual_table_definition<M, Es...>{{std::move(elements)}});
-        }(std::tuple_cat(make_reflected_columns<O>(),
-                         filter_out_dbo_name(std::move(classAnnotations)),
-                         std::move(moduleDefinition.elements)));
+    /**
+     *  Factory function for a virtual table definition of module M, mapping the data structure O:
+     *  the columns of O's non-static data members, the hidden columns of the non-static data members of
+     *  O's nested `hidden` struct, followed by `elements`.
+     */
+    template<class M, class O, class... Es>
+    auto make_reflected_virtual_table_definition(Es... elements) {
+        return std::apply(
+            [](auto&&... definition) {
+                return make_virtual_table_definition<M>(std::forward<decltype(definition)>(definition)...);
+            },
+            std::tuple_cat(make_reflected_columns<O>(),
+                           make_reflected_hidden_columns<O>(),
+                           std::tuple<Es...>{std::move(elements)...}));
     }
 }
 
@@ -195,33 +194,19 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a virtual table.
      *
-     *  The mapped object type is explicitly specified, columns and column constraints are deferred from
-     *  the object type's non-static data members and their annotations, and precede the elements of the
-     *  module definition, which must not contain columns. The optional `[[=orm_name("…")]]` annotation
-     *  overrides the table name (otherwise the type's reflected identifier is used).
+     *  The mapped object type is determined implicitly from the first column definition.
+     *  The optional `[[=orm_name("…")]]` annotation of the mapped object type supplies the table name
+     *  (otherwise the type's reflected identifier is used).
      *
-     *  Example: `make_virtual_table<Post>(using_fts5(tokenize("porter")))`
+     *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
      */
-    template<class O, class M, class... Cs>
-        requires (internal::col_index_sequence_of<std::tuple<Cs...>>::size() == 0)
+    template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     auto make_virtual_table(internal::virtual_table_definition<M, Cs...> definition) {
-        return internal::make_reflected_virtual_table<O>(std::move(definition));
-    }
+        using namespace ::sqlite_orm::internal;
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Factory function for a virtual table.
-     *
-     *  The mapped object type is explicitly specified, columns and column constraints are deferred from
-     *  the object type's non-static data members and their annotations, and precede the elements of the
-     *  module definition, which must not contain columns. The optional `[[=orm_name("…")]]` annotation
-     *  overrides the table name (otherwise the type's reflected identifier is used).
-     */
-    template<orm_table_reference auto table, class M, class... Cs>
-        requires (internal::col_index_sequence_of<std::tuple<Cs...>>::size() == 0)
-    auto make_virtual_table(internal::virtual_table_definition<M, Cs...> definition) {
-        return internal::make_reflected_virtual_table<internal::auto_decay_table_ref_t<table>>(std::move(definition));
+        // unqualified: module-specific factories (fts5) are found by argument-dependent lookup
+        return make_virtual_table<O>(std::string{resolve_dbo_name<O>(extract_type_annotations<O>())},
+                                     std::move(definition));
     }
-#endif
 }
 #endif

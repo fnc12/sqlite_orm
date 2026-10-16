@@ -3,7 +3,8 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 #include <array>  //  std::array
-#include <meta>  //  std::define_static_array, std::meta::access_context, std::meta::nonstatic_data_members_of, std::meta::identifier_of, std::meta::annotations_of
+#include <meta>  //  std::define_static_array, std::meta::access_context, std::meta::nonstatic_data_members_of, std::meta::identifier_of, std::meta::annotations_of, std::meta::members_of
+#include <string_view>  //  std::string_view
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::index_sequence, std::make_index_sequence
 #endif
@@ -36,6 +37,30 @@ namespace sqlite_orm::internal {
 
         return std::define_static_array(collect.template operator()<T>());
     }
+
+    /**
+     *  Reflects the nested class of `T` named `name`, or returns a null reflection.
+     *  Type aliases do not count.
+     */
+    template<class T>
+    consteval std::meta::info extract_nested_class(std::string_view name) {
+        constexpr auto ctx = std::meta::access_context::current();
+
+        for (std::meta::info member: members_of(^^T, ctx)) {
+            if (is_type(member) && !is_type_alias(member) && is_class_type(member) && has_identifier(member) &&
+                identifier_of(member) == name) {
+                return member;
+            }
+        }
+        return {};
+    }
+
+    /**
+     *  Splices a type reflection.
+     *  Encapsulated here so the splice operator does not leak into consumer headers.
+     */
+    template<std::meta::info refl>
+    using spliced_type_t = typename[:refl:];
 
     /**
      *  Returns the identifier of `T`.

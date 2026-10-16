@@ -91,6 +91,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert(std::is_convertible<input_value_types, final_expected_types>::value,
                       "The schema name must be a string value, the aggregate flag a boolean value");
 
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+        return make_reflected_virtual_table_definition<dbstat_module_tag, dbstat>(
+            literal_holder<Value>{std::move(tableValues)}...);
+#else
         return make_virtual_table_definition<dbstat_module_tag>(
             make_column("name", &dbstat::name),
             make_column("path", &dbstat::path),
@@ -107,6 +111,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             make_hidden_column("aggregate", &dbstat::hidden::aggregate),
 #endif
             literal_holder<Value>{std::move(tableValues)}...);
+#endif
     }
 
     /**

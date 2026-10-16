@@ -469,7 +469,7 @@ namespace {
 }
 
 TEST_CASE("reflection-based fts5 virtual table") {
-    auto virtualTable = make_virtual_table<ReflectedPost>(using_fts5(tokenize("porter ascii")));
+    auto virtualTable = make_virtual_table(using_fts5<ReflectedPost>(tokenize("porter ascii")));
     using elements_type = decltype(virtualTable.elements);
     STATIC_REQUIRE(internal::col_index_sequence_of<elements_type>::size() == 2);
     STATIC_REQUIRE(internal::hidden_col_index_sequence_of<elements_type>::size() == 2);
@@ -510,8 +510,13 @@ namespace {
 }
 
 TEST_CASE("reflection-based rtree virtual table") {
+    SECTION("explicit table name") {
+        auto virtualTable = make_virtual_table("demo_index", using_rtree<ReflectedDemoIndex>());
+        STATIC_REQUIRE(std::is_same<decltype(virtualTable)::object_type, ReflectedDemoIndex>::value);
+        REQUIRE(virtualTable.name == "demo_index");
+    }
     SECTION("rtree") {
-        auto virtualTable = make_virtual_table<ReflectedDemoIndex>(using_rtree());
+        auto virtualTable = make_virtual_table(using_rtree<ReflectedDemoIndex>());
         using elements_type = decltype(virtualTable.elements);
         STATIC_REQUIRE(internal::col_index_sequence_of<elements_type>::size() == 5);
         REQUIRE(virtualTable.name == "reflected_demo_index");
@@ -533,7 +538,7 @@ TEST_CASE("reflection-based rtree virtual table") {
         REQUIRE(rows == std::vector<int64>{28269});
     }
     SECTION("rtree_i32") {
-        auto virtualTable = make_virtual_table<ReflectedDemoIndexI32>(using_rtree_i32());
+        auto virtualTable = make_virtual_table(using_rtree_i32<ReflectedDemoIndexI32>());
         REQUIRE(virtualTable.name == "ReflectedDemoIndexI32");
 
         auto storage = make_storage("", std::move(virtualTable));

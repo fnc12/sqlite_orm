@@ -108,6 +108,9 @@ namespace sqlite_orm::internal {
      *  The hidden columns 'arg' and 'schema' are mapped into each table definition.
      */
     inline auto using_pragma_table_info() {
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+        return make_reflected_virtual_table_definition<pragma_table_info_module_tag, table_info>();
+#else
         return make_virtual_table_definition<pragma_table_info_module_tag>(
             make_column("cid", &table_info::cid),
             make_column("name", &table_info::name),
@@ -117,6 +120,7 @@ namespace sqlite_orm::internal {
             make_column("pk", &table_info::pk),
             make_hidden_column("arg", &table_info::hidden::arg),
             make_hidden_column("schema", &table_info::hidden::schema));
+#endif
     }
 }
 
@@ -153,6 +157,9 @@ namespace sqlite_orm::internal {
      *  The hidden columns 'arg' and 'schema' are mapped into each table definition.
      */
     inline auto using_pragma_table_xinfo() {
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+        return make_reflected_virtual_table_definition<pragma_table_xinfo_module_tag, table_xinfo>();
+#else
         return make_virtual_table_definition<pragma_table_xinfo_module_tag>(
             make_column("cid", &table_xinfo::cid),
             make_column("name", &table_xinfo::name),
@@ -163,6 +170,7 @@ namespace sqlite_orm::internal {
             make_column("hidden", &table_xinfo::hidden),
             make_hidden_column("arg", &table_xinfo::hidden::arg),
             make_hidden_column("schema", &table_xinfo::hidden::schema));
+#endif
     }
 }
 
