@@ -22,6 +22,7 @@
 // the pointer-passing interface; ahead of the storage, as it defines `is_pointer_arg_v` and `is_pointer_binding_v`,
 // which `statement_binder` and `row_extractor` evaluate for the types they are instantiated with right away
 #include "../../dev/marshaling/pointer_value.h"
+#include "../../dev/marshaling/carray_pointer.h"
 
 // the manifests of the definitions, ahead of the storage, so that every trait is defined before its first use
 #include "../../dev/node_definitions.h"
@@ -36,8 +37,5 @@
 #include "../../dev/builtin/vfs.h"
 #include "../../dev/builtin/functions.h"
 #include "../../dev/builtin/dbos.h"
-
-// the carray extension
-#include "../../dev/carray.h"
 
 #include "../../dev/functional/finish_macros.h"

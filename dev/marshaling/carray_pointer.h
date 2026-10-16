@@ -1,5 +1,8 @@
 #pragma once
 
+/** @file The "carray" pointer type, its pointer-passing helpers, and the pointer-passing functions using it.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3020000
 #include <utility>  //  std::move
@@ -9,9 +12,9 @@
 #endif
 #endif
 
-#include "functional/gsl.h"
-#include "marshaling/pointer_value.h"
-#include "sqlite3/sqlite3_types.h"  //  int64
+#include "../functional/gsl.h"
+#include "../sqlite3/sqlite3_types.h"  //  int64
+#include "pointer_value.h"
 
 #if SQLITE_VERSION_NUMBER >= 3020000
 SQLITE_ORM_EXPORT namespace sqlite_orm {
