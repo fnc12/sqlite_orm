@@ -82,7 +82,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class O>
     auto using_rtree() {
         return std::apply(
-            [](auto&&... definition) {
+            [](auto&&... definition) static {
                 return using_rtree(std::forward<decltype(definition)>(definition)...);
             },
             internal::make_reflected_columns<O>());
@@ -110,7 +110,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class O>
     auto using_rtree_i32() {
         return std::apply(
-            [](auto&&... definition) {
+            [](auto&&... definition) static {
                 return using_rtree_i32(std::forward<decltype(definition)>(definition)...);
             },
             internal::make_reflected_columns<O>());

@@ -7157,7 +7157,7 @@ namespace sqlite_orm::internal {
     template<class M, class O, class... Es>
     auto make_reflected_virtual_table_definition(Es... elements) {
         return std::apply(
-            [](auto&&... definition) {
+            [](auto&&... definition) static {
                 return make_virtual_table_definition<M>(std::forward<decltype(definition)>(definition)...);
             },
             std::tuple_cat(make_reflected_columns<O>(),
@@ -18795,7 +18795,7 @@ namespace sqlite_orm::internal {
 // #include "../builtin/dbos/pragma_table_info.h"
 
 /** @file The rows of `PRAGMA table_info` and `PRAGMA table_xinfo`, and the eponymous virtual tables
- *        `pragma_table_info` and `pragma_table_xinfo` of their PRAGMA functions.
+ *        `pragma_table_info` and `pragma_table_xinfo` of their PRAGMA functions (C++26 reflection).
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -18805,8 +18805,6 @@ namespace sqlite_orm::internal {
 
 // #include "../../functional/gsl.h"
 
-// #include "../../schema/column.h"
-//  make_column, make_hidden_column
 // #include "../../schema/virtual_table.h"
 
 // #include "../../ast/table_reference.h"
@@ -18888,7 +18886,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     };
 }
 
-#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
 namespace sqlite_orm::internal {
     struct pragma_table_info_module_tag : eponymous_module {
         // simplify conceptual/meta programming
@@ -18905,28 +18903,12 @@ namespace sqlite_orm::internal {
      *  The hidden columns 'arg' and 'schema' are mapped into each table definition.
      */
     inline auto using_pragma_table_info() {
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
         return make_reflected_virtual_table_definition<pragma_table_info_module_tag, table_info>();
-#else
-        return make_virtual_table_definition<pragma_table_info_module_tag>(
-            make_column("cid", &table_info::cid),
-            make_column("name", &table_info::name),
-            make_column("type", &table_info::type),
-            make_column("notnull", &table_info::notnull),
-            make_column("dflt_value", &table_info::dflt_value),
-            make_column("pk", &table_info::pk),
-            make_hidden_column("arg", &table_info::hidden::arg),
-            make_hidden_column("schema", &table_info::hidden::schema));
-#endif
     }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     inline constexpr orm_table_reference auto pragma_table_info_table = c<table_info>();
-#else
-    inline constexpr auto pragma_table_info_table = c<table_info>();
-#endif
 
     /**
      *  Factory function for the `pragma_table_info` eponymous virtual table.
@@ -18954,29 +18936,12 @@ namespace sqlite_orm::internal {
      *  The hidden columns 'arg' and 'schema' are mapped into each table definition.
      */
     inline auto using_pragma_table_xinfo() {
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
         return make_reflected_virtual_table_definition<pragma_table_xinfo_module_tag, table_xinfo>();
-#else
-        return make_virtual_table_definition<pragma_table_xinfo_module_tag>(
-            make_column("cid", &table_xinfo::cid),
-            make_column("name", &table_xinfo::name),
-            make_column("type", &table_xinfo::type),
-            make_column("notnull", &table_xinfo::notnull),
-            make_column("dflt_value", &table_xinfo::dflt_value),
-            make_column("pk", &table_xinfo::pk),
-            make_column("hidden", &table_xinfo::hidden),
-            make_hidden_column("arg", &table_xinfo::hidden::arg),
-            make_hidden_column("schema", &table_xinfo::hidden::schema));
-#endif
     }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     inline constexpr orm_table_reference auto pragma_table_xinfo_table = c<table_xinfo>();
-#else
-    inline constexpr auto pragma_table_xinfo_table = c<table_xinfo>();
-#endif
 
     /**
      *  Factory function for the `pragma_table_xinfo` eponymous virtual table.
@@ -34575,7 +34540,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         requires (internal::col_index_sequence_of<std::tuple<Cs...>>::size() == 0)
     auto using_fts5(Cs... options) {
         return std::apply(
-            [](auto&&... definition) {
+            [](auto&&... definition) static {
                 return using_fts5(std::forward<decltype(definition)>(definition)...);
             },
             std::tuple_cat(internal::make_reflected_columns<O>(), std::tuple<Cs...>{std::move(options)...}));
@@ -35056,7 +35021,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class O>
     auto using_rtree() {
         return std::apply(
-            [](auto&&... definition) {
+            [](auto&&... definition) static {
                 return using_rtree(std::forward<decltype(definition)>(definition)...);
             },
             internal::make_reflected_columns<O>());
@@ -35084,7 +35049,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class O>
     auto using_rtree_i32() {
         return std::apply(
-            [](auto&&... definition) {
+            [](auto&&... definition) static {
                 return using_rtree_i32(std::forward<decltype(definition)>(definition)...);
             },
             internal::make_reflected_columns<O>());

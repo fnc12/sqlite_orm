@@ -87,7 +87,7 @@ TEST_CASE("generate_series layout tests") {
 }
 #endif
 
-#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
 TEST_CASE("pragma_table_info layout tests") {
     using internal::pragma_table_info_module_tag;
 

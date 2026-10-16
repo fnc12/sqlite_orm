@@ -125,7 +125,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         requires (internal::col_index_sequence_of<std::tuple<Cs...>>::size() == 0)
     auto using_fts5(Cs... options) {
         return std::apply(
-            [](auto&&... definition) {
+            [](auto&&... definition) static {
                 return using_fts5(std::forward<decltype(definition)>(definition)...);
             },
             std::tuple_cat(internal::make_reflected_columns<O>(), std::tuple<Cs...>{std::move(options)...}));

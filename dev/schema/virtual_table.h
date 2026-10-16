@@ -181,7 +181,7 @@ namespace sqlite_orm::internal {
     template<class M, class O, class... Es>
     auto make_reflected_virtual_table_definition(Es... elements) {
         return std::apply(
-            [](auto&&... definition) {
+            [](auto&&... definition) static {
                 return make_virtual_table_definition<M>(std::forward<decltype(definition)>(definition)...);
             },
             std::tuple_cat(make_reflected_columns<O>(),

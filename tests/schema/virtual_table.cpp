@@ -311,7 +311,7 @@ TEST_CASE("generate_series virtual table schema") {
 }
 #endif
 
-#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
 TEST_CASE("pragma_table_info virtual table") {
     using Catch::Matchers::Equals;
     using row_type = std::tuple<int, std::string, std::string, bool, std::string, int>;
