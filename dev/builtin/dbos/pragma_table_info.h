@@ -118,8 +118,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for the `pragma_table_info` eponymous virtual table.
      */
     inline auto make_pragma_table_info_table() {
-        return make_virtual_table<table_info>(internal::pragma_table_info_module_tag::name(),
-                                              internal::using_pragma_table_info());
+        return make_virtual_table(internal::using_pragma_table_info());
     }
 }
 
@@ -151,8 +150,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for the `pragma_table_xinfo` eponymous virtual table.
      */
     inline auto make_pragma_table_xinfo_table() {
-        return make_virtual_table<table_xinfo>(internal::pragma_table_xinfo_module_tag::name(),
-                                               internal::using_pragma_table_xinfo());
+        return make_virtual_table(internal::using_pragma_table_xinfo());
     }
 }
 #endif

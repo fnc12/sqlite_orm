@@ -7171,8 +7171,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *
      *  The mapped object type is determined implicitly from the first column definition.
-     *  The optional `[[=orm_name("…")]]` annotation of the mapped object type supplies the table name
-     *  (otherwise the type's reflected identifier is used).
+     *  An eponymous virtual table is named after its module. Otherwise the optional `[[=orm_name("…")]]`
+     *  annotation of the mapped object type supplies the table name (otherwise the type's reflected identifier is used).
      *
      *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
      */
@@ -7180,9 +7180,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     auto make_virtual_table(internal::virtual_table_definition<M, Cs...> definition) {
         using namespace ::sqlite_orm::internal;
 
+        std::string name;
+        if constexpr (virtual_table_module_traits<M>::is_eponymous::value) {
+            name = M::name();
+        } else {
+            name = resolve_dbo_name<O>(extract_type_annotations<O>());
+        }
         // unqualified: module-specific factories (fts5) are found by argument-dependent lookup
-        return make_virtual_table<O>(std::string{resolve_dbo_name<O>(extract_type_annotations<O>())},
-                                     std::move(definition));
+        return make_virtual_table<O>(std::move(name), std::move(definition));
     }
 }
 #endif
@@ -18914,8 +18919,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for the `pragma_table_info` eponymous virtual table.
      */
     inline auto make_pragma_table_info_table() {
-        return make_virtual_table<table_info>(internal::pragma_table_info_module_tag::name(),
-                                              internal::using_pragma_table_info());
+        return make_virtual_table(internal::using_pragma_table_info());
     }
 }
 
@@ -18947,8 +18951,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for the `pragma_table_xinfo` eponymous virtual table.
      */
     inline auto make_pragma_table_xinfo_table() {
-        return make_virtual_table<table_xinfo>(internal::pragma_table_xinfo_module_tag::name(),
-                                               internal::using_pragma_table_xinfo());
+        return make_virtual_table(internal::using_pragma_table_xinfo());
     }
 }
 #endif

@@ -29,6 +29,7 @@
 * introspection functions: `sqlite_version()`, `sqlite_source_id()`, `sqlite_compileoption_used()`, `sqlite_compileoption_get()`, `sqlite_offset()`
 * `substring()` alias for `substr()` (3.34)
 * the `fts5vocab` virtual table
+* the remaining PRAGMA table-valued functions with rowsets (`index_list`, `index_info`/`index_xinfo`, `foreign_key_list`, `foreign_key_check`, `table_list`, `database_list`, `collation_list`, `function_list`, ...), C++26 reflection only: the module tag of a reflected eponymous table could be a generic `reflected_eponymous_module<O>`, its `name()` taken from a `static constexpr` copy of the row type's `orm_name` annotation, so that each pragma needs only its annotated row type; `table_info`/`table_xinfo` would then need their annotation conditionally, as their row types exist before C++26
 
 ## Schema synchronisation
 

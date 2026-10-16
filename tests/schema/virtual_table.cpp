@@ -333,6 +333,7 @@ TEST_CASE("pragma_table_info virtual table") {
     storage.sync_schema();
 
     SECTION("eponymous") {
+        REQUIRE(make_pragma_table_info_table().name == "pragma_table_info");
         REQUIRE_FALSE(storage.table_exists("pragma_table_info"));
     }
     SECTION("table-valued function") {
@@ -391,6 +392,7 @@ TEST_CASE("pragma_table_xinfo virtual table") {
     storage.sync_schema();
 
     SECTION("eponymous") {
+        REQUIRE(make_pragma_table_xinfo_table().name == "pragma_table_xinfo");
         REQUIRE_FALSE(storage.table_exists("pragma_table_xinfo"));
     }
     SECTION("table-valued function") {
