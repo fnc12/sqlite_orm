@@ -1,3 +1,4 @@
+#include <cstdint>  //  std::int32_t
 #include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
@@ -454,4 +455,91 @@ TEST_CASE("rtree virtual table schema") {
         REQUIRE(rows == std::vector<int64>{28269});
     }
 }
+#endif
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+namespace {
+    struct[[= "reflected_posts"_orm_name]] ReflectedPost {
+        std::string title;
+        std::string body;
+
+        using hidden = fts5::hidden_fields_of<ReflectedPost>;
+    };
+}
+
+TEST_CASE("reflection-based fts5 virtual table") {
+    auto virtualTable = make_virtual_table<ReflectedPost>(using_fts5(tokenize("porter ascii")));
+    using elements_type = decltype(virtualTable.elements);
+    STATIC_REQUIRE(internal::col_index_sequence_of<elements_type>::size() == 2);
+    STATIC_REQUIRE(internal::hidden_col_index_sequence_of<elements_type>::size() == 2);
+
+    SECTION("definition") {
+        REQUIRE(virtualTable.name == "reflected_posts");
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&ReflectedPost::title), "title"));
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&ReflectedPost::body), "body"));
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&fts5::hidden::any), "reflected_posts"));
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&fts5::hidden::rank), "rank"));
+    }
+    SECTION("storage") {
+        auto storage = make_storage("", std::move(virtualTable));
+        storage.sync_schema();
+        REQUIRE(storage.table_exists("reflected_posts"));
+
+        storage.insert(ReflectedPost{"Learn SQlite FTS5", "full-text search in SQLite using FTS5"});
+        storage.insert(ReflectedPost{"SQLite Tutorial", "Help you learn SQLite quickly"});
+
+        auto titles = storage.select(&ReflectedPost::title, where(match(ReflectedPost::hidden::any_field, "fts5")));
+        REQUIRE(titles == std::vector<std::string>{"Learn SQlite FTS5"});
+    }
+}
+#endif
+
+#ifdef SQLITE_ENABLE_RTREE
+namespace {
+    struct[[= "reflected_demo_index"_orm_name]] ReflectedDemoIndex {
+        [[= primary_key()]] int64 id;
+        float minX, maxX;
+        float minY, maxY;
+    };
+
+    struct ReflectedDemoIndexI32 {
+        int64 id;
+        std::int32_t minX, maxX;
+    };
+}
+
+TEST_CASE("reflection-based rtree virtual table") {
+    SECTION("rtree") {
+        auto virtualTable = make_virtual_table<ReflectedDemoIndex>(using_rtree());
+        using elements_type = decltype(virtualTable.elements);
+        STATIC_REQUIRE(internal::col_index_sequence_of<elements_type>::size() == 5);
+        REQUIRE(virtualTable.name == "reflected_demo_index");
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&ReflectedDemoIndex::id), "id"));
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&ReflectedDemoIndex::maxY), "maxY"));
+
+        auto storage = make_storage("", std::move(virtualTable));
+        storage.sync_schema();
+        REQUIRE(storage.table_exists("reflected_demo_index"));
+
+        storage.insert(into<ReflectedDemoIndex>(),
+                       columns(&ReflectedDemoIndex::id,
+                               &ReflectedDemoIndex::minX,
+                               &ReflectedDemoIndex::maxX,
+                               &ReflectedDemoIndex::minY,
+                               &ReflectedDemoIndex::maxY),
+                       values(std::tuple(28269, -80.851471, -80.735718, 35.272560, 35.407925)));
+        auto rows = storage.select(&ReflectedDemoIndex::id, where(c(&ReflectedDemoIndex::id) == 28269));
+        REQUIRE(rows == std::vector<int64>{28269});
+    }
+    SECTION("rtree_i32") {
+        auto virtualTable = make_virtual_table<ReflectedDemoIndexI32>(using_rtree_i32());
+        REQUIRE(virtualTable.name == "ReflectedDemoIndexI32");
+
+        auto storage = make_storage("", std::move(virtualTable));
+        storage.sync_schema();
+        REQUIRE(storage.table_exists("ReflectedDemoIndexI32"));
+    }
+}
+#endif
 #endif

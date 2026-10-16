@@ -1814,10 +1814,101 @@ namespace sqlite_orm::internal {
 #include <string>  //  std::string
 #include <optional>  //  std::optional
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_member_object_pointer, std::is_signed
-#include <utility>  //  std::move
+#include <utility>  //  std::move, std::index_sequence, std::make_index_sequence
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#include <meta>  //  std::meta::info, std::meta::identifier_of
+#endif
 #endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../functional/meta_util.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#include <array>  //  std::array
+#include <meta>  //  std::define_static_array, std::meta::access_context, std::meta::nonstatic_data_members_of, std::meta::identifier_of, std::meta::annotations_of
+#include <tuple>  //  std::tuple
+#include <utility>  //  std::index_sequence, std::make_index_sequence
+#endif
+#endif
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace sqlite_orm::internal {
+    /**
+     *  Reflects the non-static data members of `T` and its base classes
+     *  and returns them as a fixed-size span of `std::meta::info` reflections.
+     */
+    template<class T>
+    consteval auto extract_members() {
+        constexpr auto ctx = std::meta::access_context::current();
+
+        constexpr auto collect = []<class U>(this const auto& self) -> std::vector<std::meta::info> {
+            std::vector<std::meta::info> result;
+
+            // Recurse into direct base classes first (preserves layout order)
+            template for (constexpr std::meta::info base: std::define_static_array(bases_of(^^U, ctx))) {
+                using base_type = typename[:type_of(base):];
+                result.append_range(self.template operator()<base_type>());
+            }
+
+            // Then this class's own non-static data members
+            result.append_range(nonstatic_data_members_of(^^U, ctx));
+
+            return result;
+        };
+
+        return std::define_static_array(collect.template operator()<T>());
+    }
+
+    /**
+     *  Returns the identifier of `T`.
+     */
+    template<class T>
+    consteval auto extract_type_identifier() {
+        return std::meta::identifier_of(^^T);
+    }
+
+    /**
+     *  Splices a non-static data member reflection into a member-pointer expression.
+     *  Encapsulated here so the splice operator does not leak into consumer headers.
+     */
+    template<std::meta::info member>
+    consteval auto splice_member_pointer() {
+        return &[:member:];
+    }
+
+    /**
+     *  Splices a reflection's annotations into a tuple of values. The reflection may be
+     *  a type or a non-static data member.
+     *  Encapsulated here so the splice operator does not leak into consumer headers.
+     *
+     *  Two P3394 details inform this implementation:
+     *  - Annotation reflections returned by `annotations_of` are not directly spliceable;
+     *    they must first be routed through `std::meta::constant_of`, which returns a
+     *    splice-able constant reflection.
+     *  - `std::meta::annotations_of` returns a `std::vector<std::meta::info>`, whose heap
+     *    allocation is transient under C++20 constexpr rules and cannot be bound to a
+     *    `constexpr` variable. The size and per-index lookups therefore re-call
+     *    `annotations_of` inline so each transient vector dies within its own constant
+     *    expression.
+     */
+    template<std::meta::info refl>
+    consteval auto splice_annotations() {
+        return []<size_t... I>(std::index_sequence<I...>) consteval {
+            return std::tuple{[:std::meta::constant_of(std::meta::annotations_of(refl)[I]):]...};
+        }(std::make_index_sequence<std::meta::annotations_of(refl).size()>{});
+    }
+
+    /**
+     *  Returns the class-scope annotations of `T` as a tuple.
+     */
+    template<class T>
+    consteval auto extract_type_annotations() {
+        return splice_annotations<^^T>();
+    }
+}
+#endif
 
 // #include "../functional/type_traits.h"
 
@@ -6029,6 +6120,33 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace sqlite_orm::internal {
+    /**
+     *  The columns of the non-static data members of `O`: named after the members' identifiers,
+     *  with the members' annotations as column constraints.
+     */
+    template<class O>
+    auto make_reflected_columns() {
+        static /*gcc*/ constexpr auto members = extract_members<O>();
+
+        return []<size_t... I>(std::index_sequence<I...>) static {
+            return std::tuple {
+                []<std::meta::info member>() static {
+                    return std::apply(
+                        [](auto&&... columnConstraints) static {
+                            return sqlite_orm::make_column(std::string(std::meta::identifier_of(member)),
+                                                           splice_member_pointer<member>(),
+                                                           std::move(columnConstraints)...);
+                        },
+                        splice_annotations<member>());
+                }.template operator()<members[I]>()...
+            };
+        }(std::make_index_sequence<members.size()>{});
+    }
+}
+#endif
+
 // #include "schema/table.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -6037,100 +6155,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_element, std::get, std::apply, std::tuple_cat
 #include <utility>  //  std::forward, std::move
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-#include <meta>  // std::meta::info, std::meta::identifier_of
-#endif
 #endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../functional/meta_util.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-#include <array>  //  std::array
-#include <meta>  //  std::define_static_array, std::meta::access_context, std::meta::nonstatic_data_members_of, std::meta::identifier_of, std::meta::annotations_of
-#include <tuple>  //  std::tuple
-#include <utility>  //  std::index_sequence, std::make_index_sequence
-#endif
-#endif
-
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-namespace sqlite_orm::internal {
-    /**
-     *  Reflects the non-static data members of `T` and its base classes
-     *  and returns them as a fixed-size span of `std::meta::info` reflections.
-     */
-    template<class T>
-    consteval auto extract_members() {
-        constexpr auto ctx = std::meta::access_context::current();
-
-        constexpr auto collect = []<class U>(this const auto& self) -> std::vector<std::meta::info> {
-            std::vector<std::meta::info> result;
-
-            // Recurse into direct base classes first (preserves layout order)
-            template for (constexpr std::meta::info base: std::define_static_array(bases_of(^^U, ctx))) {
-                using base_type = typename[:type_of(base):];
-                result.append_range(self.template operator()<base_type>());
-            }
-
-            // Then this class's own non-static data members
-            result.append_range(nonstatic_data_members_of(^^U, ctx));
-
-            return result;
-        };
-
-        return std::define_static_array(collect.template operator()<T>());
-    }
-
-    /**
-     *  Returns the identifier of `T`.
-     */
-    template<class T>
-    consteval auto extract_type_identifier() {
-        return std::meta::identifier_of(^^T);
-    }
-
-    /**
-     *  Splices a non-static data member reflection into a member-pointer expression.
-     *  Encapsulated here so the splice operator does not leak into consumer headers.
-     */
-    template<std::meta::info member>
-    consteval auto splice_member_pointer() {
-        return &[:member:];
-    }
-
-    /**
-     *  Splices a reflection's annotations into a tuple of values. The reflection may be
-     *  a type or a non-static data member.
-     *  Encapsulated here so the splice operator does not leak into consumer headers.
-     *
-     *  Two P3394 details inform this implementation:
-     *  - Annotation reflections returned by `annotations_of` are not directly spliceable;
-     *    they must first be routed through `std::meta::constant_of`, which returns a
-     *    splice-able constant reflection.
-     *  - `std::meta::annotations_of` returns a `std::vector<std::meta::info>`, whose heap
-     *    allocation is transient under C++20 constexpr rules and cannot be bound to a
-     *    `constexpr` variable. The size and per-index lookups therefore re-call
-     *    `annotations_of` inline so each transient vector dies within its own constant
-     *    expression.
-     */
-    template<std::meta::info refl>
-    consteval auto splice_annotations() {
-        return []<size_t... I>(std::index_sequence<I...>) consteval {
-            return std::tuple{[:std::meta::constant_of(std::meta::annotations_of(refl)[I]):]...};
-        }(std::make_index_sequence<std::meta::annotations_of(refl).size()>{});
-    }
-
-    /**
-     *  Returns the class-scope annotations of `T` as a tuple.
-     */
-    template<class T>
-    consteval auto extract_type_annotations() {
-        return splice_annotations<^^T>();
-    }
-}
-#endif
 
 // #include "../functional/mpl.h"
 
@@ -6796,21 +6825,7 @@ namespace sqlite_orm::internal {
         auto classAnnotations = extract_type_annotations<O>();
         std::string tableName{resolve_dbo_name<O>(classAnnotations)};
         auto annotationConstraints = filter_out_dbo_name(std::move(classAnnotations));
-        static /*gcc*/ constexpr auto members = extract_members<O>();
-
-        auto columns = []<size_t... I>(std::index_sequence<I...>) static {
-            return std::tuple {
-                []<std::meta::info member>() static {
-                    return std::apply(
-                        [](auto&&... columnConstraints) static {
-                            return sqlite_orm::make_column(std::string(std::meta::identifier_of(member)),
-                                                           splice_member_pointer<member>(),
-                                                           std::move(columnConstraints)...);
-                        },
-                        splice_annotations<member>());
-                }.template operator()<members[I]>()...
-            };
-        }(std::make_index_sequence<members.size()>{});
+        auto columns = make_reflected_columns<O>();
 
         return [&tableName]<class... Es>(std::tuple<Es...>&& definition) {
             validate_base_table_definition<Es...>();
@@ -6926,6 +6941,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 // #include "table_base.h"
+
+// #include "column.h"
+//  make_reflected_columns
+// #include "dbo_name.h"
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
@@ -7078,6 +7097,61 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #endif
 }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace sqlite_orm::internal {
+    template<class O, class M, class... Cs>
+    auto make_reflected_virtual_table(virtual_table_definition<M, Cs...> moduleDefinition) {
+        auto classAnnotations = extract_type_annotations<O>();
+        std::string tableName{resolve_dbo_name<O>(classAnnotations)};
+
+        return [&tableName]<class... Es>(std::tuple<Es...>&& elements) {
+            if constexpr (requires { M::template validate_definition<Es...>(); }) {
+                M::template validate_definition<Es...>();
+            }
+            // unqualified: module-specific factories (fts5) are found by argument-dependent lookup
+            return make_virtual_table<O>(std::move(tableName),
+                                         virtual_table_definition<M, Es...>{{std::move(elements)}});
+        }(std::tuple_cat(make_reflected_columns<O>(),
+                         filter_out_dbo_name(std::move(classAnnotations)),
+                         std::move(moduleDefinition.elements)));
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Factory function for a virtual table.
+     *
+     *  The mapped object type is explicitly specified, columns and column constraints are deferred from
+     *  the object type's non-static data members and their annotations, and precede the elements of the
+     *  module definition, which must not contain columns. The optional `[[=orm_name("…")]]` annotation
+     *  overrides the table name (otherwise the type's reflected identifier is used).
+     *
+     *  Example: `make_virtual_table<Post>(using_fts5(tokenize("porter")))`
+     */
+    template<class O, class M, class... Cs>
+        requires (internal::col_index_sequence_of<std::tuple<Cs...>>::size() == 0)
+    auto make_virtual_table(internal::virtual_table_definition<M, Cs...> definition) {
+        return internal::make_reflected_virtual_table<O>(std::move(definition));
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Factory function for a virtual table.
+     *
+     *  The mapped object type is explicitly specified, columns and column constraints are deferred from
+     *  the object type's non-static data members and their annotations, and precede the elements of the
+     *  module definition, which must not contain columns. The optional `[[=orm_name("…")]]` annotation
+     *  overrides the table name (otherwise the type's reflected identifier is used).
+     */
+    template<orm_table_reference auto table, class M, class... Cs>
+        requires (internal::col_index_sequence_of<std::tuple<Cs...>>::size() == 0)
+    auto make_virtual_table(internal::virtual_table_definition<M, Cs...> definition) {
+        return internal::make_reflected_virtual_table<internal::auto_decay_table_ref_t<table>>(std::move(definition));
+    }
+#endif
+}
+#endif
 
 // #include "schema/view.h"
 
@@ -34349,6 +34423,15 @@ namespace sqlite_orm::internal {
         static constexpr orm_gsl::czstring name() {
             return "fts5";
         }
+
+        /**
+         *  Validates the elements of a complete definition, including the hidden columns.
+         */
+        template<class... Cs>
+        static constexpr void validate_definition() {
+            static_assert(((is_fts5_table_element_or_constraint<Cs>::value || is_hidden_column<Cs>::value) && ...),
+                          "Incorrect table elements or constraints");
+        }
     };
 
     template<class... Cs>
@@ -34844,24 +34927,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ENABLE_RTREE
 namespace sqlite_orm::internal {
-    struct rtree_module_tag {
-        // simplify conceptual/meta programming
-        using module_type = rtree_module_tag;
-
-        static constexpr orm_gsl::czstring name() {
-            return "rtree";
-        }
-    };
-
-    struct rtree_i32_module_tag {
-        // simplify conceptual/meta programming
-        using module_type = rtree_i32_module_tag;
-
-        static constexpr orm_gsl::czstring name() {
-            return "rtree_i32";
-        }
-    };
-
     template<class ExpectedValueType, class... Cs>
     constexpr void validate_rtree_definition() {
         using elements_type = std::tuple<Cs...>;
@@ -34883,24 +34948,60 @@ namespace sqlite_orm::internal {
         static_assert(std::is_same<field_type_t<std::tuple_element_t<0, elements_type>>, int64>::value,
                       "The type of the first column must be a 64-bit integer");
     }
+
+    struct rtree_module_tag {
+        // simplify conceptual/meta programming
+        using module_type = rtree_module_tag;
+
+        static constexpr orm_gsl::czstring name() {
+            return "rtree";
+        }
+
+        template<class... Cs>
+        static constexpr void validate_definition() {
+            validate_rtree_definition<float, Cs...>();
+        }
+    };
+
+    struct rtree_i32_module_tag {
+        // simplify conceptual/meta programming
+        using module_type = rtree_i32_module_tag;
+
+        static constexpr orm_gsl::czstring name() {
+            return "rtree_i32";
+        }
+
+        template<class... Cs>
+        static constexpr void validate_definition() {
+            validate_rtree_definition<std::int32_t, Cs...>();
+        }
+    };
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a RTREE virtual table definition.
+     *
+     *  Without elements, the definition takes the columns reflected by `make_virtual_table<O>(definition)`.
      */
     template<class... Cs>
     internal::virtual_table_definition<internal::rtree_module_tag, Cs...> using_rtree(Cs... definition) {
-        internal::validate_rtree_definition<float, Cs...>();
+        if constexpr (sizeof...(Cs) != 0) {
+            internal::rtree_module_tag::validate_definition<Cs...>();
+        }
 
         return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
     /**
      *  Factory function for a RTREE_I32 virtual table definition.
+     *
+     *  Without elements, the definition takes the columns reflected by `make_virtual_table<O>(definition)`.
      */
     template<class... Cs>
     internal::virtual_table_definition<internal::rtree_i32_module_tag, Cs...> using_rtree_i32(Cs... definition) {
-        internal::validate_rtree_definition<std::int32_t, Cs...>();
+        if constexpr (sizeof...(Cs) != 0) {
+            internal::rtree_i32_module_tag::validate_definition<Cs...>();
+        }
 
         return {std::make_tuple(std::forward<Cs>(definition)...)};
     }

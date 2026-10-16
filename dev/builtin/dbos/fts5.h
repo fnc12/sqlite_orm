@@ -24,6 +24,15 @@ namespace sqlite_orm::internal {
         static constexpr orm_gsl::czstring name() {
             return "fts5";
         }
+
+        /**
+         *  Validates the elements of a complete definition, including the hidden columns.
+         */
+        template<class... Cs>
+        static constexpr void validate_definition() {
+            static_assert(((is_fts5_table_element_or_constraint<Cs>::value || is_hidden_column<Cs>::value) && ...),
+                          "Incorrect table elements or constraints");
+        }
     };
 
     template<class... Cs>

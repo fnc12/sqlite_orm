@@ -29,7 +29,6 @@
 * introspection functions: `sqlite_version()`, `sqlite_source_id()`, `sqlite_compileoption_used()`, `sqlite_compileoption_get()`, `sqlite_offset()`
 * `substring()` alias for `substr()` (3.34)
 * the `fts5vocab` virtual table
-* C++26 reflection for virtual tables: `make_virtual_table<Post>("posts", using_fts5())` and `using_rtree()` mapping the columns from the reflected data members, as `make_reflected_table` does for ordinary tables; fts5's hidden columns `any` and `rank` from `using hidden = fts5::hidden_fields_of<Post>;`
 
 ## Schema synchronisation
 
