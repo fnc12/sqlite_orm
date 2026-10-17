@@ -96,9 +96,11 @@ from anywhere else.
 ### Before every commit
 
 Run [`scripts/pre-commit.sh`](scripts/pre-commit.sh), on Linux, macOS or WSL. It regenerates
-the amalgamation, formats the sources with clang-format 20 (the version CI lints with), and
-warns about changed files containing carriage returns. Every commit carries its own regenerated
-amalgamation, so that each one is consistent by itself. Files use LF line endings.
+the amalgamation, formats the sources with clang-format 20 (the version CI lints with), warns
+about changed files containing carriage returns, and checks that the paths named in this file and
+in `docs/internals/` exist. Every commit carries its own regenerated amalgamation, so that each
+one is consistent by itself. Files use LF line endings, enforced by `.gitattributes`. When
+moving or renaming a file, update the documents naming it.
 
 ### Building and testing
 

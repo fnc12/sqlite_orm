@@ -1,0 +1,12 @@
+name: documentation paths
+
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: check the paths named in the agent guidance and the internals documentation
+      run: bash scripts/check-doc-paths.sh

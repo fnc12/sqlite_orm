@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Prepares the working tree for a commit: regenerates the amalgamation, formats the sources with
-# clang-format 20 (the version CI lints with), and warns about changed files containing carriage returns.
+# clang-format 20 (the version CI lints with), warns about changed files containing carriage returns, and checks
+# the paths named in the documentation (scripts/check-doc-paths.sh).
 #
 # Runs on Linux, macOS and WSL, from anywhere inside the repository.
 # Environment: CLANG_FORMAT (default clang-format-20), PYTHON (default python3).
@@ -36,5 +37,8 @@ if ((${#crlf_files[@]})); then
     echo "warning: changed files with carriage returns, the repository uses LF line endings:" >&2
     printf '  %s\n' "${crlf_files[@]}" >&2
 fi
+
+echo "Checking the paths named in the documentation"
+scripts/check-doc-paths.sh
 
 git status --short
