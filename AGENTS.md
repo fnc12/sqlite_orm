@@ -140,3 +140,7 @@ ctest --test-dir build                         # all tests
 - [`docs/internals/review-checklist.md`](docs/internals/review-checklist.md) - what a change
   is reviewed against.
 - [`docs/thread-safety.md`](docs/thread-safety.md) - the threading guarantees of a storage.
+- `.claude/skills/` - step-by-step recipes in the Agent Skills format, for
+  [adding a DSL node](.claude/skills/add-dsl-node/SKILL.md) and
+  [adding a built-in SQL function](.claude/skills/add-builtin-function/SKILL.md).
+- `.claude/agents/sqlite-orm-reviewer.md` - a reviewer agent working through the review checklist.

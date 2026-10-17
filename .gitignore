@@ -5,6 +5,7 @@ cmake-build-debug/
 
 .claude/*
 !.claude/agents/
+!.claude/skills/
 .idea/
 
 /compile
