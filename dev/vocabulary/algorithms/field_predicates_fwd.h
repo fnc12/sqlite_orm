@@ -1,6 +1,12 @@
 #pragma once
 
 /** @file Declarations of closed predicates on raw C++ types, checking whether they qualify for an SQL-level role.
+ *
+ *  Each is defined where what it reads is: a predicate derived from the type itself in `field_predicates.h`;
+ *  a predicate testing a customization point next to that point (`is_bindable_v` in `statement_binder.h`,
+ *  `is_printable_v` in `field_printer.h`, `is_integer_mapped_v` in `type_printer.h`); the pointer-passing
+ *  predicates with its values in `marshaling/pointer_value.h`, which the top-level headers include ahead of
+ *  the storage, as the customization points are instantiated for concrete types while the headers are processed.
  */
 
 #include "../../functional/cxx_type_traits_polyfill.h"

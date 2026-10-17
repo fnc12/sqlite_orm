@@ -1,30 +1,15 @@
 # The DSL vocabulary layer
 
-This document describes how sqlite_orm's internal headers are layered, and — more
-importantly — **where new traits, predicates and algorithms belong**. It is written for
-contributors and for AI coding tools working in this repository.
-
-It is normative: when you add a trait or an algorithm, the placement test in
+How sqlite_orm's internal headers are layered, and **where new traits, predicates and
+algorithms belong**. Normative: the placement test in
 [Deciding where something goes](#deciding-where-something-goes) is the rule to apply.
 
 ## Why this layer exists
 
-sqlite_orm models SQL as a compile-time DSL. SQL keywords and constructs are represented
-as individually named C++ structs ("nodes"), assembled into an AST.
-
-A large amount of internal logic needs to reason *about* those nodes — what SQL role a
-node plays, what it carries, whether it can be used a certain way — without depending on
-the concrete struct identity of every node individually.
-
-The vocabulary layer is the answer to that. It is a set of traits and composed algorithms
-that let the rest of the library program against **classification and capability** ("is
-this a select expression", "is this a column") rather than against concrete types. This:
-
-- decouples consumers from node identity,
-- centralizes classification logic that was previously ad hoc (`is_same_v` chains,
-  scattered SFINAE),
-- makes the DSL's own conceptual structure visible in the codebase, rather than implicit
-  in behavior.
+sqlite_orm models SQL as a compile-time DSL of individually named node structs. The
+vocabulary layer lets the rest of the library program against **classification and
+capability** ("is this a select expression", "is this a column") instead of concrete node
+types, so consumers do not depend on node identity and classification is written once.
 
 ## The tiers
 
@@ -39,102 +24,83 @@ From the bottom up:
 
 ### `member_traits/` — one tier below the DSL
 
-`member_traits/member_traits.h` holds pointer-to-member mechanics: extracting a member's
-field type (getter/setter/object), its enclosing class type, casting a pointer-to-member
-from base to derived. Fully closed, no open specialization points.
-
-`member_traits/field_of.h` holds `is_field_of_v` / `is_field_of` (an *open* trait: is a
-pointer-to-member of `Base` usable as a pointer-to-member of `Derived`; does a
-`column_pointer` match a target type), plus `compare_fields()`.
-
-`is_field_of_v` is open, yet deliberately lives outside `vocabulary/`. It is
-pointer-to-member computation — the same subject matter as `member_traits.h` — not DSL
-classification. It is also foundational and cross-cutting (used by concepts,
-`static_assert`s and overload resolution rather than by any one domain), and must be
-eager because concepts reference it directly.
-
-`compare_fields()` is an ordinary function built on top of `is_field_of`; it is neither a
-trait nor a predicate, and stays alongside it.
+`member_traits.h` holds closed pointer-to-member mechanics: a member's field type
+(getter/setter/object), its enclosing class, casting from base to derived.
+`field_of.h` holds `is_field_of_v` (is a pointer-to-member of `Base` usable as one of
+`Derived`; does a `column_pointer` match a target type) and `compare_fields()`.
+`is_field_of_v` is open, yet stays outside `vocabulary/`: it is pointer-to-member
+computation, not DSL classification, and must be eager because concepts reference it.
 
 ### `vocabulary/` — the layer proper
 
 ```
 vocabulary/
-    node_fwd.h              bare forward declarations needed by several vocabulary files
-                            without their full definitions (e.g. column_pointer,
-                            primary_key_t, indexed_column_t). Real definitions stay in
-                            schema/ and arrive via node_definitions.h.
-
-    traits/                 "What is this?" — see below
-    projections/            "What does it carry?" — see below
-    algorithms/             "What follows from that?" — see below
-
-    node_traits.h           Umbrella, declaration-only: traits/*_fwd.h +
-                            projections/*.h. Never includes a definition file,
-                            save traits/recordset_concepts.h - concepts cannot be
-                            forward-declared.
-                            Safe for broad inclusion. There is no separate projections
-                            umbrella: traits and projections are one tier of question,
-                            and a consumer of one is overwhelmingly a consumer of both.
-
-    node_algorithms.h       Umbrella, declaration-only: ddl_predicates.h,
-                            clause_predicates.h, expression_element_predicates.h,
-                            operand_predicates.h, index_filters.h, accessors.h,
-                            field_accessors.h, argument_placeholders.h,
-                            field_predicates_fwd.h, field_predicates_concepts.h,
-                            recordset_predicates.h.
-                            Deliberately does NOT include field_predicates.h.
+    node_fwd.h          bare forward declarations several vocabulary files need without the
+                        full definitions (column_pointer, primary_key_t, ...); the definitions
+                        arrive via node_definitions.h
+    traits/             "What is this?"
+    projections/        "What does it carry?"
+    algorithms/         "What follows from that?"
+    node_traits.h       umbrella, declaration-only: traits/*_fwd.h, projections/*.h (one tier of
+                        question, so no umbrella of their own), and traits/recordset_concepts.h
+                        (concepts cannot be forward-declared)
+    node_algorithms.h   umbrella, declaration-only: the algorithms, except field_predicates.h
 ```
 
-### Including the layer
-
-Consumers include the umbrellas — `node_traits.h`, `node_algorithms.h` — never a
-`traits/`, `projections/` or `algorithms/` file directly. The umbrellas are the layer's
-public surface; the files behind them are an implementation arrangement that is free to
-change. The only files included by name from outside the layer are the ones that exist
-*for* that purpose: a `traits/*_fwd.h` (or `algorithms/field_predicates_fwd.h`) from a
-node or customization-point header that specializes it, and the definitions manifest
-`node_algorithm_definitions.h`.
+Consumers include the umbrellas, never a file behind them; that arrangement is free to
+change. Included by name from outside are only the files existing for that purpose: a
+`traits/*_fwd.h` (or `algorithms/field_predicates_fwd.h`) from a header specializing it, and
+the manifest `node_algorithm_definitions.h`.
 
 ## The core distinction: classification vs. computation
 
-Every trait and algorithm here falls into exactly one of two categories, and almost every
-placement question reduces to identifying which.
+**Traits (`vocabulary/traits/`)** answer *"what is this"* about a **single** node or type: a
+primary template, `false` or empty by default, specialized **at the definition site of what
+it classifies**.
 
-**Vocabulary traits (`vocabulary/traits/`)** answer *"what is this"*, or *"what does this
-carry"*, about a **single** node or type. Either a primary template that is `false`/empty
-by default and specialized **at the definition site of the thing being classified** (an
-open, per-node customization point), or a closed accessor that extracts something
-directly with no specialization needed.
+**Projections (`vocabulary/projections/`)** answer *"what does this carry"*: closed
+accessors extracting a type from a single node.
 
-**Algorithms (`vocabulary/algorithms/`)** answer *"what follows from that"*. Closed,
-composed logic that **consumes** vocabulary — several traits and projections at once — to
-produce a compound answer: a bool, an index sequence, a reference to a sub-object, a type
-tuple. Never itself specialized; one complete definition.
+**Algorithms (`vocabulary/algorithms/`)** answer *"what follows from that"*: closed logic
+composing several traits and projections into a compound answer — a bool, an index sequence,
+a sub-object, a type tuple. One complete definition, never specialized.
 
-A third category is easily confused with these and sits **outside `vocabulary/`
-entirely**: algorithms that search or relate nodes *across a collection*. These do not
-classify a node you already have in hand; they locate or relate nodes across the whole
-schema. See [Schema-level algorithms](#schema-level-algorithms).
+Algorithms that search or relate nodes *across a collection* are **not vocabulary**; see
+[Schema-level algorithms](#schema-level-algorithms).
 
 ## Deciding where something goes
 
 > **Is it specialized against something concrete** — a node struct or a raw type?
 > → `vocabulary/traits/`
 >
-> **Is it composed from other vocabulary, but closed and single-node-scoped** — you start
-> from "I already have a node, tell me something about it"?
+> **Is it composed from other vocabulary, but closed and single-node-scoped** — "I already
+> have a node, tell me something about it"?
 > → `vocabulary/algorithms/`
 >
-> **Does it search or traverse across a collection** to locate or relate nodes — you start
-> from "search a collection to find/relate nodes"?
-> → **not vocabulary.** `dev/schema/algorithms/`, likely feeding its result into a
-> vocabulary algorithm.
+> **Does it search or traverse across a collection** to locate or relate nodes?
+> → **not vocabulary.** `dev/schema/algorithms/`, possibly feeding a vocabulary algorithm.
+
+- **Complexity never determines the tier.** `is_raw_dml_expression_v` composes grammar
+  traits and a projection and is still an open semantic trait; `alias_holder_type_or_none_t`
+  uses the detection idiom and is still a projection. The test is whether classification
+  traits are composed into a judgment.
+- **Openness is about who writes specializations**, not how complex they are; see
+  [Open vs. closed](#open-vs-closed).
+
+Not every `is_*_v` belongs in the layer:
+
+- **Language- or binding-level mechanics** (`is_stateless_deleter_v`, `is_bindable_v`,
+  `is_printable_v`, `is_integral_fp_c_v`) stay where they are, or one tier below.
+- **Definition-time mechanics over something that never becomes a node** stay with their
+  consumer, e.g. `is_dbo_name_literal_v` in `schema/dbo_name.h`.
+- **Closed predicates naming concrete nodes for a single consumer**
+  (`is_builtin_numeric_column_alias_v`) stay next to those nodes.
+- **Admissibility composites** over existing vocabulary are algorithms, not traits.
 
 ### Which algorithms file — the level of the construct
 
-Once the placement test says `vocabulary/algorithms/`, the file follows from the grammar level
-of the construct whose membership is in question:
+A membership check is placed by the grammar level of the construct it is a member of, not by
+the grammar family it is about:
 
 | Level of the construct | File | Question |
 |---|---|---|
@@ -142,307 +108,155 @@ of the construct whose membership is in question:
 | Statement | `clause_predicates.h` | Is this an admissible clause of a statement, and in what order? |
 | Expression | `expression_element_predicates.h` | Is this an admissible element of a compound expression construct? |
 
-That rule is what keeps a new membership check from needing a new file: it is placed by the level
-of the construct it is a member of, not by the grammar family the check happens to be about. A
-window-definition element check belongs next to the frame boundary checks for the same reason a
-new table constraint check belongs next to the column constraint checks.
+So a window-definition element check sits next to the frame boundary checks, as a new table
+constraint check sits next to the column constraint checks. Whether a clause or element holds
+an expression rather than another clause is enforced by the factories, not by these files.
 
-`operand_predicates.h` sits on an orthogonal axis — not which member a node may be, but whether a
-node may appear as a *leaf operand* of an expression at all. `index_filters.h` and `accessors.h`
-are mechanisms rather than membership questions, and are chosen by what they do.
+The other algorithms files are chosen by what they compute:
 
-Two rules that repeatedly prevent mistakes:
-
-- **Complexity never determines tier.** How many other traits a condition composes, or how
-  involved its SFINAE is, has no bearing on where it belongs. `is_raw_dml_expression_v`
-  internally composes other grammar traits and the `expression_type_t` projection, and is
-  still an open semantic trait. `alias_holder_type_or_none_t` uses the detected idiom with
-  a fallback, and is still a plain projection. The test is *whether it composes
-  classification traits into a judgment*, not whether the logic is hard.
-- **Openness is about who writes specializations**, not about how complex they are. See
-  [Open vs. closed](#open-vs-closed).
-
-Not every `is_*_v` belongs in the layer, and a missing declaration in a `traits/*_fwd.h` file
-is no reason by itself to put one there:
-
-- **Language- or binding-level mechanics** (`is_stateless_deleter_v`,
-  `is_unusable_for_xdestroy_v`, `is_bindable_v`, `is_printable_v`, `is_integral_fp_c_v`)
-  belong where they are, or one tier below.
-- **Definition-time mechanics over something that never becomes a node** stay with the code
-  that consumes them. `is_dbo_name_literal_v` (`schema/dbo_name.h`) recognizes the
-  `_orm_name` reflection annotation, which is read out and filtered away while a table or
-  view definition is built; no serializer or tree walker ever sees it.
-- **Closed predicates naming concrete nodes for a single consumer** -
-  `is_builtin_numeric_column_alias_v` - stay next to the nodes they name.
-- **Admissibility composites** over existing vocabulary are algorithms, not traits: the
-  element-or-constraint checks of the base, FTS5 and RTREE tables live together in
-  `algorithms/ddl_predicates.h`, per the level table above.
+| File | Holds |
+|---|---|
+| `operand_predicates.h` | Whether a type may be an operand of a named expression factory (`are_valid_operands`). |
+| `index_filters.h` | Index sequences of the matching positions in a tuple of nodes — table elements or a flattened expression — not filtered tuples. |
+| `accessors.h` | Uniform access to a node's relevant sub-part across dissimilar grammar families (`access_main_select`); the payoff of the semantic traits. Also `mapped_type_of_t`, the mapped object a record set stands for. |
+| `field_accessors.h` | The same, keyed on a raw C++ type: the object a holder type holds (`held_object_t`). |
+| `column_field_types.h` | Type tuples over the columns of a single table definition. |
+| `argument_placeholders.h` | The return type placeholders of the built-in functions and their structural substitution. |
+| `field_predicates_fwd.h` | Declarations of the field-level predicates; their definitions are spread as described there. |
+| `field_predicates.h` | Definitions of the derived field predicates, reached only through the manifest. |
+| `field_predicates_concepts.h` | The hidden-column concepts with their C++17 fallback. |
+| `recordset_predicates.h` | The concepts whether a node may occupy a record set slot, composing the single-node concepts of `traits/recordset_concepts.h` across axes. |
 
 ## The trait axes
-
-Four axes are keyed on a DSL node; one is keyed on a raw C++ type.
 
 | Axis | File | Keyed on | Question |
 |---|---|---|---|
 | **Grammar** | `traits/grammar_traits_fwd.h` | a DSL node | What SQL grammar production is this a member of? |
-| **Semantic** | `traits/semantic_traits_fwd.h` | a DSL node | What cross-cutting role does this play, across *dissimilar* grammar families? |
+| **Semantic** | `traits/semantic_traits_fwd.h` | a DSL node | What role does this play across *dissimilar* grammar families? |
 | **Structural** | `traits/structural_traits_fwd.h` | a DSL node | Is this a DSL-tree-only node with no SQL grammar counterpart? |
 | **Operand** | `traits/operand_traits_fwd.h` | a DSL node | Can this node appear as an operand in an expression context? |
-| **Field** | `algorithms/field_predicates_fwd.h` | a raw C++ type | Does this C++ type qualify for a SQL-level role — bindable, printable, rowid-alias capable, mapped to INTEGER, a text value, a value of the pointer-passing interface? |
+| **Field** | `algorithms/field_predicates_fwd.h` | a raw C++ type | Does this C++ type qualify for an SQL-level role (bindable, printable, mapped to INTEGER, ...)? |
 
-All four node axes are **open**: the primary template is declared in the `_fwd.h` file, and
-each node specializes it **in the node's own header**.
+The four node axes are **open**: the primary template is declared in the `_fwd.h` file, and
+each node specializes it **in its own header**. `traits/recordset_concepts.h` holds the
+public concepts that are the faces of single grammar or structural traits (`orm_alias` …
+`orm_cte_moniker`, `orm_table_reference`, `orm_table_valued_expression`); see
+[Concepts](#concepts-a-hard-constraint-on-splitting).
 
-`traits/recordset_concepts.h` is the one definition file among them: the public concepts classifying a single
-node referring to a record set or one of its columns — the alias concepts `orm_alias` … `orm_cte_moniker`,
-`orm_table_reference` and `orm_table_valued_expression`. Each is the public face of one grammar or structural
-trait; since concepts cannot be forward-declared, they are defined here and reach consumers through
-`node_traits.h`. See [Concepts](#concepts-a-hard-constraint-on-splitting).
-
-### Grammar
-
-Classifier/leaf traits plus structural grouping by real SQL grammar production:
-compound-statement, DML-statement, CTE-binding, function-call, alias, and so on —
-`is_column`, `is_base_table`, `is_foreign_key`, `is_compound_operator`,
-`is_builtin_function_call`, `is_app_function_call`, `is_binary_condition`, and many more.
-
-### Semantic
-
-Cross-cutting role or capability that groups nodes **not sharing a grammar family**.
-`is_select_expression_v` covers both `WITH` and `SELECT`, so a main select can be
-extracted from either. `is_raw_dml_expression_v` groups raw DML structs and with-wrapped
-DML together.
-
-Distinguishing grammar from semantic in practice: ask whether the nodes being grouped
-share an actual SQL grammar production (→ grammar), or only share a capability or role
-despite being different productions (→ semantic).
-
-A semantic specialization stays semantic even when the specialization itself is involved
-and composes other grammar traits and projections internally.
-
-### Structural
-
-DSL-tree-only nodes with no SQL grammar counterpart, which are nonetheless structurally
-required members of the logical AST: ad-hoc column-selection structs (`is_columns`),
-mapped result-set objects (`is_object_node`, `is_struct`), `is_indexed_column`.
-
-"Quoting" nodes — literals, pointer-to-member wrappers, anything that lifts a foreign C++
-value into the DSL — are structural traits and belong in this file. Should their volume or
-coupling ever justify it, they may be split out into a dedicated `quoting_traits_fwd.h`;
-that would be a subdivision of the structural axis, not a new axis.
-
-### Operand
-
-An orthogonal axis: can this node appear as an operand in an arithmetic or expression
-context, independent of what the node *is* syntactically —
-`is_arithmetic_operand`, `is_conditional_operand`, `is_negatable_operand`,
-`is_chainable_operand`, `is_operator_argument`.
-
-Orthogonality is the point. A node can need grammar **and** operand simultaneously
-(aliases and function calls have a real grammar production *and* are usable as operands).
-A node can be operand-only with no grammar trait (quoting wrappers). A node can have a
-grammar trait and no operand capability at all (CTE bindings).
+- **Grammar** — membership in a real SQL production: `is_column`, `is_base_table`,
+  `is_compound_operator`, `is_builtin_function_call`, `is_binary_condition`, ...
+- **Semantic** — a role shared by nodes of *different* productions: `is_select_expression_v`
+  covers `WITH` and `SELECT`, `is_raw_dml_expression_v` raw and with-wrapped DML. Grammar if
+  the grouped nodes share a production, semantic if they only share a role.
+- **Structural** — tree-only nodes the AST nonetheless needs: `is_columns`,
+  `is_object_node`, `is_struct`, `is_indexed_column`, and the "quoting" nodes lifting a C++
+  value into the DSL (literals, pointer-to-member wrappers). A `quoting_traits_fwd.h` split,
+  if ever warranted, subdivides this axis.
+- **Operand** — orthogonal to what a node is: `is_arithmetic_operand`,
+  `is_conditional_operand`, `is_negatable_operand`, `is_chainable_operand`,
+  `is_operator_argument`. A node may have grammar and operand traits (aliases, function
+  calls), operand only (quoting wrappers), or grammar only (CTE bindings).
 
 ### Projections — `projections/`
 
-Closed throughout, and deliberately **not** `_fwd.h` files, because there is nothing to
-specialize. Direct single-node accessors, in three shapes across two files.
+Closed, so no `_fwd.h` files.
 
-`projections/nested_types.h` reads a type name the node itself declares:
-
-- plain nested-typedef access — `constraints_type_t`, `field_type_t`, `elements_type_t`,
-  `object_type_t`, `expression_type_t`, `left_type_t`/`right_type_t`, …
-- detected-idiom accessors with a fallback — `alias_holder_type_or_none_t`.
-
-`projections/mapped_types.h` instead destructures a node to a type it captured, and therefore
-names the concrete nodes it matches: `table_type_of` yields the enclosing class of a
-pointer-to-member, the `T` of a `column_pointer<T, F>`, and recurses through
-`indexed_column_t`; `decay_table_ref` yields the mapped object of a `table_reference<O>`, leaving
-any other record set as it is. Needing `node_fwd.h` is what sets this shape apart from the other two.
-
-Whether the type such a projection yields is *actually* mapped by a schema is not its
-question — that is schema-wide lookup, one tier up in `schema/algorithms/table_lookup.h`.
-`table_type_of` is the input to that lookup, not a part of it.
-
-The extra work in the second and third shapes does not promote them to the algorithm tier.
-Nothing is being composed into a judgment; it is still extraction.
-
-## The algorithms
-
-| File | Contents |
-|---|---|
-| `algorithms/ddl_predicates.h` | Closed, composed checks of whether a node is an admissible element of a column, table or index definition, with no significant header-weight dependency, e.g. `is_pkcol_implicitly_insertable`, `is_base_table_element_or_constraint`, `is_database_object`, `is_index_element_of_v`. Single file; no split needed. |
-| `algorithms/clause_predicates.h` | Closed checks of whether a node is an admissible statement-level clause, and of the canonical order clauses must appear in. One file across statement kinds, because each is just an ordered list of clause traits fed to the same `clause_rank_v` / `clauses_are_correctly_ordered_v` mechanism: SELECT takes all seven, DELETE takes WHERE/ORDER BY/LIMIT, UPDATE adds FROM and its joins as of SQLite 3.33.0. `is_statement_clause` is their union. Whether a clause holds an expression rather than another clause is not checked here — the clause factories enforce that on the argument they are handed. |
-| `algorithms/expression_element_predicates.h` | Closed checks of whether a node is an admissible element of a compound expression construct, sectioned by construct. Today, both sections are the window productions: `is_window_defn_element_v`, gating `window()`, and the `are_valid_over_arguments_v` pack check gating every `over()`, and `is_frame_start_bound_v` / `is_frame_end_bound_v` for which end of a frame a boundary node may occupy, since every boundary node is a boundary but not at both ends. Whether an element holds an expression rather than a clause is not checked here — the element factories enforce that on the argument they are handed. |
-| `algorithms/operand_predicates.h` | Closed checks of whether a type may appear as an operand of a named expression factory (`eq()`, `and_()`, `add()`, `assign()`, …): `is_referencable_operand`, `is_operand_or_bindable`, `are_valid_operands`. Composes the operand traits with grammar traits and the field-level `is_bindable` — which is why it takes `field_predicates_fwd.h` rather than the definition file. |
-| `algorithms/column_field_types.h` | Closed alias templates computing a type tuple over the columns of a single table definition, in column order: `column_field_types_t` (their field types) and `column_field_expressions_t` (the member pointers they are mapped by). Locating the table for a lookup type first is schema-wide, done by `schema_mapped_column_field_types` / `schema_mapped_column_field_expressions` in `schema/algorithms/table_lookup.h`. |
-| `algorithms/index_filters.h` | Closed alias templates that scan a tuple of nodes and yield an `index_sequence` of matching positions — **not** a filtered tuple. Sectioned by what is scanned: the `Elements` tuple of a table or view definition, e.g. `col_index_sequence_of`, `col_index_sequence_with_field_type`; and the nodes of an expression as flattened by `node_tuple`, e.g. `bindable_index_sequence_of`, the positions of the bindable leaves. Built on `filter_tuple_sequence_t` + grammar traits + projections. |
-| `algorithms/accessors.h` | Closed runtime and compile-time accessors that retrieve a node's relevant sub-part, or the node itself, uniformly across dissimilar grammar families: `access_main_select`/`main_select_t`, `access_leftmost_select`, `access_main_dml`/`main_dml_t`, `access_column_expression`, `expression_object_type`/`statement_object_type_t` and `access_dml_object`. This is the concrete payoff of the semantic traits. `mapped_type_of_t` is the record-set counterpart: the mapped object a table reference, table-valued expression, record set alias or struct with hidden columns stands for - the input to a schema lookup. |
-| `algorithms/field_accessors.h` | The field-level counterpart of `accessors.h`: closed accessors keyed on a raw C++ type rather than a node. `held_object_t` is the object a holder type holds - owned by a `std::unique_ptr`, held by a `std::optional`, or the object itself - and `emplace_held_object` default-constructs it in place. A get statement's result type is such a holder. |
-| `algorithms/argument_placeholders.h` | The return type placeholders of the built-in functions — `argument<I>` for the result of the I-th call argument, `common_argument_type<I...>` for the common type of the given (or, with no index, all) arguments — and `substitute_arguments_t`, which replaces them structurally throughout a declared return type (`std::unique_ptr<argument<0>>`) given the call's argument tuple and a quoted metafunction that resolves one argument. Closed computation over a node's `args_tuple`; who resolves an argument and how — `column_result_of` with the schema at hand — is not its business. |
-| `algorithms/field_predicates_fwd.h` | Declarations of the closed field-level predicates, split off for dependency weight and grouped by what they read: `is_rowid_alias_capable_v`, `is_text_value_v`, `is_integer_mapped_v`, `is_bindable_v`, `is_printable_v`, `is_pointer_arg_v`, `is_pointer_binding_v`. |
-| — where their definitions live | `is_rowid_alias_capable_v` is a capability *derived from* the field type, so it is defined in `field_predicates.h` with the other computed predicates. `is_bindable_v` and `is_printable_v` instead test whether a customization point is instantiable for the type, so each stays with the point it tests — `statement_binder.h` and `field_printer.h` respectively, which include the `_fwd` header to define them. `is_integer_mapped_v` likewise reads a customization point — whether the type's `type_printer` derives from `integer_printer` — and is defined in `type_printer.h`; consumers ask it instead of inspecting the printer's base themselves. `is_pointer_arg_v` and `is_pointer_binding_v` are defined with the pointer-passing interface's values in `marshaling/pointer_value.h` — always false before SQLite 3.20, where those values do not exist. Like every definition, it arrives through the top-level headers rather than through its users: `statement_binder.h` and `row_extractor.h` pattern-match the values through the declarations, and so does `ast/app_function.h` when checking the pointer values of a function call. As the customization points get instantiated for concrete types while the headers are processed, the top-level headers include `pointer_value.h` ahead of `storage.h` — see [The manifests](#the-manifests). |
-| `algorithms/field_predicates.h` | The definitions of the *derived* field predicates — `is_rowid_alias_capable_v` and `is_text_value_v` — of which the former needs `type_printer.h`. Reached only through the `node_algorithm_definitions.h` manifest. |
-| `algorithms/field_predicates_concepts.h` | The `hidden_column_of_vtab` / `hidden_field_of_vtab` concepts, plus their C++17 fallback `is_hidden_column_of_vtab_v` / `is_hidden_field_of_vtab_v`, under one guard — declared and defined here, not in the `_fwd` file. See [Concepts](#concepts-a-hard-constraint-on-splitting). |
-| `algorithms/recordset_predicates.h` | The public concepts checking whether a node refers to a table or a record set, i.e. may occupy the record set slot of a factory — `orm_refers_to_table`, `orm_refers_to_recordset`, `orm_mapped_recordset` — plus their C++17 fallback `is_referring_to_recordset_v`. They compose the structural table reference with the grammar alias traits, hence algorithms rather than traits; the single-node concepts they compose live in `traits/recordset_concepts.h`. |
+- `nested_types.h` reads a type the node declares: `expression_type_t`, `field_type_t`,
+  `left_type_t`/`right_type_t`, ..., and detected accessors with a fallback
+  (`alias_holder_type_or_none_t`).
+- `mapped_types.h` destructures a node to a type it captured, naming the nodes it matches
+  (hence it needs `node_fwd.h`): `table_type_of` (the class of a pointer-to-member, the `T` of
+  a `column_pointer`), `decay_table_ref`. Whether that type is mapped by a schema is a
+  schema-wide lookup, in `schema/algorithms/table_lookup.h`.
 
 ## Open vs. closed
 
-A trait or predicate is **open** if independent call sites add new specializations over
-time. All four node axes are open, as is `is_field_of_v`.
-
-It is **closed** if it has a fixed, complete set of conditions written once and never
-independently extended — predicates, index filters, accessors, projections — *even if
-those conditions are individually complex or SFINAE-heavy*.
-
-`is_rowid_alias_capable_v` is a good illustration: it is **closed**, despite looking like
-an extension point. New types qualify automatically through `type_printer` derivation;
-nobody adds another specialization of the predicate itself.
+A trait is **open** if independent call sites add specializations over time: the four node
+axes and `is_field_of_v`. It is **closed** if its conditions are written once — predicates,
+index filters, accessors, projections — however complex. `is_rowid_alias_capable_v` is
+closed although it looks like an extension point: types qualify through `type_printer`
+derivation, nobody specializes the predicate.
 
 ### The two independent reasons for a `_fwd`/impl split
 
-They do not always coincide.
+1. **Openness.** The primary template must be visible at every specialization site; hence
+   each node axis is a `_fwd.h`.
+2. **Dependency weight.** A closed trait whose definition needs a heavy header
+   (`is_rowid_alias_capable_v` needs `type_printer.h`) is split so that naming it stays
+   cheap. This saves something only if the umbrella includes the declaration file and not
+   the definition file: `node_algorithms.h` includes `field_predicates_fwd.h`, and
+   `field_predicates.h` is reached only through `node_algorithm_definitions.h`.
 
-1. **Openness.** The primary template must be visible at multiple independent
-   specialization sites before those sites can specialize it. This is why every
-   node-classification axis is a `_fwd.h`.
-2. **Dependency-weight isolation.** Even a fully closed trait can be worth splitting when
-   evaluating it requires a heavy header that most consumers of the trait's *name* — in a
-   signature, say — should not have to pay for. `is_rowid_alias_capable_v` needs
-   `type_printer.h`, so its declaration and definition are separated.
-
-Reason 2 only actually saves anything **if the umbrella includes the declaration file but
-not the definition file**. `node_algorithms.h` includes `field_predicates_fwd.h` and does
-not include `field_predicates.h`; the definition is reachable only through the explicit
-`node_algorithm_definitions.h` manifest. Were both pulled in by the same umbrella, the
-split would be cosmetic and buy nothing.
-
-**Do not split by reflex.** Closedness alone never requires a split. Add one only when
-there is a real, identifiable header-weight cost being deferred — and confirm the umbrella
-actually excludes the definition file. Lightweight closed predicates stay single files.
+**Do not split by reflex.** Closedness alone never requires a split; add one only for a real
+header-weight cost, with the umbrella excluding the definition file.
 
 ## Concepts: a hard constraint on splitting
 
-**Concepts cannot be forward-declared.** A concept's full body must be visible wherever it
-is checked. There is no "declare now, define later" mechanism, unlike a variable
-template's primary-false/specialize-later shape.
+Concepts cannot be forward-declared.
 
-How that interacts with the framework above depends on *why* the concept exists:
+- A concept forwarding to a closed bool (`concept C = is_x_v<T>;`) costs nothing to declare
+  early: the condition still lives where the variable template is defined.
+- A concept with its own nested `requires` checks, written so that a failed constraint names
+  the failing check, *is* its condition and must live where everything it names is visible.
 
-- A concept that is a thin forwarding shim over an already-closed bool
-  (`concept C = is_x_v<T>;`) costs nothing to declare early. You get the diagnostic *name*
-  in a failed `requires`-clause at no header-weight cost, because the real condition still
-  only needs to be visible where the underlying variable template is specialized.
-- A concept written with its **own nested `requires` sub-clauses** — chosen deliberately
-  for diagnostic transparency, so the compiler reports exactly which nested check failed
-  instead of one opaque pass/fail — *is* its own condition. There is no boundary left to
-  split across: the body directly names the projections and traits it depends on, so it
-  must live wherever those are visible.
-
-The second case forces the concept's entire definition into a file that is **eagerly
-included** by the umbrella, accepting the header weight that would otherwise have been
-deferred. This is an inherent trade — transparency and deferred weight are in direct
-tension for a concept written this way — not a design flaw to route around.
-
-`field_predicates_concepts.h` is the resolution: a dedicated `_concepts.h` file, eagerly
-included by `node_algorithms.h`, holding both the concept and its C++17 non-concepts
-fallback together under one `SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED` guard *inside the file*.
-Both branches check the identical condition over the identical dependencies, so there is
-no benefit to separating them.
-
-This pattern generalizes to any future concept, in traits or algorithms, needing the same
-transparency-over-weight-isolation trade. `traits/recordset_concepts.h` is the second instance:
-its alias concepts name `alias_tag` directly, which a forward declaration in `node_fwd.h`
-suffices for, so that a failed constraint tells which requirement is not met. Concepts composing
-them across axes are algorithms and live apart, in `algorithms/recordset_predicates.h`.
+The latter goes into a dedicated `_concepts.h` file, included eagerly by its umbrella, with
+its C++17 fallback under the same `SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED` guard in the same
+file: `algorithms/field_predicates_concepts.h`, and `traits/recordset_concepts.h`, whose alias
+concepts need only the forward-declared `alias_tag`. Concepts composing those across axes are
+algorithms, in `algorithms/recordset_predicates.h`.
 
 ## Schema-level algorithms
 
 `dev/schema/algorithms/` holds algorithms that search or relate nodes **across a
-collection**, mirroring `vocabulary/algorithms/` one tier up. They routinely *consume*
-vocabulary, which is exactly why they are easy to misfile.
+collection**. They consume vocabulary, which is why they are easily misfiled. The reference
+example is `sync_order.h`: a topological sort of the `db_objects_tuple`, relating its members
+rather than classifying a node in hand. `table_lookup.h` finds the database object mapping a
+lookup type ("table" in the wide sense: base tables, views and virtual tables) and feeds it
+into the vocabulary algorithms of `column_field_types.h`,
+`column_lookup.h` a column across the schema, and `table_filters.h` selects tables or views.
 
-`schema/algorithms/sync_order.h` is the reference example. It computes the order in which
-database objects must be synced — a stable topological sort over the `db_objects_tuple`,
-deferring indexes and triggers until after their target table or view. It consumes
-`vocabulary/node_traits.h` for the `object_type_t` and `table_mapped_type_t` projections,
-but it is not vocabulary: it starts from a *collection* and relates its members, rather
-than classifying a node already in hand.
-
-`schema/algorithms/table_lookup.h` is the other example: `schema_find_table` /
-`schema_pick_table` / `enable_found_table` / `pick_table`, searching a `db_objects_tuple`
-for the database object mapping a given lookup type. "Table" is meant in the wide SQL table
-sense there, covering base tables, views and virtual tables alike. Built on that lookup are
-`lookup_table_name`, and `schema_mapped_column_field_types` / `schema_mapped_column_field_expressions`, which
-feed the table found into the vocabulary algorithms of `column_field_types.h`.
-
-Alongside them, `schema/algorithms/column_lookup.h` finds a column's name across the schema
-(`find_column_name`, `materialize_column_pointer` for CTE column aliases, `is_column_unique`)
-and yields the member pointers of a table's columns (`get_table_column_fields`),
-and `schema/algorithms/table_filters.h` selects the base tables or views of a schema
-(`tables_index_sequence`, `views_index_sequence`) and computes over them (`foreign_keys_count`).
-
-Note the naming. These algorithms operate on the **schema** — the mapped database objects —
-not on the `storage_t` object, so they are named `schema_*`. Apply the same reasoning to
-anything that joins them; `storage_` is the wrong prefix at this tier.
-
-The generic facilities for recognizing and passing around the tuple itself —
-`db_objects_tuple`, `is_db_objects`, `db_objects_cat`, `db_objects_for_expression` — are not
-algorithms and sit one level up, in `schema/db_objects.h`. The overload of `db_objects_for_expression`
-for a WITH clause lives in `cte_db_objects.h`.
+They operate on the **schema**, not on `storage_t`, so they are named `schema_*`, never
+`storage_*`. The facilities for the tuple itself (`db_objects_tuple`, `db_objects_cat`,
+`db_objects_for_expression`) are not algorithms and sit in `schema/db_objects.h`.
 
 ## The manifests
 
-The `_fwd` split removed the incidental transitive inclusion that used to guarantee every
-specialization got compiled in. Two manifest headers, **siblings to `vocabulary/` and
-never nested inside it**, restore that guarantee. Their job — aggregating concrete
-definitions — is categorically different from vocabulary's job of declaring and computing
-classification.
+The `_fwd` split removed the transitive inclusion that used to compile every specialization
+in. Two manifests, **siblings to `vocabulary/`**, restore it:
 
-- **`dev/node_definitions.h`** — an explicit `#include` of every concrete node header in
-  `schema/` and `ast/`. Its only job is completeness.
-- **`dev/node_algorithm_definitions.h`** — the definition-only files deliberately *not*
-  aggregated by `node_algorithms.h`: `field_predicates.h` today, and any future
-  algorithm-tier item split for the same dependency-weight reason.
+- **`dev/node_definitions.h`** — an `#include` of every node header in `schema/` and `ast/`.
+- **`dev/node_algorithm_definitions.h`** — the definition-only files excluded from
+  `node_algorithms.h`: `field_predicates.h` today.
 
-The manifests, like every other definition-carrying header, are pulled in by the top-level
-headers — `not_single_header_include/sqlite_orm/sqlite_orm.h` and, in the same order, the
-amalgamation's `third_party/amalgamate/config.json` — not by the headers using the traits.
-That suffices as long as a trait is evaluated only inside templates, which happens in user
-code, after all headers. A trait evaluated for a concrete type while the headers are still
-being processed — e.g. a customization point instantiated for `std::string` in non-template
-code — needs its definition earlier. Hence the top-level headers include the manifests, and
-`marshaling/pointer_value.h` among the public leaf headers, ahead of `storage.h`. Otherwise the evaluation binds to
-the bare `extern const` declaration, which MSVC rejects as not being a constant expression
-and GCC and Clang silently accept.
+The top-level headers (`not_single_header_include/sqlite_orm/sqlite_orm.h`, and
+`third_party/amalgamate/config.json` in the same order) include them, not the trait's users.
+That suffices for traits evaluated inside templates, i.e. in user code. A trait evaluated for
+a concrete type while the headers are processed — a customization point instantiated for
+`std::string` in non-template code — needs its definition earlier: hence the manifests, and
+`marshaling/pointer_value.h`, come ahead of `storage.h`. Otherwise the evaluation binds to the
+bare `extern const` declaration, which MSVC rejects as not a constant expression and GCC and
+Clang silently accept.
 
 > **When you add a node header under `schema/` or `ast/`, add it to `node_definitions.h`.**
-> A missing entry does not fail to compile. The trait silently falls back to its primary
-> template, and the node quietly loses its classification.
-
-The practical backstop against that silent fallback is the project's near-100% unit test
-coverage: a real behavioral test failure is a stronger signal than an isolated trait
-self-check would be.
+> A missing entry compiles: the trait silently falls back to its primary template. The unit
+> tests are the backstop.
 
 ## Adding a new DSL node
 
 1. Define the node struct in `dev/schema/` or `dev/ast/`.
-2. In **that same header**, specialize whichever vocabulary axes apply — grammar,
-   semantic, structural, operand. Include the relevant `traits/*_fwd.h` for each, and
-   write them as described in [How a node specializes a trait](#how-a-node-specializes-a-trait).
+2. In **that same header**, specialize the axes that apply, including the relevant
+   `traits/*_fwd.h`, as described in [How a node specializes a trait](#how-a-node-specializes-a-trait).
 3. Register the header in `dev/node_definitions.h`.
 4. Add tests under `tests/`.
 
-If the node's name is needed by vocabulary files that cannot include its full definition,
-add a bare forward declaration to `vocabulary/node_fwd.h` — the real definition still
-arrives via the manifest.
+If vocabulary files need the node's name without its definition, add a forward declaration to
+`vocabulary/node_fwd.h`.
 
 ### How a node specializes a trait
 
-A trait that the node's header *owns* — its primary is the `extern const bool`
-declaration in the `_fwd.h` file, and this node is what it classifies — is written as
-**one closed definition** over a type predicate, never as a partial specialization that
-spells out the node's template-parameter pattern:
+A trait the node's header *owns* — its primary is the `extern const bool` declaration in the
+`_fwd.h` file — is **one closed definition** over a type predicate, never a partial
+specialization spelling out the node's template parameters:
 
 ```cpp
 template<class T>
@@ -456,41 +270,35 @@ constexpr bool is_count_asterisk_v =
     polyfill::is_specialization_of_v<T, count_asterisk_t> || std::is_same_v<T, count_asterisk_without_type>;
 ```
 
-A trait the node merely *joins* — an axis whose primary is already defined `false`, such
-as `is_operator_argument_v` — is specialized with a **SFINAE enabler on the node's own
-grammar trait**, again without restating the pattern:
+A trait the node *joins* — whose primary is already defined `false`, such as
+`is_operator_argument_v` — is specialized with a **SFINAE enabler on the node's own grammar
+trait**:
 
 ```cpp
 template<class T>
 constexpr bool is_operator_argument_v<T, std::enable_if_t<is_app_function_call_v<T>>> = true;
 ```
 
-The reason is the same in both cases: the node's template-parameter list is an
-implementation detail of the node. Restating it at every specialization site means that
-adding a parameter, a defaulted parameter or a derived node (`builtin_aggregate_function_call`
-derives from `builtin_function_call`) silently breaks or forks the classification.
-`is_specialization_of_v`, `is_base_template_of` and `std::is_same_v` name the node once
-and track it. A pattern partial specialization is acceptable only where those predicates
-cannot express the match — a node with non-type template parameters, such as `limit_t`.
+The node's template-parameter list is its implementation detail: restating it at each
+specialization site means a new parameter or a derived node (`builtin_aggregate_function_call`
+from `builtin_function_call`) silently breaks or forks the classification. A pattern
+specialization is acceptable only where the predicates cannot express the match — nodes with
+non-type template parameters, such as `limit_t`.
 
-Both are placed **directly after the node they classify**, not collected at the end of the
-header. A definition that covers derived nodes too sits after the base it names —
-`is_builtin_function_call_v` follows `builtin_function_call`, not
-`builtin_aggregate_function_call`.
+Both are placed **directly after the node they classify**; a definition covering derived
+nodes follows the base it names.
 
-Every DSL node gets a trait of its own, or is covered by one of its grammar family —
-`all_t` by `is_rowset_deduplicator`, `union_t`/`except_t`/`intersect_t` by
-`is_compound_operator`, the built-in scalar, aggregate and window functions by
-`is_builtin_function_call`. Builder intermediates (`simple_case_builder`, `conflict_target`)
-and element types a node stores but no consumer visits (`then_t`, `dynamic_set_entry`)
-are not nodes in this sense.
+Every DSL node gets a trait of its own, or is covered by one of its family —
+`union_t`/`except_t`/`intersect_t` by `is_compound_operator`, the built-in functions of every
+kind by `is_builtin_function_call`. Builder intermediates (`simple_case_builder`,
+`conflict_target`) and element types no consumer visits (`then_t`, `dynamic_set_entry`) are
+not nodes in this sense.
 
 ### How consumers match a node
 
 Customization points — `statement_serializer`, `ast_iterator`, `node_tuple`,
-`column_result_of`, and callables handed to `iterate_ast` — **grammar-match** a node and
-**read it through the projections**. They do not pattern-match the concrete node type and
-decompose its template arguments:
+`column_result_of`, callables handed to `iterate_ast` — **grammar-match** a node and **read it
+through the projections**, never pattern-matching the concrete node:
 
 ```cpp
 // yes
@@ -505,39 +313,24 @@ template<class F, class... Args>
 struct node_tuple<app_function_call<F, Args...>, void> : node_tuple_for<Args...> {};
 ```
 
-This is the whole point of the layer: a consumer that spells `app_function_call<F, Args...>`
-depends on the node's identity and shape, which is exactly the coupling the vocabulary
-exists to remove. If a consumer needs something the projections do not yet expose, add
-the projection to `vocabulary/projections/` rather than reaching into the node.
+If a consumer needs something the projections do not expose, add the projection to
+`vocabulary/projections/` rather than reaching into the node.
 
 ## Open work
 
-Decided, not yet done. The destination is settled in each case; only the work remains.
+Decided, not yet done.
 
-- **Retire the legacy built-in function nodes with C++17.** In C++20 builds every
-  built-in is one `inline constexpr` definition of name plus overload set in
-  `builtin/functions/*.h` (`"LOWER"_builtin.scalar<std::string(std::string_view)>()`, the
-  mechanism and how definitions are published being documented at `""_builtin` in
-  `ast/builtin_function.h`);
-  the resulting call node plugs into `is_builtin_function_call`, and argument-dependent return
-  types are placeholders (`argument<I>`, `common_argument_type<I...>`) substituted by
-  `vocabulary/algorithms/argument_placeholders.h` from `column_result_of`. The legacy
-  `builtin_function_t` node in `ast/builtin_function.h` and the per-function `*_string`
-  tag + factory pairs in `builtin/functions/*.h` exist only for C++17 and go when that baseline
-  does.
+- **Retire the legacy built-in function nodes with the C++17 baseline:** delete the
+  `#ifndef SQLITE_ORM_WITH_CPP20_ALIASES` branches — `builtin_function_t` and its kin in
+  `ast/builtin_function.h`, and the `*_string` tags and factories in `builtin/functions/*.h`.
 
 ## Open questions
 
-Deliberately unresolved — the destination itself is undecided. Revisit when there is a
-concrete reason to, not before.
+Deliberately unresolved; revisit when there is a concrete reason to.
 
-- **Struct→table / expression→table mapping.** A further tier above both `member_traits/`
-  and `vocabulary/`: schema-wide resolution and lookup, likely *consuming* vocabulary
-  rather than being vocabulary. Not yet reviewed against real code; naming and folder
-  undecided. Note that `table_type_of` is *not* this tier — it extracts a type a node
-  already captured, without consulting a schema, and is settled in
-  `projections/mapped_types.h`.
-- **Names of the built-in function definitions in `internal`.** They (`max`, `min`, `count`,
-  ...) are shadowed by class members of the same name, but clash with a namespace-scope
-  internal helper of the same name. A nested `internal::builtins` namespace is the escape
-  hatch, once a clash occurs.
+- **Struct→table / expression→table mapping.** A possible tier above `member_traits/` and
+  `vocabulary/`: schema-wide resolution, consuming vocabulary. Naming and folder undecided.
+  `table_type_of` is not this tier: it extracts a type a node captured, without a schema.
+- **Names of the built-in function definitions in `internal`** (`max`, `min`, `count`, ...).
+  Class members shadow them, but a namespace-scope internal helper of the same name would
+  clash. A nested `internal::builtins` namespace is the escape hatch, once a clash occurs.
