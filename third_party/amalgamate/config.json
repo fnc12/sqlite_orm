@@ -15,9 +15,9 @@
     "dev/node_definitions.h",
     "dev/node_algorithm_definitions.h",
 
-    "dev/storage.h",
+    "dev/execution/storage.h",
     "dev/interface_definitions.h",
-    "dev/get_prepared_statement.h",
+    "dev/execution/get_prepared_statement.h",
 
     "dev/builtin/collations.h",
     "dev/builtin/vfs.h",

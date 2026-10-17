@@ -12,9 +12,9 @@
 #include <system_error>  //  std::system_error
 #endif
 
-#include "functional/gsl.h"
-#include "error_code.h"
-#include "marshaling/row_extractor.h"
+#include "../functional/gsl.h"
+#include "../error_code.h"
+#include "../marshaling/row_extractor.h"
 
 #if defined(_WINNT_)
 // DELETE is a macro defined in the Windows SDK (winnt.h)

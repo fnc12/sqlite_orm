@@ -10,11 +10,11 @@
 #include <string>  //  std::string
 #endif
 
-#include "functional/cxx_scope_guard.h"
-#include "functional/interference_size.h"
-#include "functional/gsl.h"
-#include "sqlite3/sqlite3_errors.h"
-#include "builtin/vfs.h"
+#include "../functional/cxx_scope_guard.h"
+#include "../functional/interference_size.h"
+#include "../functional/gsl.h"
+#include "../sqlite3/sqlite3_errors.h"
+#include "../builtin/vfs.h"
 #include "db_open_mode.h"
 #include "storage_options.h"
 

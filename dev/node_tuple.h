@@ -9,7 +9,7 @@
 
 #include "functional/type_traits.h"
 #include "tuple_helper/tuple_filter.h"
-#include "prepared_statement.h"
+#include "execution/prepared_statement.h"
 #include "optional_container.h"
 #include "vocabulary/node_traits.h"
 

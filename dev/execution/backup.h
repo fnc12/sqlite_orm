@@ -8,7 +8,7 @@
 #include <utility>  //  std::move, std::exchange
 #endif
 
-#include "error_code.h"
+#include "../error_code.h"
 #include "connection_holder.h"
 
 namespace sqlite_orm::internal {

@@ -20,29 +20,29 @@
 #include <tuple>  //  std::apply
 #endif
 
-#include "sqlite3/sqlite3_types.h"  //  int64
-#include "sqlite3/sqlite3_statements.h"
-#include "sqlite3/sqlite3_errors.h"
-#include "sqlite3/sqlite3_xdestroy.h"
-#include "tuple_helper/tuple_iteration.h"
-#include "vocabulary/node_traits.h"  // projections
+#include "../sqlite3/sqlite3_types.h"  //  int64
+#include "../sqlite3/sqlite3_statements.h"
+#include "../sqlite3/sqlite3_errors.h"
+#include "../sqlite3/sqlite3_xdestroy.h"
+#include "../tuple_helper/tuple_iteration.h"
+#include "../vocabulary/node_traits.h"  // projections
 #include "pragma.h"
 #include "limit_accessor.h"
 #include "transaction_guard.h"
 #include "savepoint.h"
-#include "marshaling/row_extractor.h"
+#include "../marshaling/row_extractor.h"
 #include "connection_holder.h"
 #include "backup.h"
-#include "ast/app_function.h"
-#include "marshaling/values_to_tuple.h"
+#include "../ast/app_function.h"
+#include "../marshaling/values_to_tuple.h"
 #include "udf_proxy.h"
-#include "marshaling/arg_values.h"
+#include "../marshaling/arg_values.h"
 #include "transaction_state.h"
-#include "serialization/quoting.h"
-#include "serialization/serializing_util.h"
+#include "../serialization/quoting.h"
+#include "../serialization/serializing_util.h"
 #include "table_info.h"
 #include "storage_options.h"
-#include "error_code.h"
+#include "../error_code.h"
 
 namespace sqlite_orm::internal {
     /**

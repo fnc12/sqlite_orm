@@ -11,7 +11,7 @@
 #include "tuple_helper/tuple_iteration.h"
 #include "vocabulary/node_traits.h"
 #include "ast/alias.h"
-#include "prepared_statement.h"
+#include "execution/prepared_statement.h"
 
 namespace sqlite_orm::internal {
     /**

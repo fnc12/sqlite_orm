@@ -11,14 +11,14 @@
 #include <sstream>  //  std::stringstream
 #endif
 
-#include "functional/gsl.h"
+#include "../functional/gsl.h"
 #include "table_info.h"
-#include "marshaling/row_extractor.h"
+#include "../marshaling/row_extractor.h"
 #include "journal_mode.h"
 #include "locking_mode.h"
 #include "connection_holder.h"
-#include "sqlite3/sqlite3_statements.h"
-#include "serialization/serializing_util.h"
+#include "../sqlite3/sqlite3_statements.h"
+#include "../serialization/serializing_util.h"
 
 namespace sqlite_orm::internal {
     struct storage_base;
