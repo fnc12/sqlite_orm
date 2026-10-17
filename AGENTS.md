@@ -139,6 +139,8 @@ SQLite C API - its functions, types or constants such as `SQLITE_OPEN_READONLY` 
 includes `<sqlite3.h>` itself, and a header that uses one of sqlite_orm's own
 public symbols includes the header declaring it.
 
+**Out-of-class member definitions live in a `_definitions.h` header next to their class** - `schema/column_definitions.h` next to `schema/column.h`, `ast/crud/set_definitions.h` next to `ast/crud/set.h`, `execution/storage_definitions.h` next to `execution/storage.h`. They exist because the member bodies need headers the declaring header must stay free of, often from a higher layer. Only the manifest `dev/interface_definitions.h` includes them, once, after all declarations: register a new one there, and never include one from anywhere else.
+
 **Never guard an `#include` of a sqlite_orm header** — not with `#ifdef
 SQLITE_ORM_WITH_CPP20_ALIASES`, not with a SQLite version check, not with
 anything. The amalgamation inlines each header at the place it is *first*

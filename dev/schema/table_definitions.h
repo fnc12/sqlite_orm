@@ -13,7 +13,7 @@
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../type_mapping/type_printer.h"
-#include "../schema/table.h"
+#include "table.h"
 
 namespace sqlite_orm::internal {
     template<class T, class WithoutRowId, class... Cs>
