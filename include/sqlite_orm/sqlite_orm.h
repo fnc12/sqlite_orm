@@ -1814,10 +1814,126 @@ namespace sqlite_orm::internal {
 #include <string>  //  std::string
 #include <optional>  //  std::optional
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_member_object_pointer, std::is_signed
-#include <utility>  //  std::move
+#include <utility>  //  std::move, std::index_sequence, std::make_index_sequence
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#include <meta>  //  std::meta::info, std::meta::identifier_of
+#endif
 #endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../functional/meta_util.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#include <array>  //  std::array
+#include <meta>  //  std::define_static_array, std::meta::access_context, std::meta::nonstatic_data_members_of, std::meta::identifier_of, std::meta::annotations_of, std::meta::members_of
+#include <string_view>  //  std::string_view
+#include <tuple>  //  std::tuple
+#include <utility>  //  std::index_sequence, std::make_index_sequence
+#endif
+#endif
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace sqlite_orm::internal {
+    /**
+     *  Reflects the non-static data members of `T` and its base classes
+     *  and returns them as a fixed-size span of `std::meta::info` reflections.
+     */
+    template<class T>
+    consteval auto extract_members() {
+        constexpr auto ctx = std::meta::access_context::current();
+
+        constexpr auto collect = []<class U>(this const auto& self) -> std::vector<std::meta::info> {
+            std::vector<std::meta::info> result;
+
+            // Recurse into direct base classes first (preserves layout order)
+            template for (constexpr std::meta::info base: std::define_static_array(bases_of(^^U, ctx))) {
+                using base_type = typename[:type_of(base):];
+                result.append_range(self.template operator()<base_type>());
+            }
+
+            // Then this class's own non-static data members
+            result.append_range(nonstatic_data_members_of(^^U, ctx));
+
+            return result;
+        };
+
+        return std::define_static_array(collect.template operator()<T>());
+    }
+
+    /**
+     *  Reflects the nested class of `T` named `name`, or returns a null reflection.
+     *  Type aliases do not count.
+     */
+    template<class T>
+    consteval std::meta::info extract_nested_class(std::string_view name) {
+        constexpr auto ctx = std::meta::access_context::current();
+
+        for (std::meta::info member: members_of(^^T, ctx)) {
+            if (is_type(member) && !is_type_alias(member) && is_class_type(member) && has_identifier(member) &&
+                identifier_of(member) == name) {
+                return member;
+            }
+        }
+        return {};
+    }
+
+    /**
+     *  Splices a type reflection.
+     *  Encapsulated here so the splice operator does not leak into consumer headers.
+     */
+    template<std::meta::info refl>
+    using spliced_type_t = typename[:refl:];
+
+    /**
+     *  Returns the identifier of `T`.
+     */
+    template<class T>
+    consteval auto extract_type_identifier() {
+        return std::meta::identifier_of(^^T);
+    }
+
+    /**
+     *  Splices a non-static data member reflection into a member-pointer expression.
+     *  Encapsulated here so the splice operator does not leak into consumer headers.
+     */
+    template<std::meta::info member>
+    consteval auto splice_member_pointer() {
+        return &[:member:];
+    }
+
+    /**
+     *  Splices a reflection's annotations into a tuple of values. The reflection may be
+     *  a type or a non-static data member.
+     *  Encapsulated here so the splice operator does not leak into consumer headers.
+     *
+     *  Two P3394 details inform this implementation:
+     *  - Annotation reflections returned by `annotations_of` are not directly spliceable;
+     *    they must first be routed through `std::meta::constant_of`, which returns a
+     *    splice-able constant reflection.
+     *  - `std::meta::annotations_of` returns a `std::vector<std::meta::info>`, whose heap
+     *    allocation is transient under C++20 constexpr rules and cannot be bound to a
+     *    `constexpr` variable. The size and per-index lookups therefore re-call
+     *    `annotations_of` inline so each transient vector dies within its own constant
+     *    expression.
+     */
+    template<std::meta::info refl>
+    consteval auto splice_annotations() {
+        return []<size_t... I>(std::index_sequence<I...>) consteval {
+            return std::tuple{[:std::meta::constant_of(std::meta::annotations_of(refl)[I]):]...};
+        }(std::make_index_sequence<std::meta::annotations_of(refl).size()>{});
+    }
+
+    /**
+     *  Returns the class-scope annotations of `T` as a tuple.
+     */
+    template<class T>
+    consteval auto extract_type_annotations() {
+        return splice_annotations<^^T>();
+    }
+}
+#endif
 
 // #include "../functional/type_traits.h"
 
@@ -2556,6 +2672,12 @@ namespace sqlite_orm::internal {
      */
     template<template<class...> class TraitFn>
     using check_if_has_not = mpl::not_<mpl::contains_fn<TraitFn>>;
+
+    /*
+     *  Quoted trait metafunction that checks whether a tuple contains only types with given trait.
+     */
+    template<template<class...> class TraitFn>
+    using check_if_has_only = mpl::not_<mpl::contains<check_if_not<TraitFn>>>;
 
     /*
      *  Quoted metafunction that checks whether a tuple contains given type.
@@ -6029,6 +6151,57 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace sqlite_orm::internal {
+    /**
+     *  The columns of the non-static data members of `O`: named after the members' identifiers,
+     *  with the members' annotations as column constraints.
+     */
+    template<class O>
+    auto make_reflected_columns() {
+        static /*gcc*/ constexpr auto members = extract_members<O>();
+
+        return []<size_t... I>(std::index_sequence<I...>) static {
+            return std::tuple {
+                []<std::meta::info member>() static {
+                    return std::apply(
+                        [](auto&&... columnConstraints) static {
+                            return sqlite_orm::make_column(std::string(std::meta::identifier_of(member)),
+                                                           splice_member_pointer<member>(),
+                                                           std::move(columnConstraints)...);
+                        },
+                        splice_annotations<member>());
+                }.template operator()<members[I]>()...
+            };
+        }(std::make_index_sequence<members.size()>{});
+    }
+
+    /**
+     *  The hidden columns of the non-static data members of `O`'s nested `hidden` struct, if there is one,
+     *  named after the members' identifiers.
+     */
+    template<class O>
+    auto make_reflected_hidden_columns() {
+        static /*gcc*/ constexpr std::meta::info hidden = extract_nested_class<O>("hidden");
+
+        if constexpr (hidden == std::meta::info{}) {
+            return std::tuple<>{};
+        } else {
+            static /*gcc*/ constexpr auto members = extract_members<spliced_type_t<hidden>>();
+
+            return []<size_t... I>(std::index_sequence<I...>) static {
+                return std::tuple {
+                    []<std::meta::info member>() static {
+                        return make_hidden_column(std::string(std::meta::identifier_of(member)),
+                                                  splice_member_pointer<member>());
+                    }.template operator()<members[I]>()...
+                };
+            }(std::make_index_sequence<members.size()>{});
+        }
+    }
+}
+#endif
+
 // #include "schema/table.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -6037,161 +6210,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_element, std::get, std::apply, std::tuple_cat
 #include <utility>  //  std::forward, std::move
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-#include <meta>  // std::meta::info, std::meta::identifier_of
-#endif
 #endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../functional/meta_util.h"
 
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-#include <array>  //  std::array
-#include <meta>  //  std::define_static_array, std::meta::access_context, std::meta::nonstatic_data_members_of, std::meta::identifier_of, std::meta::annotations_of
-#include <tuple>  //  std::tuple
-#include <utility>  //  std::index_sequence, std::make_index_sequence
-#endif
-#endif
-
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-namespace sqlite_orm::internal {
-    /**
-     *  Reflects the non-static data members of `T` and its base classes
-     *  and returns them as a fixed-size span of `std::meta::info` reflections.
-     */
-    template<class T>
-    consteval auto extract_members() {
-        constexpr auto ctx = std::meta::access_context::current();
-
-        constexpr auto collect = []<class U>(this const auto& self) -> std::vector<std::meta::info> {
-            std::vector<std::meta::info> result;
-
-            // Recurse into direct base classes first (preserves layout order)
-            template for (constexpr std::meta::info base: std::define_static_array(bases_of(^^U, ctx))) {
-                using base_type = typename[:type_of(base):];
-                result.append_range(self.template operator()<base_type>());
-            }
-
-            // Then this class's own non-static data members
-            result.append_range(nonstatic_data_members_of(^^U, ctx));
-
-            return result;
-        };
-
-        return std::define_static_array(collect.template operator()<T>());
-    }
-
-    /**
-     *  Returns the identifier of `T`.
-     */
-    template<class T>
-    consteval auto extract_type_identifier() {
-        return std::meta::identifier_of(^^T);
-    }
-
-    /**
-     *  Splices a non-static data member reflection into a member-pointer expression.
-     *  Encapsulated here so the splice operator does not leak into consumer headers.
-     */
-    template<std::meta::info member>
-    consteval auto splice_member_pointer() {
-        return &[:member:];
-    }
-
-    /**
-     *  Splices a reflection's annotations into a tuple of values. The reflection may be
-     *  a type or a non-static data member.
-     *  Encapsulated here so the splice operator does not leak into consumer headers.
-     *
-     *  Two P3394 details inform this implementation:
-     *  - Annotation reflections returned by `annotations_of` are not directly spliceable;
-     *    they must first be routed through `std::meta::constant_of`, which returns a
-     *    splice-able constant reflection.
-     *  - `std::meta::annotations_of` returns a `std::vector<std::meta::info>`, whose heap
-     *    allocation is transient under C++20 constexpr rules and cannot be bound to a
-     *    `constexpr` variable. The size and per-index lookups therefore re-call
-     *    `annotations_of` inline so each transient vector dies within its own constant
-     *    expression.
-     */
-    template<std::meta::info refl>
-    consteval auto splice_annotations() {
-        return []<size_t... I>(std::index_sequence<I...>) consteval {
-            return std::tuple{[:std::meta::constant_of(std::meta::annotations_of(refl)[I]):]...};
-        }(std::make_index_sequence<std::meta::annotations_of(refl).size()>{});
-    }
-
-    /**
-     *  Returns the class-scope annotations of `T` as a tuple.
-     */
-    template<class T>
-    consteval auto extract_type_annotations() {
-        return splice_annotations<^^T>();
-    }
-}
-#endif
-
 // #include "../functional/mpl.h"
 
 // #include "../tuple_helper/tuple_filter.h"
 
 // #include "../tuple_helper/tuple_transformer.h"
-
-// #include "../execution/table_info.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
-#include <utility>  //  std::move
-#endif
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-
-    struct table_info {
-        int cid = 0;
-        std::string name;
-        std::string type;
-        bool notnull = false;
-        std::string dflt_value;
-        int pk = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
-        table_info(decltype(cid) cid_,
-                   decltype(name) name_,
-                   decltype(type) type_,
-                   decltype(notnull) notnull_,
-                   decltype(dflt_value) dflt_value_,
-                   decltype(pk) pk_) :
-            cid(cid_), name(std::move(name_)), type(std::move(type_)), notnull(notnull_),
-            dflt_value(std::move(dflt_value_)), pk(pk_) {}
-#endif
-    };
-
-    struct table_xinfo {
-        int cid = 0;
-        std::string name;
-        std::string type;
-        bool notnull = false;
-        std::string dflt_value;
-        int pk = 0;
-        //  as reported by `PRAGMA table_xinfo`: 0 = normal column, 1 = hidden column in a virtual table,
-        //  2 = VIRTUAL generated column, 3 = STORED generated column;
-        //  `get_table_info()` stores 1 for a generated column, so only zero vs non-zero may be compared
-        int hidden = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
-        table_xinfo(decltype(cid) cid_,
-                    decltype(name) name_,
-                    decltype(type) type_,
-                    decltype(notnull) notnull_,
-                    decltype(dflt_value) dflt_value_,
-                    decltype(pk) pk_,
-                    decltype(hidden) hidden_) :
-            cid(cid_), name(std::move(name_)), type(std::move(type_)), notnull(notnull_),
-            dflt_value(std::move(dflt_value_)), pk(pk_), hidden{hidden_} {}
-#endif
-    };
-}
 
 // #include "../vocabulary/node_traits.h"
 
@@ -6742,6 +6771,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
+SQLITE_ORM_EXPORT namespace sqlite_orm { struct table_xinfo; }
+
 namespace sqlite_orm::internal {
     /** 
      *  Encapsulates base table elements, i.e. columns and constraints for a base table,
@@ -6849,21 +6880,7 @@ namespace sqlite_orm::internal {
         auto classAnnotations = extract_type_annotations<O>();
         std::string tableName{resolve_dbo_name<O>(classAnnotations)};
         auto annotationConstraints = filter_out_dbo_name(std::move(classAnnotations));
-        static /*gcc*/ constexpr auto members = extract_members<O>();
-
-        auto columns = []<size_t... I>(std::index_sequence<I...>) static {
-            return std::tuple {
-                []<std::meta::info member>() static {
-                    return std::apply(
-                        [](auto&&... columnConstraints) static {
-                            return sqlite_orm::make_column(std::string(std::meta::identifier_of(member)),
-                                                           splice_member_pointer<member>(),
-                                                           std::move(columnConstraints)...);
-                        },
-                        splice_annotations<member>());
-                }.template operator()<members[I]>()...
-            };
-        }(std::make_index_sequence<members.size()>{});
+        auto columns = make_reflected_columns<O>();
 
         return [&tableName]<class... Es>(std::tuple<Es...>&& definition) {
             validate_base_table_definition<Es...>();
@@ -6962,8 +6979,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>  // std::convertible_to
 #endif
+#include <type_traits>  //  std::is_base_of, std::conditional_t, std::false_type, std::true_type
 #include <string>  //  std::string
-#include <utility>  //  std::move
+#include <tuple>  //  std::make_tuple, std::tuple_cat, std::apply
+#include <utility>  //  std::move, std::forward
 #endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
@@ -6978,6 +6997,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // Included to specialize traits
 // #include "table_base.h"
 
+// #include "column.h"
+//  make_reflected_columns, make_reflected_hidden_columns
+// #include "dbo_name.h"
+
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     template<class T>
@@ -6987,13 +7010,19 @@ namespace sqlite_orm::internal {
     };
 #endif
 
+    /**
+     *  Base class of the module tags of built-in eponymous virtual tables.
+     *
+     *  The definition of eponymous virtual tables is built-in, fixed and implicit,
+     *  and they can only be created with optional table-values for their hidden columns.
+     */
+    struct eponymous_module {};
+
     /** 
-     *  Default base traits of a "normal" virtual table module.
+     *  Default base traits of a virtual table module.
      *  
      *  Particularly this means:
-     *  - It is not eponymous.
-     *    The definition of eponymous virtual tables is built-in, fixed and implicit,
-     *    and they can only be created with optional table-values for their hidden columns.
+     *  - It is eponymous if the module tag derives from `eponymous_module`.
      *  - It is not a WITHOUT ROWID table (i.e. it has an implicit `rowid` column).
      *  - Omits the column type in the SQL creation statement.
      *  
@@ -7002,22 +7031,25 @@ namespace sqlite_orm::internal {
     template<class M>
     struct virtual_table_module_traits {
         using module_type = M;
-        using is_eponymous = std::false_type;
+        using is_eponymous = std::is_base_of<eponymous_module, M>;
         using is_without_rowid = std::false_type;
         using omit_column_type = std::true_type;
     };
 
     /** 
-     *  Default traits of a "normal" virtual table.
+     *  Default traits of a virtual table.
      *  
-     *  Particularly this means :
-     *  - Its definition is a `insertable_table_definition`.
+     *  Particularly this means:
+     *  - Its definition is a read-only `table_definition` for an eponymous module,
+     *    an `insertable_table_definition` otherwise.
      *  
      *  Specific virtual table modules can specialize this struct to provide their own traits.
      */
     template<class M, class... Cs>
     struct virtual_table_traits : virtual_table_module_traits<M> {
-        using definition_type = insertable_table_definition<Cs...>;
+        using definition_type = std::conditional_t<virtual_table_module_traits<M>::is_eponymous::value,
+                                                   table_definition<Cs...>,
+                                                   insertable_table_definition<Cs...>>;
         using elements_type = elements_type_t<definition_type>;
     };
 
@@ -7060,6 +7092,14 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_virtual_table_v = polyfill::is_specialization_of_v<T, virtual_table>;
+
+    /**
+     *  Factory function for a virtual table definition of module M.
+     */
+    template<class M, class... Cs>
+    virtual_table_definition<M, Cs...> make_virtual_table_definition(Cs... elements) {
+        return {{std::make_tuple(std::move(elements)...)}};
+    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -7108,6 +7148,51 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #endif
 }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace sqlite_orm::internal {
+    /**
+     *  Factory function for a virtual table definition of module M, mapping the data structure O:
+     *  the columns of O's non-static data members, the hidden columns of the non-static data members of
+     *  O's nested `hidden` struct, followed by `elements`.
+     */
+    template<class M, class O, class... Es>
+    auto make_reflected_virtual_table_definition(Es... elements) {
+        return std::apply(
+            [](auto&&... definition) static {
+                return make_virtual_table_definition<M>(std::forward<decltype(definition)>(definition)...);
+            },
+            std::tuple_cat(make_reflected_columns<O>(),
+                           make_reflected_hidden_columns<O>(),
+                           std::tuple<Es...>{std::move(elements)...}));
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Factory function for a virtual table.
+     *
+     *  The mapped object type is determined implicitly from the first column definition.
+     *  An eponymous virtual table is named after its module. Otherwise the optional `[[=orm_name("…")]]`
+     *  annotation of the mapped object type supplies the table name (otherwise the type's reflected identifier is used).
+     *
+     *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
+     */
+    template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
+    auto make_virtual_table(internal::virtual_table_definition<M, Cs...> definition) {
+        using namespace ::sqlite_orm::internal;
+
+        std::string name;
+        if constexpr (virtual_table_module_traits<M>::is_eponymous::value) {
+            name = M::name();
+        } else {
+            name = resolve_dbo_name<O>(extract_type_annotations<O>());
+        }
+        // unqualified: module-specific factories (fts5) are found by argument-dependent lookup
+        return make_virtual_table<O>(std::move(name), std::move(definition));
+    }
+}
+#endif
 
 // #include "schema/view.h"
 
@@ -18056,18 +18141,28 @@ namespace sqlite_orm::internal {
  *
  *  A schema is represented as a tuple of database objects - tables, views, virtual tables,
  *  indexes and triggers. These are the generic facilities for recognizing and passing around
- *  such a tuple; locating an individual database object within one is the subject of
- *  `algorithms/table_lookup.h`.
+ *  such a tuple, and unpacking the tuples of database objects passed to `make_storage()`;
+ *  locating an individual database object within one is the subject of `algorithms/table_lookup.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::true_type, std::false_type
-#include <tuple>  //  std::tuple, std::get, std::tuple_size_v
-#include <utility>  //  std::index_sequence, std::make_index_sequence, std::forward
+#include <type_traits>  //  std::true_type, std::false_type, std::negation, std::disjunction, std::conditional_t
+#include <tuple>  //  std::tuple, std::get, std::tuple_size_v, std::tuple_element_t, std::tuple_cat
+#include <utility>  //  std::index_sequence, std::make_index_sequence, std::forward, std::move
 #endif
 
 // #include "../functional/type_traits.h"
 
+// #include "../functional/index_sequence_util.h"
+
+// #include "../functional/mpl.h"
+
+// #include "../tuple_helper/tuple_filter.h"
+//  tuple_from_index_sequence_t
+// #include "../tuple_helper/tuple_traits.h"
+//  tuple_has_type
+// #include "../tuple_helper/tuple_transformer.h"
+//  create_from_tuple
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 //  is_with_clause
 
@@ -18084,6 +18179,71 @@ namespace sqlite_orm::internal {
     // to match `const db_objects_tuple`.
     template<class... DBO>
     struct is_db_objects<const std::tuple<DBO...>> : std::true_type {};
+
+    /**
+     *  Quoted trait metafunction that checks whether a type is a tuple of database objects containing type `T`.
+     */
+    template<class T>
+    using check_if_bundles = mpl::conjunction<check_if<is_db_objects>, check_if_has_type<T>>;
+
+    /**
+     *  Whether the database object at index `I` of the tuple at index `K` of arguments `Specs` is kept:
+     *  it is dropped if an argument is of the same type, or if an earlier tuple or an earlier element of the same tuple
+     *  is of the same type.
+     */
+    template<size_t K,
+             size_t I,
+             class Specs,
+             class Bundle = std::tuple_element_t<K, Specs>,
+             class DBO = std::tuple_element_t<I, Bundle>>
+    struct is_unique_bundled_dbo
+        : std::negation<std::disjunction<
+              // an argument is of type `DBO`
+              tuple_has_type<Specs, DBO>,
+              // one of the arguments [0, K) is a tuple containing `DBO`
+              mpl::invoke_t<mpl::contains<check_if_bundles<DBO>>,
+                            tuple_from_index_sequence_t<Specs, std::make_index_sequence<K>>>,
+              // one of the elements [0, I) of the tuple is of type `DBO`
+              tuple_has_type<tuple_from_index_sequence_t<Bundle, std::make_index_sequence<I>>, DBO>>> {};
+
+    /**
+     *  The index sequence of the kept database objects of the tuple at index `K` of arguments `Specs`.
+     */
+    template<size_t K, class Specs, class Seq>
+    struct bundled_dbo_index_sequence;
+
+    template<size_t K, class Specs, size_t... Idx>
+    struct bundled_dbo_index_sequence<K, Specs, std::index_sequence<Idx...>>
+        // index `Idx` of the tuple if kept, nothing otherwise
+        : flatten_idxseq<std::conditional_t<is_unique_bundled_dbo<K, Idx, Specs>::value,
+                                            std::index_sequence<Idx>,
+                                            std::index_sequence<>>...> {};
+
+    /**
+     *  Unpack the argument at index `K` of arguments `Specs`: a tuple of database objects into its kept
+     *  database objects, any other argument into a tuple of itself.
+     */
+    template<size_t K, class Specs, class Spec>
+    auto unpack_db_objects(Spec spec) {
+        if constexpr (is_db_objects<Spec>::value) {
+            using index_sequence =
+                typename bundled_dbo_index_sequence<K, Specs, std::make_index_sequence<std::tuple_size<Spec>::value>>::
+                    type;
+            return create_from_tuple<std::tuple>(std::move(spec), index_sequence{});
+        } else {
+            return std::tuple<Spec>{std::move(spec)};
+        }
+    }
+
+    /**
+     *  Unpack the tuples of database objects among arguments `Spec...`, keeping one database object per type:
+     *  a bundled database object is dropped if an argument is of the same type, or if it is bundled once more
+     *  in an earlier position.
+     */
+    template<class... Spec, size_t... K>
+    auto unpack_db_objects(std::tuple<Spec...> specs, std::index_sequence<K...>) {
+        return std::tuple_cat(unpack_db_objects<K, std::tuple<Spec...>>(std::get<K>(std::move(specs)))...);
+    }
 
 #ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
     /**
@@ -18714,7 +18874,171 @@ namespace sqlite_orm::internal {
     using sync_order_sequence_t = typename sync_order_of<Tpl>::type;
 }
 
-// #include "table_info.h"
+// #include "../builtin/dbos/pragma_table_info.h"
+
+/** @file The rows of `PRAGMA table_info` and `PRAGMA table_xinfo`, and the eponymous virtual tables
+ *        `pragma_table_info` and `pragma_table_xinfo` of their PRAGMA functions (C++26 reflection),
+ *        bundled by `make_pragma_tables()`.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#include <utility>  //  std::move
+#include <tuple>  //  std::tuple
+#endif
+
+// #include "../../functional/gsl.h"
+
+// #include "../../schema/virtual_table.h"
+
+// #include "../../ast/table_reference.h"
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  A row of `PRAGMA table_info`, and data structure for the `pragma_table_info` eponymous virtual table.
+     */
+    struct table_info {
+        int cid = 0;
+        std::string name;
+        std::string type;
+        bool notnull = false;
+        std::string dflt_value;
+        int pk = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+        table_info(decltype(cid) cid_,
+                   decltype(name) name_,
+                   decltype(type) type_,
+                   decltype(notnull) notnull_,
+                   decltype(dflt_value) dflt_value_,
+                   decltype(pk) pk_) :
+            cid(cid_), name(std::move(name_)), type(std::move(type_)), notnull(notnull_),
+            dflt_value(std::move(dflt_value_)), pk(pk_) {}
+#endif
+
+        /**
+         *  Hidden columns of the `pragma_table_info` virtual table: the PRAGMA argument (the table name) and the schema.
+         */
+        struct hidden {
+            std::string arg;
+            std::string schema;
+
+            using enclosing_type = table_info;
+        };
+    };
+
+    /**
+     *  A row of `PRAGMA table_xinfo`, and data structure for the `pragma_table_xinfo` eponymous virtual table.
+     */
+    struct table_xinfo {
+        int cid = 0;
+        std::string name;
+        std::string type;
+        bool notnull = false;
+        std::string dflt_value;
+        int pk = 0;
+        //  as reported by `PRAGMA table_xinfo`: 0 = normal column, 1 = hidden column in a virtual table,
+        //  2 = VIRTUAL generated column, 3 = STORED generated column;
+        //  `get_table_info()` stores 1 for a generated column, so only zero vs non-zero may be compared
+        int hidden = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+        table_xinfo(decltype(cid) cid_,
+                    decltype(name) name_,
+                    decltype(type) type_,
+                    decltype(notnull) notnull_,
+                    decltype(dflt_value) dflt_value_,
+                    decltype(pk) pk_,
+                    decltype(hidden) hidden_) :
+            cid(cid_), name(std::move(name_)), type(std::move(type_)), notnull(notnull_),
+            dflt_value(std::move(dflt_value_)), pk(pk_), hidden{hidden_} {}
+#endif
+
+        /**
+         *  Hidden columns of the `pragma_table_xinfo` virtual table: the PRAGMA argument (the table name) and the schema.
+         *
+         *  The data member `hidden` hides this struct's name: `table_xinfo::hidden::arg` names a hidden column,
+         *  `struct table_xinfo::hidden` names the struct.
+         */
+        struct hidden {
+            std::string arg;
+            std::string schema;
+
+            using enclosing_type = table_xinfo;
+        };
+    };
+}
+
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+namespace sqlite_orm::internal {
+    struct pragma_table_info_module_tag : eponymous_module {
+        // simplify conceptual/meta programming
+        using module_type = pragma_table_info_module_tag;
+
+        static constexpr orm_gsl::czstring name() {
+            return "pragma_table_info";
+        }
+    };
+
+    /**
+     *  Factory function for a `pragma_table_info` virtual table definition.
+     *
+     *  The hidden columns 'arg' and 'schema' are mapped into each table definition.
+     */
+    inline auto using_pragma_table_info() {
+        return make_reflected_virtual_table_definition<pragma_table_info_module_tag, table_info>();
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    inline constexpr orm_table_reference auto pragma_table_info_table = c<table_info>();
+}
+
+#if SQLITE_VERSION_NUMBER >= 3026000
+namespace sqlite_orm::internal {
+    struct pragma_table_xinfo_module_tag : eponymous_module {
+        // simplify conceptual/meta programming
+        using module_type = pragma_table_xinfo_module_tag;
+
+        static constexpr orm_gsl::czstring name() {
+            return "pragma_table_xinfo";
+        }
+    };
+
+    /**
+     *  Factory function for a `pragma_table_xinfo` virtual table definition.
+     *
+     *  The hidden columns 'arg' and 'schema' are mapped into each table definition.
+     */
+    inline auto using_pragma_table_xinfo() {
+        return make_reflected_virtual_table_definition<pragma_table_xinfo_module_tag, table_xinfo>();
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    inline constexpr orm_table_reference auto pragma_table_xinfo_table = c<table_xinfo>();
+}
+#endif
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Factory function for the eponymous virtual tables of the PRAGMA functions:
+     *  `pragma_table_info`, and `pragma_table_xinfo` from SQLite 3.26.0.
+     *
+     *  E.g.
+     *  auto storage = make_storage("", make_pragma_tables(), make_table<User>());
+     */
+    inline auto make_pragma_tables() {
+        return std::tuple{
+            make_virtual_table(internal::using_pragma_table_info()),
+#if SQLITE_VERSION_NUMBER >= 3026000
+            make_virtual_table(internal::using_pragma_table_xinfo()),
+#endif
+        };
+    }
+}
+#endif
 
 // #include "../schema/algorithms/table_filters.h"
 
@@ -21244,7 +21568,7 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 
 // #include "../functional/gsl.h"
 
-// #include "table_info.h"
+// #include "../builtin/dbos/pragma_table_info.h"
 
 // #include "../marshaling/row_extractor.h"
 
@@ -23024,7 +23348,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../serialization/serializing_util.h"
 
-// #include "table_info.h"
+// #include "../builtin/dbos/pragma_table_info.h"
 
 // #include "storage_options.h"
 
@@ -27977,8 +28301,8 @@ namespace sqlite_orm::internal {
     }
 
     /**
-     *  Storage class itself. Create an instance to use it as an interfacto to sqlite db by calling `make_storage`
-     *  function.
+     *  The storage: the interface to an SQLite database with the database objects `DBO...`.
+     *  Create it with `make_storage()`.
      */
     template<class... DBO>
     struct storage_t : storage_base {
@@ -27986,7 +28310,8 @@ namespace sqlite_orm::internal {
 
         /**
          *  @param filename database filename.
-         *  @param dbObjects db_objects_tuple
+         *  @param dbObjects the database objects.
+         *  @param options the storage options.
          */
         template<class OptionsTpl>
         storage_t(std::string filename, db_objects_type dbObjects, OptionsTpl options) :
@@ -29691,8 +30016,29 @@ namespace sqlite_orm::internal {
     template<class Elements>
     using opt_index_sequence = filter_tuple_sequence_t<Elements, check_if_names<storage_opt_tag_t>::template fn>;
 
+    /**
+     *  Whether a type is a tuple of database objects.
+     */
+    template<class T>
+    using is_tuple_of_database_objects =
+        mpl::invoke_t<mpl::conjunction<check_if<is_db_objects>, check_if_has_only<is_database_object>>, T>;
+
+    /**
+     *  Whether a type is an admissible `make_storage()` argument:
+     *  a database object, a tuple of database objects or a storage option.
+     */
+    template<class T>
+    using is_storage_spec = mpl::invoke_t<mpl::disjunction<check_if<is_database_object>,
+                                                           check_if<is_tuple_of_database_objects>,
+                                                           check_if_names<storage_opt_tag_t>>,
+                                          T>;
+
+    /*
+     *  Note: Not named `make_storage()`, as argument-dependent lookup would find it for a public `make_storage()` call
+     *  whose second argument is a tuple of database objects.
+     */
     template<class... DBO, class OptionsTpl>
-    storage_t<DBO...> make_storage(std::string filename, std::tuple<DBO...> dbObjects, OptionsTpl options) {
+    storage_t<DBO...> make_storage_impl(std::string filename, std::tuple<DBO...> dbObjects, OptionsTpl options) {
         return {std::move(filename), std::move(dbObjects), std::move(options)};
     }
 }
@@ -29700,7 +30046,10 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /*
      *  Factory function for a storage instance, from a database file, a set of database object definitions
-     *  and option storage options like connection control options and an 'on open' callback.
+     *  and optional storage options like connection control options and an 'on open' callback.
+     *  
+     *  A tuple of database objects like `make_builtin_tables()` is unpacked into its database objects;
+     *  a bundled database object is dropped if one of the same type is passed separately or bundled once more.
      *  
      *  E.g.
      *  auto storage = make_storage("", connection_control{.open_forever = true}, on_open([](sqlite3* db) {}));
@@ -29709,12 +30058,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     auto make_storage(std::string filename, Spec... specifications) {
         using namespace ::sqlite_orm::internal;
 
-        static_assert(((is_database_object<Spec>::value || polyfill::is_detected_v<storage_opt_tag_t, Spec>) && ...),
-                      "a make_storage() argument must be a table, index, trigger, view, virtual table or a storage "
-                      "option");
+        static_assert((is_storage_spec<Spec>::value && ...),
+                      "a make_storage() argument must be a table, index, trigger, view, virtual table, a tuple of "
+                      "them or a storage option");
 
-        std::tuple specTuple{std::forward<Spec>(specifications)...};
-        return internal::make_storage(
+        auto specTuple =
+            unpack_db_objects(std::tuple<Spec...>{std::move(specifications)...}, std::index_sequence_for<Spec...>{});
+        return make_storage_impl(
             std::move(filename),
             create_from_tuple<std::tuple>(std::move(specTuple), dbo_index_sequence<decltype(specTuple)>{}),
             create_from_tuple<std::tuple>(std::move(specTuple), opt_index_sequence<decltype(specTuple)>{}));
@@ -29810,6 +30160,8 @@ namespace sqlite_orm::internal {
 
 // #include "../type_mapping/type_printer.h"
 
+// #include "../builtin/dbos/pragma_table_info.h"
+//  table_xinfo
 // #include "table.h"
 
 namespace sqlite_orm::internal {
@@ -33956,7 +34308,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 /** @file Umbrella header for the database objects SQLite provides itself:
  *        its schema table (`sqlite_master`/`sqlite_schema`), the eponymous virtual tables (`dbstat`,
- *        `generate_series`) and the virtual table modules (FTS5, R*Tree).
+ *        `generate_series`, `pragma_table_info`/`pragma_table_xinfo`), the bundle `make_builtin_tables()`
+ *        and the virtual table modules (FTS5, R*Tree).
  */
 
 // #include "dbos/sqlite_schema.h"
@@ -33965,8 +34318,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
-#include <type_traits>  //  std::false_type, std::true_type, std::is_convertible
-#include <tuple>  //  std::tuple_size, std::make_tuple, std::tuple
+#include <type_traits>  //  std::is_convertible
+#include <tuple>  //  std::tuple_size, std::tuple
 #include <utility>  //  std::move, std::index_sequence_for
 #include <string>  //  std::string
 #endif
@@ -33986,7 +34339,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 namespace sqlite_orm::internal {
-    struct dbstat_module_tag {
+    struct dbstat_module_tag : eponymous_module {
         // simplify conceptual/meta programming
         using module_type = dbstat_module_tag;
 
@@ -33994,25 +34347,6 @@ namespace sqlite_orm::internal {
             return "dbstat";
         }
     };
-
-    template<>
-    struct virtual_table_module_traits<dbstat_module_tag> {
-        using module_type = dbstat_module_tag;
-        using is_eponymous = std::true_type;
-        using is_without_rowid = std::false_type;
-        using omit_column_type = std::true_type;
-    };
-
-    template<class... Cs>
-    struct virtual_table_traits<dbstat_module_tag, Cs...> : virtual_table_module_traits<dbstat_module_tag> {
-        using definition_type = table_definition<Cs...>;
-        using elements_type = typename definition_type::elements_type;
-    };
-
-    template<class... Cs>
-    inline virtual_table_definition<dbstat_module_tag, Cs...> make_dbstat_definition(Cs... columns) {
-        return {{std::make_tuple(std::move(columns)...)}};
-    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -34078,21 +34412,27 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert(std::is_convertible<input_value_types, final_expected_types>::value,
                       "The schema name must be a string value, the aggregate flag a boolean value");
 
-        return make_dbstat_definition(make_column("name", &dbstat::name),
-                                      make_column("path", &dbstat::path),
-                                      make_column("pageno", &dbstat::pageno),
-                                      make_column("pagetype", &dbstat::pagetype),
-                                      make_column("ncell", &dbstat::ncell),
-                                      make_column("payload", &dbstat::payload),
-                                      make_column("unused", &dbstat::unused),
-                                      make_column("mx_payload", &dbstat::mx_payload),
-                                      make_column("pgoffset", &dbstat::pgoffset),
-                                      make_column("pgsize", &dbstat::pgsize),
-                                      make_hidden_column("schema", &dbstat::hidden::schema),
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+        return make_reflected_virtual_table_definition<dbstat_module_tag, dbstat>(
+            literal_holder<Value>{std::move(tableValues)}...);
+#else
+        return make_virtual_table_definition<dbstat_module_tag>(
+            make_column("name", &dbstat::name),
+            make_column("path", &dbstat::path),
+            make_column("pageno", &dbstat::pageno),
+            make_column("pagetype", &dbstat::pagetype),
+            make_column("ncell", &dbstat::ncell),
+            make_column("payload", &dbstat::payload),
+            make_column("unused", &dbstat::unused),
+            make_column("mx_payload", &dbstat::mx_payload),
+            make_column("pgoffset", &dbstat::pgoffset),
+            make_column("pgsize", &dbstat::pgsize),
+            make_hidden_column("schema", &dbstat::hidden::schema),
 #if SQLITE_VERSION_NUMBER >= 3031000
-                                      make_hidden_column("aggregate", &dbstat::hidden::aggregate),
+            make_hidden_column("aggregate", &dbstat::hidden::aggregate),
 #endif
-                                      literal_holder<Value>{std::move(tableValues)}...);
+            literal_holder<Value>{std::move(tableValues)}...);
+#endif
     }
 
     /**
@@ -34106,13 +34446,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "dbos/generate_series.h"
 
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#if SQLITE_VERSION_NUMBER >= 3008012
-#include <tuple>  // std::tuple_element, std::make_tuple
-#include <utility>  // std::forward
-#endif
-#endif
-
 // #include "../../functional/gsl.h"
 
 // #include "../../schema/virtual_table.h"
@@ -34121,7 +34454,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3008012
 namespace sqlite_orm::internal {
-    struct generate_series_module_tag {
+    struct generate_series_module_tag : eponymous_module {
         // simplify conceptual/meta programming
         using module_type = generate_series_module_tag;
 
@@ -34129,26 +34462,6 @@ namespace sqlite_orm::internal {
             return "generate_series";
         }
     };
-
-    template<>
-    struct virtual_table_module_traits<generate_series_module_tag> {
-        using module_type = generate_series_module_tag;
-        using is_eponymous = std::true_type;
-        using is_without_rowid = std::false_type;
-        using omit_column_type = std::true_type;
-    };
-
-    template<class... Cs>
-    struct virtual_table_traits<generate_series_module_tag, Cs...>
-        : virtual_table_module_traits<generate_series_module_tag> {
-        using definition_type = table_definition<Cs...>;
-        using elements_type = typename definition_type::elements_type;
-    };
-
-    template<class... Cs>
-    inline virtual_table_definition<generate_series_module_tag, Cs...> make_generate_series_definition(Cs... columns) {
-        return {{std::make_tuple(std::move(columns)...)}};
-    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -34184,10 +34497,15 @@ namespace sqlite_orm::internal {
      *  The hidden generate_series columns 'start', 'stop' and 'step' are mapped into each table definition.
      */
     inline auto using_generate_series() {
-        return make_generate_series_definition(make_column("value", &generate_series::value),
-                                               make_hidden_column("start", &generate_series::hidden::start),
-                                               make_hidden_column("stop", &generate_series::hidden::stop),
-                                               make_hidden_column("step", &generate_series::hidden::step));
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+        return make_reflected_virtual_table_definition<generate_series_module_tag, generate_series>();
+#else
+        return make_virtual_table_definition<generate_series_module_tag>(
+            make_column("value", &generate_series::value),
+            make_hidden_column("start", &generate_series::hidden::start),
+            make_hidden_column("stop", &generate_series::hidden::stop),
+            make_hidden_column("step", &generate_series::hidden::step));
+#endif
     }
 }
 
@@ -34202,11 +34520,51 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
+// #include "dbos/pragma_table_info.h"
+
+// #include "dbos/builtin_tables.h"
+
+/** @file The tuple of the database objects SQLite provides itself, `make_builtin_tables()`.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>  //  std::tuple, std::tuple_cat
+#endif
+
+// #include "sqlite_schema.h"
+
+// #include "dbstat.h"
+
+// #include "pragma_table_info.h"
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Factory function for the tables SQLite provides itself, as far as available:
+     *  the schema table, the DBSTAT virtual table (`SQLITE_ENABLE_DBSTAT_VTAB`)
+     *  and the eponymous virtual tables of the PRAGMA functions (see `make_pragma_tables()`).
+     *
+     *  Eponymous virtual tables of extensions, like `generate_series`, are not included.
+     *
+     *  E.g.
+     *  auto storage = make_storage("", make_builtin_tables(), make_table<User>());
+     */
+    inline auto make_builtin_tables() {
+        return std::tuple_cat(std::tuple{make_sqlite_schema_table()},
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+                              std::tuple{make_dbstat_table()},
+#endif
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+                              make_pragma_tables(),
+#endif
+                              std::tuple<>{});
+    }
+}
+
 // #include "dbos/fts5.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
-#include <tuple>  //  std::tuple_size, std::make_tuple, std::get
+#include <tuple>  //  std::tuple_size, std::make_tuple, std::get, std::tuple_cat, std::apply
 #include <utility>  //  std::forward, std::move
 #include <vector>
 #include <optional>  //  std::optional
@@ -34233,6 +34591,12 @@ namespace sqlite_orm::internal {
             return "fts5";
         }
     };
+
+    template<class... Cs>
+    constexpr void validate_fts5_definition() {
+        static_assert((is_fts5_table_element_or_constraint<Cs>::value && ...),
+                      "Incorrect table elements or constraints");
+    }
 
     template<class... Cs>
     virtual_table_definition<fts5_module_tag, Cs...> make_fts5_definition(Cs... definition) {
@@ -34292,8 +34656,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... Cs>
     auto using_fts5(Cs... definition) {
         using namespace ::sqlite_orm::internal;
-        static_assert((is_fts5_table_element_or_constraint<Cs>::value && ...),
-                      "Incorrect table elements or constraints");
+        validate_fts5_definition<Cs...>();
         return make_fts5_definition(std::forward<Cs>(definition)...,
                                     // note: eponymous column name is filled in later in `make_virtual_table()`
                                     make_hidden_column("", &fts5::hidden::any),
@@ -34310,11 +34673,30 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class... Cs>
     [[deprecated("Specify the explicit object type when calling `make_virtual_table()`.")]]
     internal::virtual_table_description<T, internal::fts5_module_tag, Cs...> using_fts5(Cs... definition) {
-        static_assert((internal::is_fts5_table_element_or_constraint<Cs>::value && ...),
-                      "Incorrect table elements or constraints");
+        internal::validate_fts5_definition<Cs...>();
 
         return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+    /**
+     *  Factory function for a FTS5 virtual table definition.
+     *
+     *  The columns are reflected from the non-static data members of O and their annotations,
+     *  and precede the table options.
+     *
+     *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
+     */
+    template<class O, class... Cs>
+        requires (internal::col_index_sequence_of<std::tuple<Cs...>>::size() == 0)
+    auto using_fts5(Cs... options) {
+        return std::apply(
+            [](auto&&... definition) static {
+                return using_fts5(std::forward<decltype(definition)>(definition)...);
+            },
+            std::tuple_cat(internal::make_reflected_columns<O>(), std::tuple<Cs...>{std::move(options)...}));
+    }
+#endif
 
     template<class O, class... Cs>
     internal::virtual_table<O, internal::fts5_module_tag, Cs...>
@@ -34704,7 +35086,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_RTREE
 #include <type_traits>  // std::is_same
-#include <tuple>  // std::tuple_element, std::make_tuple
+#include <tuple>  // std::tuple_element, std::make_tuple, std::apply
 #include <utility>  // std::forward
 #include <cstdint>  //  std::int32_t
 #endif
@@ -34778,6 +35160,25 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+    /**
+     *  Factory function for a RTREE virtual table definition.
+     *
+     *  The columns are reflected from the non-static data members of O and their annotations.
+     *
+     *  Example: `make_virtual_table(using_rtree<DemoIndex>())`
+     */
+    template<class O>
+    auto using_rtree() {
+        return std::apply(
+            [](auto&&... definition) static {
+                return using_rtree(std::forward<decltype(definition)>(definition)...);
+            },
+            internal::make_reflected_columns<O>());
+    }
+#endif
+
     /**
      *  Factory function for a RTREE_I32 virtual table definition.
      */
@@ -34787,6 +35188,24 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+    /**
+     *  Factory function for a RTREE_I32 virtual table definition.
+     *
+     *  The columns are reflected from the non-static data members of O and their annotations.
+     *
+     *  Example: `make_virtual_table(using_rtree_i32<DemoIndex>())`
+     */
+    template<class O>
+    auto using_rtree_i32() {
+        return std::apply(
+            [](auto&&... definition) static {
+                return using_rtree_i32(std::forward<decltype(definition)>(definition)...);
+            },
+            internal::make_reflected_columns<O>());
+    }
+#endif
 }
 #endif
 

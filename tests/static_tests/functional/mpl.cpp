@@ -94,6 +94,10 @@ TEST_CASE("mpl") {
 
     STATIC_REQUIRE(mpl::invoke_t<internal::check_if_has<std::is_null_pointer>, std::tuple<nullptr_t>>::value);
     STATIC_REQUIRE_FALSE(mpl::invoke_t<internal::check_if_has_not<std::is_null_pointer>, std::tuple<nullptr_t>>::value);
+    STATIC_REQUIRE(mpl::invoke_t<internal::check_if_has_only<std::is_null_pointer>, std::tuple<nullptr_t>>::value);
+    STATIC_REQUIRE(mpl::invoke_t<internal::check_if_has_only<std::is_null_pointer>, std::tuple<>>::value);
+    STATIC_REQUIRE_FALSE(
+        mpl::invoke_t<internal::check_if_has_only<std::is_null_pointer>, std::tuple<nullptr_t, int>>::value);
     STATIC_REQUIRE(mpl::invoke_t<internal::check_if_has_type<nullptr_t>, std::tuple<nullptr_t>>::value);
     STATIC_REQUIRE(mpl::invoke_t<internal::check_if_has_type<nullptr_t*>,
                                  std::tuple<nullptr_t>,

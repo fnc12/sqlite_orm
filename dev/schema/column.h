@@ -5,10 +5,14 @@
 #include <string>  //  std::string
 #include <optional>  //  std::optional
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_member_object_pointer, std::is_signed
-#include <utility>  //  std::move
+#include <utility>  //  std::move, std::index_sequence, std::make_index_sequence
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#include <meta>  //  std::meta::info, std::meta::identifier_of
+#endif
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/meta_util.h"
 #include "../functional/type_traits.h"
 #include "../sqlite3/sqlite3_types.h"  //  int64
 #include "../tuple_helper/tuple_traits.h"
@@ -219,3 +223,54 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}};
     }
 }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace sqlite_orm::internal {
+    /**
+     *  The columns of the non-static data members of `O`: named after the members' identifiers,
+     *  with the members' annotations as column constraints.
+     */
+    template<class O>
+    auto make_reflected_columns() {
+        static /*gcc*/ constexpr auto members = extract_members<O>();
+
+        return []<size_t... I>(std::index_sequence<I...>) static {
+            return std::tuple {
+                []<std::meta::info member>() static {
+                    return std::apply(
+                        [](auto&&... columnConstraints) static {
+                            return sqlite_orm::make_column(std::string(std::meta::identifier_of(member)),
+                                                           splice_member_pointer<member>(),
+                                                           std::move(columnConstraints)...);
+                        },
+                        splice_annotations<member>());
+                }.template operator()<members[I]>()...
+            };
+        }(std::make_index_sequence<members.size()>{});
+    }
+
+    /**
+     *  The hidden columns of the non-static data members of `O`'s nested `hidden` struct, if there is one,
+     *  named after the members' identifiers.
+     */
+    template<class O>
+    auto make_reflected_hidden_columns() {
+        static /*gcc*/ constexpr std::meta::info hidden = extract_nested_class<O>("hidden");
+
+        if constexpr (hidden == std::meta::info{}) {
+            return std::tuple<>{};
+        } else {
+            static /*gcc*/ constexpr auto members = extract_members<spliced_type_t<hidden>>();
+
+            return []<size_t... I>(std::index_sequence<I...>) static {
+                return std::tuple {
+                    []<std::meta::info member>() static {
+                        return make_hidden_column(std::string(std::meta::identifier_of(member)),
+                                                  splice_member_pointer<member>());
+                    }.template operator()<members[I]>()...
+                };
+            }(std::make_index_sequence<members.size()>{});
+        }
+    }
+}
+#endif

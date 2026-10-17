@@ -2,7 +2,7 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
-#include <tuple>  //  std::tuple_size, std::make_tuple, std::get
+#include <tuple>  //  std::tuple_size, std::make_tuple, std::get, std::tuple_cat, std::apply
 #include <utility>  //  std::forward, std::move
 #include <vector>
 #include <optional>  //  std::optional
@@ -25,6 +25,12 @@ namespace sqlite_orm::internal {
             return "fts5";
         }
     };
+
+    template<class... Cs>
+    constexpr void validate_fts5_definition() {
+        static_assert((is_fts5_table_element_or_constraint<Cs>::value && ...),
+                      "Incorrect table elements or constraints");
+    }
 
     template<class... Cs>
     virtual_table_definition<fts5_module_tag, Cs...> make_fts5_definition(Cs... definition) {
@@ -84,8 +90,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... Cs>
     auto using_fts5(Cs... definition) {
         using namespace ::sqlite_orm::internal;
-        static_assert((is_fts5_table_element_or_constraint<Cs>::value && ...),
-                      "Incorrect table elements or constraints");
+        validate_fts5_definition<Cs...>();
         return make_fts5_definition(std::forward<Cs>(definition)...,
                                     // note: eponymous column name is filled in later in `make_virtual_table()`
                                     make_hidden_column("", &fts5::hidden::any),
@@ -102,11 +107,30 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class... Cs>
     [[deprecated("Specify the explicit object type when calling `make_virtual_table()`.")]]
     internal::virtual_table_description<T, internal::fts5_module_tag, Cs...> using_fts5(Cs... definition) {
-        static_assert((internal::is_fts5_table_element_or_constraint<Cs>::value && ...),
-                      "Incorrect table elements or constraints");
+        internal::validate_fts5_definition<Cs...>();
 
         return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+    /**
+     *  Factory function for a FTS5 virtual table definition.
+     *
+     *  The columns are reflected from the non-static data members of O and their annotations,
+     *  and precede the table options.
+     *
+     *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
+     */
+    template<class O, class... Cs>
+        requires (internal::col_index_sequence_of<std::tuple<Cs...>>::size() == 0)
+    auto using_fts5(Cs... options) {
+        return std::apply(
+            [](auto&&... definition) static {
+                return using_fts5(std::forward<decltype(definition)>(definition)...);
+            },
+            std::tuple_cat(internal::make_reflected_columns<O>(), std::tuple<Cs...>{std::move(options)...}));
+    }
+#endif
 
     template<class O, class... Cs>
     internal::virtual_table<O, internal::fts5_module_tag, Cs...>
