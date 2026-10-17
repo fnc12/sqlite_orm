@@ -44,19 +44,12 @@ trait, predicate or algorithm.** The placement test:
 Complexity never determines the tier. Where nearby code does it differently, nearby code is
 the outlier: follow the doc, and convert the outlier rather than copying it.
 
-**Adding a DSL node:**
-
-1. Define the node struct in `dev/schema/` or `dev/ast/`.
-2. In that same header, specialize the vocabulary axes that apply, including the relevant
-   `vocabulary/traits/*_fwd.h`. Write them over a type predicate (`is_specialization_of_v`,
-   `is_base_template_of`) or as a SFINAE enabler on the node's grammar trait, never by
-   restating the node's template-parameter pattern. Consumers grammar-match and read through
-   the projections; they never pattern-match the concrete node.
-3. **Register the header in `dev/node_definitions.h`.** A missing entry does not fail loudly:
-   the trait silently falls back to its primary template. Definition-only headers excluded
-   from the declaration-only umbrellas, like `vocabulary/algorithms/field_predicates.h`, go
-   into `dev/node_algorithm_definitions.h`.
-4. Add tests.
+**Adding a DSL node** follows "Adding a new DSL node" in the vocabulary layer doc. In short:
+a node specializes its vocabulary traits in its own header, over a type predicate rather than
+by restating its template parameters; consumers grammar-match it and read it through the
+projections, never pattern-matching the concrete node. **Register the header in
+`dev/node_definitions.h`**: a missing entry compiles, and the trait silently falls back to its
+primary template.
 
 **The configuration is universally available.** Every header can rely on
 `dev/functional/config.h` without including it: the C++ feature and compiler macros, the
