@@ -77,7 +77,7 @@ TEST_CASE("statement_serializer dbstat") {
                 where(c(&dbstat::hidden::schema) == "main" and mystat_table->*&dbstat::hidden::schema == "main"));
             value = serialize(expression, context);
             expected =
-                R"(SELECT "dbstat"."name", "mystat"."name" FROM "dbstat" INNER JOIN "mystat" ON ("mystat"."name" = "dbstat"."name") WHERE (("dbstat"."schema" = 'main') AND ("mystat"."schema" = 'main')))";
+                R"(SELECT "dbstat"."name", "mystat"."name" FROM "dbstat" INNER JOIN "mystat" ON "mystat"."name" = "dbstat"."name"  WHERE (("dbstat"."schema" = 'main') AND ("mystat"."schema" = 'main')))";
         }
         SECTION("table-valued function 0") {
             value = serialize(from(mystat_table()), context);
