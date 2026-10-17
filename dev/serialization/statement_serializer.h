@@ -616,6 +616,7 @@ namespace sqlite_orm::internal {
         E,
         std::enable_if_t<std::disjunction<std::is_member_pointer<E>, is_column_pointer<E>>::value>> {
         using statement_type = E;
+        using table_type = table_type_of_t<statement_type>;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
@@ -623,7 +624,7 @@ namespace sqlite_orm::internal {
             std::stringstream ss;
             if (auto* columnName = find_column_name(context.db_objects, expression)) {
                 ss << streaming_identifier(
-                    !context.omit_table_name ? lookup_table_name<table_type_of_t<E>>(context.db_objects) : "",
+                    !context.omit_table_name ? lookup_table_name<mapped_type_of_t<table_type>>(context.db_objects) : "",
                     *columnName,
                     "");
             } else {

@@ -93,6 +93,27 @@ TEST_CASE("statement_serializer dbstat") {
                 R"(SELECT "dbstat"."name", "dbstat"."path", "dbstat"."pageno", "dbstat"."pagetype", "dbstat"."ncell", "dbstat"."payload", "dbstat"."unused", "dbstat"."mx_payload", "dbstat"."pgoffset", "dbstat"."pgsize" FROM "dbstat"('main'))";
         }
     }
+    SECTION("hidden column member pointers") {
+        const std::tuple dbObjects{make_dbstat_table(), make_virtual_table<mystat>("mystat", using_dbstat())};
+        using context_t = internal::serializer_context<std::remove_const_t<decltype(dbObjects)>>;
+        context_t context{dbObjects};
+        context.use_parentheses = false;
+        SECTION("qualified by the enclosing table") {
+            auto expression =
+                select(columns(&dbstat::name, &dbstat::hidden::schema), where(c(&dbstat::hidden::schema) == "main"));
+            value = serialize(expression, context);
+            expected = R"(SELECT "dbstat"."name", "dbstat"."schema" FROM "dbstat" WHERE ("dbstat"."schema" = 'main'))";
+        }
+        SECTION("join") {
+            auto expression = select(
+                columns(&dbstat::name, mystat_table->*&dbstat::name),
+                inner_join<mystat>(on(mystat_table->*&dbstat::name == &dbstat::name)),
+                where(c(&dbstat::hidden::schema) == "main" and mystat_table->*&dbstat::hidden::schema == "main"));
+            value = serialize(expression, context);
+            expected =
+                R"(SELECT "dbstat"."name", "mystat"."name" FROM "dbstat" INNER JOIN "mystat" ON ("mystat"."name" = "dbstat"."name") WHERE (("dbstat"."schema" = 'main') AND ("mystat"."schema" = 'main')))";
+        }
+    }
     REQUIRE(value == expected);
 }
 #endif
