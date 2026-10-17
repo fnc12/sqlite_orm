@@ -12,8 +12,7 @@ library is built, not how it is used.
 * [Review checklist](review-checklist.md) — the repository's conventions a change is checked
   against.
 
-## Design records
+## Design plans
 
-[`docs/plans/`](../plans/) holds dated design documents for individual pieces of work.
-Those record the reasoning behind a specific change at a specific time; the topics above
-describe how the codebase works now.
+[`docs/plans/`](../plans/README.md) holds the designs of work in progress, deleted once the
+work is done; the topics above describe how the codebase works now.

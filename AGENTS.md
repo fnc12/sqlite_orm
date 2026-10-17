@@ -24,7 +24,7 @@ pointers. License: AGPL for open source, MIT after purchase.
   `SQLITE_ORM_EXPORT namespace sqlite_orm`.
 - `tests/` - Catch2 unit tests; `examples/` - one program per feature.
 - `docs/internals/` - how the library is built ([index](docs/internals/home.md));
-  `docs/plans/` - dated design records.
+  `docs/plans/` - designs of work in progress, deleted once done ([policy](docs/plans/README.md)).
 
 The main entry points: the storage (`dev/execution/storage.h`, `make_storage()`), the table
 definitions (`dev/schema/table.h`, `make_table()`) and the statement serializer
@@ -135,8 +135,8 @@ ctest --test-dir build                         # all tests
 ## References
 
 - [`docs/internals/vocabulary-layer.md`](docs/internals/vocabulary-layer.md) also records
-  open work (traits not yet lifted, `storage_*` → `schema_*` renames), and `docs/plans/`
-  holds earlier designs: check both before starting a refactor.
+  open work and open questions, `TODO.md` missing features, and `docs/plans/` designs in
+  progress: check them before starting a refactor.
 - [`docs/internals/review-checklist.md`](docs/internals/review-checklist.md) - what a change
   is reviewed against.
 - [`docs/thread-safety.md`](docs/thread-safety.md) - the threading guarantees of a storage.
