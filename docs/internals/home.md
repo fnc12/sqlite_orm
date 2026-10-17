@@ -8,6 +8,9 @@ library is built, not how it is used.
 
 * [The DSL vocabulary layer](vocabulary-layer.md) — how the internal headers are layered,
   and where a new trait, predicate or algorithm belongs. Start here before adding one.
+* [Source layout](source-layout.md) — where a header under `dev/` belongs, folder by folder.
+* [Review checklist](review-checklist.md) — the repository's conventions a change is checked
+  against.
 
 ## Design records
 
