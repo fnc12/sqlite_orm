@@ -34,11 +34,7 @@ namespace sqlite_orm::internal {
      *  The definition of eponymous virtual tables is built-in, fixed and implicit,
      *  and they can only be created with optional table-values for their hidden columns.
      */
-    struct eponymous_module {
-        ~eponymous_module() = delete;
-        eponymous_module(const eponymous_module&) = delete;
-        void operator=(const eponymous_module&) = delete;
-    };
+    struct eponymous_module {};
 
     /** 
      *  Default base traits of a virtual table module.

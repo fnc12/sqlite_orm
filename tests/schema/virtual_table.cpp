@@ -325,7 +325,7 @@ TEST_CASE("pragma_table_info virtual table") {
     };
 
     auto storage = make_storage("",
-                                make_pragma_table_info_table(),
+                                make_pragma_tables(),
                                 make_table("users",
                                            make_column("id", &User::id, primary_key()),
                                            make_column("name", &User::name, default_value("")),
@@ -333,7 +333,7 @@ TEST_CASE("pragma_table_info virtual table") {
     storage.sync_schema();
 
     SECTION("eponymous") {
-        REQUIRE(make_pragma_table_info_table().name == "pragma_table_info");
+        REQUIRE(storage.tablename<table_info>() == "pragma_table_info");
         REQUIRE_FALSE(storage.table_exists("pragma_table_info"));
     }
     SECTION("table-valued function") {
@@ -387,12 +387,12 @@ TEST_CASE("pragma_table_xinfo virtual table") {
 
     auto storage = make_storage(
         "",
-        make_pragma_table_xinfo_table(),
+        make_pragma_tables(),
         make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
     storage.sync_schema();
 
     SECTION("eponymous") {
-        REQUIRE(make_pragma_table_xinfo_table().name == "pragma_table_xinfo");
+        REQUIRE(storage.tablename<table_xinfo>() == "pragma_table_xinfo");
         REQUIRE_FALSE(storage.table_exists("pragma_table_xinfo"));
     }
     SECTION("table-valued function") {

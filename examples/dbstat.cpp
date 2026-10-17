@@ -9,7 +9,8 @@
  *  The DBSTAT virtual table is available only if SQLite is built with SQLITE_ENABLE_DBSTAT_VTAB,
  *  which also has to be defined when compiling sqlite_orm - by the user, or by a package manager
  *  like vcpkg in its configuration of sqlite3.h.
- *  It is added to the storage by `make_dbstat_table()`, here along with the schema table.
+ *  It is added to the storage along with the other tables SQLite provides itself, like the schema table,
+ *  by `make_builtin_tables()`.
  *
  *  For information about the DBSTAT virtual table see https://sqlite.org/dbstat.html
  */
@@ -38,8 +39,7 @@ struct Note {
 int main() {
 #ifdef ENABLE_THIS_EXAMPLE
     auto storage = make_storage(":memory:",
-                                make_sqlite_schema_table(),
-                                make_dbstat_table(),
+                                make_builtin_tables(),
                                 make_index("idx_notes_title", &Note::title),
                                 make_table("notes",
                                            make_column("id", &Note::id, primary_key()),

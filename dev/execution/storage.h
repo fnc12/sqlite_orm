@@ -95,8 +95,8 @@ namespace sqlite_orm::internal {
     }
 
     /**
-     *  Storage class itself. Create an instance to use it as an interfacto to sqlite db by calling `make_storage`
-     *  function.
+     *  The storage: the interface to an SQLite database with the database objects `DBO...`.
+     *  Create it with `make_storage()`.
      */
     template<class... DBO>
     struct storage_t : storage_base {
@@ -104,7 +104,8 @@ namespace sqlite_orm::internal {
 
         /**
          *  @param filename database filename.
-         *  @param dbObjects db_objects_tuple
+         *  @param dbObjects the database objects.
+         *  @param options the storage options.
          */
         template<class OptionsTpl>
         storage_t(std::string filename, db_objects_type dbObjects, OptionsTpl options) :
@@ -1809,8 +1810,29 @@ namespace sqlite_orm::internal {
     template<class Elements>
     using opt_index_sequence = filter_tuple_sequence_t<Elements, check_if_names<storage_opt_tag_t>::template fn>;
 
+    /**
+     *  Whether a type is a tuple of database objects.
+     */
+    template<class T>
+    using is_tuple_of_database_objects =
+        mpl::invoke_t<mpl::conjunction<check_if<is_db_objects>, check_if_has_only<is_database_object>>, T>;
+
+    /**
+     *  Whether a type is an admissible `make_storage()` argument:
+     *  a database object, a tuple of database objects or a storage option.
+     */
+    template<class T>
+    using is_storage_spec = mpl::invoke_t<mpl::disjunction<check_if<is_database_object>,
+                                                           check_if<is_tuple_of_database_objects>,
+                                                           check_if_names<storage_opt_tag_t>>,
+                                          T>;
+
+    /*
+     *  Note: Not named `make_storage()`, as argument-dependent lookup would find it for a public `make_storage()` call
+     *  whose second argument is a tuple of database objects.
+     */
     template<class... DBO, class OptionsTpl>
-    storage_t<DBO...> make_storage(std::string filename, std::tuple<DBO...> dbObjects, OptionsTpl options) {
+    storage_t<DBO...> make_storage_impl(std::string filename, std::tuple<DBO...> dbObjects, OptionsTpl options) {
         return {std::move(filename), std::move(dbObjects), std::move(options)};
     }
 }
@@ -1818,7 +1840,10 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /*
      *  Factory function for a storage instance, from a database file, a set of database object definitions
-     *  and option storage options like connection control options and an 'on open' callback.
+     *  and optional storage options like connection control options and an 'on open' callback.
+     *  
+     *  A tuple of database objects like `make_builtin_tables()` is unpacked into its database objects;
+     *  a bundled database object is dropped if one of the same type is passed separately or bundled once more.
      *  
      *  E.g.
      *  auto storage = make_storage("", connection_control{.open_forever = true}, on_open([](sqlite3* db) {}));
@@ -1827,12 +1852,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     auto make_storage(std::string filename, Spec... specifications) {
         using namespace ::sqlite_orm::internal;
 
-        static_assert(((is_database_object<Spec>::value || polyfill::is_detected_v<storage_opt_tag_t, Spec>) && ...),
-                      "a make_storage() argument must be a table, index, trigger, view, virtual table or a storage "
-                      "option");
+        static_assert((is_storage_spec<Spec>::value && ...),
+                      "a make_storage() argument must be a table, index, trigger, view, virtual table, a tuple of "
+                      "them or a storage option");
 
-        std::tuple specTuple{std::forward<Spec>(specifications)...};
-        return internal::make_storage(
+        auto specTuple =
+            unpack_db_objects(std::tuple<Spec...>{std::move(specifications)...}, std::index_sequence_for<Spec...>{});
+        return make_storage_impl(
             std::move(filename),
             create_from_tuple<std::tuple>(std::move(specTuple), dbo_index_sequence<decltype(specTuple)>{}),
             create_from_tuple<std::tuple>(std::move(specTuple), opt_index_sequence<decltype(specTuple)>{}));

@@ -1,12 +1,14 @@
 #pragma once
 
 /** @file The rows of `PRAGMA table_info` and `PRAGMA table_xinfo`, and the eponymous virtual tables
- *        `pragma_table_info` and `pragma_table_xinfo` of their PRAGMA functions (C++26 reflection).
+ *        `pragma_table_info` and `pragma_table_xinfo` of their PRAGMA functions (C++26 reflection),
+ *        bundled by `make_pragma_tables()`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <utility>  //  std::move
+#include <tuple>  //  std::tuple
 #endif
 
 #include "../../functional/gsl.h"
@@ -113,13 +115,6 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline constexpr orm_table_reference auto pragma_table_info_table = c<table_info>();
-
-    /**
-     *  Factory function for the `pragma_table_info` eponymous virtual table.
-     */
-    inline auto make_pragma_table_info_table() {
-        return make_virtual_table(internal::using_pragma_table_info());
-    }
 }
 
 #if SQLITE_VERSION_NUMBER >= 3026000
@@ -145,13 +140,24 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline constexpr orm_table_reference auto pragma_table_xinfo_table = c<table_xinfo>();
-
-    /**
-     *  Factory function for the `pragma_table_xinfo` eponymous virtual table.
-     */
-    inline auto make_pragma_table_xinfo_table() {
-        return make_virtual_table(internal::using_pragma_table_xinfo());
-    }
 }
 #endif
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Factory function for the eponymous virtual tables of the PRAGMA functions:
+     *  `pragma_table_info`, and `pragma_table_xinfo` from SQLite 3.26.0.
+     *
+     *  E.g.
+     *  auto storage = make_storage("", make_pragma_tables(), make_table<User>());
+     */
+    inline auto make_pragma_tables() {
+        return std::tuple{
+            make_virtual_table(internal::using_pragma_table_info()),
+#if SQLITE_VERSION_NUMBER >= 3026000
+            make_virtual_table(internal::using_pragma_table_xinfo()),
+#endif
+        };
+    }
+}
 #endif

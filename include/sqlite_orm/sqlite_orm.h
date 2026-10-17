@@ -2674,6 +2674,12 @@ namespace sqlite_orm::internal {
     using check_if_has_not = mpl::not_<mpl::contains_fn<TraitFn>>;
 
     /*
+     *  Quoted trait metafunction that checks whether a tuple contains only types with given trait.
+     */
+    template<template<class...> class TraitFn>
+    using check_if_has_only = mpl::not_<mpl::contains<check_if_not<TraitFn>>>;
+
+    /*
      *  Quoted metafunction that checks whether a tuple contains given type.
      */
     template<class T>
@@ -7010,11 +7016,7 @@ namespace sqlite_orm::internal {
      *  The definition of eponymous virtual tables is built-in, fixed and implicit,
      *  and they can only be created with optional table-values for their hidden columns.
      */
-    struct eponymous_module {
-        ~eponymous_module() = delete;
-        eponymous_module(const eponymous_module&) = delete;
-        void operator=(const eponymous_module&) = delete;
-    };
+    struct eponymous_module {};
 
     /** 
      *  Default base traits of a virtual table module.
@@ -18139,18 +18141,28 @@ namespace sqlite_orm::internal {
  *
  *  A schema is represented as a tuple of database objects - tables, views, virtual tables,
  *  indexes and triggers. These are the generic facilities for recognizing and passing around
- *  such a tuple; locating an individual database object within one is the subject of
- *  `algorithms/table_lookup.h`.
+ *  such a tuple, and unpacking the tuples of database objects passed to `make_storage()`;
+ *  locating an individual database object within one is the subject of `algorithms/table_lookup.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::true_type, std::false_type
-#include <tuple>  //  std::tuple, std::get, std::tuple_size_v
-#include <utility>  //  std::index_sequence, std::make_index_sequence, std::forward
+#include <type_traits>  //  std::true_type, std::false_type, std::negation, std::disjunction, std::conditional_t
+#include <tuple>  //  std::tuple, std::get, std::tuple_size_v, std::tuple_element_t, std::tuple_cat
+#include <utility>  //  std::index_sequence, std::make_index_sequence, std::forward, std::move
 #endif
 
 // #include "../functional/type_traits.h"
 
+// #include "../functional/index_sequence_util.h"
+
+// #include "../functional/mpl.h"
+
+// #include "../tuple_helper/tuple_filter.h"
+//  tuple_from_index_sequence_t
+// #include "../tuple_helper/tuple_traits.h"
+//  tuple_has_type
+// #include "../tuple_helper/tuple_transformer.h"
+//  create_from_tuple
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 //  is_with_clause
 
@@ -18167,6 +18179,71 @@ namespace sqlite_orm::internal {
     // to match `const db_objects_tuple`.
     template<class... DBO>
     struct is_db_objects<const std::tuple<DBO...>> : std::true_type {};
+
+    /**
+     *  Quoted trait metafunction that checks whether a type is a tuple of database objects containing type `T`.
+     */
+    template<class T>
+    using check_if_bundles = mpl::conjunction<check_if<is_db_objects>, check_if_has_type<T>>;
+
+    /**
+     *  Whether the database object at index `I` of the tuple at index `K` of arguments `Specs` is kept:
+     *  it is dropped if an argument is of the same type, or if an earlier tuple or an earlier element of the same tuple
+     *  is of the same type.
+     */
+    template<size_t K,
+             size_t I,
+             class Specs,
+             class Bundle = std::tuple_element_t<K, Specs>,
+             class DBO = std::tuple_element_t<I, Bundle>>
+    struct is_unique_bundled_dbo
+        : std::negation<std::disjunction<
+              // an argument is of type `DBO`
+              tuple_has_type<Specs, DBO>,
+              // one of the arguments [0, K) is a tuple containing `DBO`
+              mpl::invoke_t<mpl::contains<check_if_bundles<DBO>>,
+                            tuple_from_index_sequence_t<Specs, std::make_index_sequence<K>>>,
+              // one of the elements [0, I) of the tuple is of type `DBO`
+              tuple_has_type<tuple_from_index_sequence_t<Bundle, std::make_index_sequence<I>>, DBO>>> {};
+
+    /**
+     *  The index sequence of the kept database objects of the tuple at index `K` of arguments `Specs`.
+     */
+    template<size_t K, class Specs, class Seq>
+    struct bundled_dbo_index_sequence;
+
+    template<size_t K, class Specs, size_t... Idx>
+    struct bundled_dbo_index_sequence<K, Specs, std::index_sequence<Idx...>>
+        // index `Idx` of the tuple if kept, nothing otherwise
+        : flatten_idxseq<std::conditional_t<is_unique_bundled_dbo<K, Idx, Specs>::value,
+                                            std::index_sequence<Idx>,
+                                            std::index_sequence<>>...> {};
+
+    /**
+     *  Unpack the argument at index `K` of arguments `Specs`: a tuple of database objects into its kept
+     *  database objects, any other argument into a tuple of itself.
+     */
+    template<size_t K, class Specs, class Spec>
+    auto unpack_db_objects(Spec spec) {
+        if constexpr (is_db_objects<Spec>::value) {
+            using index_sequence =
+                typename bundled_dbo_index_sequence<K, Specs, std::make_index_sequence<std::tuple_size<Spec>::value>>::
+                    type;
+            return create_from_tuple<std::tuple>(std::move(spec), index_sequence{});
+        } else {
+            return std::tuple<Spec>{std::move(spec)};
+        }
+    }
+
+    /**
+     *  Unpack the tuples of database objects among arguments `Spec...`, keeping one database object per type:
+     *  a bundled database object is dropped if an argument is of the same type, or if it is bundled once more
+     *  in an earlier position.
+     */
+    template<class... Spec, size_t... K>
+    auto unpack_db_objects(std::tuple<Spec...> specs, std::index_sequence<K...>) {
+        return std::tuple_cat(unpack_db_objects<K, std::tuple<Spec...>>(std::get<K>(std::move(specs)))...);
+    }
 
 #ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
     /**
@@ -18800,12 +18877,14 @@ namespace sqlite_orm::internal {
 // #include "../builtin/dbos/pragma_table_info.h"
 
 /** @file The rows of `PRAGMA table_info` and `PRAGMA table_xinfo`, and the eponymous virtual tables
- *        `pragma_table_info` and `pragma_table_xinfo` of their PRAGMA functions (C++26 reflection).
+ *        `pragma_table_info` and `pragma_table_xinfo` of their PRAGMA functions (C++26 reflection),
+ *        bundled by `make_pragma_tables()`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <utility>  //  std::move
+#include <tuple>  //  std::tuple
 #endif
 
 // #include "../../functional/gsl.h"
@@ -18914,13 +18993,6 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline constexpr orm_table_reference auto pragma_table_info_table = c<table_info>();
-
-    /**
-     *  Factory function for the `pragma_table_info` eponymous virtual table.
-     */
-    inline auto make_pragma_table_info_table() {
-        return make_virtual_table(internal::using_pragma_table_info());
-    }
 }
 
 #if SQLITE_VERSION_NUMBER >= 3026000
@@ -18946,15 +19018,26 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline constexpr orm_table_reference auto pragma_table_xinfo_table = c<table_xinfo>();
-
-    /**
-     *  Factory function for the `pragma_table_xinfo` eponymous virtual table.
-     */
-    inline auto make_pragma_table_xinfo_table() {
-        return make_virtual_table(internal::using_pragma_table_xinfo());
-    }
 }
 #endif
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Factory function for the eponymous virtual tables of the PRAGMA functions:
+     *  `pragma_table_info`, and `pragma_table_xinfo` from SQLite 3.26.0.
+     *
+     *  E.g.
+     *  auto storage = make_storage("", make_pragma_tables(), make_table<User>());
+     */
+    inline auto make_pragma_tables() {
+        return std::tuple{
+            make_virtual_table(internal::using_pragma_table_info()),
+#if SQLITE_VERSION_NUMBER >= 3026000
+            make_virtual_table(internal::using_pragma_table_xinfo()),
+#endif
+        };
+    }
+}
 #endif
 
 // #include "../schema/algorithms/table_filters.h"
@@ -28218,8 +28301,8 @@ namespace sqlite_orm::internal {
     }
 
     /**
-     *  Storage class itself. Create an instance to use it as an interfacto to sqlite db by calling `make_storage`
-     *  function.
+     *  The storage: the interface to an SQLite database with the database objects `DBO...`.
+     *  Create it with `make_storage()`.
      */
     template<class... DBO>
     struct storage_t : storage_base {
@@ -28227,7 +28310,8 @@ namespace sqlite_orm::internal {
 
         /**
          *  @param filename database filename.
-         *  @param dbObjects db_objects_tuple
+         *  @param dbObjects the database objects.
+         *  @param options the storage options.
          */
         template<class OptionsTpl>
         storage_t(std::string filename, db_objects_type dbObjects, OptionsTpl options) :
@@ -29932,8 +30016,29 @@ namespace sqlite_orm::internal {
     template<class Elements>
     using opt_index_sequence = filter_tuple_sequence_t<Elements, check_if_names<storage_opt_tag_t>::template fn>;
 
+    /**
+     *  Whether a type is a tuple of database objects.
+     */
+    template<class T>
+    using is_tuple_of_database_objects =
+        mpl::invoke_t<mpl::conjunction<check_if<is_db_objects>, check_if_has_only<is_database_object>>, T>;
+
+    /**
+     *  Whether a type is an admissible `make_storage()` argument:
+     *  a database object, a tuple of database objects or a storage option.
+     */
+    template<class T>
+    using is_storage_spec = mpl::invoke_t<mpl::disjunction<check_if<is_database_object>,
+                                                           check_if<is_tuple_of_database_objects>,
+                                                           check_if_names<storage_opt_tag_t>>,
+                                          T>;
+
+    /*
+     *  Note: Not named `make_storage()`, as argument-dependent lookup would find it for a public `make_storage()` call
+     *  whose second argument is a tuple of database objects.
+     */
     template<class... DBO, class OptionsTpl>
-    storage_t<DBO...> make_storage(std::string filename, std::tuple<DBO...> dbObjects, OptionsTpl options) {
+    storage_t<DBO...> make_storage_impl(std::string filename, std::tuple<DBO...> dbObjects, OptionsTpl options) {
         return {std::move(filename), std::move(dbObjects), std::move(options)};
     }
 }
@@ -29941,7 +30046,10 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /*
      *  Factory function for a storage instance, from a database file, a set of database object definitions
-     *  and option storage options like connection control options and an 'on open' callback.
+     *  and optional storage options like connection control options and an 'on open' callback.
+     *  
+     *  A tuple of database objects like `make_builtin_tables()` is unpacked into its database objects;
+     *  a bundled database object is dropped if one of the same type is passed separately or bundled once more.
      *  
      *  E.g.
      *  auto storage = make_storage("", connection_control{.open_forever = true}, on_open([](sqlite3* db) {}));
@@ -29950,12 +30058,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     auto make_storage(std::string filename, Spec... specifications) {
         using namespace ::sqlite_orm::internal;
 
-        static_assert(((is_database_object<Spec>::value || polyfill::is_detected_v<storage_opt_tag_t, Spec>) && ...),
-                      "a make_storage() argument must be a table, index, trigger, view, virtual table or a storage "
-                      "option");
+        static_assert((is_storage_spec<Spec>::value && ...),
+                      "a make_storage() argument must be a table, index, trigger, view, virtual table, a tuple of "
+                      "them or a storage option");
 
-        std::tuple specTuple{std::forward<Spec>(specifications)...};
-        return internal::make_storage(
+        auto specTuple =
+            unpack_db_objects(std::tuple<Spec...>{std::move(specifications)...}, std::index_sequence_for<Spec...>{});
+        return make_storage_impl(
             std::move(filename),
             create_from_tuple<std::tuple>(std::move(specTuple), dbo_index_sequence<decltype(specTuple)>{}),
             create_from_tuple<std::tuple>(std::move(specTuple), opt_index_sequence<decltype(specTuple)>{}));
@@ -34199,7 +34308,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 /** @file Umbrella header for the database objects SQLite provides itself:
  *        its schema table (`sqlite_master`/`sqlite_schema`), the eponymous virtual tables (`dbstat`,
- *        `generate_series`, `pragma_table_info`/`pragma_table_xinfo`) and the virtual table modules (FTS5, R*Tree).
+ *        `generate_series`, `pragma_table_info`/`pragma_table_xinfo`), the bundle `make_builtin_tables()`
+ *        and the virtual table modules (FTS5, R*Tree).
  */
 
 // #include "dbos/sqlite_schema.h"
@@ -34411,6 +34521,44 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
 // #include "dbos/pragma_table_info.h"
+
+// #include "dbos/builtin_tables.h"
+
+/** @file The tuple of the database objects SQLite provides itself, `make_builtin_tables()`.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>  //  std::tuple, std::tuple_cat
+#endif
+
+// #include "sqlite_schema.h"
+
+// #include "dbstat.h"
+
+// #include "pragma_table_info.h"
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Factory function for the tables SQLite provides itself, as far as available:
+     *  the schema table, the DBSTAT virtual table (`SQLITE_ENABLE_DBSTAT_VTAB`)
+     *  and the eponymous virtual tables of the PRAGMA functions (see `make_pragma_tables()`).
+     *
+     *  Eponymous virtual tables of extensions, like `generate_series`, are not included.
+     *
+     *  E.g.
+     *  auto storage = make_storage("", make_builtin_tables(), make_table<User>());
+     */
+    inline auto make_builtin_tables() {
+        return std::tuple_cat(std::tuple{make_sqlite_schema_table()},
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+                              std::tuple{make_dbstat_table()},
+#endif
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+                              make_pragma_tables(),
+#endif
+                              std::tuple<>{});
+    }
+}
 
 // #include "dbos/fts5.h"
 

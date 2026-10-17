@@ -8,7 +8,8 @@
  *  row type's nested `hidden` struct, e.g. `table_info::hidden::arg`.
  *
  *  sqlite_orm provides `pragma_table_info` and `pragma_table_xinfo` with C++26 reflection.
- *  Their eponymous virtual tables have to be added to the storage, like `make_pragma_table_info_table()`.
+ *  Their eponymous virtual tables are added to the storage by `make_pragma_tables()`, or along with
+ *  the other tables SQLite provides itself, like the schema table, by `make_builtin_tables()`.
  *  The application's tables are mapped by the reflection-based `make_table<T>()`, with the table names and
  *  column constraints given as annotations.
  *
@@ -47,9 +48,7 @@ struct[[= "products"_orm_name]] Product {
 int main() {
 #ifdef ENABLE_THIS_EXAMPLE
     auto storage = make_storage("",
-                                make_sqlite_schema_table(),
-                                make_pragma_table_info_table(),
-                                make_pragma_table_xinfo_table(),
+                                make_builtin_tables(),
                                 make_table<Department>(),
                                 make_table<Product>(foreign_key(&Product::department_id).references(&Department::id)));
     storage.sync_schema();

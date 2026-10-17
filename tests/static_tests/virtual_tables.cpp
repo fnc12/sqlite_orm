@@ -97,7 +97,7 @@ TEST_CASE("pragma_table_info layout tests") {
 #endif
 
     SECTION("default table definition") {
-        auto table = make_pragma_table_info_table();
+        auto table = std::get<0>(make_pragma_tables());
         using table_type = decltype(table);
         using elements_type = decltype(table.elements);
         STATIC_REQUIRE(std::is_same<table_type::module_type, pragma_table_info_module_tag>::value);
@@ -130,7 +130,7 @@ TEST_CASE("pragma_table_xinfo layout tests") {
         STATIC_REQUIRE(std::is_same<internal::mapped_type_of_t<struct table_xinfo::hidden>, table_xinfo>::value);
     }
     SECTION("default table definition") {
-        auto table = make_pragma_table_xinfo_table();
+        auto table = std::get<1>(make_pragma_tables());
         using table_type = decltype(table);
         using elements_type = decltype(table.elements);
         STATIC_REQUIRE(std::is_same<table_type::module_type, pragma_table_xinfo_module_tag>::value);
