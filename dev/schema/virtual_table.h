@@ -4,8 +4,10 @@
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>  // std::convertible_to
 #endif
+#include <type_traits>  //  std::is_base_of, std::conditional_t, std::false_type, std::true_type
 #include <string>  //  std::string
-#include <utility>  //  std::move
+#include <tuple>  //  std::make_tuple, std::tuple_cat, std::apply
+#include <utility>  //  std::move, std::forward
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
@@ -14,6 +16,8 @@
 #include "../vocabulary/node_traits.h"  //  orm_table_reference, auto_decay_table_ref_t
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "table_base.h"
+#include "column.h"  //  make_reflected_columns, make_reflected_hidden_columns
+#include "dbo_name.h"
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
@@ -24,13 +28,19 @@ namespace sqlite_orm::internal {
     };
 #endif
 
+    /**
+     *  Base class of the module tags of built-in eponymous virtual tables.
+     *
+     *  The definition of eponymous virtual tables is built-in, fixed and implicit,
+     *  and they can only be created with optional table-values for their hidden columns.
+     */
+    struct eponymous_module {};
+
     /** 
-     *  Default base traits of a "normal" virtual table module.
+     *  Default base traits of a virtual table module.
      *  
      *  Particularly this means:
-     *  - It is not eponymous.
-     *    The definition of eponymous virtual tables is built-in, fixed and implicit,
-     *    and they can only be created with optional table-values for their hidden columns.
+     *  - It is eponymous if the module tag derives from `eponymous_module`.
      *  - It is not a WITHOUT ROWID table (i.e. it has an implicit `rowid` column).
      *  - Omits the column type in the SQL creation statement.
      *  
@@ -39,22 +49,25 @@ namespace sqlite_orm::internal {
     template<class M>
     struct virtual_table_module_traits {
         using module_type = M;
-        using is_eponymous = std::false_type;
+        using is_eponymous = std::is_base_of<eponymous_module, M>;
         using is_without_rowid = std::false_type;
         using omit_column_type = std::true_type;
     };
 
     /** 
-     *  Default traits of a "normal" virtual table.
+     *  Default traits of a virtual table.
      *  
-     *  Particularly this means :
-     *  - Its definition is a `insertable_table_definition`.
+     *  Particularly this means:
+     *  - Its definition is a read-only `table_definition` for an eponymous module,
+     *    an `insertable_table_definition` otherwise.
      *  
      *  Specific virtual table modules can specialize this struct to provide their own traits.
      */
     template<class M, class... Cs>
     struct virtual_table_traits : virtual_table_module_traits<M> {
-        using definition_type = insertable_table_definition<Cs...>;
+        using definition_type = std::conditional_t<virtual_table_module_traits<M>::is_eponymous::value,
+                                                   table_definition<Cs...>,
+                                                   insertable_table_definition<Cs...>>;
         using elements_type = elements_type_t<definition_type>;
     };
 
@@ -97,6 +110,14 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_virtual_table_v = polyfill::is_specialization_of_v<T, virtual_table>;
+
+    /**
+     *  Factory function for a virtual table definition of module M.
+     */
+    template<class M, class... Cs>
+    virtual_table_definition<M, Cs...> make_virtual_table_definition(Cs... elements) {
+        return {{std::make_tuple(std::move(elements)...)}};
+    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -145,3 +166,48 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #endif
 }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace sqlite_orm::internal {
+    /**
+     *  Factory function for a virtual table definition of module M, mapping the data structure O:
+     *  the columns of O's non-static data members, the hidden columns of the non-static data members of
+     *  O's nested `hidden` struct, followed by `elements`.
+     */
+    template<class M, class O, class... Es>
+    auto make_reflected_virtual_table_definition(Es... elements) {
+        return std::apply(
+            [](auto&&... definition) static {
+                return make_virtual_table_definition<M>(std::forward<decltype(definition)>(definition)...);
+            },
+            std::tuple_cat(make_reflected_columns<O>(),
+                           make_reflected_hidden_columns<O>(),
+                           std::tuple<Es...>{std::move(elements)...}));
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Factory function for a virtual table.
+     *
+     *  The mapped object type is determined implicitly from the first column definition.
+     *  An eponymous virtual table is named after its module. Otherwise the optional `[[=orm_name("…")]]`
+     *  annotation of the mapped object type supplies the table name (otherwise the type's reflected identifier is used).
+     *
+     *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
+     */
+    template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
+    auto make_virtual_table(internal::virtual_table_definition<M, Cs...> definition) {
+        using namespace ::sqlite_orm::internal;
+
+        std::string name;
+        if constexpr (virtual_table_module_traits<M>::is_eponymous::value) {
+            name = M::name();
+        } else {
+            name = resolve_dbo_name<O>(extract_type_annotations<O>());
+        }
+        // unqualified: module-specific factories (fts5) are found by argument-dependent lookup
+        return make_virtual_table<O>(std::move(name), std::move(definition));
+    }
+}
+#endif
