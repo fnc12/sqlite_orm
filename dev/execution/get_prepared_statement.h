@@ -11,8 +11,8 @@
 #include "../vocabulary/node_traits.h"  //  traits, projections
 #include "../vocabulary/node_algorithms.h"  //  is_bindable, bindable_index_sequence_of, access_dml_object
 #include "prepared_statement.h"  //  prepared_statement_t
-#include "../ast_iterator.h"  //  iterate_ast
-#include "../node_tuple.h"  //  node_tuple_t
+#include "../traversal/ast_iterator.h"  //  iterate_ast
+#include "../traversal/node_tuple.h"  //  node_tuple_t
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 

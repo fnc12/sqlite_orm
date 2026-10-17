@@ -8,7 +8,7 @@
 #include "../marshaling/row_extractor.h"
 #include "../marshaling/parameter_binders.h"  //  expression_parameter_binder
 #include "mapped_iterator.h"
-#include "../ast_iterator.h"
+#include "../traversal/ast_iterator.h"
 #include "../execution/prepared_statement.h"
 #include "../ast/crud/get.h"
 #include "../execution/connection_holder.h"

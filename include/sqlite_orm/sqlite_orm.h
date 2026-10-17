@@ -7367,7 +7367,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <type_traits>  //  std::is_member_pointer_v, std::is_same, std::is_base_of
 #endif
 
-// #include "../optional_container.h"
+// #include "../functional/optional_container.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -8706,13 +8706,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../tags.h"
+// #include "operand_tags.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_base_of, std::enable_if_t
 #endif
 
-// #include "vocabulary/traits/operand_traits_fwd.h"
+// #include "../vocabulary/traits/operand_traits_fwd.h"
 // Included to specialize traits
 
 namespace sqlite_orm::internal {
@@ -8935,7 +8935,7 @@ namespace sqlite_orm::internal {
 
 // #include "../builtin/collations.h"
 //  collate_argument
-// #include "../tags.h"
+// #include "operand_tags.h"
 
 // #include "operators.h"
 
@@ -8961,7 +8961,7 @@ namespace sqlite_orm::internal {
 // Included to specialize traits
 // #include "../vocabulary/node_algorithms.h"
 // is_operand_or_bindable, are_valid_operands, unwrap_expression
-// #include "../tags.h"
+// #include "operand_tags.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -9459,7 +9459,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../builtin/collations.h"
 //  collate_argument
-// #include "../tags.h"
+// #include "operand_tags.h"
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -10932,7 +10932,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../tags.h"
+// #include "operand_tags.h"
 
 // #include "../vocabulary/node_algorithms.h"
 // is_operand_or_bindable
@@ -11086,7 +11086,7 @@ namespace sqlite_orm::internal {
     struct function_traits<F O::*> : function_traits<F> {};
 }
 //  function_arguments, function_return_type_t
-// #include "../tags.h"
+// #include "operand_tags.h"
 //  arithmetic_t
 // #include "../vocabulary/node_traits.h"
 //  is_where, expression_type_t
@@ -11832,7 +11832,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../optional_container.h"
+// #include "../functional/optional_container.h"
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -14141,7 +14141,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../tags.h"
+// #include "operand_tags.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -14335,7 +14335,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../tags.h"
+// #include "operand_tags.h"
 
 // #include "../vocabulary/node_algorithms.h"
 
@@ -15004,9 +15004,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../optional_container.h"
+// #include "../functional/optional_container.h"
 
-// #include "../tags.h"
+// #include "operand_tags.h"
 
 // #include "../vocabulary/node_algorithms.h"
 // is_operand_or_bindable
@@ -15144,7 +15144,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 
-// #include "../optional_container.h"
+// #include "../functional/optional_container.h"
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -15254,7 +15254,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../tags.h"
+// #include "operand_tags.h"
 
 // #include "../vocabulary/node_algorithms.h"
 // unwrap_expression
@@ -15332,7 +15332,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../tags.h"
+// #include "operand_tags.h"
 
 // #include "../vocabulary/node_algorithms.h"
 //  unwrap_expression
@@ -19514,7 +19514,7 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "../ast_iterator.h"
+// #include "../traversal/ast_iterator.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_invocable
@@ -19522,17 +19522,17 @@ namespace sqlite_orm::internal {
 #include <functional>  //  std::reference_wrapper
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/type_traits.h"
+// #include "../functional/type_traits.h"
 
-// #include "tuple_helper/tuple_iteration.h"
+// #include "../tuple_helper/tuple_iteration.h"
 
-// #include "vocabulary/node_traits.h"
+// #include "../vocabulary/node_traits.h"
 
-// #include "ast/alias.h"
+// #include "../ast/alias.h"
 
-// #include "execution/prepared_statement.h"
+// #include "../execution/prepared_statement.h"
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -21115,7 +21115,7 @@ namespace sqlite_orm::internal {
 
 // #include "../marshaling/parameter_binders.h"
 //  expression_parameter_binder
-// #include "../ast_iterator.h"
+// #include "../traversal/ast_iterator.h"
 
 // #include "../execution/connection_holder.h"
 
@@ -21193,7 +21193,7 @@ template<class Select, class DBOs>
 constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_set_view<Select, DBOs>> = true;
 #endif
 
-// #include "../ast_iterator.h"
+// #include "../traversal/ast_iterator.h"
 
 // #include "storage_base.h"
 
@@ -30114,7 +30114,7 @@ namespace sqlite_orm::internal {
 
 // #include "../../vocabulary/node_traits.h"
 
-// #include "../../ast_iterator.h"
+// #include "../../traversal/ast_iterator.h"
 
 // #include "../../serialization/table_name_collector.h"
 
@@ -30159,9 +30159,9 @@ namespace sqlite_orm::internal {
 //  is_bindable, bindable_index_sequence_of, access_dml_object
 // #include "prepared_statement.h"
 //  prepared_statement_t
-// #include "../ast_iterator.h"
+// #include "../traversal/ast_iterator.h"
 //  iterate_ast
-// #include "../node_tuple.h"
+// #include "../traversal/node_tuple.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if
@@ -30170,15 +30170,15 @@ namespace sqlite_orm::internal {
 #include <functional>  //  std::reference_wrapper
 #endif
 
-// #include "functional/type_traits.h"
+// #include "../functional/type_traits.h"
 
-// #include "tuple_helper/tuple_filter.h"
+// #include "../tuple_helper/tuple_filter.h"
 
-// #include "execution/prepared_statement.h"
+// #include "../execution/prepared_statement.h"
 
-// #include "optional_container.h"
+// #include "../functional/optional_container.h"
 
-// #include "vocabulary/node_traits.h"
+// #include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
     template<class T, class SFINAE = void>
@@ -34626,7 +34626,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "../../tags.h"
+// #include "../../ast/operand_tags.h"
 //  negatable_t
 // #include "../../vocabulary/node_traits.h"
 //  is_recordset_alias_v

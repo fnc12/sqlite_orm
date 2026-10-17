@@ -5,7 +5,7 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
-#include "../tags.h"
+#include "operand_tags.h"
 #include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {

@@ -51,7 +51,7 @@
 #include "../schema/algorithms/column_lookup.h"
 #include "../result_set/mapped_view.h"
 #include "../result_set/result_set_view.h"
-#include "../ast_iterator.h"
+#include "../traversal/ast_iterator.h"
 #include "storage_base.h"
 #include "../ast/crud/get.h"
 #include "../ast/crud/insert.h"
