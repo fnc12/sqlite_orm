@@ -9,6 +9,11 @@ module;
 #include <assert.h>  //  assert macro
 #endif
 
+// Non-modular headers that sqlite_orm includes and that declare entities, kept in the global module;
+// their inclusions in the module purview are then skipped by their include guards.
+#include <version>
+#include <sqlite3.h>
+
 export module sqlite_orm;
 
 #ifdef SQLITE_ORM_IMPORT_STD_MODULE
