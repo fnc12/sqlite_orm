@@ -19,7 +19,7 @@ pointers. License: AGPL for open source, MIT after purchase.
   Never edit it by hand: change `dev/` and regenerate it (see [Before every commit](#before-every-commit)).
 - `not_single_header_include/sqlite_orm/sqlite_orm.h` - the non-amalgamated variant. Its
   includes and the `sources` of `third_party/amalgamate/config.json` list the same headers in
-  the same order; change both together.
+  the same order; change both together (`scripts/check-amalgamation-sources.sh` checks it).
 - `modules/` - the C++20 named module; public symbols are declared in
   `SQLITE_ORM_EXPORT namespace sqlite_orm`.
 - `tests/` - Catch2 unit tests; `examples/` - one program per feature.
@@ -97,8 +97,8 @@ from anywhere else.
 
 Run [`scripts/pre-commit.sh`](scripts/pre-commit.sh), on Linux, macOS or WSL. It regenerates
 the amalgamation, formats the sources with clang-format 20 (the version CI lints with), warns
-about changed files containing carriage returns, and checks that the paths named in this file and
-in `docs/internals/` exist. Every commit carries its own regenerated amalgamation, so that each
+about changed files containing carriage returns, and checks the order of the amalgamation
+sources and that the paths named in this file and in `docs/internals/` exist. Every commit carries its own regenerated amalgamation, so that each
 one is consistent by itself. Files use LF line endings, enforced by `.gitattributes`. When
 moving or renaming a file, update the documents naming it.
 
