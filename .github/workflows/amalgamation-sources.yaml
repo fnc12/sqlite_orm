@@ -1,0 +1,12 @@
+name: amalgamation sources
+
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: check that the separate-header variant and the amalgamation list the same headers in the same order
+      run: bash scripts/check-amalgamation-sources.sh

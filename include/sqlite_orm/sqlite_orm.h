@@ -86,6 +86,10 @@ using std::nullptr_t;
 
 // note: The check is deliberately limited to the C++17 library features sqlite_orm relies on;
 // e.g. `__cpp_lib_hardware_interference_size` is a C++17 feature that libc++ still does not provide.
+// It also rules out libstdc++ 7-8 and libc++ 7, which provide these features but no populated `<version>`
+// (libc++ 7's is an empty stub). Testing the feature headers themselves instead would include the standard library
+// ahead of everything, which conflicts with the `SQLITE_ORM_IMPORT_STD_MODULE` build.
+// The Apple deployment target (macOS 10.14 / iOS 12 for `std::optional`) is beyond any macro test.
 #if ((__cpp_lib_void_t < 201411L || __cpp_lib_bool_constant < 201505L) ||                                              \
      (__cpp_lib_logical_traits < 201510L || __cpp_lib_type_trait_variable_templates < 201510L) ||                      \
      (__cpp_lib_is_aggregate < 201703L)) ||                                                                            \
@@ -1410,6 +1414,12 @@ namespace sqlite_orm::internal {
 // #include "../vocabulary/algorithms/field_predicates_fwd.h"
 
 /** @file Declarations of closed predicates on raw C++ types, checking whether they qualify for an SQL-level role.
+ *
+ *  Each is defined where what it reads is: a predicate derived from the type itself in `field_predicates.h`;
+ *  a predicate testing a customization point next to that point (`is_bindable_v` in `statement_binder.h`,
+ *  `is_printable_v` in `field_printer.h`, `is_integer_mapped_v` in `type_printer.h`); the pointer-passing
+ *  predicates with its values in `marshaling/pointer_value.h`, which the top-level headers include ahead of
+ *  the storage, as the customization points are instantiated for concrete types while the headers are processed.
  */
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
@@ -1839,6 +1849,9 @@ namespace sqlite_orm::internal {
     /**
      *  Reflects the non-static data members of `T` and its base classes
      *  and returns them as a fixed-size span of `std::meta::info` reflections.
+     *
+     *  Callers iterating them in nested lambdas bind the result to a `static constexpr` local (marked "gcc"):
+     *  GCC captures a function-local `constexpr` variable by reference there, which then is no constant expression.
      */
     template<class T>
     consteval auto extract_members() {
@@ -6941,6 +6954,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
      *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
      *  the `requires` clause — column-level constraints come from annotations only.
+     *  Table-level constraints naming the object type's members (composite primary key, foreign key,
+     *  multi-column unique) cannot be class-scope annotations: a class-head annotation is parsed before
+     *  the class name is declared.
+     *
+     *  Annotation values are constant expressions of literal types: a string default is spelled
+     *  `[[= default_value("text")]]`, not with a `std::string`.
      */
     template<class T, class... Cs>
         requires (internal::is_base_table_constraint<Cs>::value && ...)
@@ -6960,6 +6979,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
      *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
      *  the `requires` clause — column-level constraints come from annotations only.
+     *  Table-level constraints naming the object type's members (composite primary key, foreign key,
+     *  multi-column unique) cannot be class-scope annotations: a class-head annotation is parsed before
+     *  the class name is declared.
+     *
+     *  Annotation values are constant expressions of literal types: a string default is spelled
+     *  `[[= default_value("text")]]`, not with a `std::string`.
      */
     template<orm_table_reference auto table, class... Cs>
         requires (internal::is_base_table_constraint<Cs>::value && ...)
@@ -8144,6 +8169,8 @@ namespace sqlite_orm::internal {
         }
 
       private:
+        //  not constexpr, as `addressof_enclosing` reinterpret_casts; hence a foreign key with actions
+        //  cannot be an annotation value
         foreign_key_type copy_fk(foreign_key_action newAction) const {
             const foreign_key_type* thisFk;
             if constexpr (forUpdate) {
@@ -11883,6 +11910,13 @@ namespace sqlite_orm::internal {
     /*  @short Define a built-in function by its name and its overload set.
      *
      *  Deliberately internal: sqlite_orm defines all built-in functions itself.
+     *
+     *  The definitions are published in the `sqlite_orm` namespace as copies; a using-declaration is not
+     *  exportable, as it would name an entity with module linkage. A function template facade publishes
+     *  a definition instead where the public function takes the return type as a template argument,
+     *  checks its arguments, or shares its name with other function templates (`count`, `replace`)
+     *  or with a global C library function (`abs`, `round`, `time`, `random`, `strftime`, `printf`):
+     *  an object of that name would make unqualified lookup ambiguous under `using namespace sqlite_orm`.
      *
      *  Examples:
      *  inline constexpr auto lower = "LOWER"_builtin.scalar<std::string(std::string_view)>();

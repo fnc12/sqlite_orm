@@ -191,6 +191,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
      *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
      *  the `requires` clause — column-level constraints come from annotations only.
+     *  Table-level constraints naming the object type's members (composite primary key, foreign key,
+     *  multi-column unique) cannot be class-scope annotations: a class-head annotation is parsed before
+     *  the class name is declared.
+     *
+     *  Annotation values are constant expressions of literal types: a string default is spelled
+     *  `[[= default_value("text")]]`, not with a `std::string`.
      */
     template<class T, class... Cs>
         requires (internal::is_base_table_constraint<Cs>::value && ...)
@@ -210,6 +216,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
      *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
      *  the `requires` clause — column-level constraints come from annotations only.
+     *  Table-level constraints naming the object type's members (composite primary key, foreign key,
+     *  multi-column unique) cannot be class-scope annotations: a class-head annotation is parsed before
+     *  the class name is declared.
+     *
+     *  Annotation values are constant expressions of literal types: a string default is spelled
+     *  `[[= default_value("text")]]`, not with a `std::string`.
      */
     template<orm_table_reference auto table, class... Cs>
         requires (internal::is_base_table_constraint<Cs>::value && ...)
