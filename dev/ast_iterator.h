@@ -10,7 +10,7 @@
 #include "functional/type_traits.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "vocabulary/node_traits.h"
-#include "alias.h"
+#include "ast/alias.h"
 #include "prepared_statement.h"
 
 namespace sqlite_orm::internal {
@@ -24,7 +24,7 @@ namespace sqlite_orm::internal {
      *  
      *  Note that not all leaves of the expression tree are visited:
      *  Column expressions can be more complex, but are passed as a whole to the callable.
-     *  Examples are `column_pointer<>` and `alias_column_t<>`.
+     *  Examples are `column_pointer<>` and `alias_qualified_column_t<>`.
      *  
      *  To use `ast_iterator` call `iterate_ast(object, callable);`
      *  
@@ -596,11 +596,11 @@ namespace sqlite_orm::internal {
      *  Column alias or literal: skipped
      */
     template<class T>
-    struct ast_iterator<T,
-                        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<T, alias_holder>,
-                                                          polyfill::is_specialization_of<T, literal_holder>,
-                                                          is_column_alias<T>,
-                                                          is_implicit_join_constraint<T>>::value>> {
+    struct ast_iterator<
+        T,
+        std::enable_if_t<
+            std::disjunction<is_alias_holder<T>, is_literal<T>, is_column_alias<T>, is_implicit_join_constraint<T>>::
+                value>> {
         using node_type = T;
 
         template<class L>

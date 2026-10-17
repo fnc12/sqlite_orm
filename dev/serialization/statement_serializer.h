@@ -31,10 +31,9 @@
 #include "../ast/result_columns.h"
 #include "../ast/crud/set.h"
 #include "../prepared_statement.h"
-#include "../mapped_type_proxy.h"
 #include "../type_mapping/type_printer.h"
 #include "../marshaling/field_printer.h"
-#include "../literal.h"
+#include "../ast/literal.h"
 #include "table_name_collector.h"
 #include "column_expressions_collector.h"
 #include "cte_column_names_collector.h"
@@ -245,7 +244,7 @@ namespace sqlite_orm::internal {
      *  Serializer for literal values.
      */
     template<class T>
-    struct statement_serializer<T, match_specialization_of<T, literal_holder>> {
+    struct statement_serializer<T, match_if<is_literal, T>> {
         using statement_type = T;
 
         template<class Ctx>
@@ -468,13 +467,13 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<alias_holder<T>, void> {
-        using statement_type = alias_holder<T>;
+    struct statement_serializer<T, match_if<is_alias_holder, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type&, const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            ss << streaming_identifier(T::get());
+            ss << streaming_identifier(type_t<statement_type>::get());
             return ss.str();
         }
     };
@@ -506,9 +505,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<char... C>
-    struct statement_serializer<column_alias<C...>, void> {
-        using statement_type = column_alias<C...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_column_alias, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type&, const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
@@ -585,23 +584,25 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            using alias_type = alias_type_t<statement_type>;
             std::stringstream ss;
             ss << serialize(c.expression, context) + " AS "
-               << streaming_identifier(alias_extractor<alias_type_t<T>>::extract());
+               << streaming_identifier(alias_extractor<alias_type>::extract());
             return ss.str();
         }
     };
 
-    template<class T, class P>
-    struct statement_serializer<alias_column_t<T, P>, void> {
-        using statement_type = alias_column_t<T, P>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_alias_qualified_column, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            using alias_type = alias_type_t<statement_type>;
             std::stringstream ss;
             if (!context.omit_table_name) {
-                ss << streaming_identifier(alias_extractor<T>::extract()) << ".";
+                ss << streaming_identifier(alias_extractor<alias_type>::extract()) << ".";
             }
             auto newContext = context;
             newContext.omit_table_name = true;
@@ -748,7 +749,7 @@ namespace sqlite_orm::internal {
             ss << streaming_identifier(alias_extractor<cte_moniker_type_t<CTE>>::extract());
             {
                 std::vector<std::string> columnNames =
-                    resolve_cte_column_names(get_cte_driving_subselect(cte.subselect), cte.explicitColumns, context);
+                    resolve_cte_column_names(access_leftmost_select(cte.subselect), cte.explicitColumns, context);
                 ss << '(' << streaming_identifiers(columnNames) << ')';
             }
             ss << " AS" << streaming_constraints_tuple(cte.hints, context) << " ("
@@ -1825,7 +1826,7 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& getAll,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             using table_type = type_t<statement_type>;
-            using mapped_type = mapped_type_proxy_t<table_type>;
+            using mapped_type = mapped_type_of_t<table_type>;
             constexpr bool hasExplicitFrom2 = tuple_has<conditions_type_t<statement_type>, is_from2>::value;
 
             auto& table = pick_table<mapped_type>(context.db_objects);
@@ -1931,7 +1932,7 @@ namespace sqlite_orm::internal {
                 //  a table is referred to by its name and its alias, so an aliased self-join keeps the table it joins
                 iterate_tuple(sel.conditions, joins_index_sequence{}, [&tableNames, &context](auto& join) {
                     using original_join_type = typename std::remove_reference_t<decltype(join)>::type;
-                    using join_type = mapped_type_proxy_t<original_join_type>;
+                    using join_type = mapped_type_of_t<original_join_type>;
 
                     tableNames.erase(std::make_pair(lookup_table_name<join_type>(context.db_objects),
                                                     alias_extractor<original_join_type>::as_alias()));
@@ -2030,7 +2031,7 @@ namespace sqlite_orm::internal {
 
                 static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)]
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
+                   << streaming_identifier(lookup_table_name<mapped_type_of_t<table_type>>(context.db_objects),
                                            alias_extractor<table_type>::as_alias());
             });
             return ss.str();
@@ -2051,7 +2052,7 @@ namespace sqlite_orm::internal {
 
                 static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)]
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<expression_type>>(context.db_objects),
+                   << streaming_identifier(lookup_table_name<mapped_type_of_t<expression_type>>(context.db_objects),
                                            alias_extractor<expression_type>::as_alias());
 
                 if constexpr (is_table_valued_expression_v<expression_type>) {
@@ -2290,7 +2291,7 @@ namespace sqlite_orm::internal {
 
             std::stringstream ss;
             ss << static_cast<std::string>(join) << " "
-               << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
+               << streaming_identifier(lookup_table_name<mapped_type_of_t<table_type>>(context.db_objects),
                                        alias_extractor<table_type>::as_alias());
             //  the constraint, unless it is the implicit one of CROSS JOIN and NATURAL JOIN
             if constexpr (!is_implicit_join_constraint_v<on_type_t<statement_type>>) {

@@ -2852,6 +2852,8 @@ namespace sqlite_orm::internal {
  *        e.g. for base-class overloads, partial specializations or metafunctions.
  */
 
+SQLITE_ORM_EXPORT namespace sqlite_orm { struct alias_tag; }
+
 namespace sqlite_orm::internal {
     template<class... Cs>
     struct primary_key_t;
@@ -2867,13 +2869,13 @@ namespace sqlite_orm::internal {
     template<class T, class F>
     struct column_pointer;
 
+    template<class O>
+    struct table_reference;
+
     template<class C>
     struct indexed_column_t;
 
     struct order_by_base;
-
-    template<class O>
-    struct order_by_t;
 }
 // column_pointer
 
@@ -3827,6 +3829,82 @@ namespace sqlite_orm::internal {
     using is_trigger_spec = std::bool_constant<is_trigger_spec_v<T>>;
 }
 
+// Alias traits
+namespace sqlite_orm::internal {
+    /**
+     *  Types naming something by an alias - a record set, a column or an expression -, i.e. derived from `alias_tag`.
+     *  Aliases are user-definable, hence classified by their capabilities rather than by a sqlite_orm node.
+     */
+    template<class T>
+    extern const bool is_alias_v;
+
+    template<class T>
+    using is_alias = std::bool_constant<is_alias_v<T>>;
+
+    /**
+     *  Aliases of a column in a record set, see `orm_column_alias`.
+     */
+    template<class T>
+    extern const bool is_column_alias_v;
+
+    template<class T>
+    using is_column_alias = std::bool_constant<is_column_alias_v<T>>;
+
+    /**
+     *  Aliases of any type of record set, see `orm_recordset_alias`.
+     */
+    template<class T>
+    extern const bool is_recordset_alias_v;
+
+    template<class T>
+    using is_recordset_alias = std::bool_constant<is_recordset_alias_v<T>>;
+
+    /**
+     *  Aliases of a concrete table, see `orm_table_alias`.
+     */
+    template<class T>
+    extern const bool is_table_alias_v;
+
+    template<class T>
+    using is_table_alias = std::bool_constant<is_table_alias_v<T>>;
+
+    /**
+     *  Monikers of a CTE, see `orm_cte_moniker`.
+     */
+    template<class T>
+    extern const bool is_cte_moniker_v;
+
+    template<class T>
+    using is_cte_moniker = std::bool_constant<is_cte_moniker_v<T>>;
+
+    /**
+     *  Nodes referring to a column alias defined elsewhere in a statement: `get<colalias_a>()`.
+     */
+    template<class T>
+    extern const bool is_alias_holder_v;
+
+    template<class T>
+    using is_alias_holder = std::bool_constant<is_alias_holder_v<T>>;
+
+    /**
+     *  Column references qualified by a record set alias: `alias.column`, see `alias_column()`.
+     */
+    template<class T>
+    extern const bool is_alias_qualified_column_v;
+
+    template<class T>
+    using is_alias_qualified_column = std::bool_constant<is_alias_qualified_column_v<T>>;
+
+    /**
+     *  Nodes calling an eponymous virtual table as a table-valued function: table(arguments...).
+     */
+    template<class T>
+    extern const bool is_table_valued_expression_v;
+
+    template<class T>
+    using is_table_valued_expression = std::bool_constant<is_table_valued_expression_v<T>>;
+}
+
 // Role-based grammar traits
 namespace sqlite_orm::internal {
     /**
@@ -3977,6 +4055,24 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_quoted_expression = std::bool_constant<is_quoted_expression_v<T>>;
+
+    /**
+     *  Nodes protecting an otherwise bindable value, so that it is serialized as a literal.
+     */
+    template<class T>
+    extern const bool is_literal_v;
+
+    template<class T>
+    using is_literal = std::bool_constant<is_literal_v<T>>;
+
+    /**
+     *  Nodes lifting a struct mapped as a table or view into the DSL, enabling `->*`: `c<Object>()`.
+     */
+    template<class T>
+    extern const bool is_table_reference_v;
+
+    template<class T>
+    using is_table_reference = std::bool_constant<is_table_reference_v<T>>;
 }
 
 // #include "traits/semantic_traits_fwd.h"
@@ -4077,6 +4173,88 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_operator_argument = std::bool_constant<is_operator_argument_v<T>>;
+}
+
+// #include "traits/recordset_concepts.h"
+
+/** @file Concepts classifying a single node referring to a record set or one of its columns:
+ *        aliases, table references and table-valued function calls - the public face of
+ *        the corresponding grammar and structural traits.
+ *
+ *        Concepts cannot be forward-declared, so this is a definition file within `traits/`.
+ *        The alias concepts spell out their requirements rather than forwarding to the traits,
+ *        so that a failed constraint tells which requirement is not met.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#include <type_traits>  //  std::remove_const_t
+#include <concepts>  //  std::derived_from, std::same_as
+#endif
+#endif
+
+// #include "../../functional/type_traits.h"
+//  orm_names_type
+// #include "../node_fwd.h"
+//  alias_tag
+// #include "grammar_traits_fwd.h"
+
+// #include "structural_traits_fwd.h"
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    template<class A>
+    concept orm_alias = std::derived_from<A, alias_tag>;
+
+    /** @short Specifies that a type is an alias of a column in a record set.
+     *
+     *  A column alias has the following traits:
+     *  - is derived from `alias_tag`
+     *  - must not have a nested `type` typename
+     */
+    template<class A>
+    concept orm_column_alias = (orm_alias<A> && !orm_names_type<A>);
+
+    /** @short Specifies that a type is an alias of any type of record set.
+     *
+     *  A record set alias has the following traits:
+     *  - is derived from `alias_tag`.
+     *  - has a nested `type` typename, which refers to a mapped object.
+     */
+    template<class A>
+    concept orm_recordset_alias = (orm_alias<A> && orm_names_type<A>);
+
+    /** @short Specifies that a type is an alias of a concrete table.
+     *
+     *  A concrete table alias has the following traits:
+     *  - is derived from `alias_tag`.
+     *  - has a `type` typename, which refers to another mapped object (i.e. doesn't refer to itself).
+     */
+    template<class A>
+    concept orm_table_alias = (orm_recordset_alias<A> && !std::same_as<typename A::type, std::remove_const_t<A>>);
+
+    /** @short Moniker of a CTE.
+     *
+     *  A CTE moniker has the following traits:
+     *  - is derived from `alias_tag`.
+     *  - has a `type` typename, which refers to itself.
+     */
+    template<class A>
+    concept orm_cte_moniker = (orm_recordset_alias<A> && std::same_as<typename A::type, std::remove_const_t<A>>);
+
+    /** @short Specifies that a type is a reference of a concrete table, especially of a derived class.
+     *
+     *  A concrete table reference has the following traits:
+     *  - specialization of `table_reference`, whose `type` typename references a mapped object.
+     */
+    template<class O>
+    concept orm_table_reference = internal::is_table_reference_v<O>;
+
+    /** @short Specifies that a type is a table-valued function call: `c<VTab>()(args...)`.
+     */
+    template<class T>
+    concept orm_table_valued_expression = internal::is_table_valued_expression_v<T>;
+#endif
 }
 
 // #include "projections/nested_types.h"
@@ -4337,6 +4515,12 @@ namespace sqlite_orm::internal {
  *  tier up, by the lookup algorithms in `schema/algorithms/table_lookup.h`.
  */
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::remove_const
+#endif
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
 // #include "../node_fwd.h"
 
 namespace sqlite_orm::internal {
@@ -4381,6 +4565,23 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using table_type_of_t = typename table_type_of<T>::type;
+
+    /**
+     *  The mapped object a table reference stands for; any other record set stays as it is.
+     */
+    template<class RecordSet>
+    struct decay_table_ref : std::remove_const<RecordSet> {};
+    template<class O>
+    struct decay_table_ref<table_reference<O>> : polyfill::type_identity<O> {};
+    template<class O>
+    struct decay_table_ref<const table_reference<O>> : polyfill::type_identity<O> {};
+
+    template<class RecordSet>
+    using decay_table_ref_t = typename decay_table_ref<RecordSet>::type;
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<auto recordset>
+    using auto_decay_table_ref_t = typename decay_table_ref<decltype(recordset)>::type;
+#endif
 }
 
 namespace sqlite_orm::internal {
@@ -4405,6 +4606,53 @@ namespace sqlite_orm::internal {
     template<class Hidden, class F, class VTabStruct>
     constexpr bool is_hidden_field_of_vtab_v =
         is_field_of_v<F Hidden::*, typename VTabStruct::hidden::template _of<typename Hidden::enclosing_type>>;
+#endif
+}
+
+// #include "algorithms/recordset_predicates.h"
+
+/** @file Closed predicates for checking whether a node refers to a table or a record set,
+ *        i.e. whether it may occupy the record set slot of a factory - FROM, JOIN, `get<>()`, `count<>()`, ...
+ *
+ *        They compose the structural table reference with the grammar alias traits; as concepts,
+ *        with their C++17 fallback under the same guard.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::bool_constant
+#endif
+
+// #include "../node_traits.h"
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    /** @short Specifies that a type refers to a mapped table (possibly aliased).
+     */
+    template<class T>
+    concept orm_refers_to_table = (orm_table_reference<T> || orm_table_alias<T>);
+
+    /** @short Specifies that a type refers to a recordset.
+     */
+    template<class T>
+    concept orm_refers_to_recordset = (orm_table_reference<T> || orm_recordset_alias<T>);
+
+    /** @short Specifies that a type is a mapped recordset (table reference).
+     */
+    template<class T>
+    concept orm_mapped_recordset = (orm_table_reference<T> || orm_cte_moniker<T>);
+#endif
+}
+
+namespace sqlite_orm::internal {
+#ifndef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    /**
+     *  Whether a node refers to a record set: a table reference or a record set alias.
+     */
+    template<class T>
+    constexpr bool is_referring_to_recordset_v = is_table_reference_v<T> || is_recordset_alias_v<T>;
+
+    template<class T>
+    using is_referring_to_recordset = std::bool_constant<is_referring_to_recordset_v<T>>;
 #endif
 }
 
@@ -4939,6 +5187,11 @@ namespace sqlite_orm::internal {
                                                               T>;
 #endif
 
+#ifdef SQLITE_ENABLE_RTREE
+    template<class T>
+    using is_rtree_table_element_or_constraint = is_column<T>;
+#endif
+
     /**
      *  Whether an index element belongs to the table the index is made for:
      *  an element that names a column must name a column of that table, while
@@ -5276,7 +5529,8 @@ namespace sqlite_orm::internal {
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::remove_reference
+#include <type_traits>  //  std::enable_if, std::remove_reference, std::remove_const, std::void_t
+#include <tuple>  //  std::get
 #include <utility>  //  std::declval, std::move
 #endif
 
@@ -5375,6 +5629,22 @@ namespace sqlite_orm::internal {
     using main_select_t = polyfill::remove_cvref_t<decltype(access_main_select(std::declval<Select>()))>;
 
     /*
+     *  Access the left-most select expression of a compound select statement or the passed in select expression.
+     *
+     *  The columns of a table formed from a subselect, like a CTE, are those of its left-most select expression.
+     *  This is all that is needed to define such a table, and the rest of a compound statement may not even be
+     *  resolvable yet - a recursive CTE refers to itself.
+     */
+    template<class Select, std::enable_if_t<is_select_v<Select>, bool> = true>
+    constexpr decltype(auto) access_leftmost_select(const Select& select) {
+        if constexpr (is_compound_operator_v<return_type_t<Select>>) {
+            return std::get<0>(select.col.compound);
+        } else {
+            return select;
+        }
+    }
+
+    /*
      *  Move a possibly quoted plain expression or the expression itself.
      *
      *  No node holds the quoting wrapper `quoted_expression_t`: nothing serializes, iterates or binds one.
@@ -5407,6 +5677,38 @@ namespace sqlite_orm::internal {
     template<class T>
     using unwrap_expression_t = decltype(unwrap_expression(std::declval<T>()));
 }
+
+// record set accessors
+namespace sqlite_orm::internal {
+    /** 
+     *  Defines the `type` typename to be:
+     *  - The unqualified unwrapped table reference type if T is a table reference.
+     *  - The unqualified unwrapped table-valued expression type if T is a table-valued expression.
+     *  - The unqualified aliased type if T is a recordset alias.
+     *  - The enclosing data struct for eponymous virtual tables with hidden columns.
+     *  - ... otherwise unqualified T.
+     */
+    template<class T, class SFINAE = void>
+    struct mapped_type_of : std::remove_const<T> {};
+
+    template<class T>
+    struct mapped_type_of<T, std::void_t<enclosing_type_t<T>>> {
+        using type = enclosing_type_t<T>;
+    };
+
+    template<class R>
+    struct mapped_type_of<R, match_if<is_table_reference, R>> : R {};
+
+    template<class E>
+    struct mapped_type_of<E, match_if<is_table_valued_expression, E>> : E {};
+
+    template<class A>
+    struct mapped_type_of<A, match_if<is_recordset_alias, A>> : std::remove_const<type_t<A>> {};
+
+    template<class T>
+    using mapped_type_of_t = typename mapped_type_of<T>::type;
+}
+
 // #include "algorithms/field_accessors.h"
 
 /** @file Closed accessors of the object a field-level holder type holds.
@@ -5891,174 +6193,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     };
 }
 
-// #include "../alias_traits.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_base_of, std::is_same, std::remove_const
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-#include <concepts>
-#endif
-#endif
-
-// #include "functional/cxx_type_traits_polyfill.h"
-
-// #include "functional/type_traits.h"
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-
-    /** @short Base class for a custom table alias, column alias or expression alias.
-     */
-    struct alias_tag {};
-}
-
-namespace sqlite_orm::internal {
-    template<class O>
-    struct table_reference;
-
-    template<class RecordSet>
-    struct decay_table_ref : std::remove_const<RecordSet> {};
-    template<class O>
-    struct decay_table_ref<table_reference<O>> : polyfill::type_identity<O> {};
-    template<class O>
-    struct decay_table_ref<const table_reference<O>> : polyfill::type_identity<O> {};
-
-    template<class RecordSet>
-    using decay_table_ref_t = typename decay_table_ref<RecordSet>::type;
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<auto recordset>
-    using auto_decay_table_ref_t = typename decay_table_ref<decltype(recordset)>::type;
-#endif
-
-    template<class A>
-    inline constexpr bool is_alias_v = std::is_base_of<alias_tag, A>::value;
-
-    template<class A>
-    struct is_alias : std::bool_constant<is_alias_v<A>> {};
-
-    /** @short Alias of a column in a record set, see `orm_column_alias`.
-     */
-    template<class A>
-    inline constexpr bool is_column_alias_v =
-        std::conjunction<is_alias<A>, std::negation<polyfill::is_detected<type_t, A>>>::value;
-
-    template<class A>
-    struct is_column_alias : is_alias<A> {};
-
-    template<class O>
-    inline constexpr bool is_table_reference_v =
-        polyfill::is_specialization_of_v<std::remove_const_t<O>, table_reference>;
-
-    template<class R>
-    struct is_table_reference : std::bool_constant<is_table_reference_v<R>> {};
-
-    /** @short Alias of any type of record set, see `orm_recordset_alias`.
-     */
-    template<class A>
-    inline constexpr bool is_recordset_alias_v = std::conjunction<is_alias<A>, polyfill::is_detected<type_t, A>>::value;
-
-    template<class A>
-    struct is_recordset_alias : std::bool_constant<is_recordset_alias_v<A>> {};
-
-    /** @short Alias of a concrete table, see `orm_table_alias`.
-     */
-    template<class A>
-    inline constexpr bool is_table_alias_v =
-        std::conjunction<is_recordset_alias<A>,
-                         std::negation<std::is_same<polyfill::detected_t<type_t, A>, std::remove_const_t<A>>>>::value;
-
-    template<class A>
-    struct is_table_alias : std::bool_constant<is_table_alias_v<A>> {};
-
-    /** @short Moniker of a CTE, see `orm_cte_moniker`.
-     */
-    template<class A>
-    inline constexpr bool is_cte_moniker_v =
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-        std::conjunction_v<is_recordset_alias<A>,
-                           std::is_same<polyfill::detected_t<type_t, A>, std::remove_const_t<A>>>;
-#else
-        false;
-#endif
-
-    template<class A>
-    using is_cte_moniker = std::bool_constant<is_cte_moniker_v<A>>;
-
-    /** @short Referring to a recordset.
-     */
-    template<class T>
-    inline constexpr bool is_referring_to_recordset_v =
-        std::disjunction_v<is_table_reference<T>, is_recordset_alias<T>>;
-
-    template<class T>
-    using is_referring_to_recordset = std::bool_constant<is_referring_to_recordset_v<T>>;
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    template<class A>
-    concept orm_alias = std::derived_from<A, alias_tag>;
-
-    /** @short Specifies that a type is an alias of a column in a record set.
-     *  
-     *  A column alias has the following traits:
-     *  - is derived from `alias_tag`
-     *  - must not have a nested `type` typename
-     */
-    template<class A>
-    concept orm_column_alias = (orm_alias<A> && !orm_names_type<A>);
-
-    /** @short Specifies that a type is a reference of a concrete table, especially of a derived class.
-     *  
-     *  A concrete table reference has the following traits:
-     *  - specialization of `table_reference`, whose `type` typename references a mapped object.
-     */
-    template<class O>
-    concept orm_table_reference = polyfill::is_specialization_of_v<std::remove_const_t<O>, internal::table_reference>;
-
-    /** @short Specifies that a type is an alias of any type of record set.
-     *  
-     *  A record set alias has the following traits:
-     *  - is derived from `alias_tag`.
-     *  - has a nested `type` typename, which refers to a mapped object.
-     */
-    template<class A>
-    concept orm_recordset_alias = (orm_alias<A> && orm_names_type<A>);
-
-    /** @short Specifies that a type is an alias of a concrete table.
-     *  
-     *  A concrete table alias has the following traits:
-     *  - is derived from `alias_tag`.
-     *  - has a `type` typename, which refers to another mapped object (i.e. doesn't refer to itself).
-     */
-    template<class A>
-    concept orm_table_alias = (orm_recordset_alias<A> && !std::same_as<typename A::type, std::remove_const_t<A>>);
-
-    /** @short Moniker of a CTE.
-     *  
-     *  A CTE moniker has the following traits:
-     *  - is derived from `alias_tag`.
-     *  - has a `type` typename, which refers to itself.
-     */
-    template<class A>
-    concept orm_cte_moniker = (orm_recordset_alias<A> && std::same_as<typename A::type, std::remove_const_t<A>>);
-
-    /** @short Specifies that a type refers to a mapped table (possibly aliased).
-     */
-    template<class T>
-    concept orm_refers_to_table = (orm_table_reference<T> || orm_table_alias<T>);
-
-    /** @short Specifies that a type refers to a recordset.
-     */
-    template<class T>
-    concept orm_refers_to_recordset = (orm_table_reference<T> || orm_recordset_alias<T>);
-
-    /** @short Specifies that a type is a mapped recordset (table reference).
-     */
-    template<class T>
-    concept orm_mapped_recordset = (orm_table_reference<T> || orm_cte_moniker<T>);
-#endif
-}
-//  orm_table_reference, auto_decay_table_ref_t
 // #include "../vocabulary/node_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
@@ -6838,7 +6972,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/type_traits.h"
 
-// #include "../alias_traits.h"
+// #include "../vocabulary/node_traits.h"
 //  orm_table_reference, auto_decay_table_ref_t
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -6994,8 +7128,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
-// #include "../alias_traits.h"
-//  orm_table_reference, auto_decay_table_ref_t
 // #include "column.h"
 // sqlite_orm::make_column
 // #include "table_base.h"
@@ -7600,8 +7732,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../member_traits/field_of.h"
 
-// #include "../../alias_traits.h"
-
+// #include "../../vocabulary/node_traits.h"
+//  orm_table_reference, auto_decay_table_ref_t
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 
@@ -7826,8 +7958,6 @@ namespace sqlite_orm::internal {
 }
 
 // #include "../../member_traits/field_of.h"
-
-// #include "../../alias_traits.h"
 
 // #include "../../vocabulary/node_traits.h"
 
@@ -8396,8 +8526,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "../../alias_traits.h"
-
+// #include "../../vocabulary/node_traits.h"
+//  orm_table_reference, auto_decay_table_ref_t
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 
@@ -8806,103 +8936,6 @@ namespace sqlite_orm::internal {
 // #include "../builtin/collations.h"
 //  collate_argument
 // #include "../tags.h"
-
-// #include "../table_reference.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::remove_const, std::type_identity
-#include <utility>  // std::move
-#include <tuple>
-#endif
-
-// #include "functional/cxx_type_traits_polyfill.h"
-
-// #include "alias_traits.h"
-
-// #include "literal.h"
-
-// #include "functional/cxx_type_traits_polyfill.h"
-
-namespace sqlite_orm::internal {
-
-    /* 
-     *  Protect an otherwise bindable element so that it is always serialized as a literal value.
-     */
-    template<class T>
-    struct literal_holder {
-        using type = T;
-
-        type value;
-    };
-
-    template<class T>
-    inline constexpr bool is_literal_v = polyfill::is_specialization_of_v<T, literal_holder>;
-
-    template<class T>
-    using is_literal = std::bool_constant<is_literal_v<T>>;
-}
-
-namespace sqlite_orm::internal {
-    /*
-     *  Bound input arguments for eponymous virtual tables used in table-valued function calls.
-     */
-    template<class Table, class... Args>
-    struct table_valued_expression {
-        using type = Table;
-        using constraints_type = std::tuple<Args...>;
-
-        constraints_type table_values;
-    };
-
-    template<class T>
-    constexpr bool is_table_valued_expression_v = polyfill::is_specialization_of_v<T, table_valued_expression>;
-
-    template<class T>
-    using is_table_valued_expression = std::bool_constant<is_table_valued_expression_v<T>>;
-
-    /*
-     *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions and virtual tables usable as table-valued functions.
-     */
-    template<class O>
-    struct table_reference : polyfill::type_identity<O> {
-        /** 
-         *  Make a table-valued function call.
-         */
-        template<class... Args>
-        constexpr SQLITE_ORM_STATIC_CALLOP table_valued_expression<O, Args...>
-        operator()(Args... arguments) SQLITE_ORM_OR_CONST_CALLOP {
-            return {{{std::move(arguments)}...}};
-        }
-    };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    template<class T>
-    concept orm_table_valued_expression = internal::is_table_valued_expression_v<T>;
-#endif
-
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    /**
-     *  Make a table reference.
-     */
-    template<class O>
-        requires (!orm_recordset_alias<O>)
-    consteval internal::table_reference<O> c() {
-        return {};
-    }
-#else
-    /**
-     *  Make a table reference.
-     */
-    template<class O, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
-    constexpr internal::table_reference<O> c() {
-        return {};
-    }
-#endif
-}
-
-// #include "../alias_traits.h"
 
 // #include "operators.h"
 
@@ -10176,6 +10209,721 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
+// #include "ast/alias.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::is_same
+#include <utility>  //  std::make_index_sequence, std::move
+#include <string>  //  std::string
+#include <sstream>  //  std::stringstream
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#include <array>
+#endif
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../functional/mpl/conditional.h"
+
+// #include "../functional/cstring_literal.h"
+
+// #include "../functional/type_traits.h"
+
+// #include "../member_traits/field_of.h"
+
+// #include "../vocabulary/node_traits.h"
+
+// #include "column_pointer.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::is_convertible
+#include <utility>  // std::move
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../functional/type_traits.h"
+
+// #include "../vocabulary/node_traits.h"
+//  node projections, is_alias_holder
+// #include "../vocabulary/traits/structural_traits_fwd.h"
+// Included to specialize traits
+// #include "../vocabulary/traits/operand_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    /**
+     *  This class is used to store explicit mapped type T and its column descriptor (member pointer/getter/setter).
+     *  Is useful when mapped type is derived from other type and base class has members mapped to a storage.
+     */
+    template<class T, class F>
+    struct column_pointer {
+        using type = T;
+        using field_type = F;
+
+        field_type field;
+    };
+
+    template<class T>
+    constexpr bool is_column_pointer_v = polyfill::is_specialization_of<T, column_pointer>::value;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> = true;
+
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+    template<class A>
+    struct alias_holder;
+#endif
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Explicitly refer to a column, used in contexts
+     *  where the automatic object mapping deduction needs to be overridden.
+     *  
+     *  Example:
+     *  struct BaseType : { int64 id; };
+     *  struct MyType : BaseType { ... };
+     *  storage.select(column<MyType>(&BaseType::id));
+     */
+    template<class O, class Base, class F, internal::satisfies_not<internal::is_recordset_alias, O> = true>
+    constexpr internal::column_pointer<O, F Base::*> column(F Base::* field) {
+        static_assert(std::is_convertible<F Base::*, F O::*>::value ||
+                          std::is_same<polyfill::detected_t<internal::enclosing_type_of_t, Base, O>, O>::value ||
+                          // trust the `enclosing_type` alias template defined in the virtual table's data struct
+                          polyfill::is_detected_v<internal::enclosing_type_t, Base>,
+                      "Field must be from derived or related class");
+        return {field};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Explicitly refer to a column.
+     */
+    template<orm_table_reference auto table, class Base, class F>
+    constexpr auto column(F Base::* field) {
+        return column<internal::auto_type_t<table>>(field);
+    }
+#endif
+
+    // Intentionally place pointer-to-member operator for table references in the internal namespace
+    // to facilitate ADL (Argument Dependent Lookup)
+    namespace internal {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        /**
+         *  Explicitly refer to a column.
+         */
+        template<orm_table_reference R, class Base, class F>
+        constexpr auto operator->*(const R& /*table*/, F Base::* field) {
+            return column<typename R::type>(field);
+        }
+#else
+        /**
+         *  Explicitly refer to a column.
+         */
+        template<class R, class Base, class F, std::enable_if_t<internal::is_table_reference_v<R>, bool> = true>
+        constexpr auto operator->*(const R& /*table*/, F Base::* field) {
+            return column<typename R::type>(field);
+        }
+#endif
+    }
+
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+    /**
+     *  Explicitly refer to a column alias mapped into a CTE or subquery.
+     *  
+     *  Example:
+     *  struct Object { ... };
+     *  using cte_1 = decltype(1_ctealias);
+     *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(&Object::id)));
+     *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(1_colalias)));
+     *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(colalias_a{})));
+     *  storage.with(cte<cte_1>(colalias_a{})(select(&Object::id)), select(column<cte_1>(colalias_a{})));
+     *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(get<colalias_a>())));
+     */
+    template<class Moniker, class F, internal::satisfies<internal::is_recordset_alias, Moniker> = true>
+    constexpr auto column([[maybe_unused]] F field) {
+        using namespace ::sqlite_orm::internal;
+
+        static_assert(is_cte_moniker_v<Moniker>, "`Moniker' must be a CTE moniker");
+
+        if constexpr (is_alias_holder_v<F>) {
+            static_assert(is_column_alias_v<type_t<F>>);
+            return column_pointer<Moniker, F>{{}};
+        } else if constexpr (is_column_alias_v<F>) {
+            return column_pointer<Moniker, alias_holder<F>>{{}};
+        } else {
+            return column_pointer<Moniker, F>{std::move(field)};
+        }
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Explicitly refer to a column mapped into a CTE or subquery.
+     *  
+     *  Example:
+     *  struct Object { ... };
+     *  storage.with(cte<"z"_cte>()(select(&Object::id)), select(column<"z"_cte>(&Object::id)));
+     *  storage.with(cte<"z"_cte>()(select(&Object::id)), select(column<"z"_cte>(1_colalias)));
+     */
+    template<orm_cte_moniker auto moniker, class F>
+    constexpr auto column(F field) {
+        using Moniker = std::remove_const_t<decltype(moniker)>;
+        return column<Moniker>(std::forward<F>(field));
+    }
+
+    /**
+     *  Explicitly refer to a column mapped into a CTE or subquery.
+     *  
+     *  @note (internal) Intentionally place in the sqlite_orm namespace for ADL (Argument Dependent Lookup)
+     *  because recordset aliases are derived from `sqlite_orm::alias_tag`
+     *  
+     *  Example:
+     *  struct Object { ... };
+     *  using cte_1 = decltype(1_ctealias);
+     *  storage.with(cte<cte_1>()(select(&Object::id)), select(1_ctealias->*&Object::id));
+     *  storage.with(cte<cte_1>()(select(&Object::id)), select(1_ctealias->*1_colalias));
+     */
+    template<orm_cte_moniker Moniker, class F>
+    constexpr auto operator->*(const Moniker& /*moniker*/, F field) {
+        return column<Moniker>(std::forward<F>(field));
+    }
+#endif
+#endif
+}
+// #include "../vocabulary/node_fwd.h"
+// table_identifier
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../vocabulary/traits/operand_traits_fwd.h"
+// Included to specialize traits
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /** @short Base class for a custom table alias, column alias or expression alias.
+     */
+    struct alias_tag {};
+}
+
+namespace sqlite_orm::internal {
+    template<class T>
+    constexpr bool is_alias_v = std::is_base_of<alias_tag, T>::value;
+
+    //  note: the definitions below are written in terms of the variable templates rather than of the `is_*` alias
+    //  templates of the traits - msvc 141 fails to resolve an alias template in the initializer of a variable template
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR];
+    //  and they name their template parameter like the declarations in `grammar_traits_fwd.h` do - msvc 141 resolves
+    //  the initializer of a redeclared variable template with the parameter names of the first declaration
+
+    /** @short Alias of a column in a record set, see `orm_column_alias`.
+     */
+    template<class T>
+    constexpr bool is_column_alias_v = is_alias_v<T> && !polyfill::is_detected_v<type_t, T>;
+
+    /** @short Alias of any type of record set, see `orm_recordset_alias`.
+     */
+    template<class T>
+    constexpr bool is_recordset_alias_v = is_alias_v<T> && polyfill::is_detected_v<type_t, T>;
+
+    /** @short Alias of a concrete table, see `orm_table_alias`.
+     */
+    template<class T>
+    constexpr bool is_table_alias_v =
+        is_recordset_alias_v<T> && !std::is_same<polyfill::detected_t<type_t, T>, std::remove_const_t<T>>::value;
+
+    /** @short Moniker of a CTE, see `orm_cte_moniker`.
+     */
+    template<class T>
+    constexpr bool is_cte_moniker_v =
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+        is_recordset_alias_v<T> && std::is_same<polyfill::detected_t<type_t, T>, std::remove_const_t<T>>::value;
+#else
+        false;
+#endif
+}
+
+namespace sqlite_orm::internal {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<orm_column_alias<T>>> = true;
+#endif
+
+    /**
+     *  This is a common built-in class used for character based table aliases.
+     *  For convenience there exist public type aliases `alias_a`, `alias_b`, ...
+     *  The easiest way to create a table alias is using `"z"_alias.for_<Object>()`.
+     */
+    template<class T, char A, char... X>
+    struct recordset_alias : alias_tag {
+        using type = T;
+
+        static std::string get() {
+            return {A, X...};
+        }
+    };
+
+    /**
+     *  Column reference qualified by a record set alias: `"c"."id"`.
+     *  The alias is the qualifier, as opposed to a column alias naming an expression.
+     */
+    template<class T, class C>
+    struct alias_qualified_column_t {
+        using alias_type = T;
+        using column_type = C;
+
+        column_type column;
+    };
+
+    template<class T>
+    constexpr bool is_alias_qualified_column_v = polyfill::is_specialization_of_v<T, alias_qualified_column_t>;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_alias_qualified_column_v<T>>> = true;
+
+    /*
+     *  Encapsulates extracting the alias identifier of a non-alias.
+     *  
+     *  `extract()` always returns the empty string.
+     *  `as_alias()` is used in contexts where a table might be aliased, and the empty string is returned.
+     *  `as_qualifier()` is used in contexts where a table might be aliased, and the given table's name is returned.
+     */
+    template<class T, class SFINAE = void>
+    struct alias_extractor {
+        static std::string extract() {
+            return {};
+        }
+
+        static std::string as_alias() {
+            return {};
+        }
+
+        template<class X = table_identifier>
+        static const std::string& as_qualifier(const X& table) {
+            return table.name;
+        }
+    };
+
+    /*
+     *  Encapsulates extracting the alias identifier of an alias.
+     *  
+     *  `extract()` always returns the alias identifier or CTE moniker.
+     *  `as_alias()` is used in contexts where a recordset is aliased, and the alias identifier is returned.
+     *  `as_qualifier()` is used in contexts where a table is aliased, and the alias identifier is returned.
+     */
+    template<class A>
+    struct alias_extractor<A, match_if<is_alias, A>> {
+        static std::string extract() {
+            std::stringstream ss;
+            ss << A::get();
+            return ss.str();
+        }
+
+        // for column and regular table aliases -> alias identifier
+        template<class T = A, satisfies_not<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
+        static std::string as_alias() {
+            return alias_extractor::extract();
+        }
+
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+        // for CTE monikers -> empty
+        template<class T = A, satisfies<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
+        static std::string as_alias() {
+            return {};
+        }
+#endif
+
+        // for regular table aliases -> alias identifier
+        template<class T = A, satisfies<is_table_alias, T> = true>
+        static std::string as_qualifier(const table_identifier&) {
+            return alias_extractor::extract();
+        }
+    };
+
+    /**
+     *  Used to store alias for expression
+     */
+    template<class T, class E>
+    struct as_t {
+        using alias_type = T;
+        using expression_type = E;
+
+        expression_type expression;
+    };
+
+    template<class T>
+    constexpr bool is_as_node_v = polyfill::is_specialization_of<T, as_t>::value;
+
+    /**
+     *  Built-in column alias.
+     *  For convenience there exist type aliases `colalias_a`, `colalias_b`, ...
+     *  The easiest way to create a column alias is using `"xyz"_col`.
+     */
+    template<char A, char... X>
+    struct column_alias : alias_tag {
+        static std::string get() {
+            return {A, X...};
+        }
+    };
+
+    template<class T>
+    struct alias_holder {
+        using type = T;
+
+        alias_holder() = default;
+        // CTE feature needs it to implicitly convert a column alias to an alias_holder; see `cte()` factory function
+        alias_holder(const T&) noexcept {}
+    };
+
+    template<class T>
+    constexpr bool is_alias_holder_v = polyfill::is_specialization_of_v<T, alias_holder>;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_alias_holder_v<T>>> = true;
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<char A, char... X>
+    struct recordset_alias_builder {
+        template<class T>
+        [[nodiscard]] consteval recordset_alias<T, A, X...> for_() const {
+            return {};
+        }
+
+        template<orm_table_reference auto t>
+        [[nodiscard]] consteval auto for_() const {
+            using T = auto_decay_table_ref_t<t>;
+            return recordset_alias<T, A, X...>{};
+        }
+
+        template<orm_recordset_alias auto t>
+        [[nodiscard]] consteval auto for_() const {
+            using T = std::remove_const_t<decltype(t)>;
+            return recordset_alias<T, A, X...>{};
+        }
+    };
+#endif
+
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+    template<size_t n, char... C>
+    SQLITE_ORM_CONSTEVAL auto n_to_colalias() {
+        constexpr column_alias<'1' + n % 10, C...> colalias{};
+        if constexpr (n > 10) {
+            return n_to_colalias<n / 10, '1' + n % 10, C...>();
+        } else {
+            return colalias;
+        }
+    }
+
+    template<class T>
+    constexpr bool is_builtin_numeric_column_alias_v = false;
+    template<char... C>
+    constexpr bool is_builtin_numeric_column_alias_v<column_alias<C...>> = ((C >= '0' && C <= '9') && ...);
+#endif
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Using a column pointer, create a column reference to an aliased table column.
+     *  
+     *  Example:
+     *  using als = alias_u<User>;
+     *  select(alias_column<als>(column<User>(&User::id)))
+     */
+    template<class A,
+             class C,
+             std::enable_if_t<std::conjunction<internal::is_table_alias<A>,
+                                               std::negation<internal::is_cte_moniker<internal::type_t<A>>>>::value,
+                              bool> = true>
+    constexpr auto alias_column(C field) {
+        using namespace ::sqlite_orm::internal;
+        using aliased_type = type_t<A>;
+        static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
+
+        return alias_qualified_column_t<A, C>{std::move(field)};
+    }
+
+    /**
+     *  Using an object member field, create a column reference to an aliased table column.
+     *  
+     *  @note The object member pointer can be from a derived class without explicitly forming a column pointer.
+     *  
+     *  Example:
+     *  using als = alias_u<User>;
+     *  select(alias_column<als>(&User::id))
+     */
+    template<class A,
+             class F,
+             class O,
+             std::enable_if_t<std::conjunction<internal::is_table_alias<A>,
+                                               std::negation<internal::is_cte_moniker<internal::type_t<A>>>>::value,
+                              bool> = true>
+    constexpr auto alias_column(F O::* field) {
+        using namespace ::sqlite_orm::internal;
+        using aliased_type = type_t<A>;
+        static_assert(is_field_of_v<F O::*, aliased_type>, "Column must be from aliased table");
+
+        using C1 =
+            mpl::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
+        return alias_qualified_column_t<A, C1>{C1{field}};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a column reference to an aliased table column.
+     *  
+     *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
+     *  
+     *  Example:
+     *  constexpr orm_table_alias auto als = "u"_alias.for_<User>();
+     *  select(alias_column<als>(&User::id))
+     */
+    template<orm_table_alias auto als, class C>
+        requires (!orm_cte_moniker<internal::auto_type_t<als>>)
+    constexpr auto alias_column(C field) {
+        using namespace ::sqlite_orm::internal;
+        using A = std::remove_const_t<decltype(als)>;
+        using aliased_type = type_t<A>;
+        static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
+
+        if constexpr (is_column_pointer_v<C>) {
+            return alias_qualified_column_t<A, C>{std::move(field)};
+        } else if constexpr (std::is_same_v<member_object_type_t<C>, aliased_type>) {
+            return alias_qualified_column_t<A, C>{field};
+        } else {
+            // wrap in column_pointer
+            using C1 = column_pointer<aliased_type, C>;
+            return alias_qualified_column_t<A, C1>{{field}};
+        }
+    }
+
+    /**
+     *  Create a column reference to an aliased table column.
+     *  
+     *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
+     *  
+     *  @note (internal) Intentionally place in the sqlite_orm namespace for ADL (Argument Dependent Lookup)
+     *  because recordset aliases are derived from `sqlite_orm::alias_tag`
+     *  
+     *  Example:
+     *  constexpr auto als = "u"_alias.for_<User>();
+     *  select(als->*&User::id)
+     */
+    template<orm_table_alias A, class F>
+        requires (!orm_cte_moniker<internal::type_t<A>>)
+    constexpr auto operator->*(const A& /*tableAlias*/, F field) {
+        return alias_column<A>(std::move(field));
+    }
+#endif
+
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+    /**
+     *  Create a column reference to an aliased CTE column.
+     */
+    template<
+        class A,
+        class C,
+        std::enable_if_t<std::conjunction_v<internal::is_table_alias<A>, internal::is_cte_moniker<internal::type_t<A>>>,
+                         bool> = true>
+    constexpr auto alias_column(C c) {
+        using namespace ::sqlite_orm::internal;
+        using cte_moniker_t = type_t<A>;
+
+        if constexpr (is_column_pointer_v<C>) {
+            static_assert(std::is_same<table_type_of_t<C>, cte_moniker_t>::value,
+                          "Column pointer must match aliased CTE");
+            return alias_qualified_column_t<A, C>{c};
+        } else {
+            auto cp = column<cte_moniker_t>(c);
+            return alias_qualified_column_t<A, decltype(cp)>{std::move(cp)};
+        }
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a column reference to an aliased CTE column.
+     *  
+     *  @note (internal) Intentionally place in the sqlite_orm namespace for ADL (Argument Dependent Lookup)
+     *  because recordset aliases are derived from `sqlite_orm::alias_tag`
+     */
+    template<orm_table_alias A, class C>
+        requires (orm_cte_moniker<internal::type_t<A>>)
+    constexpr auto operator->*(const A& /*tableAlias*/, C c) {
+        return alias_column<A>(std::move(c));
+    }
+
+    /**
+     *  Create a column reference to an aliased CTE column.
+     */
+    template<orm_table_alias auto als, class C>
+        requires (orm_cte_moniker<internal::auto_type_t<als>>)
+    constexpr auto alias_column(C c) {
+        using A = std::remove_const_t<decltype(als)>;
+        return alias_column<A>(std::move(c));
+    }
+#endif
+#endif
+
+    /** 
+     *  Alias a column expression.
+     */
+    template<class A, class E, internal::satisfies<internal::is_column_alias, A> = true>
+    internal::as_t<A, E> as(E expression) {
+        return {std::move(expression)};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /** 
+     *  Alias a column expression.
+     */
+    template<orm_column_alias auto als, class E>
+    auto as(E expression) {
+        return internal::as_t<std::remove_const_t<decltype(als)>, E>{std::move(expression)};
+    }
+
+    /**
+     *  Alias a column expression.
+     */
+    template<orm_column_alias A, class E>
+    internal::as_t<A, E> operator>>=(E expression, const A&) {
+        return {std::move(expression)};
+    }
+#else
+    /**
+     *  Alias a column expression.
+     */
+    template<class A, class E, internal::satisfies<internal::is_column_alias, A> = true>
+    internal::as_t<A, E> operator>>=(E expression, const A&) {
+        return {std::move(expression)};
+    }
+#endif
+
+    /**
+     *  Wrap a column alias in an alias holder.
+     */
+    template<class T>
+    internal::alias_holder<T> get() {
+        static_assert(internal::is_column_alias_v<T>);
+        return {};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_column_alias auto als>
+    auto get() {
+        return internal::alias_holder<std::remove_const_t<decltype(als)>>{};
+    }
+#endif
+
+    template<class T>
+    using alias_a = internal::recordset_alias<T, 'a'>;
+    template<class T>
+    using alias_b = internal::recordset_alias<T, 'b'>;
+    template<class T>
+    using alias_c = internal::recordset_alias<T, 'c'>;
+    template<class T>
+    using alias_d = internal::recordset_alias<T, 'd'>;
+    template<class T>
+    using alias_e = internal::recordset_alias<T, 'e'>;
+    template<class T>
+    using alias_f = internal::recordset_alias<T, 'f'>;
+    template<class T>
+    using alias_g = internal::recordset_alias<T, 'g'>;
+    template<class T>
+    using alias_h = internal::recordset_alias<T, 'h'>;
+    template<class T>
+    using alias_i = internal::recordset_alias<T, 'i'>;
+    template<class T>
+    using alias_j = internal::recordset_alias<T, 'j'>;
+    template<class T>
+    using alias_k = internal::recordset_alias<T, 'k'>;
+    template<class T>
+    using alias_l = internal::recordset_alias<T, 'l'>;
+    template<class T>
+    using alias_m = internal::recordset_alias<T, 'm'>;
+    template<class T>
+    using alias_n = internal::recordset_alias<T, 'n'>;
+    template<class T>
+    using alias_o = internal::recordset_alias<T, 'o'>;
+    template<class T>
+    using alias_p = internal::recordset_alias<T, 'p'>;
+    template<class T>
+    using alias_q = internal::recordset_alias<T, 'q'>;
+    template<class T>
+    using alias_r = internal::recordset_alias<T, 'r'>;
+    template<class T>
+    using alias_s = internal::recordset_alias<T, 's'>;
+    template<class T>
+    using alias_t = internal::recordset_alias<T, 't'>;
+    template<class T>
+    using alias_u = internal::recordset_alias<T, 'u'>;
+    template<class T>
+    using alias_v = internal::recordset_alias<T, 'v'>;
+    template<class T>
+    using alias_w = internal::recordset_alias<T, 'w'>;
+    template<class T>
+    using alias_x = internal::recordset_alias<T, 'x'>;
+    template<class T>
+    using alias_y = internal::recordset_alias<T, 'y'>;
+    template<class T>
+    using alias_z = internal::recordset_alias<T, 'z'>;
+
+    using colalias_a = internal::column_alias<'a'>;
+    using colalias_b = internal::column_alias<'b'>;
+    using colalias_c = internal::column_alias<'c'>;
+    using colalias_d = internal::column_alias<'d'>;
+    using colalias_e = internal::column_alias<'e'>;
+    using colalias_f = internal::column_alias<'f'>;
+    using colalias_g = internal::column_alias<'g'>;
+    using colalias_h = internal::column_alias<'h'>;
+    using colalias_i = internal::column_alias<'i'>;
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /** @short Create a table alias.
+     *  
+     *  Examples:
+     *  constexpr orm_table_alias auto z_alias = alias<'z'>.for_<User>();
+     */
+    template<char A, char... X>
+    constexpr internal::recordset_alias_builder<A, X...> alias{};
+
+    inline namespace literals {
+        /** @short Create a table alias.
+         *  
+         *  Examples:
+         *  constexpr orm_table_alias auto z_alias = "z"_alias.for_<User>();
+         */
+        template<internal::cstring_literal name>
+        [[nodiscard]] consteval auto operator""_alias() {
+            return internal::explode_into<internal::recordset_alias_builder, name>(
+                std::make_index_sequence<name.size()>{});
+        }
+
+        /** @short Create a column alias.
+         *  column_alias<'a'[, ...]> from a string literal.
+         *  E.g. "a"_col, "b"_col
+         */
+        template<internal::cstring_literal name>
+        [[nodiscard]] consteval auto operator""_col() {
+            return internal::explode_into<internal::column_alias, name>(std::make_index_sequence<name.size()>{});
+        }
+    }
+#endif
+
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+    inline namespace literals {
+        /**
+         *  column_alias<'1'[, ...]> from a numeric literal.
+         *  E.g. 1_colalias, 2_colalias
+         */
+        template<char... Chars>
+        [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator""_colalias() {
+            // numeric identifiers are used for automatically assigning implicit aliases to unaliased column expressions,
+            // which start at "1".
+            static_assert(std::array{Chars...}[0] > '0');
+            return internal::column_alias<Chars...>{};
+        }
+    }
+#endif
+}
+
 // #include "ast/between.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -11219,6 +11967,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/collate.h"
 
+// #include "ast/column_pointer.h"
+
 // #include "ast/compound_operator.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -11377,779 +12127,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/type_traits.h"
 
+// #include "../functional/cstring_literal.h"
+
 // #include "../tuple_helper/tuple_transformer.h"
 
-// #include "../alias.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_same
-#include <utility>  //  std::make_index_sequence, std::move
-#include <string>  //  std::string
-#include <sstream>  //  std::stringstream
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <array>
-#endif
-#endif
-
-// #include "functional/cxx_type_traits_polyfill.h"
-
-// #include "functional/mpl/conditional.h"
-
-// #include "functional/cstring_literal.h"
-
-// #include "functional/type_traits.h"
-
-// #include "member_traits/field_of.h"
-
-// #include "alias_traits.h"
-
-// #include "vocabulary/node_traits.h"
-
-// #include "column_pointer.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_convertible
-#include <utility>  // std::move
-#endif
-
-// #include "functional/cxx_type_traits_polyfill.h"
-
-// #include "functional/type_traits.h"
-
-// #include "table_reference.h"
-
-// #include "alias_traits.h"
-
-// #include "vocabulary/node_traits.h"
-//  node projections
-// #include "vocabulary/traits/structural_traits_fwd.h"
-// Included to specialize traits
-// #include "vocabulary/traits/operand_traits_fwd.h"
-// Included to specialize traits
-
-namespace sqlite_orm::internal {
-    /**
-     *  This class is used to store explicit mapped type T and its column descriptor (member pointer/getter/setter).
-     *  Is useful when mapped type is derived from other type and base class has members mapped to a storage.
-     */
-    template<class T, class F>
-    struct column_pointer {
-        using type = T;
-        using field_type = F;
-
-        field_type field;
-    };
-
-    template<class T>
-    constexpr bool is_column_pointer_v = polyfill::is_specialization_of<T, column_pointer>::value;
-
-    template<class T>
-    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> = true;
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-    template<class A>
-    struct alias_holder;
-#endif
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  Explicitly refer to a column, used in contexts
-     *  where the automatic object mapping deduction needs to be overridden.
-     *  
-     *  Example:
-     *  struct BaseType : { int64 id; };
-     *  struct MyType : BaseType { ... };
-     *  storage.select(column<MyType>(&BaseType::id));
-     */
-    template<class O, class Base, class F, internal::satisfies_not<internal::is_recordset_alias, O> = true>
-    constexpr internal::column_pointer<O, F Base::*> column(F Base::* field) {
-        static_assert(std::is_convertible<F Base::*, F O::*>::value ||
-                          std::is_same<polyfill::detected_t<internal::enclosing_type_of_t, Base, O>, O>::value ||
-                          // trust the `enclosing_type` alias template defined in the virtual table's data struct
-                          polyfill::is_detected_v<internal::enclosing_type_t, Base>,
-                      "Field must be from derived or related class");
-        return {field};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Explicitly refer to a column.
-     */
-    template<orm_table_reference auto table, class Base, class F>
-    constexpr auto column(F Base::* field) {
-        return column<internal::auto_type_t<table>>(field);
-    }
-#endif
-
-    // Intentionally place pointer-to-member operator for table references in the internal namespace
-    // to facilitate ADL (Argument Dependent Lookup)
-    namespace internal {
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        /**
-         *  Explicitly refer to a column.
-         */
-        template<orm_table_reference R, class Base, class F>
-        constexpr auto operator->*(const R& /*table*/, F Base::* field) {
-            return column<typename R::type>(field);
-        }
-#else
-        /**
-         *  Explicitly refer to a column.
-         */
-        template<class R, class Base, class F, std::enable_if_t<internal::is_table_reference_v<R>, bool> = true>
-        constexpr auto operator->*(const R& /*table*/, F Base::* field) {
-            return column<typename R::type>(field);
-        }
-#endif
-    }
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-    /**
-     *  Explicitly refer to a column alias mapped into a CTE or subquery.
-     *  
-     *  Example:
-     *  struct Object { ... };
-     *  using cte_1 = decltype(1_ctealias);
-     *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(&Object::id)));
-     *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(1_colalias)));
-     *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(colalias_a{})));
-     *  storage.with(cte<cte_1>(colalias_a{})(select(&Object::id)), select(column<cte_1>(colalias_a{})));
-     *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(get<colalias_a>())));
-     */
-    template<class Moniker, class F, internal::satisfies<internal::is_recordset_alias, Moniker> = true>
-    constexpr auto column([[maybe_unused]] F field) {
-        using namespace ::sqlite_orm::internal;
-
-        static_assert(is_cte_moniker_v<Moniker>, "`Moniker' must be a CTE moniker");
-
-        if constexpr (polyfill::is_specialization_of_v<F, alias_holder>) {
-            static_assert(is_column_alias_v<type_t<F>>);
-            return column_pointer<Moniker, F>{{}};
-        } else if constexpr (is_column_alias_v<F>) {
-            return column_pointer<Moniker, alias_holder<F>>{{}};
-        } else {
-            return column_pointer<Moniker, F>{std::move(field)};
-        }
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Explicitly refer to a column mapped into a CTE or subquery.
-     *  
-     *  Example:
-     *  struct Object { ... };
-     *  storage.with(cte<"z"_cte>()(select(&Object::id)), select(column<"z"_cte>(&Object::id)));
-     *  storage.with(cte<"z"_cte>()(select(&Object::id)), select(column<"z"_cte>(1_colalias)));
-     */
-    template<orm_cte_moniker auto moniker, class F>
-    constexpr auto column(F field) {
-        using Moniker = std::remove_const_t<decltype(moniker)>;
-        return column<Moniker>(std::forward<F>(field));
-    }
-
-    /**
-     *  Explicitly refer to a column mapped into a CTE or subquery.
-     *  
-     *  @note (internal) Intentionally place in the sqlite_orm namespace for ADL (Argument Dependent Lookup)
-     *  because recordset aliases are derived from `sqlite_orm::alias_tag`
-     *  
-     *  Example:
-     *  struct Object { ... };
-     *  using cte_1 = decltype(1_ctealias);
-     *  storage.with(cte<cte_1>()(select(&Object::id)), select(1_ctealias->*&Object::id));
-     *  storage.with(cte<cte_1>()(select(&Object::id)), select(1_ctealias->*1_colalias));
-     */
-    template<orm_cte_moniker Moniker, class F>
-    constexpr auto operator->*(const Moniker& /*moniker*/, F field) {
-        return column<Moniker>(std::forward<F>(field));
-    }
-#endif
-#endif
-}
-// #include "vocabulary/node_fwd.h"
-// table_identifier
-// #include "vocabulary/traits/operand_traits_fwd.h"
-// Included to specialize traits
-
-namespace sqlite_orm::internal {
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<class T>
-    constexpr bool is_operator_argument_v<T, std::enable_if_t<orm_column_alias<T>>> = true;
-#endif
-
-    /**
-     *  This is a common built-in class used for character based table aliases.
-     *  For convenience there exist public type aliases `alias_a`, `alias_b`, ...
-     *  The easiest way to create a table alias is using `"z"_alias.for_<Object>()`.
-     */
-    template<class T, char A, char... X>
-    struct recordset_alias : alias_tag {
-        using type = T;
-
-        static std::string get() {
-            return {A, X...};
-        }
-    };
-
-    /**
-     *  Column expression with table alias attached like 'C.ID'. This is not a column alias
-     */
-    template<class T, class C>
-    struct alias_column_t {
-        using alias_type = T;
-        using column_type = C;
-
-        column_type column;
-    };
-
-    template<class T>
-    constexpr bool
-        is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_column_t>::value>> = true;
-
-    /*
-     *  Encapsulates extracting the alias identifier of a non-alias.
-     *  
-     *  `extract()` always returns the empty string.
-     *  `as_alias()` is used in contexts where a table might be aliased, and the empty string is returned.
-     *  `as_qualifier()` is used in contexts where a table might be aliased, and the given table's name is returned.
-     */
-    template<class T, class SFINAE = void>
-    struct alias_extractor {
-        static std::string extract() {
-            return {};
-        }
-
-        static std::string as_alias() {
-            return {};
-        }
-
-        template<class X = table_identifier>
-        static const std::string& as_qualifier(const X& table) {
-            return table.name;
-        }
-    };
-
-    /*
-     *  Encapsulates extracting the alias identifier of an alias.
-     *  
-     *  `extract()` always returns the alias identifier or CTE moniker.
-     *  `as_alias()` is used in contexts where a recordset is aliased, and the alias identifier is returned.
-     *  `as_qualifier()` is used in contexts where a table is aliased, and the alias identifier is returned.
-     */
-    template<class A>
-    struct alias_extractor<A, match_if<is_alias, A>> {
-        static std::string extract() {
-            std::stringstream ss;
-            ss << A::get();
-            return ss.str();
-        }
-
-        // for column and regular table aliases -> alias identifier
-        template<class T = A, satisfies_not<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
-        static std::string as_alias() {
-            return alias_extractor::extract();
-        }
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-        // for CTE monikers -> empty
-        template<class T = A, satisfies<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
-        static std::string as_alias() {
-            return {};
-        }
-#endif
-
-        // for regular table aliases -> alias identifier
-        template<class T = A, satisfies<is_table_alias, T> = true>
-        static std::string as_qualifier(const table_identifier&) {
-            return alias_extractor::extract();
-        }
-    };
-
-    /**
-     *  Used to store alias for expression
-     */
-    template<class T, class E>
-    struct as_t {
-        using alias_type = T;
-        using expression_type = E;
-
-        expression_type expression;
-    };
-
-    template<class T>
-    constexpr bool is_as_node_v = polyfill::is_specialization_of<T, as_t>::value;
-
-    /**
-     *  Built-in column alias.
-     *  For convenience there exist type aliases `colalias_a`, `colalias_b`, ...
-     *  The easiest way to create a column alias is using `"xyz"_col`.
-     */
-    template<char A, char... X>
-    struct column_alias : alias_tag {
-        static std::string get() {
-            return {A, X...};
-        }
-    };
-
-    template<class T>
-    struct alias_holder {
-        using type = T;
-
-        alias_holder() = default;
-        // CTE feature needs it to implicitly convert a column alias to an alias_holder; see `cte()` factory function
-        alias_holder(const T&) noexcept {}
-    };
-
-    template<class T>
-    constexpr bool is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_holder>::value>> =
-        true;
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<char A, char... X>
-    struct recordset_alias_builder {
-        template<class T>
-        [[nodiscard]] consteval recordset_alias<T, A, X...> for_() const {
-            return {};
-        }
-
-        template<orm_table_reference auto t>
-        [[nodiscard]] consteval auto for_() const {
-            using T = auto_decay_table_ref_t<t>;
-            return recordset_alias<T, A, X...>{};
-        }
-
-        template<orm_recordset_alias auto t>
-        [[nodiscard]] consteval auto for_() const {
-            using T = std::remove_const_t<decltype(t)>;
-            return recordset_alias<T, A, X...>{};
-        }
-    };
-#endif
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-    template<size_t n, char... C>
-    SQLITE_ORM_CONSTEVAL auto n_to_colalias() {
-        constexpr column_alias<'1' + n % 10, C...> colalias{};
-        if constexpr (n > 10) {
-            return n_to_colalias<n / 10, '1' + n % 10, C...>();
-        } else {
-            return colalias;
-        }
-    }
-
-    template<class T>
-    constexpr bool is_builtin_numeric_column_alias_v = false;
-    template<char... C>
-    constexpr bool is_builtin_numeric_column_alias_v<column_alias<C...>> = ((C >= '0' && C <= '9') && ...);
-#endif
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  Using a column pointer, create a column reference to an aliased table column.
-     *  
-     *  Example:
-     *  using als = alias_u<User>;
-     *  select(alias_column<als>(column<User>(&User::id)))
-     */
-    template<class A,
-             class C,
-             std::enable_if_t<std::conjunction<internal::is_table_alias<A>,
-                                               std::negation<internal::is_cte_moniker<internal::type_t<A>>>>::value,
-                              bool> = true>
-    constexpr auto alias_column(C field) {
-        using namespace ::sqlite_orm::internal;
-        using aliased_type = type_t<A>;
-        static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
-
-        return alias_column_t<A, C>{std::move(field)};
-    }
-
-    /**
-     *  Using an object member field, create a column reference to an aliased table column.
-     *  
-     *  @note The object member pointer can be from a derived class without explicitly forming a column pointer.
-     *  
-     *  Example:
-     *  using als = alias_u<User>;
-     *  select(alias_column<als>(&User::id))
-     */
-    template<class A,
-             class F,
-             class O,
-             std::enable_if_t<std::conjunction<internal::is_table_alias<A>,
-                                               std::negation<internal::is_cte_moniker<internal::type_t<A>>>>::value,
-                              bool> = true>
-    constexpr auto alias_column(F O::* field) {
-        using namespace ::sqlite_orm::internal;
-        using aliased_type = type_t<A>;
-        static_assert(is_field_of_v<F O::*, aliased_type>, "Column must be from aliased table");
-
-        using C1 =
-            mpl::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
-        return alias_column_t<A, C1>{C1{field}};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Create a column reference to an aliased table column.
-     *  
-     *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
-     *  
-     *  Example:
-     *  constexpr orm_table_alias auto als = "u"_alias.for_<User>();
-     *  select(alias_column<als>(&User::id))
-     */
-    template<orm_table_alias auto als, class C>
-        requires (!orm_cte_moniker<internal::auto_type_t<als>>)
-    constexpr auto alias_column(C field) {
-        using namespace ::sqlite_orm::internal;
-        using A = std::remove_const_t<decltype(als)>;
-        using aliased_type = type_t<A>;
-        static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
-
-        if constexpr (is_column_pointer_v<C>) {
-            return alias_column_t<A, C>{std::move(field)};
-        } else if constexpr (std::is_same_v<member_object_type_t<C>, aliased_type>) {
-            return alias_column_t<A, C>{field};
-        } else {
-            // wrap in column_pointer
-            using C1 = column_pointer<aliased_type, C>;
-            return alias_column_t<A, C1>{{field}};
-        }
-    }
-
-    /**
-     *  Create a column reference to an aliased table column.
-     *  
-     *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
-     *  
-     *  @note (internal) Intentionally place in the sqlite_orm namespace for ADL (Argument Dependent Lookup)
-     *  because recordset aliases are derived from `sqlite_orm::alias_tag`
-     *  
-     *  Example:
-     *  constexpr auto als = "u"_alias.for_<User>();
-     *  select(als->*&User::id)
-     */
-    template<orm_table_alias A, class F>
-        requires (!orm_cte_moniker<internal::type_t<A>>)
-    constexpr auto operator->*(const A& /*tableAlias*/, F field) {
-        return alias_column<A>(std::move(field));
-    }
-#endif
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-    /**
-     *  Create a column reference to an aliased CTE column.
-     */
-    template<
-        class A,
-        class C,
-        std::enable_if_t<std::conjunction_v<internal::is_table_alias<A>, internal::is_cte_moniker<internal::type_t<A>>>,
-                         bool> = true>
-    constexpr auto alias_column(C c) {
-        using namespace ::sqlite_orm::internal;
-        using cte_moniker_t = type_t<A>;
-
-        if constexpr (is_column_pointer_v<C>) {
-            static_assert(std::is_same<table_type_of_t<C>, cte_moniker_t>::value,
-                          "Column pointer must match aliased CTE");
-            return alias_column_t<A, C>{c};
-        } else {
-            auto cp = column<cte_moniker_t>(c);
-            return alias_column_t<A, decltype(cp)>{std::move(cp)};
-        }
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Create a column reference to an aliased CTE column.
-     *  
-     *  @note (internal) Intentionally place in the sqlite_orm namespace for ADL (Argument Dependent Lookup)
-     *  because recordset aliases are derived from `sqlite_orm::alias_tag`
-     */
-    template<orm_table_alias A, class C>
-        requires (orm_cte_moniker<internal::type_t<A>>)
-    constexpr auto operator->*(const A& /*tableAlias*/, C c) {
-        return alias_column<A>(std::move(c));
-    }
-
-    /**
-     *  Create a column reference to an aliased CTE column.
-     */
-    template<orm_table_alias auto als, class C>
-        requires (orm_cte_moniker<internal::auto_type_t<als>>)
-    constexpr auto alias_column(C c) {
-        using A = std::remove_const_t<decltype(als)>;
-        return alias_column<A>(std::move(c));
-    }
-#endif
-#endif
-
-    /** 
-     *  Alias a column expression.
-     */
-    template<class A, class E, internal::satisfies<internal::is_column_alias, A> = true>
-    internal::as_t<A, E> as(E expression) {
-        return {std::move(expression)};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /** 
-     *  Alias a column expression.
-     */
-    template<orm_column_alias auto als, class E>
-    auto as(E expression) {
-        return internal::as_t<std::remove_const_t<decltype(als)>, E>{std::move(expression)};
-    }
-
-    /**
-     *  Alias a column expression.
-     */
-    template<orm_column_alias A, class E>
-    internal::as_t<A, E> operator>>=(E expression, const A&) {
-        return {std::move(expression)};
-    }
-#else
-    /**
-     *  Alias a column expression.
-     */
-    template<class A, class E, internal::satisfies<internal::is_column_alias, A> = true>
-    internal::as_t<A, E> operator>>=(E expression, const A&) {
-        return {std::move(expression)};
-    }
-#endif
-
-    /**
-     *  Wrap a column alias in an alias holder.
-     */
-    template<class T>
-    internal::alias_holder<T> get() {
-        static_assert(internal::is_column_alias_v<T>);
-        return {};
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_column_alias auto als>
-    auto get() {
-        return internal::alias_holder<std::remove_const_t<decltype(als)>>{};
-    }
-#endif
-
-    template<class T>
-    using alias_a = internal::recordset_alias<T, 'a'>;
-    template<class T>
-    using alias_b = internal::recordset_alias<T, 'b'>;
-    template<class T>
-    using alias_c = internal::recordset_alias<T, 'c'>;
-    template<class T>
-    using alias_d = internal::recordset_alias<T, 'd'>;
-    template<class T>
-    using alias_e = internal::recordset_alias<T, 'e'>;
-    template<class T>
-    using alias_f = internal::recordset_alias<T, 'f'>;
-    template<class T>
-    using alias_g = internal::recordset_alias<T, 'g'>;
-    template<class T>
-    using alias_h = internal::recordset_alias<T, 'h'>;
-    template<class T>
-    using alias_i = internal::recordset_alias<T, 'i'>;
-    template<class T>
-    using alias_j = internal::recordset_alias<T, 'j'>;
-    template<class T>
-    using alias_k = internal::recordset_alias<T, 'k'>;
-    template<class T>
-    using alias_l = internal::recordset_alias<T, 'l'>;
-    template<class T>
-    using alias_m = internal::recordset_alias<T, 'm'>;
-    template<class T>
-    using alias_n = internal::recordset_alias<T, 'n'>;
-    template<class T>
-    using alias_o = internal::recordset_alias<T, 'o'>;
-    template<class T>
-    using alias_p = internal::recordset_alias<T, 'p'>;
-    template<class T>
-    using alias_q = internal::recordset_alias<T, 'q'>;
-    template<class T>
-    using alias_r = internal::recordset_alias<T, 'r'>;
-    template<class T>
-    using alias_s = internal::recordset_alias<T, 's'>;
-    template<class T>
-    using alias_t = internal::recordset_alias<T, 't'>;
-    template<class T>
-    using alias_u = internal::recordset_alias<T, 'u'>;
-    template<class T>
-    using alias_v = internal::recordset_alias<T, 'v'>;
-    template<class T>
-    using alias_w = internal::recordset_alias<T, 'w'>;
-    template<class T>
-    using alias_x = internal::recordset_alias<T, 'x'>;
-    template<class T>
-    using alias_y = internal::recordset_alias<T, 'y'>;
-    template<class T>
-    using alias_z = internal::recordset_alias<T, 'z'>;
-
-    using colalias_a = internal::column_alias<'a'>;
-    using colalias_b = internal::column_alias<'b'>;
-    using colalias_c = internal::column_alias<'c'>;
-    using colalias_d = internal::column_alias<'d'>;
-    using colalias_e = internal::column_alias<'e'>;
-    using colalias_f = internal::column_alias<'f'>;
-    using colalias_g = internal::column_alias<'g'>;
-    using colalias_h = internal::column_alias<'h'>;
-    using colalias_i = internal::column_alias<'i'>;
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /** @short Create a table alias.
-     *  
-     *  Examples:
-     *  constexpr orm_table_alias auto z_alias = alias<'z'>.for_<User>();
-     */
-    template<char A, char... X>
-    constexpr internal::recordset_alias_builder<A, X...> alias{};
-
-    inline namespace literals {
-        /** @short Create a table alias.
-         *  
-         *  Examples:
-         *  constexpr orm_table_alias auto z_alias = "z"_alias.for_<User>();
-         */
-        template<internal::cstring_literal name>
-        [[nodiscard]] consteval auto operator""_alias() {
-            return internal::explode_into<internal::recordset_alias_builder, name>(
-                std::make_index_sequence<name.size()>{});
-        }
-
-        /** @short Create a column alias.
-         *  column_alias<'a'[, ...]> from a string literal.
-         *  E.g. "a"_col, "b"_col
-         */
-        template<internal::cstring_literal name>
-        [[nodiscard]] consteval auto operator""_col() {
-            return internal::explode_into<internal::column_alias, name>(std::make_index_sequence<name.size()>{});
-        }
-    }
-#endif
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-    inline namespace literals {
-        /**
-         *  column_alias<'1'[, ...]> from a numeric literal.
-         *  E.g. 1_colalias, 2_colalias
-         */
-        template<char... Chars>
-        [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator""_colalias() {
-            // numeric identifiers are used for automatically assigning implicit aliases to unaliased column expressions,
-            // which start at "1".
-            static_assert(std::array{Chars...}[0] > '0');
-            return internal::column_alias<Chars...>{};
-        }
-    }
-#endif
-}
-
-// #include "../alias_traits.h"
-
-// #include "../cte_moniker.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-#include <concepts>
-#include <utility>  //  std::make_index_sequence
-#endif
-#include <type_traits>  //  std::enable_if, std::is_member_pointer, std::is_same, std::is_convertible
-#include <tuple>  //  std::ignore
-#include <string>
-#endif
-#endif
-
-// #include "functional/cstring_literal.h"
-
 // #include "alias.h"
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-namespace sqlite_orm::internal {
-    /** 
-     *  A special record set alias that is both, a storage lookup type (mapping type) and an alias.
-     */
-    template<char A, char... X>
-    struct cte_moniker
-        : recordset_alias<cte_moniker<A, X...> /* refer to self, since a moniker is both, an alias and a mapped type */,
-                          A,
-                          X...> {
-        /** 
-         *  Introduce the construction of a common table expression using this moniker.
-         *  
-         *  The list of explicit columns is optional;
-         *  if provided the number of columns must match the number of columns of the subselect.
-         *  The column names will be merged with the subselect:
-         *  1. column names of subselect
-         *  2. explicit columns
-         *  3. fill in empty column names with column index
-         *  
-         *  Example:
-         *  1_ctealias()(select(&Object::id));
-         *  1_ctealias(&Object::name)(select("object"));
-         *  
-         *  @return A `cte_builder` instance.
-         *  @note (internal): Defined in ast/cte.h in order to keep this member function in the same place as the named factory function `cte()`,
-         *  and to keep the actual creation of the builder in one place.
-         */
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        template<class... ExplicitCols>
-            requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
-                       std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
-                       std::convertible_to<ExplicitCols, std::string>) &&
-                      ...)
-        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
-#else
-        template<class... ExplicitCols,
-                 std::enable_if_t<std::conjunction_v<std::disjunction<
-                                      is_column_alias<ExplicitCols>,
-                                      std::is_member_pointer<ExplicitCols>,
-                                      std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
-                                      std::is_convertible<ExplicitCols, std::string>>...>,
-                                  bool> = true>
-        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
-#endif
-    };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    inline namespace literals {
-        /**
-         *  cte_moniker<'n'> from a numeric literal.
-         *  E.g. 1_ctealias, 2_ctealias
-         */
-        template<char... Chars>
-        [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator""_ctealias() {
-#ifdef SQLITE_ORM_PACK_INDEXING_SUPPORTED
-            // numeric monikers are used for automatically assigning implicit aliases to unaliased column expressions,
-            // which start at "1".
-            // note: hoisted into a variable because clang before 20.1 fails to treat an indexed non-type
-            // template parameter pack as dependent when its value is converted in place [e.g. Apple clang 17:
-            // "invalid operands to binary expression ('<dependent type>' and 'char')"]
-            constexpr auto first = Chars...[0];
-            static_assert(first > '0');
-#endif
-            return internal::cte_moniker<Chars...>{};
-        }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        /**
-         *  cte_moniker<'1'[, ...]> from a string literal.
-         *  E.g. "1"_cte, "2"_cte
-         */
-        template<internal::cstring_literal moniker>
-        [[nodiscard]] consteval auto operator""_cte() {
-            return internal::explode_into<internal::cte_moniker, moniker>(std::make_index_sequence<moniker.size()>{});
-        }
-#endif
-    }
-}
-#endif
 
 // #include "select.h"
 
@@ -12231,6 +12213,88 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../vocabulary/traits/semantic_traits_fwd.h"
 // Included to specialize traits
 
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+namespace sqlite_orm::internal {
+    /** 
+     *  A special record set alias that is both, a storage lookup type (mapping type) and an alias.
+     */
+    template<char A, char... X>
+    struct cte_moniker
+        : recordset_alias<cte_moniker<A, X...> /* refer to self, since a moniker is both, an alias and a mapped type */,
+                          A,
+                          X...> {
+        /** 
+         *  Introduce the construction of a common table expression using this moniker.
+         *  
+         *  The list of explicit columns is optional;
+         *  if provided the number of columns must match the number of columns of the subselect.
+         *  The column names will be merged with the subselect:
+         *  1. column names of subselect
+         *  2. explicit columns
+         *  3. fill in empty column names with column index
+         *  
+         *  Example:
+         *  1_ctealias()(select(&Object::id));
+         *  1_ctealias(&Object::name)(select("object"));
+         *  
+         *  @return A `cte_builder` instance.
+         *  @note (internal): Defined out of line, after the named factory function `cte()` it forwards to,
+         *  so that the actual creation of the builder stays in one place.
+         */
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<class... ExplicitCols>
+            requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
+                       std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
+                       std::convertible_to<ExplicitCols, std::string>) &&
+                      ...)
+        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
+#else
+        template<class... ExplicitCols,
+                 std::enable_if_t<std::conjunction_v<std::disjunction<
+                                      is_column_alias<ExplicitCols>,
+                                      std::is_member_pointer<ExplicitCols>,
+                                      std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
+                                      std::is_convertible<ExplicitCols, std::string>>...>,
+                                  bool> = true>
+        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
+#endif
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    inline namespace literals {
+        /**
+         *  cte_moniker<'n'> from a numeric literal.
+         *  E.g. 1_ctealias, 2_ctealias
+         */
+        template<char... Chars>
+        [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator""_ctealias() {
+#ifdef SQLITE_ORM_PACK_INDEXING_SUPPORTED
+            // numeric monikers are used for automatically assigning implicit aliases to unaliased column expressions,
+            // which start at "1".
+            // note: hoisted into a variable because clang before 20.1 fails to treat an indexed non-type
+            // template parameter pack as dependent when its value is converted in place [e.g. Apple clang 17:
+            // "invalid operands to binary expression ('<dependent type>' and 'char')"]
+            constexpr auto first = Chars...[0];
+            static_assert(first > '0');
+#endif
+            return internal::cte_moniker<Chars...>{};
+        }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        /**
+         *  cte_moniker<'1'[, ...]> from a string literal.
+         *  E.g. "1"_cte, "2"_cte
+         */
+        template<internal::cstring_literal moniker>
+        [[nodiscard]] consteval auto operator""_cte() {
+            return internal::explode_into<internal::cte_moniker, moniker>(std::make_index_sequence<moniker.size()>{});
+        }
+#endif
+    }
+}
+#endif
+
 namespace sqlite_orm::internal {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /*
@@ -12250,33 +12314,6 @@ namespace sqlite_orm::internal {
     };
     template<class T>
     using decay_explicit_column_t = typename decay_explicit_column<T>::type;
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /*
-     *  Materialization hint to instruct SQLite to materialize the select statement of a CTE into an ephemeral table as an "optimization fence".
-     */
-    struct materialized_t {
-        constexpr operator std::string_view() const {
-            return "MATERIALIZED";
-        }
-    };
-
-    /*
-     *  Materialization hint to instruct SQLite to substitute a CTE's select statement as a subquery subject to optimization.
-     */
-    struct not_materialized_t {
-        constexpr operator std::string_view() const {
-            return "NOT MATERIALIZED";
-        }
-    };
-
-    template<class T>
-    constexpr bool is_materialization_hint_v =
-        std::disjunction<std::is_same<T, materialized_t>, std::is_same<T, not_materialized_t>>::value;
-#else
-    template<class T>
-    constexpr bool is_materialization_hint_v = false;
-#endif
 
     /**
      *  Monikered (aliased) CTE expression.
@@ -12333,72 +12370,14 @@ namespace sqlite_orm::internal {
         }
 #endif
     };
-
-    /**
-     *  WITH object type - expression with prepended CTEs.
-     */
-    template<class E, class... CTEs>
-    struct with_t {
-        using cte_type = common_table_expressions<CTEs...>;
-        using expression_type = E;
-
-        bool recursiveIndicated;
-        cte_type cte;
-        expression_type expression;
-
-        with_t(bool recursiveIndicated, cte_type cte, expression_type expression) :
-            recursiveIndicated{recursiveIndicated}, cte{std::move(cte)}, expression{std::move(expression)} {
-            if constexpr (is_select_v<expression_type>) {
-                this->expression.highest_level = true;
-            }
-        }
-    };
-
-    template<class T>
-    constexpr bool is_with_clause_v = polyfill::is_specialization_of<T, with_t>::value;
 #else
     template<class T>
     constexpr bool is_cte_binding_v = false;
-
-    template<class T>
-    constexpr bool is_materialization_hint_v = false;
-
-    template<class T>
-    constexpr bool is_with_clause_v = false;
 #endif
-
-    template<class With>
-    constexpr bool is_select_expression_v<
-        With,
-        std::enable_if_t<std::conjunction_v<is_with_clause<With>, is_select<expression_type_t<With>>>>> = true;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#if SQLITE_VERSION_NUMBER >= 3035003
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /*
-     *  Materialization hint to instruct SQLite to materialize the select statement of a CTE into an ephemeral table as an "optimization fence".
-     *
-     *  Example:
-     *  1_ctealias().as<materialized()>(select(1));
-     */
-    consteval internal::materialized_t materialized() {
-        return {};
-    }
-
-    /*
-     *  Materialization hint to instruct SQLite to substitute a CTE's select statement as a subquery subject to optimization.
-     *
-     *  Example:
-     *  1_ctealias().as<not_materialized()>(select(1));
-     */
-    consteval internal::not_materialized_t not_materialized() {
-        return {};
-    }
-#endif
-#endif
-
     /**
      *  Introduce the construction of a common table expression using the specified moniker.
      *
@@ -12429,8 +12408,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
-        using builder_type =
-            cte_builder<Moniker, transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
+        using builder_type = cte_builder<std::remove_const_t<Moniker>,
+                                         transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 
@@ -12451,7 +12430,132 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return builder_type{{std::move(explicitColumns)...}};
     }
 #endif
+#endif
+}
 
+// Implementation of cte_moniker's call operator which depends on `cte<>()`
+namespace sqlite_orm::internal {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<char A, char... X>
+    template<class... ExplicitCols>
+        requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
+                   std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
+                   std::convertible_to<ExplicitCols, std::string>) &&
+                  ...)
+    constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
+        return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
+    }
+#else
+    template<char A, char... X>
+    template<class... ExplicitCols,
+             std::enable_if_t<std::conjunction_v<std::disjunction<
+                                  is_column_alias<ExplicitCols>,
+                                  std::is_member_pointer<ExplicitCols>,
+                                  std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
+                                  std::is_convertible<ExplicitCols, std::string>>...>,
+                              bool>>
+    constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
+        return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
+    }
+#endif
+#endif
+}
+
+namespace sqlite_orm::internal {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE) && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
+    /*
+     *  Materialization hint to instruct SQLite to materialize the select statement of a CTE into an ephemeral table as an "optimization fence".
+     */
+    struct materialized_t {
+        constexpr operator std::string_view() const {
+            return "MATERIALIZED";
+        }
+    };
+
+    /*
+     *  Materialization hint to instruct SQLite to substitute a CTE's select statement as a subquery subject to optimization.
+     */
+    struct not_materialized_t {
+        constexpr operator std::string_view() const {
+            return "NOT MATERIALIZED";
+        }
+    };
+
+    template<class T>
+    constexpr bool is_materialization_hint_v =
+        std::disjunction<std::is_same<T, materialized_t>, std::is_same<T, not_materialized_t>>::value;
+#else
+    template<class T>
+    constexpr bool is_materialization_hint_v = false;
+#endif
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if SQLITE_VERSION_NUMBER >= 3035003
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /*
+     *  Materialization hint to instruct SQLite to materialize the select statement of a CTE into an ephemeral table as an "optimization fence".
+     *
+     *  Example:
+     *  1_ctealias().as<materialized()>(select(1));
+     */
+    consteval internal::materialized_t materialized() {
+        return {};
+    }
+
+    /*
+     *  Materialization hint to instruct SQLite to substitute a CTE's select statement as a subquery subject to optimization.
+     *
+     *  Example:
+     *  1_ctealias().as<not_materialized()>(select(1));
+     */
+    consteval internal::not_materialized_t not_materialized() {
+        return {};
+    }
+#endif
+#endif
+#endif
+}
+
+namespace sqlite_orm::internal {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+    /**
+     *  WITH object type - expression with prepended CTEs.
+     */
+    template<class E, class... CTEs>
+    struct with_t {
+        using cte_type = common_table_expressions<CTEs...>;
+        using expression_type = E;
+
+        bool recursiveIndicated;
+        cte_type cte;
+        expression_type expression;
+
+        with_t(bool recursiveIndicated, cte_type cte, expression_type expression) :
+            recursiveIndicated{recursiveIndicated}, cte{std::move(cte)}, expression{std::move(expression)} {
+            if constexpr (is_select_v<expression_type>) {
+                this->expression.highest_level = true;
+            }
+        }
+    };
+
+    template<class T>
+    constexpr bool is_with_clause_v = polyfill::is_specialization_of<T, with_t>::value;
+#else
+    template<class T>
+    constexpr bool is_with_clause_v = false;
+#endif
+
+    template<class With>
+    constexpr bool is_select_expression_v<
+        With,
+        std::enable_if_t<std::conjunction_v<is_with_clause<With>, is_select<expression_type_t<With>>>>> = true;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /**
      *  With-clause for a tuple of ordinary CTEs.
      *
@@ -12564,35 +12668,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-// Implementation of cte_moniker's call operator which depends on `cte<>()`
-namespace sqlite_orm::internal {
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<char A, char... X>
-    template<class... ExplicitCols>
-        requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
-                   std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
-                   std::convertible_to<ExplicitCols, std::string>) &&
-                  ...)
-    constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
-        return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
-    }
-#else
-    template<char A, char... X>
-    template<class... ExplicitCols,
-             std::enable_if_t<std::conjunction_v<std::disjunction<
-                                  is_column_alias<ExplicitCols>,
-                                  std::is_member_pointer<ExplicitCols>,
-                                  std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
-                                  std::is_convertible<ExplicitCols, std::string>>...>,
-                              bool>>
-    constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
-        return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
-    }
-#endif
-#endif
-}
-
 // #include "ast/crud/default_values.h"
 
 /** @file The DEFAULT VALUES modifier a raw INSERT or REPLACE takes in place of a row list.
@@ -12656,55 +12731,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../tuple_helper/tuple_filter.h"
 
-// #include "../../table_reference.h"
-
-// #include "../../mapped_type_proxy.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::void_t, std::remove_const
-#endif
-
-// #include "functional/type_traits.h"
-
-// #include "alias_traits.h"
-
-// #include "vocabulary/node_traits.h"
-// projections
-
-namespace sqlite_orm::internal {
-    /** 
-     *  Defines the `type` typename to be:
-     *  - The unqualified unwrapped table reference type if T is a table reference.
-     *  - The unqualified unwrapped table-valued expression type if T is a table-valued expression.
-     *  - The unqualified aliased type if T is a recordset alias.
-     *  - The enclosing data struct for eponymous virtual tables with hidden columns.
-     *  - ... otherwise unqualified T.
-     */
-    template<class T, class SFINAE = void>
-    struct mapped_type_proxy : std::remove_const<T> {};
-
-    template<class T>
-    struct mapped_type_proxy<T, std::void_t<enclosing_type_t<T>>> {
-        using type = enclosing_type_t<T>;
-    };
-
-    template<class R>
-    struct mapped_type_proxy<R, match_if<is_table_reference, R>> : R {};
-
-    template<class E>
-    struct mapped_type_proxy<E, match_if<is_table_valued_expression, E>> : E {};
-
-    template<class A>
-    struct mapped_type_proxy<A, match_if<is_recordset_alias, A>> : std::remove_const<type_t<A>> {};
-
-    template<class T>
-    using mapped_type_proxy_t = typename mapped_type_proxy<T>::type;
-}
-
 // #include "../../vocabulary/node_traits.h"
 
 // #include "../../vocabulary/node_algorithms.h"
-//  is_bindable_v
+//  is_bindable_v, mapped_type_of_t
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 // #include "../select.h"
@@ -12750,7 +12780,7 @@ namespace sqlite_orm::internal {
     template<class T, class R, class... Args>
     struct get_all_t {
         using type = T;
-        using result_type = mapped_type_proxy_t<T>;
+        using result_type = mapped_type_of_t<T>;
         using return_type = R;
 
         using conditions_type = std::tuple<Args...>;
@@ -12876,7 +12906,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  R is a container type. std::vector<T> is default
      *  Usage: storage.prepare(get_all<User>(...));
      */
-    template<class T, class R = std::vector<internal::mapped_type_proxy_t<T>>, class... Args>
+    template<class T, class R = std::vector<internal::mapped_type_of_t<T>>, class... Args>
     internal::get_all_t<T, R, Args...> get_all(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
         internal::validate_select_clauses<conditions_tuple>();
@@ -12892,7 +12922,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Usage: storage.get_all<sqlite_schema>(...);
      */
     template<orm_refers_to_table auto mapped,
-             class R = std::vector<internal::mapped_type_proxy_t<decltype(mapped)>>,
+             class R = std::vector<internal::mapped_type_of_t<decltype(mapped)>>,
              class... Args>
     auto get_all(Args&&... conditions) {
         return get_all<internal::auto_decay_table_ref_t<mapped>, R>(std::forward<Args>(conditions)...);
@@ -12994,8 +13024,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../tuple_helper/tuple_traits.h"
-
-// #include "../alias_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
 // is_select_clause
@@ -13403,8 +13431,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "../../table_reference.h"
-
+// #include "../../vocabulary/node_traits.h"
+//  orm_table_reference, auto_decay_table_ref_t
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 
@@ -13880,8 +13908,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 //  value_unref_type_t
 // #include "../../tuple_helper/tuple_traits.h"
 
-// #include "../../alias_traits.h"
-
 // #include "../../vocabulary/node_traits.h"
 
 // #include "../../vocabulary/node_algorithms.h"
@@ -14164,10 +14190,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../table_reference.h"
-
-// #include "../alias_traits.h"
-
+// #include "../vocabulary/node_algorithms.h"
+//  record set concepts, auto_decay_table_ref_t
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 
@@ -14391,10 +14415,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../table_reference.h"
+// #include "column_pointer.h"
 
-// #include "../column_pointer.h"
-
+// #include "../vocabulary/node_algorithms.h"
+//  orm_refers_to_recordset, auto_decay_table_ref_t
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 
@@ -15089,6 +15113,29 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
+// #include "ast/literal.h"
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../vocabulary/traits/structural_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+
+    /*
+     *  Protect an otherwise bindable element so that it is always serialized as a literal value.
+     */
+    template<class T>
+    struct literal_holder {
+        using type = T;
+
+        type value;
+    };
+
+    template<class T>
+    constexpr bool is_literal_v = polyfill::is_specialization_of_v<T, literal_holder>;
+}
+
 // #include "ast/limit.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -15358,7 +15405,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 //  collate_argument, collate_argument_to_string
 // #include "../serialization/serializer_context.h"
 
-// #include "../literal.h"
+// #include "literal.h"
 
 // #include "../vocabulary/node_algorithms.h"
 // is_statement_clause, is_integer_mapped
@@ -15783,6 +15830,80 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {};
     }
 }
+// #include "ast/table_reference.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::remove_const, std::type_identity
+#include <utility>  // std::move
+#include <tuple>
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../vocabulary/node_traits.h"
+//  orm_recordset_alias
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "../vocabulary/traits/structural_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    /*
+     *  Bound input arguments for eponymous virtual tables used in table-valued function calls.
+     */
+    template<class Table, class... Args>
+    struct table_valued_expression {
+        using type = Table;
+        using constraints_type = std::tuple<Args...>;
+
+        constraints_type table_values;
+    };
+
+    template<class T>
+    constexpr bool is_table_valued_expression_v = polyfill::is_specialization_of_v<T, table_valued_expression>;
+
+    /*
+     *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions and virtual tables usable as table-valued functions.
+     */
+    template<class O>
+    struct table_reference : polyfill::type_identity<O> {
+        /** 
+         *  Make a table-valued function call.
+         */
+        template<class... Args>
+        constexpr SQLITE_ORM_STATIC_CALLOP table_valued_expression<O, Args...>
+        operator()(Args... arguments) SQLITE_ORM_OR_CONST_CALLOP {
+            return {{{std::move(arguments)}...}};
+        }
+    };
+
+    template<class T>
+    constexpr bool is_table_reference_v = polyfill::is_specialization_of_v<std::remove_const_t<T>, table_reference>;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    /**
+     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
+     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
+     */
+    template<class O>
+        requires (!orm_recordset_alias<O>)
+    consteval internal::table_reference<O> c() {
+        return {};
+    }
+#else
+    /**
+     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
+     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
+     */
+    template<class O, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
+    constexpr internal::table_reference<O> c() {
+        return {};
+    }
+#endif
+}
+
 // #include "ast/app_function.h"
 
 /** @file The node of a call of an application-defined function, and the definition of an application-defined
@@ -16012,13 +16133,13 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_operator_argument_v<T, std::enable_if_t<is_app_function_call_v<T>>> = true;
 
-    template<class T>
+    template<class T, class SFINAE = void>
     struct unpacked_arg {
         using type = T;
     };
-    template<class F, class... CallArgs>
-    struct unpacked_arg<app_function_call<F, CallArgs...>> {
-        using type = typename callable_arguments<F>::return_type;
+    template<class T>
+    struct unpacked_arg<T, match_if<is_app_function_call, T>> {
+        using type = typename callable_arguments<udf_type_t<T>>::return_type;
     };
     template<class T>
     using unpacked_arg_t = typename unpacked_arg<T>::type;
@@ -16707,7 +16828,7 @@ namespace sqlite_orm::internal {
 // column_field
 // #include "error_code.h"
 
-// #include "alias.h"
+// #include "ast/alias.h"
 
 // #include "marshaling/field_printer.h"
 
@@ -16906,10 +17027,8 @@ namespace sqlite_orm {
 #include <string_view>  //  std::string_view
 #endif
 
-// #include "../../alias_traits.h"
-//  orm_refers_to_recordset, auto_decay_table_ref_t
 // #include "../../vocabulary/node_algorithms.h"
-//  argument
+//  argument, orm_refers_to_recordset
 // #include "../../ast/builtin_function.h"
 //  count_asterisk_t, count_asterisk_without_type
 
@@ -17724,9 +17843,7 @@ namespace sqlite_orm::internal {
 // #include "../vocabulary/node_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
-//  substitute_arguments, is_bindable_v, is_text_value
-// #include "../mapped_type_proxy.h"
-
+//  substitute_arguments, is_bindable_v, is_text_value, mapped_type_of_t
 // #include "../marshaling/column_result_proxy.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -17739,7 +17856,8 @@ namespace sqlite_orm::internal {
 
 // #include "../tuple_helper/tuple_transformer.h"
 
-// #include "../table_reference.h"
+// #include "../vocabulary/node_traits.h"
+//  is_table_reference
 
 namespace sqlite_orm::internal {
     /*
@@ -17752,7 +17870,7 @@ namespace sqlite_orm::internal {
     };
 
     /*
-     *  Determine the actual and final result type of an intermediate column result produced by `column_result_t`,
+     *  Determine the actual and final result type of an intermediate column result produced by `column_result_of`,
      *  unwrapping `table_reference` and `structure`, and transforming tuples element-wise.
      */
     template<class T, class SFINAE = void>
@@ -17778,17 +17896,33 @@ namespace sqlite_orm::internal {
         : tuple_transformer<Tpl, column_result_proxy_t> {};
 }
 
-// #include "../alias.h"
+// #include "../ast/alias.h"
 
-// #include "../cte_types.h"
+// #include "../schema/cte_mapping.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <tuple>
+#include <type_traits>  //  std::is_member_pointer_v
+#include <tuple>  //  std::tuple, std::make_tuple, std::get, std::tuple_element_t
+#include <string>  //  std::string
+#include <utility>  //  std::index_sequence, std::forward, std::move
+#include <vector>  //  std::vector
 #endif
 #endif
 
-// #include "tuple_helper/tuple_fy.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../functional/type_traits.h"
+
+// #include "../tuple_helper/tuple_fy.h"
+
+// #include "../vocabulary/node_traits.h"
+
+// #include "column.h"
+
+// #include "table_base.h"
+
+// #include "table_identifier.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm::internal {
@@ -17807,20 +17941,22 @@ namespace sqlite_orm::internal {
     /**
      *  This class captures various properties and aspects of a subselect's column expression,
      *  and is used as a proxy in base_table<>.
+     *
+     *  Named after CTEs, the only subselects mapped as a table so far.
      */
     template<typename Moniker,
              typename ExplicitColRefs,
              typename Expression,
              typename SubselectColRefs,
              typename FinalColRefs,
-             typename... Fs>
-    class subselect_mapper {
+             typename ColumnResults>
+    class cte_mapper {
       public:
-        subselect_mapper() = delete;
+        cte_mapper() = delete;
 
         // this type name is used to detect the mapping from moniker to object
         using cte_moniker_type = Moniker;
-        using fields_type = std::tuple<Fs...>;
+        using fields_type = tuplify_t<ColumnResults>;
         // this type captures the expressions forming the columns in a subselect;
         // it is currently unused, however proves to be useful in compilation errors,
         // as it simplifies recognizing errors in column expressions
@@ -17834,6 +17970,54 @@ namespace sqlite_orm::internal {
         // this type captures column reference expressions merged from SubselectColRefs and ExplicitColRefs
         using final_colrefs_tuple = FinalColRefs;
     };
+
+    /**
+     *  A CTE mapped as a table, its object type being the CTE moniker.
+     */
+    template<class Mapper, class... Cs>
+    struct cte_table : table_identifier, table_definition<Cs...> {
+        using definition_type = table_definition<Cs...>;
+        using cte_mapper_type = Mapper;
+        using cte_moniker_type = typename cte_mapper_type::cte_moniker_type;
+        using object_type = cte_moniker_type;
+        using elements_type = typename definition_type::elements_type;
+    };
+
+    template<class Mapper, class... Cs>
+    cte_table<Mapper, Cs...> make_cte_table(std::string name, Cs... args) {
+        return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
+    }
+
+    /**
+     *  Make the column of a CTE table from its final column reference:
+     *  - an aliased column expression, explicit or implicitly numbered, is stored as a field of `aliased_field<>`;
+     *  - a member pointer is used as is.
+     */
+    template<typename F, typename ColRef>
+    auto make_cte_column(std::string name, [[maybe_unused]] const ColRef& finalColRef) {
+        if constexpr (is_alias_holder_v<ColRef>) {
+            using object_type = aliased_field<type_t<ColRef>, F>;
+
+            return sqlite_orm::make_column<>(std::move(name), &object_type::field);
+        } else if constexpr (std::is_member_pointer_v<ColRef>) {
+            using column_type = column_t<ColRef, empty_setter>;
+
+            return column_type{std::move(name), finalColRef, empty_setter{}, std::tuple<>{}};
+        } else {
+            static_assert(polyfill::always_false_v<ColRef>, "Invalid final column reference");
+        }
+    }
+
+    template<typename Mapper, typename ColRefs, size_t... CIs>
+    auto make_cte_table_using_column_indices(std::string tableName,
+                                             std::vector<std::string> columnNames,
+                                             const ColRefs& finalColRefs,
+                                             std::index_sequence<CIs...>) {
+        return make_cte_table<Mapper>(
+            std::move(tableName),
+            make_cte_column<std::tuple_element_t<CIs, typename Mapper::fields_type>>(std::move(columnNames.at(CIs)),
+                                                                                     std::get<CIs>(finalColRefs))...);
+    }
 }
 #endif
 
@@ -17878,7 +18062,8 @@ namespace sqlite_orm::internal {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::true_type, std::false_type
-#include <tuple>  //  std::tuple
+#include <tuple>  //  std::tuple, std::get, std::tuple_size_v
+#include <utility>  //  std::index_sequence, std::make_index_sequence, std::forward
 #endif
 
 // #include "../functional/type_traits.h"
@@ -17900,10 +18085,36 @@ namespace sqlite_orm::internal {
     template<class... DBO>
     struct is_db_objects<const std::tuple<DBO...>> : std::true_type {};
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+    /**
+     *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
+     */
+    template<typename DBOs, typename... Tables>
+    auto db_objects_cat(const DBOs& dbObjects, Tables&&... tables) {
+        auto& [... elements] = dbObjects;
+        return std::tuple{std::forward<Tables>(tables)..., elements...};
+    }
+#else
+    template<typename DBOs, size_t... Idx, typename... Tables>
+    auto db_objects_cat(const DBOs& dbObjects, std::index_sequence<Idx...>, Tables&&... tables) {
+        return std::tuple{std::forward<Tables>(tables)..., std::get<Idx>(dbObjects)...};
+    }
+
+    /**
+     *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
+     */
+    template<typename DBOs, typename... Tables>
+    auto db_objects_cat(const DBOs& dbObjects, Tables&&... tables) {
+        return db_objects_cat(dbObjects,
+                              std::make_index_sequence<std::tuple_size_v<DBOs>>{},
+                              std::forward<Tables>(tables)...);
+    }
+#endif
+
     /**
      *  Return passed in DBOs.
      *
-     *  Note: A WITH clause prepends the database objects of its CTEs, see `cte_storage.h`.
+     *  Note: A WITH clause prepends the database objects of its CTEs, see `cte_db_objects.h`.
      */
     template<class DBOs,
              class E,
@@ -18084,14 +18295,14 @@ namespace sqlite_orm::internal {
      *  This is a proxy class used to define what type must have result type depending on select
      *  arguments (member pointer, aggregate functions, etc). Below you can see specializations
      *  for different types. E.g. specialization for internal::length_t has `type` int cause
-     *  LENGTH returns INTEGER in sqlite. Every column_result_t must have `type` type that equals
+     *  LENGTH returns INTEGER in sqlite. Every column_result_of must have `type` type that equals
      *  c++ SELECT return type for T
      *  DBOs - db_objects_tuple type
      *  T - C++ type
      *  SFINAE - sfinae argument
      */
     template<class DBOs, class T, class SFINAE = void>
-    struct column_result_t {
+    struct column_result_of {
 #ifdef __FUNCTION__
         // produce an error message that reveals `T` and `DBOs`
         static constexpr bool reveal() {
@@ -18102,18 +18313,18 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    using column_result_of_t = typename column_result_t<DBOs, T>::type;
+    using column_result_of_t = typename column_result_of<DBOs, T>::type;
 
     template<class DBOs, class Tpl>
     using column_result_for_tuple_t = transform_tuple_t<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_as_optional, T>> {
+    struct column_result_of<DBOs, T, match_if<is_as_optional, T>> {
         using type = std::optional<column_result_of_t<DBOs, expression_type_t<T>>>;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, std::optional<T>, void> {
+    struct column_result_of<DBOs, std::optional<T>, void> {
         using type = std::optional<T>;
     };
 
@@ -18121,7 +18332,7 @@ namespace sqlite_orm::internal {
      *  Result for the most simple queries like `SELECT 1`
      */
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<std::is_arithmetic, T>> {
+    struct column_result_of<DBOs, T, match_if<std::is_arithmetic, T>> {
         using type = T;
     };
 
@@ -18129,7 +18340,7 @@ namespace sqlite_orm::internal {
      *  Result for the most simple queries like `SELECT 'ototo'`
      */
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_text_value, T>> {
+    struct column_result_of<DBOs, T, match_if<is_text_value, T>> {
         using type = std::string;
     };
 
@@ -18138,11 +18349,11 @@ namespace sqlite_orm::internal {
      *  spliced into the sequence rather than nested in it.
      */
     template<class DBOs, class... Args>
-    struct column_result_t<DBOs, std::tuple<Args...>, void> : conc_tuple<tuplify_t<column_result_of_t<DBOs, Args>>...> {
-    };
+    struct column_result_of<DBOs, std::tuple<Args...>, void>
+        : conc_tuple<tuplify_t<column_result_of_t<DBOs, Args>>...> {};
 
     template<class DBOs, class T>
-    struct column_result_t<
+    struct column_result_of<
         DBOs,
         T,
         std::enable_if_t<std::disjunction<is_any_in<T>, is_between<T>, is_is_null<T>, is_is_not_null<T>>::value>> {
@@ -18150,7 +18361,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    struct column_result_t<
+    struct column_result_of<
         DBOs,
         T,
         std::enable_if_t<std::disjunction<is_current_time<T>, is_current_date<T>, is_current_timestamp<T>>::value>> {
@@ -18158,7 +18369,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<std::is_member_pointer, T>> : member_field_type<T> {};
+    struct column_result_of<DBOs, T, match_if<std::is_member_pointer, T>> : member_field_type<T> {};
 
     /*
      *  The result type of a built-in function's call argument, as the return type placeholders see it:
@@ -18169,72 +18380,84 @@ namespace sqlite_orm::internal {
     template<class DBOs, class Arg>
     using argument_result_of_t = typename std::conditional_t<is_bindable_v<Arg> && !is_text_value<Arg>::value,
                                                              polyfill::type_identity<Arg>,
-                                                             column_result_t<DBOs, Arg>>::type;
+                                                             column_result_of<DBOs, Arg>>::type;
 
     /**
      *  The declared return type of a built-in function, with the `argument<I>` and `common_argument_type<I...>`
      *  placeholders replaced by the results of the call arguments.
      */
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_builtin_function_call, T>>
+    struct column_result_of<DBOs, T, match_if<is_builtin_function_call, T>>
         : substitute_arguments<return_type_t<T>, args_tuple_t<T>, mpl::bind_front_fn<argument_result_of_t, DBOs>> {};
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_app_function_call, T>> {
+    struct column_result_of<DBOs, T, match_if<is_app_function_call, T>> {
         using type = typename callable_arguments<udf_type_t<T>>::return_type;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_count_asterisk, T>> {
+    struct column_result_of<DBOs, T, match_if<is_count_asterisk, T>> {
         using type = int;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_filtered_aggregate_function, T>>
-        : column_result_t<DBOs, function_type_t<T>> {};
+    struct column_result_of<DBOs, T, match_if<is_filtered_aggregate_function, T>>
+        : column_result_of<DBOs, function_type_t<T>> {};
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_over, T>> : column_result_t<DBOs, function_type_t<T>> {};
+    struct column_result_of<DBOs, T, match_if<is_over, T>> : column_result_of<DBOs, function_type_t<T>> {};
 
     template<class DBOs>
-    struct column_result_t<DBOs, std::nullptr_t, void> {
+    struct column_result_of<DBOs, std::nullptr_t, void> {
         using type = std::nullptr_t;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_rowset_deduplicator, T>> : column_result_t<DBOs, expression_type_t<T>> {
-    };
+    struct column_result_of<DBOs, T, match_if<is_rowset_deduplicator, T>>
+        : column_result_of<DBOs, expression_type_t<T>> {};
 
     //  note: an assignment has no result type - it is no column expression
     template<class DBOs, class T>
-    struct column_result_t<DBOs,
-                           T,
-                           std::enable_if_t<std::disjunction<is_binary_operator<T>, is_unary_operator<T>>::value>> {
+    struct column_result_of<DBOs,
+                            T,
+                            std::enable_if_t<std::disjunction<is_binary_operator<T>, is_unary_operator<T>>::value>> {
         using type = result_type_t<T>;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_any_rowid, T>> {
+    struct column_result_of<DBOs, T, match_if<is_any_rowid, T>> {
         using type = int64;
     };
 
-    template<class DBOs, class T, class C>
-    struct column_result_t<DBOs, alias_column_t<T, C>, void> : column_result_t<DBOs, C> {};
+    template<class DBOs, class T>
+    struct column_result_of<DBOs, T, match_if<is_alias_qualified_column, T>>
+        : column_result_of<DBOs, column_type_t<T>> {};
 
-    //  note: deliberately matching `column_pointer` by its own template rather than dispatching on
-    //  `is_column_pointer`: the CTE column reference below is a refinement of this specialization, and a
-    //  trait-based primary would be ambiguous with it rather than being ordered before it.
-    template<class DBOs, class T, class F>
-    struct column_result_t<DBOs, column_pointer<T, F>, void> : column_result_t<DBOs, F> {};
+    /*
+     *  The result of a column pointer: that of its field.
+     */
+    template<class DBOs, class T>
+    struct column_result_of<DBOs,
+                            T,
+                            std::enable_if_t<std::conjunction<is_column_pointer<T>,
+                                                              std::negation<is_alias_holder<field_type_t<T>>>>::value>>
+        : column_result_of<DBOs, field_type_t<T>> {};
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-    template<class DBOs, class Moniker, class ColAlias>
-    struct column_result_t<DBOs, column_pointer<Moniker, alias_holder<ColAlias>>, void> {
-        using table_type = schema_pick_table_t<Moniker, DBOs>;
+    /*
+     *  The result of a column pointer referring to a column alias in a CTE: the type of the column the CTE maps it to.
+     */
+    template<class DBOs, class T>
+    struct column_result_of<
+        DBOs,
+        T,
+        std::enable_if_t<std::conjunction<is_column_pointer<T>, is_alias_holder<field_type_t<T>>>::value>> {
+        using moniker_type = type_t<T>;
+        using table_type = schema_pick_table_t<moniker_type, DBOs>;
         using cte_mapper_type = cte_mapper_type_t<table_type>;
 
-        // lookup ColAlias in the final column references
-        using colalias_index = find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
+        // lookup the column alias in the final column references
+        using colalias_index = find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, field_type_t<T>>;
         static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
                       "No such column mapped into the CTE");
         using type = std::tuple_element_t<colalias_index::value, typename cte_mapper_type::fields_type>;
@@ -18242,62 +18465,61 @@ namespace sqlite_orm::internal {
 #endif
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_columns, T>> : column_result_t<DBOs, columns_type_t<T>> {};
+    struct column_result_of<DBOs, T, match_if<is_columns, T>> : column_result_of<DBOs, columns_type_t<T>> {};
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_struct, T>> {
+    struct column_result_of<DBOs, T, match_if<is_struct, T>> {
         using type = structure<object_type_t<T>, column_result_of_t<DBOs, columns_type_t<T>>>;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_select, T>> : column_result_t<DBOs, return_type_t<T>> {};
+    struct column_result_of<DBOs, T, match_if<is_select, T>> : column_result_of<DBOs, return_type_t<T>> {};
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_compound_operator, T>> {
+    struct column_result_of<DBOs, T, match_if<is_compound_operator, T>> {
         using type = polyfill::detected_t<common_type_of_t, column_result_for_tuple_t<DBOs, expressions_tuple_t<T>>>;
         static_assert(!std::is_same<type, polyfill::nonesuch>::value,
                       "Compound select statements must return a common type");
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_binary_condition, T>> {
+    struct column_result_of<DBOs, T, match_if<is_binary_condition, T>> {
         using type = result_type_t<T>;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_as_node, T>> : column_result_t<DBOs, expression_type_t<T>> {};
+    struct column_result_of<DBOs, T, match_if<is_as_node, T>> : column_result_of<DBOs, expression_type_t<T>> {};
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_asterisk, T>>
-        : schema_mapped_column_field_types<DBOs, mapped_type_proxy_t<type_t<T>>> {};
+    struct column_result_of<DBOs, T, match_if<is_asterisk, T>>
+        : schema_mapped_column_field_types<DBOs, mapped_type_of_t<type_t<T>>> {};
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_object_node, T>> {
+    struct column_result_of<DBOs, T, match_if<is_object_node, T>> {
         using type = table_reference<type_t<T>>;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_cast, T>> {
+    struct column_result_of<DBOs, T, match_if<is_cast, T>> {
         using type = to_type_t<T>;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, T, match_if<is_case_expression, T>> {
+    struct column_result_of<DBOs, T, match_if<is_case_expression, T>> {
         using type = return_type_t<T>;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs,
-                           T,
-                           std::enable_if_t<std::disjunction<is_like<T>, is_glob<T>, is_negated_condition<T>>::value>> {
+    struct column_result_of<
+        DBOs,
+        T,
+        std::enable_if_t<std::disjunction<is_like<T>, is_glob<T>, is_negated_condition<T>>::value>> {
         using type = bool;
     };
 
     template<class DBOs, class T>
-    struct column_result_t<DBOs, std::reference_wrapper<T>, void> : column_result_t<DBOs, T> {};
+    struct column_result_of<DBOs, std::reference_wrapper<T>, void> : column_result_of<DBOs, T> {};
 }
-
-// #include "mapped_type_proxy.h"
 
 // #include "sync_schema_result.h"
 
@@ -18552,7 +18774,8 @@ namespace sqlite_orm::internal {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
-#include <tuple>  //  std::tuple_size, std::tuple_element, std::get
+#include <tuple>  //  std::tuple_size, std::tuple_element, std::get, std::make_tuple
+#include <utility>  //  std::index_sequence
 #endif
 
 // #include "../../functional/index_sequence_util.h"
@@ -18568,8 +18791,8 @@ namespace sqlite_orm::internal {
 // #include "../../vocabulary/node_traits.h"
 
 // #include "../../vocabulary/node_algorithms.h"
-//  col_index_sequence_of, col_index_sequence_with
-// #include "../../cte_types.h"
+//  col_index_sequence_of, col_index_sequence_with, mapped_type_of_t
+// #include "../cte_mapping.h"
 
 // #include "../db_objects.h"
 
@@ -18581,79 +18804,79 @@ namespace sqlite_orm::internal {
      */
     template<class Lookup, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
     const std::string* find_column_name(const DBOs& dbObjects, F Lookup::* field) {
-        return pick_table<mapped_type_proxy_t<Lookup>>(dbObjects).find_column_name(field);
+        return pick_table<mapped_type_of_t<Lookup>>(dbObjects).find_column_name(field);
     }
 
     /**
      *  Materialize column pointer:
      *  1. by explicit object type and member pointer.
      *  2. by moniker and member pointer.
-     */
-    template<class O, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
-    constexpr decltype(auto) materialize_column_pointer(const DBOs&, const column_pointer<O, F>& cp) {
-        return cp.field;
-    }
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-    /**
-     *  Materialize column pointer:
      *  3. by moniker and alias_holder<>.
-     *  
-     *  internal note: there's an overload for `find_column_name()` that avoids going through `cte_table<>::find_column_name()`
+     *
+     *  internal note: `find_column_name()` looks up a column alias in a CTE directly, without going through
+     *  `cte_table<>::find_column_name()`
      */
-    template<class Moniker, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
-    constexpr decltype(auto) materialize_column_pointer(const DBOs&,
-                                                        const column_pointer<Moniker, alias_holder<ColAlias>>&) {
-        using table_type = schema_pick_table_t<Moniker, DBOs>;
-        using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
-        using cte_fields_type = typename cte_mapper_type_t<table_type>::fields_type;
+    template<class CP,
+             class DBOs,
+             std::enable_if_t<std::conjunction_v<is_db_objects<DBOs>, is_column_pointer<CP>>, bool> = true>
+    constexpr decltype(auto) materialize_column_pointer(const DBOs&, const CP& cp) {
+        if constexpr (is_alias_holder_v<field_type_t<CP>>) {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+            using moniker_type = type_t<CP>;
+            using table_type = schema_pick_table_t<moniker_type, DBOs>;
+            using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
+            using cte_fields_type = typename cte_mapper_type_t<table_type>::fields_type;
 
-        // lookup ColAlias in the final column references
-        using colalias_index = find_tuple_type<cte_colrefs_tuple, alias_holder<ColAlias>>;
-        static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
-                      "No such column mapped into the CTE");
+            // lookup the column alias in the final column references
+            using colalias_index = find_tuple_type<cte_colrefs_tuple, field_type_t<CP>>;
+            static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
+                          "No such column mapped into the CTE");
 
-        return &aliased_field<ColAlias, std::tuple_element_t<colalias_index::value, cte_fields_type>>::field;
-    }
+            return &aliased_field<type_t<field_type_t<CP>>,
+                                  std::tuple_element_t<colalias_index::value, cte_fields_type>>::field;
 #endif
+        } else {
+            return cp.field;
+        }
+    }
 
     /**
      *  Find column name by:
      *  1. by explicit object type and member pointer.
      *  2. by moniker and member pointer.
-     */
-    template<class O, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
-    const std::string* find_column_name(const DBOs& dbObjects, const column_pointer<O, F>& cp) {
-        auto field = materialize_column_pointer(dbObjects, cp);
-        return pick_table<O>(dbObjects).find_column_name(field);
-    }
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-    /**
-     *  Find column name by:
      *  3. by moniker and alias_holder<>.
      */
-    template<class Moniker, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
-    constexpr decltype(auto) find_column_name(const DBOs& dboObjects,
-                                              const column_pointer<Moniker, alias_holder<ColAlias>>&) {
-        using table_type = schema_pick_table_t<Moniker, DBOs>;
-        using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
-        using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
+    template<class CP,
+             class DBOs,
+             std::enable_if_t<std::conjunction_v<is_db_objects<DBOs>, is_column_pointer<CP>>, bool> = true>
+    const std::string* find_column_name(const DBOs& dbObjects, const CP& cp) {
+        if constexpr (is_alias_holder_v<field_type_t<CP>>) {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+            using moniker_type = type_t<CP>;
+            using table_type = schema_pick_table_t<moniker_type, DBOs>;
+            using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
+            using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
 
-        // note: even though the columns contain the [`aliased_field<>::*`] we perform the lookup using the column references.
-        // lookup ColAlias in the final column references
-        using colalias_index = find_tuple_type<cte_colrefs_tuple, alias_holder<ColAlias>>;
-        static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
-                      "No such column mapped into the CTE");
+            // note: even though the columns contain the [`aliased_field<>::*`] we perform the lookup using the column references.
+            // lookup the column alias in the final column references
+            using colalias_index = find_tuple_type<cte_colrefs_tuple, field_type_t<CP>>;
+            static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
+                          "No such column mapped into the CTE");
 
-        // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `cte_table<>::find_column_name()` mechanism;
-        //       however we have the column index already.
-        // lookup column in base_table<>'s elements
-        constexpr size_t ColIdx = index_sequence_value_at<colalias_index::value>(column_index_sequence{});
-        auto& table = pick_table<Moniker>(dboObjects);
-        return &std::get<ColIdx>(table.elements).name;
-    }
+            // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `cte_table<>::find_column_name()` mechanism;
+            //       however we have the column index already.
+            // lookup column in base_table<>'s elements
+            constexpr size_t ColIdx = index_sequence_value_at<colalias_index::value>(column_index_sequence{});
+            auto& table = pick_table<type_t<CP>>(dbObjects);
+            return &std::get<ColIdx>(table.elements).name;
+#else
+            return nullptr;
 #endif
+        } else {
+            auto field = materialize_column_pointer(dbObjects, cp);
+            return pick_table<type_t<CP>>(dbObjects).find_column_name(field);
+        }
+    }
 
     /**
      *  Checks whether the column with the specified name has a column-level `UNIQUE` constraint
@@ -18686,6 +18909,19 @@ namespace sqlite_orm::internal {
                 });
         }
         return result;
+    }
+
+    template<class Elements, size_t... Idx>
+    auto get_table_column_fields(const Elements& elements, std::index_sequence<Idx...>) {
+        return std::make_tuple(std::get<Idx>(elements).member_pointer...);
+    }
+
+    /**
+     *  Return a tuple of the member pointers of all columns of a table.
+     */
+    template<class Table>
+    auto get_table_column_fields(const Table& table) {
+        return get_table_column_fields(table.elements, col_index_sequence_of<elements_type_t<Table>>{});
     }
 }
 
@@ -19294,7 +19530,7 @@ namespace sqlite_orm::internal {
 
 // #include "vocabulary/node_traits.h"
 
-// #include "alias.h"
+// #include "ast/alias.h"
 
 // #include "prepared_statement.h"
 
@@ -19893,7 +20129,7 @@ namespace sqlite_orm::internal {
      *  
      *  Note that not all leaves of the expression tree are visited:
      *  Column expressions can be more complex, but are passed as a whole to the callable.
-     *  Examples are `column_pointer<>` and `alias_column_t<>`.
+     *  Examples are `column_pointer<>` and `alias_qualified_column_t<>`.
      *  
      *  To use `ast_iterator` call `iterate_ast(object, callable);`
      *  
@@ -20465,11 +20701,11 @@ namespace sqlite_orm::internal {
      *  Column alias or literal: skipped
      */
     template<class T>
-    struct ast_iterator<T,
-                        std::enable_if_t<std::disjunction<polyfill::is_specialization_of<T, alias_holder>,
-                                                          polyfill::is_specialization_of<T, literal_holder>,
-                                                          is_column_alias<T>,
-                                                          is_implicit_join_constraint<T>>::value>> {
+    struct ast_iterator<
+        T,
+        std::enable_if_t<
+            std::disjunction<is_alias_holder<T>, is_literal<T>, is_column_alias<T>, is_implicit_join_constraint<T>>::
+                value>> {
         using node_type = T;
 
         template<class L>
@@ -20665,8 +20901,8 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_v
 
 // #include "../tuple_helper/tuple_transformer.h"
 
-// #include "../table_reference.h"
-
+// #include "../vocabulary/node_traits.h"
+//  table_reference, is_table_reference_v
 // #include "../schema/algorithms/table_lookup.h"
 
 // #include "column_result_proxy.h"
@@ -21465,10 +21701,12 @@ namespace sqlite_orm::internal {
 
     // serialize and stream multi_order_by arguments;
     // comma-separated
+    //  note: constrained in the return type - msvc 141 neither parses a fold expression in a template argument
+    //  nor expands a pack there
     template<class... Os, class Ctx>
-    std::ostream& operator<<(
-        std::ostream& ss,
-        std::tuple<const streaming<stream_as::expressions_tuple>&, const std::tuple<order_by_t<Os>...>&, Ctx> tpl) {
+    auto operator<<(std::ostream& ss,
+                    std::tuple<const streaming<stream_as::expressions_tuple>&, const std::tuple<Os...>&, Ctx> tpl)
+        -> std::enable_if_t<std::conjunction_v<std::bool_constant<is_order_by_v<Os>>...>, std::ostream&> {
         const auto& args = std::get<1>(tpl);
         auto& context = std::get<2>(tpl);
 
@@ -24346,13 +24584,11 @@ namespace sqlite_orm::internal {
 
 // #include "../prepared_statement.h"
 
-// #include "../mapped_type_proxy.h"
-
 // #include "../type_mapping/type_printer.h"
 
 // #include "../marshaling/field_printer.h"
 
-// #include "../literal.h"
+// #include "../ast/literal.h"
 
 // #include "table_name_collector.h"
 
@@ -24362,11 +24598,11 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::pair, std::move
 #endif
 
-// #include "../mapped_type_proxy.h"
-
+// #include "../vocabulary/node_algorithms.h"
+//  mapped_type_of_t
 // #include "../vocabulary/node_traits.h"
 
-// #include "../alias.h"
+// #include "../ast/alias.h"
 
 // #include "../schema/algorithms/table_lookup.h"
 // lookup_table_name
@@ -24390,20 +24626,20 @@ namespace sqlite_orm::internal {
         void operator()(const ColRef&) {
             if constexpr (std::is_member_pointer<ColRef>::value) {
                 using table_type = table_type_of_t<ColRef>;
-                auto tableName = lookup_table_name<mapped_type_proxy_t<table_type>>(this->db_objects);
+                auto tableName = lookup_table_name<mapped_type_of_t<table_type>>(this->db_objects);
                 this->table_names.emplace(std::move(tableName), "");
             }
             // ...
             else if constexpr (is_column_pointer_v<ColRef>) {
                 using table_type = table_type_of_t<ColRef>;
-                auto tableName = lookup_table_name<mapped_type_proxy_t<table_type>>(this->db_objects);
+                auto tableName = lookup_table_name<mapped_type_of_t<table_type>>(this->db_objects);
                 this->table_names.emplace(std::move(tableName), alias_extractor<table_type>::as_alias());
             }
             // ...
-            else if constexpr (polyfill::is_specialization_of_v<ColRef, alias_column_t>) {
+            else if constexpr (is_alias_qualified_column_v<ColRef>) {
                 // note: instead of accessing the column, we are interested in the type the column is aliased into
                 using A = alias_type_t<ColRef>;
-                auto tableName = lookup_table_name<mapped_type_proxy_t<A>>(this->db_objects);
+                auto tableName = lookup_table_name<mapped_type_of_t<A>>(this->db_objects);
                 this->table_names.emplace(std::move(tableName), alias_extractor<A>::as_alias());
             }
             // ...
@@ -24417,7 +24653,7 @@ namespace sqlite_orm::internal {
             // ...
             else if constexpr (is_asterisk_v<ColRef>) {
                 using recordset_type = type_t<ColRef>;
-                auto tableName = lookup_table_name<mapped_type_proxy_t<recordset_type>>(this->db_objects);
+                auto tableName = lookup_table_name<mapped_type_of_t<recordset_type>>(this->db_objects);
                 this->table_names.emplace(std::move(tableName), alias_extractor<recordset_type>::as_alias());
             }
             // ...
@@ -24453,10 +24689,6 @@ namespace sqlite_orm::internal {
 
 // #include "../error_code.h"
 
-// #include "../mapped_type_proxy.h"
-
-// #include "../alias_traits.h"
-
 // #include "../schema/algorithms/table_lookup.h"
 //  pick_table
 // #include "quoting.h"
@@ -24464,7 +24696,7 @@ namespace sqlite_orm::internal {
 // #include "../vocabulary/node_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
-// access_column_expression
+// access_column_expression, mapped_type_of_t
 // #include "../schema/column_identifier.h"
 
 // #include "../schema/table_identifier.h"
@@ -24478,7 +24710,7 @@ namespace sqlite_orm::internal {
                                                                bool definedOrder,
                                                                const Ctx& context) {
         if (definedOrder) {
-            auto& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
+            auto& table = pick_table<mapped_type_of_t<T>>(context.db_objects);
             collectedExpressions.reserve(collectedExpressions.size() + table.template count_of<is_column>());
             table.for_each_column([qualified = !context.omit_table_name,
                                    &tableName = table.name,
@@ -24497,7 +24729,7 @@ namespace sqlite_orm::internal {
             if constexpr (is_alias_v<T>) {
                 collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + ".*");
             } else if (!context.omit_table_name) {
-                const table_identifier& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
+                const table_identifier& table = pick_table<mapped_type_of_t<T>>(context.db_objects);
                 collectedExpressions.push_back(quote_identifier(table.name) + ".*");
             } else {
                 collectedExpressions.emplace_back("*");
@@ -24580,12 +24812,12 @@ namespace sqlite_orm::internal {
 
 // #include "../error_code.h"
 
-// #include "../alias.h"
+// #include "../ast/alias.h"
 
 // #include "../vocabulary/node_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
-// access_column_expression
+// access_column_expression, mapped_type_of_t
 // #include "../schema/column_identifier.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
@@ -24633,7 +24865,8 @@ namespace sqlite_orm::internal {
             }
             // ...
             else if constexpr (is_asterisk_v<E>) {
-                auto& table = pick_table<type_t<E>>(context.db_objects);
+                using recordset_type = type_t<E>;
+                auto& table = pick_table<mapped_type_of_t<recordset_type>>(context.db_objects);
 
                 using table_type = polyfill::remove_cvref_t<decltype(table)>;
                 using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
@@ -24712,7 +24945,7 @@ namespace sqlite_orm::internal {
             iterate_tuple(explicitColRefs, [&idx, &columnNames, &context](auto& colRef) {
                 using ColRef = polyfill::remove_cvref_t<decltype(colRef)>;
 
-                if constexpr (polyfill::is_specialization_of_v<ColRef, alias_holder>) {
+                if constexpr (is_alias_holder_v<ColRef>) {
                     columnNames[idx] = alias_extractor<type_t<ColRef>>::extract();
                 } else if constexpr (std::is_member_pointer<ColRef>::value) {
                     using O = table_type_of_t<ColRef>;
@@ -25076,7 +25309,7 @@ namespace sqlite_orm::internal {
      *  Serializer for literal values.
      */
     template<class T>
-    struct statement_serializer<T, match_specialization_of<T, literal_holder>> {
+    struct statement_serializer<T, match_if<is_literal, T>> {
         using statement_type = T;
 
         template<class Ctx>
@@ -25299,13 +25532,13 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<alias_holder<T>, void> {
-        using statement_type = alias_holder<T>;
+    struct statement_serializer<T, match_if<is_alias_holder, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type&, const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            ss << streaming_identifier(T::get());
+            ss << streaming_identifier(type_t<statement_type>::get());
             return ss.str();
         }
     };
@@ -25337,9 +25570,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<char... C>
-    struct statement_serializer<column_alias<C...>, void> {
-        using statement_type = column_alias<C...>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_column_alias, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type&, const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
@@ -25416,23 +25649,25 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            using alias_type = alias_type_t<statement_type>;
             std::stringstream ss;
             ss << serialize(c.expression, context) + " AS "
-               << streaming_identifier(alias_extractor<alias_type_t<T>>::extract());
+               << streaming_identifier(alias_extractor<alias_type>::extract());
             return ss.str();
         }
     };
 
-    template<class T, class P>
-    struct statement_serializer<alias_column_t<T, P>, void> {
-        using statement_type = alias_column_t<T, P>;
+    template<class T>
+    struct statement_serializer<T, match_if<is_alias_qualified_column, T>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            using alias_type = alias_type_t<statement_type>;
             std::stringstream ss;
             if (!context.omit_table_name) {
-                ss << streaming_identifier(alias_extractor<T>::extract()) << ".";
+                ss << streaming_identifier(alias_extractor<alias_type>::extract()) << ".";
             }
             auto newContext = context;
             newContext.omit_table_name = true;
@@ -25579,7 +25814,7 @@ namespace sqlite_orm::internal {
             ss << streaming_identifier(alias_extractor<cte_moniker_type_t<CTE>>::extract());
             {
                 std::vector<std::string> columnNames =
-                    resolve_cte_column_names(get_cte_driving_subselect(cte.subselect), cte.explicitColumns, context);
+                    resolve_cte_column_names(access_leftmost_select(cte.subselect), cte.explicitColumns, context);
                 ss << '(' << streaming_identifiers(columnNames) << ')';
             }
             ss << " AS" << streaming_constraints_tuple(cte.hints, context) << " ("
@@ -26656,7 +26891,7 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& getAll,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             using table_type = type_t<statement_type>;
-            using mapped_type = mapped_type_proxy_t<table_type>;
+            using mapped_type = mapped_type_of_t<table_type>;
             constexpr bool hasExplicitFrom2 = tuple_has<conditions_type_t<statement_type>, is_from2>::value;
 
             auto& table = pick_table<mapped_type>(context.db_objects);
@@ -26762,7 +26997,7 @@ namespace sqlite_orm::internal {
                 //  a table is referred to by its name and its alias, so an aliased self-join keeps the table it joins
                 iterate_tuple(sel.conditions, joins_index_sequence{}, [&tableNames, &context](auto& join) {
                     using original_join_type = typename std::remove_reference_t<decltype(join)>::type;
-                    using join_type = mapped_type_proxy_t<original_join_type>;
+                    using join_type = mapped_type_of_t<original_join_type>;
 
                     tableNames.erase(std::make_pair(lookup_table_name<join_type>(context.db_objects),
                                                     alias_extractor<original_join_type>::as_alias()));
@@ -26861,7 +27096,7 @@ namespace sqlite_orm::internal {
 
                 static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)]
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
+                   << streaming_identifier(lookup_table_name<mapped_type_of_t<table_type>>(context.db_objects),
                                            alias_extractor<table_type>::as_alias());
             });
             return ss.str();
@@ -26882,7 +27117,7 @@ namespace sqlite_orm::internal {
 
                 static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)]
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<expression_type>>(context.db_objects),
+                   << streaming_identifier(lookup_table_name<mapped_type_of_t<expression_type>>(context.db_objects),
                                            alias_extractor<expression_type>::as_alias());
 
                 if constexpr (is_table_valued_expression_v<expression_type>) {
@@ -27121,7 +27356,7 @@ namespace sqlite_orm::internal {
 
             std::stringstream ss;
             ss << static_cast<std::string>(join) << " "
-               << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
+               << streaming_identifier(lookup_table_name<mapped_type_of_t<table_type>>(context.db_objects),
                                        alias_extractor<table_type>::as_alias());
             //  the constraint, unless it is the implicit one of CROSS JOIN and NATURAL JOIN
             if constexpr (!is_implicit_join_constraint_v<on_type_t<statement_type>>) {
@@ -27308,86 +27543,84 @@ namespace sqlite_orm::internal {
 // make_row_extractor
 // #include "schema/constraints/generated_always.h"
 // basic_generated_always
-// #include "cte_storage.h"
+// #include "cte_db_objects.h"
+
+/** @file The database objects of a WITH clause: its CTEs mapped as tables, prepended to the schema's database objects.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <type_traits>  //  std::remove_const
-#include <tuple>
-#include <string>
-#include <vector>
+#include <type_traits>  //  std::is_member_pointer_v, std::is_same_v
+#include <tuple>  //  std::tuple, std::get, std::ignore, std::tuple_size_v, std::tuple_element_t
+#include <string>  //  std::string
+#include <vector>  //  std::vector
+#include <utility>  //  std::index_sequence, std::make_index_sequence, std::move
 #endif
 #endif
+
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "tuple_helper/tuple_fy.h"
 
-// #include "result_set/column_result.h"
-
 // #include "vocabulary/node_traits.h"
 
-// #include "schema/column.h"
-
-// #include "schema/table_base.h"
-
-// #include "ast/quoted_expression.h"
-
-// #include "ast/result_columns.h"
-
-// #include "ast/select.h"
-
+// #include "vocabulary/node_algorithms.h"
+//  access_leftmost_select
 // #include "ast/cte.h"
 
-// #include "alias.h"
+// #include "ast/alias.h"
 
-// #include "cte_types.h"
+// #include "schema/cte_mapping.h"
 
-// #include "serialization/cte_column_names_collector.h"
+// #include "schema/db_objects.h"
 
-// #include "column_expression.h"
+// #include "result_set/column_result.h"
+
+// #include "result_set/column_expression.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::add_lvalue_reference
 #include <functional>  //  std::reference_wrapper
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/mpl.h"
+// #include "../functional/mpl.h"
 
-// #include "functional/type_traits.h"
+// #include "../functional/type_traits.h"
 
-// #include "tuple_helper/tuple_transformer.h"
+// #include "../tuple_helper/tuple_transformer.h"
 
-// #include "vocabulary/node_traits.h"
+// #include "../vocabulary/node_traits.h"
 
-// #include "ast/result_columns.h"
+// #include "../ast/result_columns.h"
 
-// #include "alias.h"
+// #include "../ast/alias.h"
 
-// #include "schema/algorithms/table_lookup.h"
+// #include "../schema/algorithms/table_lookup.h"
 //  schema_mapped_column_field_expressions
 
 namespace sqlite_orm::internal {
     template<class DBOs, class E, class SFINAE = void>
-    struct column_expression_type;
+    struct column_expression_of;
 
     /**
-     *  Obains the expressions that form the columns of a subselect statement.
+     *  Obtains the expressions that form the columns of a subselect statement.
      */
     template<class DBOs, class E>
-    using column_expression_of_t = typename column_expression_type<DBOs, E>::type;
+    using column_expression_of_t = typename column_expression_of<DBOs, E>::type;
 
     template<class A>
-    struct add_column_alias {
+    struct qualify_by_alias {
         template<typename ColExpr>
-        using apply_t = alias_column_t<A, ColExpr>;
+        using apply_t = alias_qualified_column_t<A, ColExpr>;
     };
 
     /**
      *  Identity.
      */
     template<class DBOs, class E, class SFINAE>
-    struct column_expression_type {
+    struct column_expression_of {
         using type = E;
     };
 
@@ -27396,7 +27629,7 @@ namespace sqlite_orm::internal {
      *  as_t<Alias, E> -> as_t<Alias, ColExpr>
      */
     template<class DBOs, class As>
-    struct column_expression_type<DBOs, As, match_if<is_as_node, As>> {
+    struct column_expression_of<DBOs, As, match_if<is_as_node, As>> {
         using type = as_t<alias_type_t<As>, column_expression_of_t<DBOs, expression_type_t<As>>>;
     };
 
@@ -27405,12 +27638,12 @@ namespace sqlite_orm::internal {
      *  reference_wrapper<T> -> T&
      */
     template<class DBOs, class E>
-    struct column_expression_type<DBOs, std::reference_wrapper<E>, void>
+    struct column_expression_of<DBOs, std::reference_wrapper<E>, void>
         : std::add_lvalue_reference<column_expression_of_t<DBOs, E>> {};
 
     // No CTE for object expression.
     template<class DBOs, class T>
-    struct column_expression_type<DBOs, T, match_if<is_object_node, T>> {
+    struct column_expression_of<DBOs, T, match_if<is_object_node, T>> {
         static_assert(polyfill::always_false_v<T>, "Selecting an object in a subselect is not allowed");
     };
 
@@ -27419,7 +27652,7 @@ namespace sqlite_orm::internal {
      *  asterisk_t<O> -> tuple<ColExpr...>
      */
     template<class DBOs, class T>
-    struct column_expression_type<
+    struct column_expression_of<
         DBOs,
         T,
         std::enable_if_t<is_asterisk_v<T> &&
@@ -27428,19 +27661,19 @@ namespace sqlite_orm::internal {
 
     /**
      *  Resolve all columns of an aliased object.
-     *  asterisk_t<Alias> -> tuple<alias_column_t<Alias, ColExpr>...>
+     *  asterisk_t<Alias> -> tuple<alias_qualified_column_t<Alias, ColExpr>...>
      */
     template<class DBOs, class T>
-    struct column_expression_type<DBOs, T, std::enable_if_t<is_asterisk_v<T> && is_table_alias_v<type_t<T>>>>
+    struct column_expression_of<DBOs, T, std::enable_if_t<is_asterisk_v<T> && is_table_alias_v<type_t<T>>>>
         : tuple_transformer<typename schema_mapped_column_field_expressions<DBOs, type_t<type_t<T>>>::type,
-                            add_column_alias<type_t<T>>::template apply_t> {};
+                            qualify_by_alias<type_t<T>>::template apply_t> {};
 
     /**
      *  Resolve multiple columns.
      *  columns_t<C...> -> tuple<ColExpr...>
      */
     template<class DBOs, class T>
-    struct column_expression_type<DBOs, T, match_if<is_columns, T>>
+    struct column_expression_of<DBOs, T, match_if<is_columns, T>>
         : tuple_transformer<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn> {};
 
     /**
@@ -27448,7 +27681,7 @@ namespace sqlite_orm::internal {
      *  struct_t<T, C...> -> tuple<ColExpr...>
      */
     template<class DBOs, class T>
-    struct column_expression_type<DBOs, T, match_if<is_struct, T>>
+    struct column_expression_of<DBOs, T, match_if<is_struct, T>>
         : tuple_transformer<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn> {};
 
     /**
@@ -27456,152 +27689,57 @@ namespace sqlite_orm::internal {
      *  select_t<E, Args...> -> ColExpr, tuple<ColExpr....>
      */
     template<class DBOs, class T>
-    struct column_expression_type<DBOs, T, match_if<is_select, T>> : column_expression_type<DBOs, return_type_t<T>> {};
+    struct column_expression_of<DBOs, T, match_if<is_select, T>> : column_expression_of<DBOs, return_type_t<T>> {};
 }
 
-// #include "schema/db_objects.h"
+// #include "result_set/column_reference.h"
 
-// #include "schema/algorithms/table_lookup.h"
+/** @file The references to the columns of a subselect, by which an outer statement refers to them.
+ *
+ *  Siblings to the expressions forming those columns (`column_expression.h`): a column formed by an aliased
+ *  expression is referred to by its alias, a column of a mapped object by its member pointer, and any other
+ *  expression by a numeric column alias.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#include <type_traits>  //  std::is_member_pointer_v
+#include <tuple>  //  std::tuple, std::make_tuple, std::tuple_cat, std::get, std::tuple_size_v
+#include <utility>  //  std::index_sequence, std::make_index_sequence
+#endif
+#endif
+
+// #include "../functional/type_traits.h"
+
+// #include "../vocabulary/node_traits.h"
+
+// #include "../vocabulary/node_algorithms.h"
+//  mapped_type_of_t
+// #include "../ast/alias.h"
+
+// #include "../schema/algorithms/table_lookup.h"
+
+// #include "../schema/algorithms/column_lookup.h"
 
 namespace sqlite_orm::internal {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-    // F = field_type
-    template<typename Moniker,
-             typename ExplicitColRefs,
-             typename Expression,
-             typename SubselectColRefs,
-             typename FinalColRefs,
-             typename F>
-    struct create_cte_mapper {
-        using type = subselect_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, F>;
-    };
-
-    // std::tuple<Fs...>
-    template<typename Moniker,
-             typename ExplicitColRefs,
-             typename Expression,
-             typename SubselectColRefs,
-             typename FinalColRefs,
-             typename... Fs>
-    struct create_cte_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, std::tuple<Fs...>> {
-        using type = subselect_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, Fs...>;
-    };
-
-    template<typename Moniker,
-             typename ExplicitColRefs,
-             typename Expression,
-             typename SubselectColRefs,
-             typename FinalColRefs,
-             typename Result>
-    using create_cte_mapper_t = typename create_cte_mapper<std::remove_const_t<Moniker>,
-                                                           ExplicitColRefs,
-                                                           Expression,
-                                                           SubselectColRefs,
-                                                           FinalColRefs,
-                                                           Result>::type;
-
-    template<class Mapper, class... Cs>
-    struct cte_table : table_identifier, table_definition<Cs...> {
-        using definition_type = table_definition<Cs...>;
-        using cte_mapper_type = Mapper;
-        using cte_moniker_type = typename cte_mapper_type::cte_moniker_type;
-        using object_type = cte_moniker_type;
-        using elements_type = typename definition_type::elements_type;
-    };
-
-    template<class Mapper, class... Cs>
-    cte_table<Mapper, Cs...> make_cte_table(std::string name, Cs... args) {
-        return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
-    }
-
-    // aliased column expressions, explicit or implicitly numbered
-    template<typename F, typename ColRef, satisfies_is_specialization_of<ColRef, alias_holder> = true>
-    auto make_cte_column(std::string name, const ColRef& /*finalColRef*/) {
-        using object_type = aliased_field<type_t<ColRef>, F>;
-
-        return sqlite_orm::make_column<>(std::move(name), &object_type::field);
-    }
-
-    // F O::*
-    template<typename F, typename ColRef, satisfies<std::is_member_pointer, ColRef> = true>
-    auto make_cte_column(std::string name, const ColRef& finalColRef) {
-        using column_type = column_t<ColRef, empty_setter>;
-
-        return column_type{std::move(name), finalColRef, empty_setter{}, std::tuple<>{}};
-    }
-
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
-    /**
-     *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
-     */
-    template<typename DBOs, typename... CTETables>
-    auto db_objects_cat(const DBOs& dbObjects, CTETables&&... cteTables) {
-        auto& [... elements] = dbObjects;
-        return std::tuple{std::forward<CTETables>(cteTables)..., elements...};
-    }
-#else
-    /**
-     *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
-     */
-    template<typename DBOs, size_t... Idx, typename... CTETables>
-    auto db_objects_cat(const DBOs& dbObjects, std::index_sequence<Idx...>, CTETables&&... cteTables) {
-        return std::tuple{std::forward<CTETables>(cteTables)..., std::get<Idx>(dbObjects)...};
-    }
-
-    /**
-     *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
-     */
-    template<typename DBOs, typename... CTETables>
-    auto db_objects_cat(const DBOs& dbObjects, CTETables&&... cteTables) {
-        return db_objects_cat(dbObjects,
-                              std::make_index_sequence<std::tuple_size_v<DBOs>>{},
-                              std::forward<CTETables>(cteTables)...);
-    }
-#endif
-
-    /**
-     *  This function returns the expression contained in a subselect that is relevant for
-     *  creating the definition of a CTE table.
-     *  Because CTEs can recursively refer to themselves in a compound statement, parsing
-     *  the whole compound statement would lead to compiler errors if a column_pointer<>
-     *  can't be resolved. Therefore, at the time of building a CTE table, we are only
-     *  interested in the column results of the left-most select expression.
-     */
-    template<class Select, satisfies<is_select, Select> = true>
-    decltype(auto) get_cte_driving_subselect(const Select& subSelect) {
-        if constexpr (is_compound_operator_v<return_type_t<Select>>) {
-            // left-most select expression of compound statement
-            return std::get<0>(subSelect.col.compound);
-        } else {
-            return subSelect;
-        }
-    }
-
-    /**
-     *  Return a tuple of member pointers of all columns
-     */
-    template<class C, size_t... Idx>
-    auto get_table_columns_fields(const C& coldef, std::index_sequence<Idx...>) {
-        return std::make_tuple(get<Idx>(coldef).member_pointer...);
-    }
-
     /**
      *  Return the column reference of a single result column expression, as a 1-tuple.
      *  `Idx` is the position of the result column, by which an expression without a name of its own is referenced.
      */
-    template<size_t Idx, class DBOs, class E>
-    auto extract_colref_expression(const DBOs& dbObjects, const E& col) {
+    template<size_t Idx, class E>
+    auto get_column_reference(const E& col) {
         if constexpr (is_quoted_expression_v<E>) {
-            return extract_colref_expression<Idx>(dbObjects, col._value);
+            return get_column_reference<Idx>(col._value);
         } else if constexpr (is_column_pointer_v<E>) {
-            return extract_colref_expression<Idx>(dbObjects, col.field);
+            return get_column_reference<Idx>(col.field);
         } else if constexpr (std::is_member_pointer_v<E>) {
             // field/getter -> field/getter
             return std::make_tuple(col);
         } else if constexpr (is_as_node_v<E>) {
             // aliased expression -> alias_holder
             return std::tuple<alias_holder<alias_type_t<E>>>{};
-        } else if constexpr (polyfill::is_specialization_of_v<E, alias_holder>) {
+        } else if constexpr (is_alias_holder_v<E>) {
             // colref -> alias_holder
             return std::tuple<E>{};
         } else {
@@ -27610,50 +27748,51 @@ namespace sqlite_orm::internal {
         }
     }
 
-    template<class DBOs, class Tpl, size_t... Idx>
-    auto extract_colref_expressions(const DBOs& dbObjects, const Tpl& cols, std::index_sequence<Idx...>) {
-        return std::tuple_cat(extract_colref_expression<Idx>(dbObjects, std::get<Idx>(cols))...);
+    template<class Tpl, size_t... Idx>
+    auto get_column_references(const Tpl& cols, std::index_sequence<Idx...>) {
+        return std::tuple_cat(get_column_reference<Idx>(std::get<Idx>(cols))...);
     }
 
     /**
      *  Return a tuple of the column references of a select's result columns.
      */
-    template<class DBOs, class E>
-    auto extract_colref_expressions(const DBOs& dbObjects, const E& col) {
+    template<class DBOs, class Select, std::enable_if_t<is_select_v<Select>, bool> = true>
+    auto get_column_references_of([[maybe_unused]] const DBOs& dbObjects, const Select& select) {
+        using E = return_type_t<Select>;
         static_assert(!is_select_v<E> && !is_compound_operator_v<E>,
                       "A select statement cannot be a result column of a CTE's select statement");
 
         if constexpr (is_columns_v<E>) {
-            return extract_colref_expressions(dbObjects,
-                                              col.columns,
-                                              std::make_index_sequence<std::tuple_size_v<columns_type_t<E>>>{});
+            return get_column_references(select.col.columns,
+                                         std::make_index_sequence<std::tuple_size_v<columns_type_t<E>>>{});
         } else if constexpr (is_asterisk_v<E>) {
-            // -> fields
-            using O = type_t<E>;
-            using table_type = schema_pick_table_t<O, DBOs>;
-            using elements_type = elements_type_t<table_type>;
-            using column_idxs = filter_tuple_sequence_t<elements_type, is_column>;
-
-            auto& table = pick_table<O>(dbObjects);
-            return get_table_columns_fields(table.elements, column_idxs{});
+            // -> fields of the mapped object or CTE, also for an alias of it
+            using recordset_type = type_t<E>;
+            return get_table_column_fields(pick_table<mapped_type_of_t<recordset_type>>(dbObjects));
         } else {
-            return extract_colref_expression<0>(dbObjects, col);
+            return get_column_reference<0>(select.col);
         }
     }
+#endif
+}
 
+// #include "serialization/serializer_context.h"
+
+// #include "serialization/cte_column_names_collector.h"
+
+namespace sqlite_orm::internal {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /*
      *  Depending on ExplicitColRef's type returns either the explicit column reference
      *  or the expression's column reference otherwise.
      */
-    template<typename DBOs, typename SubselectColRef, typename ExplicitColRef>
-    auto determine_cte_colref(const DBOs& /*dbObjects*/,
-                              const SubselectColRef& subselectColRef,
-                              const ExplicitColRef& explicitColRef) {
-        if constexpr (polyfill::is_specialization_of_v<ExplicitColRef, alias_holder>) {
+    template<typename SubselectColRef, typename ExplicitColRef>
+    auto resolve_cte_colref(const SubselectColRef& subselectColRef, const ExplicitColRef& explicitColRef) {
+        if constexpr (is_alias_holder_v<ExplicitColRef>) {
             return explicitColRef;
-        } else if constexpr (std::is_member_pointer<ExplicitColRef>::value) {
+        } else if constexpr (std::is_member_pointer_v<ExplicitColRef>) {
             return explicitColRef;
-        } else if constexpr (is_column<ExplicitColRef>::value) {
+        } else if constexpr (is_column_v<ExplicitColRef>) {
             return explicitColRef.member_pointer;
         } else if constexpr (std::is_same_v<ExplicitColRef, std::string>) {
             return subselectColRef;
@@ -27664,41 +27803,27 @@ namespace sqlite_orm::internal {
         }
     }
 
-    template<typename DBOs, typename SubselectColRefs, typename ExplicitColRefs, size_t... Idx>
-    auto determine_cte_colrefs([[maybe_unused]] const DBOs& dbObjects,
-                               const SubselectColRefs& subselectColRefs,
-                               [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
-                               std::index_sequence<Idx...>) {
+    template<typename SubselectColRefs, typename ExplicitColRefs, size_t... Idx>
+    auto resolve_cte_colrefs(const SubselectColRefs& subselectColRefs,
+                             [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
+                             std::index_sequence<Idx...>) {
         if constexpr (std::tuple_size_v<ExplicitColRefs> != 0) {
             static_assert((!is_builtin_numeric_column_alias_v<
                                alias_holder_type_or_none_t<std::tuple_element_t<Idx, ExplicitColRefs>>> &&
                            ...),
                           "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
-            return std::tuple{
-                determine_cte_colref(dbObjects, std::get<Idx>(subselectColRefs), std::get<Idx>(explicitColRefs))...};
+            return std::tuple{resolve_cte_colref(std::get<Idx>(subselectColRefs), std::get<Idx>(explicitColRefs))...};
         } else {
             return subselectColRefs;
         }
-    }
-
-    template<typename Mapper, typename DBOs, typename ColRefs, size_t... CIs>
-    auto make_cte_table_using_column_indices(const DBOs& /*dbObjects*/,
-                                             std::string tableName,
-                                             std::vector<std::string> columnNames,
-                                             const ColRefs& finalColRefs,
-                                             std::index_sequence<CIs...>) {
-        return make_cte_table<Mapper>(
-            std::move(tableName),
-            make_cte_column<std::tuple_element_t<CIs, typename Mapper::fields_type>>(std::move(columnNames.at(CIs)),
-                                                                                     std::get<CIs>(finalColRefs))...);
     }
 
     template<typename DBOs, typename CTE>
     auto make_cte_db_object(const DBOs& dbObjects, const CTE& cte) {
         using cte_type = CTE;
 
-        auto subSelect = get_cte_driving_subselect(cte.subselect);
+        auto subSelect = access_leftmost_select(cte.subselect);
 
         using subselect_type = decltype(subSelect);
         using column_results = column_result_of_t<DBOs, subselect_type>;
@@ -27708,21 +27833,19 @@ namespace sqlite_orm::internal {
                       "in the subselect.");
 
         std::string tableName = alias_extractor<cte_moniker_type_t<cte_type>>::extract();
-        auto subselectColRefs = extract_colref_expressions(dbObjects, subSelect.col);
-        const auto& finalColRefs =
-            determine_cte_colrefs(dbObjects, subselectColRefs, cte.explicitColumns, index_sequence{});
+        auto subselectColRefs = get_column_references_of(dbObjects, subSelect);
+        const auto& finalColRefs = resolve_cte_colrefs(subselectColRefs, cte.explicitColumns, index_sequence{});
 
         serializer_context context{dbObjects};
         std::vector<std::string> columnNames = resolve_cte_column_names(subSelect, cte.explicitColumns, context);
 
-        using mapper_type = create_cte_mapper_t<cte_moniker_type_t<cte_type>,
-                                                explicit_colrefs_tuple_t<cte_type>,
-                                                column_expression_of_t<DBOs, subselect_type>,
-                                                decltype(subselectColRefs),
-                                                polyfill::remove_cvref_t<decltype(finalColRefs)>,
-                                                column_results>;
-        return make_cte_table_using_column_indices<mapper_type>(dbObjects,
-                                                                std::move(tableName),
+        using mapper_type = cte_mapper<cte_moniker_type_t<cte_type>,
+                                       explicit_colrefs_tuple_t<cte_type>,
+                                       column_expression_of_t<DBOs, subselect_type>,
+                                       decltype(subselectColRefs),
+                                       polyfill::remove_cvref_t<decltype(finalColRefs)>,
+                                       column_results>;
+        return make_cte_table_using_column_indices<mapper_type>(std::move(tableName),
                                                                 std::move(columnNames),
                                                                 finalColRefs,
                                                                 index_sequence{});
@@ -28061,7 +28184,7 @@ namespace sqlite_orm::internal {
          *  The returned C++ view models a C++ input range and is also a 'borrowed range',
          *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
          */
-        template<class T, class O = mapped_type_proxy_t<T>, class... Args>
+        template<class T, class O = mapped_type_of_t<T>, class... Args>
         mapped_view<O, storage_t, Args...> iterate(Args&&... args) {
             this->assert_mapped_type<O>();
 
@@ -28108,7 +28231,7 @@ namespace sqlite_orm::internal {
         /*  
          *  Iterate over objects of a type mapped as a table, lazily fetched from a result set in a coroutine.
          */
-        template<class T, class O = mapped_type_proxy_t<T>, class... Args>
+        template<class T, class O = mapped_type_of_t<T>, class... Args>
         std::generator<O> yield(Args&&... args) {
             this->assert_mapped_type<O>();
             // implementation note: instead of using `this->iterate<O>()` we iterate over a select statement,
@@ -28122,7 +28245,7 @@ namespace sqlite_orm::internal {
         /*  
          *  Iterate over objects of a type mapped as a table, lazily fetched from a result set in a coroutine.
          */
-        template<orm_refers_to_table auto mapped, class O = mapped_type_proxy_t<decltype(mapped)>, class... Args>
+        template<orm_refers_to_table auto mapped, class O = mapped_type_of_t<decltype(mapped)>, class... Args>
         std::generator<O> yield(Args&&... args) {
             this->assert_mapped_type<O>();
             // implementation note: instead of using `this->iterate<O>()` we iterate over a select statement,
@@ -28234,9 +28357,9 @@ namespace sqlite_orm::internal {
          *  @example: storage.get_all<User, std::list<User>>(); - SELECT * FROM users
          *  @example: storage.get_all<User, std::list<User>>(where(like(&User::name, "N%")), order_by(&User::id)); - SELECT * FROM users WHERE name LIKE 'N%' ORDER BY id
          */
-        template<class T, class R = std::vector<mapped_type_proxy_t<T>>, class... Args>
+        template<class T, class R = std::vector<mapped_type_of_t<T>>, class... Args>
         R get_all(Args&&... args) {
-            this->assert_mapped_type<mapped_type_proxy_t<T>>();
+            this->assert_mapped_type<mapped_type_of_t<T>>();
             auto statement = this->prepare(sqlite_orm::get_all<T, R>(std::forward<Args>(args)...));
             return this->execute(statement);
         }
@@ -28250,10 +28373,10 @@ namespace sqlite_orm::internal {
          *  @example: storage.get_all<sqlite_schema, std::list<sqlite_master>>(); - SELECT sqlite_schema.* FROM sqlite_master AS sqlite_schema
          */
         template<orm_refers_to_table auto mapped,
-                 class R = std::vector<mapped_type_proxy_t<decltype(mapped)>>,
+                 class R = std::vector<mapped_type_of_t<decltype(mapped)>>,
                  class... Args>
         R get_all(Args&&... args) {
-            this->assert_mapped_type<mapped_type_proxy_t<decltype(mapped)>>();
+            this->assert_mapped_type<mapped_type_of_t<decltype(mapped)>>();
             auto statement = this->prepare(sqlite_orm::get_all<mapped, R>(std::forward<Args>(args)...));
             return this->execute(statement);
         }
@@ -28395,7 +28518,7 @@ namespace sqlite_orm::internal {
          */
         template<class O, class... Args>
         int count(Args&&... args) {
-            using R = mapped_type_proxy_t<O>;
+            using R = mapped_type_of_t<O>;
             this->assert_mapped_type<R>();
             auto rows = this->select(sqlite_orm::count<R>(), std::forward<Args>(args)...);
             if (!rows.empty()) {
@@ -29775,9 +29898,9 @@ namespace sqlite_orm::internal {
 
 // #include "../../schema/table.h"
 
-// #include "../../table_reference.h"
+// #include "../../ast/table_reference.h"
 
-// #include "../../alias.h"
+// #include "../../ast/alias.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
@@ -30113,14 +30236,9 @@ namespace sqlite_orm::internal {
     /**
      *  Column alias
      */
-    template<class A>
-    struct node_tuple<alias_holder<A>, void> : node_tuple<void> {};
-
-    /**
-     *  Column alias
-     */
-    template<char... C>
-    struct node_tuple<column_alias<C...>, void> : node_tuple<void> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<std::disjunction<is_alias_holder<T>, is_column_alias<T>>::value>>
+        : node_tuple<void> {};
 
     template<class T>
     struct node_tuple<T, match_if<is_order_by, T>> : node_tuple<expression_type_t<T>> {};
@@ -30272,8 +30390,8 @@ namespace sqlite_orm::internal {
     template<class R>
     struct node_tuple<R, match_if<is_table_reference, R>> : node_tuple<void> {};
 
-    template<class Table, class... Args>
-    struct node_tuple<table_valued_expression<Table, Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, match_if<is_table_valued_expression, T>> : node_tuple<constraints_type_t<T>> {};
 
     template<class T>
     struct node_tuple<T, std::enable_if_t<is_preceding<T>::value>> : node_tuple<expression_type_t<T>> {};
@@ -30468,7 +30586,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../tuple_helper/tuple_traits.h"
 //  count_tuple
-// #include "../../literal.h"
+// #include "../../ast/literal.h"
 //  literal_holder
 // #include "../../vocabulary/node_traits.h"
 //  is_into, is_column_pointer
@@ -33862,9 +33980,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../schema/virtual_table.h"
 
-// #include "../../literal.h"
+// #include "../../ast/literal.h"
 
-// #include "../../table_reference.h"
+// #include "../../ast/table_reference.h"
 
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 namespace sqlite_orm::internal {
@@ -33999,7 +34117,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../schema/virtual_table.h"
 
-// #include "../../table_reference.h"
+// #include "../../ast/table_reference.h"
 
 #if SQLITE_VERSION_NUMBER >= 3008012
 namespace sqlite_orm::internal {
@@ -34235,9 +34353,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #include <sqlite3.h>
 
-// #include "../../alias_traits.h"
-//  is_recordset_alias_v
-// #include "../../column_pointer.h"
+// #include "../../ast/column_pointer.h"
 //  column
 // #include "../../vocabulary/node_algorithms.h"
 //  hidden_column_of_vtab, hidden_field_of_vtab
@@ -34512,7 +34628,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../tags.h"
 //  negatable_t
-// #include "../../alias_traits.h"
+// #include "../../vocabulary/node_traits.h"
 //  is_recordset_alias_v
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -34611,10 +34727,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ENABLE_RTREE
 namespace sqlite_orm::internal {
-    template<class T>
-    constexpr bool is_rtree_table_element_or_constraint_v =
-        mpl::invoke_t<mpl::disjunction<check_if<is_column>>, T>::value;
-
     struct rtree_module_tag {
         // simplify conceptual/meta programming
         using module_type = rtree_module_tag;
@@ -34644,7 +34756,8 @@ namespace sqlite_orm::internal {
                                  rtree_col_index_sequence,
                                  field_type_t>::value;
 
-        static_assert((is_rtree_table_element_or_constraint_v<Cs> && ...), "Incorrect table elements or constraints");
+        static_assert((is_rtree_table_element_or_constraint<Cs>::value && ...),
+                      "Incorrect table elements or constraints");
         static_assert(nRTreeColumns >= 3 && nRTreeColumns <= 11 && nRTreeColumns % 2 == 1,
                       "An RTREE table must have between 1 and 5 dimensions consisting of min/max-value pair columns");
         static_assert(

@@ -4,8 +4,8 @@
 #include <typeindex>  //  std::type_index
 
 using namespace sqlite_orm;
-using internal::alias_column_t;
 using internal::alias_holder;
+using internal::alias_qualified_column_t;
 using internal::column_alias;
 using internal::column_pointer;
 using internal::iterate_ast;
@@ -395,26 +395,26 @@ TEST_CASE("ast_iterator") {
     SECTION("aliased regular column") {
         using als = alias_z<User>;
         auto expression = alias_column<als>(&User::id);
-        expected.push_back(typeid(alias_column_t<alias_z<User>, decltype(&User::id)>));
+        expected.push_back(typeid(alias_qualified_column_t<alias_z<User>, decltype(&User::id)>));
         iterate_ast(expression, lambda);
     }
     SECTION("aliased regular column pointer") {
         using als = alias_z<User>;
         auto expression = alias_column<als>(column<User>(&User::id));
-        expected.push_back(typeid(alias_column_t<alias_z<User>, column_pointer<User, decltype(&User::id)>>));
+        expected.push_back(typeid(alias_qualified_column_t<alias_z<User>, column_pointer<User, decltype(&User::id)>>));
         iterate_ast(expression, lambda);
     }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("aliased regular column 2") {
         constexpr auto z_alias = "z"_alias.for_<User>();
         auto expression = z_alias->*&User::id;
-        expected.push_back(typeid(alias_column_t<alias_z<User>, decltype(&User::id)>));
+        expected.push_back(typeid(alias_qualified_column_t<alias_z<User>, decltype(&User::id)>));
         iterate_ast(expression, lambda);
     }
     SECTION("aliased regular column pointer 2") {
         constexpr auto z_alias = "z"_alias.for_<User>();
         auto expression = z_alias->*column<User>(&User::id);
-        expected.push_back(typeid(alias_column_t<alias_z<User>, column_pointer<User, decltype(&User::id)>>));
+        expected.push_back(typeid(alias_qualified_column_t<alias_z<User>, column_pointer<User, decltype(&User::id)>>));
         iterate_ast(expression, lambda);
     }
 #endif
@@ -467,7 +467,8 @@ TEST_CASE("ast_iterator") {
         using cte_1 = decltype("1"_cte);
         constexpr auto z_alias = "z"_alias.for_<c>();
         auto expression = z_alias->*&User::id;
-        expected.push_back(typeid(alias_column_t<alias_z<cte_1>, column_pointer<cte_1, decltype(&User::id)>>));
+        expected.push_back(
+            typeid(alias_qualified_column_t<alias_z<cte_1>, column_pointer<cte_1, decltype(&User::id)>>));
         iterate_ast(expression, lambda);
     }
     SECTION("aliased CTE column alias") {
@@ -476,7 +477,7 @@ TEST_CASE("ast_iterator") {
         constexpr auto z_alias = "z"_alias.for_<c>();
         auto expression = z_alias->*1_colalias;
         expected.push_back(
-            typeid(alias_column_t<alias_z<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'1'>>>>));
+            typeid(alias_qualified_column_t<alias_z<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'1'>>>>));
         iterate_ast(expression, lambda);
     }
 #endif

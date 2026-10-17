@@ -4,6 +4,8 @@
  *        e.g. for base-class overloads, partial specializations or metafunctions.
  */
 
+SQLITE_ORM_EXPORT namespace sqlite_orm { struct alias_tag; }
+
 namespace sqlite_orm::internal {
     template<class... Cs>
     struct primary_key_t;
@@ -19,11 +21,11 @@ namespace sqlite_orm::internal {
     template<class T, class F>
     struct column_pointer;
 
+    template<class O>
+    struct table_reference;
+
     template<class C>
     struct indexed_column_t;
 
     struct order_by_base;
-
-    template<class O>
-    struct order_by_t;
 }

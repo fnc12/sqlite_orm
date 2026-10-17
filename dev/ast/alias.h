@@ -10,16 +10,60 @@
 #endif
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
-#include "functional/mpl/conditional.h"
-#include "functional/cstring_literal.h"
-#include "functional/type_traits.h"
-#include "member_traits/field_of.h"
-#include "alias_traits.h"
-#include "vocabulary/node_traits.h"
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/mpl/conditional.h"
+#include "../functional/cstring_literal.h"
+#include "../functional/type_traits.h"
+#include "../member_traits/field_of.h"
+#include "../vocabulary/node_traits.h"
 #include "column_pointer.h"
-#include "vocabulary/node_fwd.h"  // table_identifier
-#include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
+#include "../vocabulary/node_fwd.h"  // table_identifier
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /** @short Base class for a custom table alias, column alias or expression alias.
+     */
+    struct alias_tag {};
+}
+
+namespace sqlite_orm::internal {
+    template<class T>
+    constexpr bool is_alias_v = std::is_base_of<alias_tag, T>::value;
+
+    //  note: the definitions below are written in terms of the variable templates rather than of the `is_*` alias
+    //  templates of the traits - msvc 141 fails to resolve an alias template in the initializer of a variable template
+    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR];
+    //  and they name their template parameter like the declarations in `grammar_traits_fwd.h` do - msvc 141 resolves
+    //  the initializer of a redeclared variable template with the parameter names of the first declaration
+
+    /** @short Alias of a column in a record set, see `orm_column_alias`.
+     */
+    template<class T>
+    constexpr bool is_column_alias_v = is_alias_v<T> && !polyfill::is_detected_v<type_t, T>;
+
+    /** @short Alias of any type of record set, see `orm_recordset_alias`.
+     */
+    template<class T>
+    constexpr bool is_recordset_alias_v = is_alias_v<T> && polyfill::is_detected_v<type_t, T>;
+
+    /** @short Alias of a concrete table, see `orm_table_alias`.
+     */
+    template<class T>
+    constexpr bool is_table_alias_v =
+        is_recordset_alias_v<T> && !std::is_same<polyfill::detected_t<type_t, T>, std::remove_const_t<T>>::value;
+
+    /** @short Moniker of a CTE, see `orm_cte_moniker`.
+     */
+    template<class T>
+    constexpr bool is_cte_moniker_v =
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+        is_recordset_alias_v<T> && std::is_same<polyfill::detected_t<type_t, T>, std::remove_const_t<T>>::value;
+#else
+        false;
+#endif
+}
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -42,10 +86,11 @@ namespace sqlite_orm::internal {
     };
 
     /**
-     *  Column expression with table alias attached like 'C.ID'. This is not a column alias
+     *  Column reference qualified by a record set alias: `"c"."id"`.
+     *  The alias is the qualifier, as opposed to a column alias naming an expression.
      */
     template<class T, class C>
-    struct alias_column_t {
+    struct alias_qualified_column_t {
         using alias_type = T;
         using column_type = C;
 
@@ -53,8 +98,10 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool
-        is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_column_t>::value>> = true;
+    constexpr bool is_alias_qualified_column_v = polyfill::is_specialization_of_v<T, alias_qualified_column_t>;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_alias_qualified_column_v<T>>> = true;
 
     /*
      *  Encapsulates extracting the alias identifier of a non-alias.
@@ -151,8 +198,10 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_holder>::value>> =
-        true;
+    constexpr bool is_alias_holder_v = polyfill::is_specialization_of_v<T, alias_holder>;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_alias_holder_v<T>>> = true;
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<char A, char... X>
@@ -212,7 +261,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using aliased_type = type_t<A>;
         static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
 
-        return alias_column_t<A, C>{std::move(field)};
+        return alias_qualified_column_t<A, C>{std::move(field)};
     }
 
     /**
@@ -237,7 +286,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         using C1 =
             mpl::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
-        return alias_column_t<A, C1>{C1{field}};
+        return alias_qualified_column_t<A, C1>{C1{field}};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -259,13 +308,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
 
         if constexpr (is_column_pointer_v<C>) {
-            return alias_column_t<A, C>{std::move(field)};
+            return alias_qualified_column_t<A, C>{std::move(field)};
         } else if constexpr (std::is_same_v<member_object_type_t<C>, aliased_type>) {
-            return alias_column_t<A, C>{field};
+            return alias_qualified_column_t<A, C>{field};
         } else {
             // wrap in column_pointer
             using C1 = column_pointer<aliased_type, C>;
-            return alias_column_t<A, C1>{{field}};
+            return alias_qualified_column_t<A, C1>{{field}};
         }
     }
 
@@ -304,10 +353,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         if constexpr (is_column_pointer_v<C>) {
             static_assert(std::is_same<table_type_of_t<C>, cte_moniker_t>::value,
                           "Column pointer must match aliased CTE");
-            return alias_column_t<A, C>{c};
+            return alias_qualified_column_t<A, C>{c};
         } else {
             auto cp = column<cte_moniker_t>(c);
-            return alias_column_t<A, decltype(cp)>{std::move(cp)};
+            return alias_qualified_column_t<A, decltype(cp)>{std::move(cp)};
         }
     }
 

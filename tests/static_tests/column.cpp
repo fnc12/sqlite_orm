@@ -103,6 +103,6 @@ TEST_CASE("Column") {
         STATIC_REQUIRE_FALSE(compare_fields(internal::empty_setter{}, &User::setIdByVal));
         STATIC_REQUIRE_FALSE(compare_fields(&User::setIdByVal, internal::empty_setter{}));
         STATIC_REQUIRE(std::is_same<internal::table_type_of<field_type>::type, Object>::value);
-        STATIC_REQUIRE(std::is_same<internal::column_result_t<internal::storage_t<>, field_type>::type, int>::value);
+        STATIC_REQUIRE(std::is_same<internal::column_result_of<internal::storage_t<>, field_type>::type, int>::value);
     }
 }

@@ -6,9 +6,10 @@
 #include <tuple>
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
-#include "alias_traits.h"
-#include "literal.h"
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../vocabulary/node_traits.h"  //  orm_recordset_alias
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     /*
@@ -25,9 +26,6 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_table_valued_expression_v = polyfill::is_specialization_of_v<T, table_valued_expression>;
 
-    template<class T>
-    using is_table_valued_expression = std::bool_constant<is_table_valued_expression_v<T>>;
-
     /*
      *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions and virtual tables usable as table-valued functions.
      */
@@ -42,17 +40,16 @@ namespace sqlite_orm::internal {
             return {{{std::move(arguments)}...}};
         }
     };
+
+    template<class T>
+    constexpr bool is_table_reference_v = polyfill::is_specialization_of_v<std::remove_const_t<T>, table_reference>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    template<class T>
-    concept orm_table_valued_expression = internal::is_table_valued_expression_v<T>;
-#endif
-
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     /**
-     *  Make a table reference.
+     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
+     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
      */
     template<class O>
         requires (!orm_recordset_alias<O>)
@@ -61,7 +58,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #else
     /**
-     *  Make a table reference.
+     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
+     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
      */
     template<class O, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
     constexpr internal::table_reference<O> c() {

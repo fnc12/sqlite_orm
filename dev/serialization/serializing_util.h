@@ -226,10 +226,12 @@ namespace sqlite_orm::internal {
 
     // serialize and stream multi_order_by arguments;
     // comma-separated
+    //  note: constrained in the return type - msvc 141 neither parses a fold expression in a template argument
+    //  nor expands a pack there
     template<class... Os, class Ctx>
-    std::ostream& operator<<(
-        std::ostream& ss,
-        std::tuple<const streaming<stream_as::expressions_tuple>&, const std::tuple<order_by_t<Os>...>&, Ctx> tpl) {
+    auto operator<<(std::ostream& ss,
+                    std::tuple<const streaming<stream_as::expressions_tuple>&, const std::tuple<Os...>&, Ctx> tpl)
+        -> std::enable_if_t<std::conjunction_v<std::bool_constant<is_order_by_v<Os>>...>, std::ostream&> {
         const auto& args = std::get<1>(tpl);
         auto& context = std::get<2>(tpl);
 

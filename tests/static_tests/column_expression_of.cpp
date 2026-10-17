@@ -3,8 +3,8 @@
 #include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
-using internal::alias_column_t;
 using internal::alias_holder;
+using internal::alias_qualified_column_t;
 using internal::column_alias;
 using internal::column_pointer;
 
@@ -41,12 +41,12 @@ TEST_CASE("column_expression_of_t") {
     runTest<db_objects_t, std::tuple<int64 Org::*>>(columns(&Org::boss));
     runTest<db_objects_t, std::tuple<int64 Org::*, int64 Org::*>>(asterisk<Org>());
     runTest<db_objects_t,
-            std::tuple<alias_column_t<alias_a<Org>, int64 Org::*>, alias_column_t<alias_a<Org>, int64 Org::*>>>(
-        asterisk<alias_a<Org>>());
+            std::tuple<alias_qualified_column_t<alias_a<Org>, int64 Org::*>,
+                       alias_qualified_column_t<alias_a<Org>, int64 Org::*>>>(asterisk<alias_a<Org>>());
     // object_t not allowed
     //runTest<db_objects_t, Org>(object<Org>());
     runTest<db_objects_t, internal::as_t<colalias_a, int>>(as<colalias_a>(1));
-    runTest<db_objects_t, alias_column_t<alias_a<Org>, int64 Org::*>>(alias_column<alias_a<Org>>(&Org::id));
+    runTest<db_objects_t, alias_qualified_column_t<alias_a<Org>, int64 Org::*>>(alias_column<alias_a<Org>>(&Org::id));
 
     runTest<db_objects_t, column_pointer<Derived, int64 Org::*>>(column<Derived>(&Org::id));
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -63,15 +63,17 @@ TEST_CASE("column_expression_of_t") {
     runTest<db_objects_t, column_pointer<cte_1, int64 Org::*>>(column<cte_1>(&Org::id));
     runTest<db_objects_t, column_pointer<cte_1, alias_holder<column_alias<'1'>>>>(column<cte_1>(1_colalias));
     runTest<db_objects_t, column_pointer<cte_1, alias_holder<colalias_c>>>(column<cte_1>(colalias_c{}));
-    runTest<db_objects_t, alias_column_t<alias_a<cte_1>, column_pointer<cte_1, int64 Org::*>>>(
+    runTest<db_objects_t, alias_qualified_column_t<alias_a<cte_1>, column_pointer<cte_1, int64 Org::*>>>(
         alias_column<alias_a<cte_1>>(&Org::id));
-    runTest<db_objects_t, alias_column_t<alias_a<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'1'>>>>>(
+    runTest<db_objects_t,
+            alias_qualified_column_t<alias_a<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'1'>>>>>(
         alias_column<alias_a<cte_1>>(1_colalias));
     runTest<db_objects2_t, std::tuple<int64 Org::*, int internal::aliased_field<column_alias<'2'>, int>::*>>(
         asterisk<cte_1>());
-    runTest<db_objects2_t,
-            std::tuple<alias_column_t<alias_a<cte_1>, int64 Org::*>,
-                       alias_column_t<alias_a<cte_1>, int internal::aliased_field<column_alias<'2'>, int>::*>>>(
+    runTest<
+        db_objects2_t,
+        std::tuple<alias_qualified_column_t<alias_a<cte_1>, int64 Org::*>,
+                   alias_qualified_column_t<alias_a<cte_1>, int internal::aliased_field<column_alias<'2'>, int>::*>>>(
         asterisk<alias_a<cte_1>>());
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     runTest<db_objects_t, column_pointer<cte_1, int64 Org::*>>(column<"1"_cte>(&Org::id));

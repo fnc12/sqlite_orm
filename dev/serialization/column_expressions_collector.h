@@ -13,12 +13,10 @@
 #include "../tuple_helper/tuple_traits.h"
 #include "../tuple_helper/tuple_iteration.h"
 #include "../error_code.h"
-#include "../mapped_type_proxy.h"
-#include "../alias_traits.h"
 #include "../schema/algorithms/table_lookup.h"  //  pick_table
 #include "quoting.h"
 #include "../vocabulary/node_traits.h"
-#include "../vocabulary/node_algorithms.h"  // access_column_expression
+#include "../vocabulary/node_algorithms.h"  // access_column_expression, mapped_type_of_t
 #include "../schema/column_identifier.h"
 #include "../schema/table_identifier.h"
 
@@ -31,7 +29,7 @@ namespace sqlite_orm::internal {
                                                                bool definedOrder,
                                                                const Ctx& context) {
         if (definedOrder) {
-            auto& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
+            auto& table = pick_table<mapped_type_of_t<T>>(context.db_objects);
             collectedExpressions.reserve(collectedExpressions.size() + table.template count_of<is_column>());
             table.for_each_column([qualified = !context.omit_table_name,
                                    &tableName = table.name,
@@ -50,7 +48,7 @@ namespace sqlite_orm::internal {
             if constexpr (is_alias_v<T>) {
                 collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + ".*");
             } else if (!context.omit_table_name) {
-                const table_identifier& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
+                const table_identifier& table = pick_table<mapped_type_of_t<T>>(context.db_objects);
                 collectedExpressions.push_back(quote_identifier(table.name) + ".*");
             } else {
                 collectedExpressions.emplace_back("*");

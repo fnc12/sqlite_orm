@@ -7,7 +7,7 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/type_traits.h"
 #include "../tuple_helper/tuple_transformer.h"
-#include "../table_reference.h"
+#include "../vocabulary/node_traits.h"  //  is_table_reference
 
 namespace sqlite_orm::internal {
     /*
@@ -20,7 +20,7 @@ namespace sqlite_orm::internal {
     };
 
     /*
-     *  Determine the actual and final result type of an intermediate column result produced by `column_result_t`,
+     *  Determine the actual and final result type of an intermediate column result produced by `column_result_of`,
      *  unwrapping `table_reference` and `structure`, and transforming tuples element-wise.
      */
     template<class T, class SFINAE = void>

@@ -23,10 +23,8 @@
 #include "../../functional/mpl.h"
 #include "../../functional/index_sequence_util.h"
 #include "../../tuple_helper/tuple_filter.h"
-#include "../../table_reference.h"
-#include "../../mapped_type_proxy.h"
 #include "../../vocabulary/node_traits.h"
-#include "../../vocabulary/node_algorithms.h"  //  is_bindable_v
+#include "../../vocabulary/node_algorithms.h"  //  is_bindable_v, mapped_type_of_t
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../select.h"  //  validate_select_clauses
 
@@ -70,7 +68,7 @@ namespace sqlite_orm::internal {
     template<class T, class R, class... Args>
     struct get_all_t {
         using type = T;
-        using result_type = mapped_type_proxy_t<T>;
+        using result_type = mapped_type_of_t<T>;
         using return_type = R;
 
         using conditions_type = std::tuple<Args...>;
@@ -196,7 +194,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  R is a container type. std::vector<T> is default
      *  Usage: storage.prepare(get_all<User>(...));
      */
-    template<class T, class R = std::vector<internal::mapped_type_proxy_t<T>>, class... Args>
+    template<class T, class R = std::vector<internal::mapped_type_of_t<T>>, class... Args>
     internal::get_all_t<T, R, Args...> get_all(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
         internal::validate_select_clauses<conditions_tuple>();
@@ -212,7 +210,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Usage: storage.get_all<sqlite_schema>(...);
      */
     template<orm_refers_to_table auto mapped,
-             class R = std::vector<internal::mapped_type_proxy_t<decltype(mapped)>>,
+             class R = std::vector<internal::mapped_type_of_t<decltype(mapped)>>,
              class... Args>
     auto get_all(Args&&... conditions) {
         return get_all<internal::auto_decay_table_ref_t<mapped>, R>(std::forward<Args>(conditions)...);

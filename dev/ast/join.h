@@ -14,8 +14,8 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
-#include "../table_reference.h"
-#include "../column_pointer.h"
+#include "column_pointer.h"
+#include "../vocabulary/node_algorithms.h"  //  orm_refers_to_recordset, auto_decay_table_ref_t
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {

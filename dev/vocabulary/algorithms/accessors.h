@@ -5,7 +5,8 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::remove_reference
+#include <type_traits>  //  std::enable_if, std::remove_reference, std::remove_const, std::void_t
+#include <tuple>  //  std::get
 #include <utility>  //  std::declval, std::move
 #endif
 
@@ -102,6 +103,22 @@ namespace sqlite_orm::internal {
     using main_select_t = polyfill::remove_cvref_t<decltype(access_main_select(std::declval<Select>()))>;
 
     /*
+     *  Access the left-most select expression of a compound select statement or the passed in select expression.
+     *
+     *  The columns of a table formed from a subselect, like a CTE, are those of its left-most select expression.
+     *  This is all that is needed to define such a table, and the rest of a compound statement may not even be
+     *  resolvable yet - a recursive CTE refers to itself.
+     */
+    template<class Select, std::enable_if_t<is_select_v<Select>, bool> = true>
+    constexpr decltype(auto) access_leftmost_select(const Select& select) {
+        if constexpr (is_compound_operator_v<return_type_t<Select>>) {
+            return std::get<0>(select.col.compound);
+        } else {
+            return select;
+        }
+    }
+
+    /*
      *  Move a possibly quoted plain expression or the expression itself.
      *
      *  No node holds the quoting wrapper `quoted_expression_t`: nothing serializes, iterates or binds one.
@@ -133,4 +150,35 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using unwrap_expression_t = decltype(unwrap_expression(std::declval<T>()));
+}
+
+// record set accessors
+namespace sqlite_orm::internal {
+    /** 
+     *  Defines the `type` typename to be:
+     *  - The unqualified unwrapped table reference type if T is a table reference.
+     *  - The unqualified unwrapped table-valued expression type if T is a table-valued expression.
+     *  - The unqualified aliased type if T is a recordset alias.
+     *  - The enclosing data struct for eponymous virtual tables with hidden columns.
+     *  - ... otherwise unqualified T.
+     */
+    template<class T, class SFINAE = void>
+    struct mapped_type_of : std::remove_const<T> {};
+
+    template<class T>
+    struct mapped_type_of<T, std::void_t<enclosing_type_t<T>>> {
+        using type = enclosing_type_t<T>;
+    };
+
+    template<class R>
+    struct mapped_type_of<R, match_if<is_table_reference, R>> : R {};
+
+    template<class E>
+    struct mapped_type_of<E, match_if<is_table_valued_expression, E>> : E {};
+
+    template<class A>
+    struct mapped_type_of<A, match_if<is_recordset_alias, A>> : std::remove_const<type_t<A>> {};
+
+    template<class T>
+    using mapped_type_of_t = typename mapped_type_of<T>::type;
 }

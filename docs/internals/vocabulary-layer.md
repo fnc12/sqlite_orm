@@ -70,7 +70,9 @@ vocabulary/
     algorithms/             "What follows from that?" — see below
 
     node_traits.h           Umbrella, declaration-only: traits/*_fwd.h +
-                            projections/*.h. Never includes a definition file.
+                            projections/*.h. Never includes a definition file,
+                            save traits/recordset_concepts.h - concepts cannot be
+                            forward-declared.
                             Safe for broad inclusion. There is no separate projections
                             umbrella: traits and projections are one tier of question,
                             and a consumer of one is overwhelmingly a consumer of both.
@@ -79,7 +81,8 @@ vocabulary/
                             clause_predicates.h, expression_element_predicates.h,
                             operand_predicates.h, index_filters.h, accessors.h,
                             field_accessors.h, argument_placeholders.h,
-                            field_predicates_fwd.h, field_predicates_concepts.h.
+                            field_predicates_fwd.h, field_predicates_concepts.h,
+                            recordset_predicates.h.
                             Deliberately does NOT include field_predicates.h.
 ```
 
@@ -159,6 +162,22 @@ Two rules that repeatedly prevent mistakes:
 - **Openness is about who writes specializations**, not about how complex they are. See
   [Open vs. closed](#open-vs-closed).
 
+Not every `is_*_v` belongs in the layer, and a missing declaration in a `traits/*_fwd.h` file
+is no reason by itself to put one there:
+
+- **Language- or binding-level mechanics** (`is_stateless_deleter_v`,
+  `is_unusable_for_xdestroy_v`, `is_bindable_v`, `is_printable_v`, `is_integral_fp_c_v`)
+  belong where they are, or one tier below.
+- **Definition-time mechanics over something that never becomes a node** stay with the code
+  that consumes them. `is_dbo_name_literal_v` (`schema/dbo_name.h`) recognizes the
+  `_orm_name` reflection annotation, which is read out and filtered away while a table or
+  view definition is built; no serializer or tree walker ever sees it.
+- **Closed predicates naming concrete nodes for a single consumer** -
+  `is_builtin_numeric_column_alias_v` - stay next to the nodes they name.
+- **Admissibility composites** over existing vocabulary are algorithms, not traits: the
+  element-or-constraint checks of the base, FTS5 and RTREE tables live together in
+  `algorithms/ddl_predicates.h`, per the level table above.
+
 ## The trait axes
 
 Four axes are keyed on a DSL node; one is keyed on a raw C++ type.
@@ -173,6 +192,12 @@ Four axes are keyed on a DSL node; one is keyed on a raw C++ type.
 
 All four node axes are **open**: the primary template is declared in the `_fwd.h` file, and
 each node specializes it **in the node's own header**.
+
+`traits/recordset_concepts.h` is the one definition file among them: the public concepts classifying a single
+node referring to a record set or one of its columns — the alias concepts `orm_alias` … `orm_cte_moniker`,
+`orm_table_reference` and `orm_table_valued_expression`. Each is the public face of one grammar or structural
+trait; since concepts cannot be forward-declared, they are defined here and reach consumers through
+`node_traits.h`. See [Concepts](#concepts-a-hard-constraint-on-splitting).
 
 ### Grammar
 
@@ -232,7 +257,8 @@ specialize. Direct single-node accessors, in three shapes across two files.
 `projections/mapped_types.h` instead destructures a node to a type it captured, and therefore
 names the concrete nodes it matches: `table_type_of` yields the enclosing class of a
 pointer-to-member, the `T` of a `column_pointer<T, F>`, and recurses through
-`indexed_column_t`. Needing `node_fwd.h` is what sets this shape apart from the other two.
+`indexed_column_t`; `decay_table_ref` yields the mapped object of a `table_reference<O>`, leaving
+any other record set as it is. Needing `node_fwd.h` is what sets this shape apart from the other two.
 
 Whether the type such a projection yields is *actually* mapped by a schema is not its
 question — that is schema-wide lookup, one tier up in `schema/algorithms/table_lookup.h`.
@@ -251,13 +277,14 @@ Nothing is being composed into a judgment; it is still extraction.
 | `algorithms/operand_predicates.h` | Closed checks of whether a type may appear as an operand of a named expression factory (`eq()`, `and_()`, `add()`, `assign()`, …): `is_referencable_operand`, `is_operand_or_bindable`, `are_valid_operands`. Composes the operand traits with grammar traits and the field-level `is_bindable` — which is why it takes `field_predicates_fwd.h` rather than the definition file. |
 | `algorithms/column_field_types.h` | Closed alias templates computing a type tuple over the columns of a single table definition, in column order: `column_field_types_t` (their field types) and `column_field_expressions_t` (the member pointers they are mapped by). Locating the table for a lookup type first is schema-wide, done by `schema_mapped_column_field_types` / `schema_mapped_column_field_expressions` in `schema/algorithms/table_lookup.h`. |
 | `algorithms/index_filters.h` | Closed alias templates that scan a tuple of nodes and yield an `index_sequence` of matching positions — **not** a filtered tuple. Sectioned by what is scanned: the `Elements` tuple of a table or view definition, e.g. `col_index_sequence_of`, `col_index_sequence_with_field_type`; and the nodes of an expression as flattened by `node_tuple`, e.g. `bindable_index_sequence_of`, the positions of the bindable leaves. Built on `filter_tuple_sequence_t` + grammar traits + projections. |
-| `algorithms/accessors.h` | Closed runtime and compile-time accessors that retrieve a node's relevant sub-part, or the node itself, uniformly across dissimilar grammar families: `access_main_select`/`main_select_t`, `access_main_dml`/`main_dml_t`, `access_column_expression`, `expression_object_type`/`statement_object_type_t` and `access_dml_object`. This is the concrete payoff of the semantic traits. |
+| `algorithms/accessors.h` | Closed runtime and compile-time accessors that retrieve a node's relevant sub-part, or the node itself, uniformly across dissimilar grammar families: `access_main_select`/`main_select_t`, `access_leftmost_select`, `access_main_dml`/`main_dml_t`, `access_column_expression`, `expression_object_type`/`statement_object_type_t` and `access_dml_object`. This is the concrete payoff of the semantic traits. `mapped_type_of_t` is the record-set counterpart: the mapped object a table reference, table-valued expression, record set alias or struct with hidden columns stands for - the input to a schema lookup. |
 | `algorithms/field_accessors.h` | The field-level counterpart of `accessors.h`: closed accessors keyed on a raw C++ type rather than a node. `held_object_t` is the object a holder type holds - owned by a `std::unique_ptr`, held by a `std::optional`, or the object itself - and `emplace_held_object` default-constructs it in place. A get statement's result type is such a holder. |
-| `algorithms/argument_placeholders.h` | The return type placeholders of the built-in functions — `argument<I>` for the result of the I-th call argument, `common_argument_type<I...>` for the common type of the given (or, with no index, all) arguments — and `substitute_arguments_t`, which replaces them structurally throughout a declared return type (`std::unique_ptr<argument<0>>`) given the call's argument tuple and a quoted metafunction that resolves one argument. Closed computation over a node's `args_tuple`; who resolves an argument and how — `column_result_t` with the schema at hand — is not its business. |
+| `algorithms/argument_placeholders.h` | The return type placeholders of the built-in functions — `argument<I>` for the result of the I-th call argument, `common_argument_type<I...>` for the common type of the given (or, with no index, all) arguments — and `substitute_arguments_t`, which replaces them structurally throughout a declared return type (`std::unique_ptr<argument<0>>`) given the call's argument tuple and a quoted metafunction that resolves one argument. Closed computation over a node's `args_tuple`; who resolves an argument and how — `column_result_of` with the schema at hand — is not its business. |
 | `algorithms/field_predicates_fwd.h` | Declarations of the closed field-level predicates, split off for dependency weight and grouped by what they read: `is_rowid_alias_capable_v`, `is_text_value_v`, `is_integer_mapped_v`, `is_bindable_v`, `is_printable_v`, `is_pointer_arg_v`, `is_pointer_binding_v`. |
 | — where their definitions live | `is_rowid_alias_capable_v` is a capability *derived from* the field type, so it is defined in `field_predicates.h` with the other computed predicates. `is_bindable_v` and `is_printable_v` instead test whether a customization point is instantiable for the type, so each stays with the point it tests — `statement_binder.h` and `field_printer.h` respectively, which include the `_fwd` header to define them. `is_integer_mapped_v` likewise reads a customization point — whether the type's `type_printer` derives from `integer_printer` — and is defined in `type_printer.h`; consumers ask it instead of inspecting the printer's base themselves. `is_pointer_arg_v` and `is_pointer_binding_v` are defined with the pointer-passing interface's values in `marshaling/pointer_value.h` — always false before SQLite 3.20, where those values do not exist. Like every definition, it arrives through the top-level headers rather than through its users: `statement_binder.h` and `row_extractor.h` pattern-match the values through the declarations, and so does `ast/app_function.h` when checking the pointer values of a function call. As the customization points get instantiated for concrete types while the headers are processed, the top-level headers include `pointer_value.h` ahead of `storage.h` — see [The manifests](#the-manifests). |
 | `algorithms/field_predicates.h` | The definitions of the *derived* field predicates — `is_rowid_alias_capable_v` and `is_text_value_v` — of which the former needs `type_printer.h`. Reached only through the `node_algorithm_definitions.h` manifest. |
 | `algorithms/field_predicates_concepts.h` | The `hidden_column_of_vtab` / `hidden_field_of_vtab` concepts, plus their C++17 fallback `is_hidden_column_of_vtab_v` / `is_hidden_field_of_vtab_v`, under one guard — declared and defined here, not in the `_fwd` file. See [Concepts](#concepts-a-hard-constraint-on-splitting). |
+| `algorithms/recordset_predicates.h` | The public concepts checking whether a node refers to a table or a record set, i.e. may occupy the record set slot of a factory — `orm_refers_to_table`, `orm_refers_to_recordset`, `orm_mapped_recordset` — plus their C++17 fallback `is_referring_to_recordset_v`. They compose the structural table reference with the grammar alias traits, hence algorithms rather than traits; the single-node concepts they compose live in `traits/recordset_concepts.h`. |
 
 ## Open vs. closed
 
@@ -324,7 +351,10 @@ Both branches check the identical condition over the identical dependencies, so 
 no benefit to separating them.
 
 This pattern generalizes to any future concept, in traits or algorithms, needing the same
-transparency-over-weight-isolation trade.
+transparency-over-weight-isolation trade. `traits/recordset_concepts.h` is the second instance:
+its alias concepts name `alias_tag` directly, which a forward declaration in `node_fwd.h`
+suffices for, so that a failed constraint tells which requirement is not met. Concepts composing
+them across axes are algorithms and live apart, in `algorithms/recordset_predicates.h`.
 
 ## Schema-level algorithms
 
@@ -347,7 +377,8 @@ sense there, covering base tables, views and virtual tables alike. Built on that
 feed the table found into the vocabulary algorithms of `column_field_types.h`.
 
 Alongside them, `schema/algorithms/column_lookup.h` finds a column's name across the schema
-(`find_column_name`, `materialize_column_pointer` for CTE column aliases, `is_column_unique`),
+(`find_column_name`, `materialize_column_pointer` for CTE column aliases, `is_column_unique`)
+and yields the member pointers of a table's columns (`get_table_column_fields`),
 and `schema/algorithms/table_filters.h` selects the base tables or views of a schema
 (`tables_index_sequence`, `views_index_sequence`) and computes over them (`foreign_keys_count`).
 
@@ -356,8 +387,9 @@ not on the `storage_t` object, so they are named `schema_*`. Apply the same reas
 anything that joins them; `storage_` is the wrong prefix at this tier.
 
 The generic facilities for recognizing and passing around the tuple itself —
-`db_objects_tuple`, `is_db_objects`, `db_objects_for_expression` — are not algorithms and
-sit one level up, in `schema/db_objects.h`.
+`db_objects_tuple`, `is_db_objects`, `db_objects_cat`, `db_objects_for_expression` — are not
+algorithms and sit one level up, in `schema/db_objects.h`. The overload of `db_objects_for_expression`
+for a WITH clause lives in `cte_db_objects.h`.
 
 ## The manifests
 
@@ -456,7 +488,7 @@ are not nodes in this sense.
 ### How consumers match a node
 
 Customization points — `statement_serializer`, `ast_iterator`, `node_tuple`,
-`column_result_t`, and callables handed to `iterate_ast` — **grammar-match** a node and
+`column_result_of`, and callables handed to `iterate_ast` — **grammar-match** a node and
 **read it through the projections**. They do not pattern-match the concrete node type and
 decompose its template arguments:
 
@@ -482,25 +514,12 @@ the projection to `vocabulary/projections/` rather than reaching into the node.
 
 Decided, not yet done. The destination is settled in each case; only the work remains.
 
-- **Lift the remaining traits into the vocabulary layer.** A substantial number of node
-  classification traits are still declared *and* specialized inside their concrete node
-  headers, having never been lifted into the vocabulary layer by forward-declaring a
-  primary template in the appropriate `traits/*_fwd.h`. Examples:
-  `is_alias_v` / `is_column_alias_v` / `is_recordset_alias_v` / `is_table_alias_v`,
-  `is_cte_moniker_v`, `is_table_valued_expression_v`, `is_literal_v`.
-
-  Each needs triage before being moved — not every `is_*_v` in a node header is DSL node
-  classification. Several are language- or binding-level mechanics
-  (`is_stateless_deleter_v`, `is_unusable_for_xdestroy_v`, `is_bindable_v`,
-  `is_printable_v`, `is_integral_fp_c_v`) and belong where they are, or one tier below.
-  For those that do qualify, apply the axis table above to pick the file.
-
 - **Retire the legacy built-in function nodes with C++17.** In C++20 builds every
   built-in is one `inline constexpr` definition of name plus overload set in
   `ast/builtin_function.h` (`"LOWER"_builtin.scalar<std::string(std::string_view)>()`);
   the resulting call node plugs into `is_builtin_function_call`, and argument-dependent return
   types are placeholders (`argument<I>`, `common_argument_type<I...>`) substituted by
-  `vocabulary/algorithms/argument_placeholders.h` from `column_result_t`. The legacy
+  `vocabulary/algorithms/argument_placeholders.h` from `column_result_of`. The legacy
   `builtin_function_t` node in `ast/builtin_function.h` and the per-function `*_string`
   tag + factory pairs in `builtin/functions/*.h` exist only for C++17 and go when that baseline
   does. Design and decisions are in

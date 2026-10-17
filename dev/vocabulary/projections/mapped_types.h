@@ -8,6 +8,11 @@
  *  tier up, by the lookup algorithms in `schema/algorithms/table_lookup.h`.
  */
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::remove_const
+#endif
+
+#include "../../functional/cxx_type_traits_polyfill.h"
 #include "../node_fwd.h"
 
 namespace sqlite_orm::internal {
@@ -52,4 +57,21 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using table_type_of_t = typename table_type_of<T>::type;
+
+    /**
+     *  The mapped object a table reference stands for; any other record set stays as it is.
+     */
+    template<class RecordSet>
+    struct decay_table_ref : std::remove_const<RecordSet> {};
+    template<class O>
+    struct decay_table_ref<table_reference<O>> : polyfill::type_identity<O> {};
+    template<class O>
+    struct decay_table_ref<const table_reference<O>> : polyfill::type_identity<O> {};
+
+    template<class RecordSet>
+    using decay_table_ref_t = typename decay_table_ref<RecordSet>::type;
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<auto recordset>
+    using auto_decay_table_ref_t = typename decay_table_ref<decltype(recordset)>::type;
+#endif
 }

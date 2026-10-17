@@ -907,6 +907,32 @@ TEST_CASE("With clause") {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    SECTION("asterisk of a table alias") {
+        struct Org {
+            int id = 0;
+            std::string name;
+            int boss = 0;
+        };
+
+        auto storage = make_storage("",
+                                    make_table("org",
+                                               make_column("id", &Org::id, primary_key()),
+                                               make_column("name", &Org::name),
+                                               make_column("boss", &Org::boss)));
+        storage.sync_schema();
+        storage.replace(Org{1, "Alice", 0});
+        storage.replace(Org{2, "Bob", 1});
+
+        constexpr orm_cte_moniker auto bosses = "bosses"_cte;
+        constexpr orm_table_alias auto emp = "e"_alias.for_<Org>();
+        constexpr orm_table_alias auto boss = "b"_alias.for_<Org>();
+        // self-join: all columns of one side, in the select defining the CTE's columns
+        auto rows = storage.with(
+            bosses().as(select(asterisk<boss>(), inner_join<boss>(on(boss->*&Org::id == emp->*&Org::boss)))),
+            select(bosses->*&Org::name));
+        REQUIRE_THAT(rows, Equals(std::vector<std::string>{"Alice"}));
+    }
+
     SECTION("crud") {
         struct Object {
             int id;

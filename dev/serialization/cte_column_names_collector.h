@@ -15,9 +15,9 @@
 #include "../functional/type_traits.h"
 #include "../tuple_helper/tuple_transformer.h"
 #include "../error_code.h"
-#include "../alias.h"
+#include "../ast/alias.h"
 #include "../vocabulary/node_traits.h"
-#include "../vocabulary/node_algorithms.h"  // access_column_expression
+#include "../vocabulary/node_algorithms.h"  // access_column_expression, mapped_type_of_t
 #include "../schema/column_identifier.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
@@ -65,7 +65,8 @@ namespace sqlite_orm::internal {
             }
             // ...
             else if constexpr (is_asterisk_v<E>) {
-                auto& table = pick_table<type_t<E>>(context.db_objects);
+                using recordset_type = type_t<E>;
+                auto& table = pick_table<mapped_type_of_t<recordset_type>>(context.db_objects);
 
                 using table_type = polyfill::remove_cvref_t<decltype(table)>;
                 using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
@@ -144,7 +145,7 @@ namespace sqlite_orm::internal {
             iterate_tuple(explicitColRefs, [&idx, &columnNames, &context](auto& colRef) {
                 using ColRef = polyfill::remove_cvref_t<decltype(colRef)>;
 
-                if constexpr (polyfill::is_specialization_of_v<ColRef, alias_holder>) {
+                if constexpr (is_alias_holder_v<ColRef>) {
                     columnNames[idx] = alias_extractor<type_t<ColRef>>::extract();
                 } else if constexpr (std::is_member_pointer<ColRef>::value) {
                     using O = table_type_of_t<ColRef>;

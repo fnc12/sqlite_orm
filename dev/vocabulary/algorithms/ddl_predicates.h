@@ -67,6 +67,11 @@ namespace sqlite_orm::internal {
                                                               T>;
 #endif
 
+#ifdef SQLITE_ENABLE_RTREE
+    template<class T>
+    using is_rtree_table_element_or_constraint = is_column<T>;
+#endif
+
     /**
      *  Whether an index element belongs to the table the index is made for:
      *  an element that names a column must name a column of that table, while

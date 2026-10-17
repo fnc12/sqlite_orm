@@ -13,7 +13,6 @@
 #include "../../functional/addressof.h"
 #include "../../tuple_helper/same_or_void.h"
 #include "../../member_traits/field_of.h"
-#include "../../alias_traits.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
