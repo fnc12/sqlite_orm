@@ -141,6 +141,8 @@ ctest --test-dir build                         # all tests
   is reviewed against.
 - [`docs/thread-safety.md`](docs/thread-safety.md) - the threading guarantees of a storage.
 - `.claude/skills/` - step-by-step recipes in the Agent Skills format, for
-  [adding a DSL node](.claude/skills/add-dsl-node/SKILL.md) and
-  [adding a built-in SQL function](.claude/skills/add-builtin-function/SKILL.md).
+  [adding a DSL node](.claude/skills/add-dsl-node/SKILL.md),
+  [a built-in SQL function](.claude/skills/add-builtin-function/SKILL.md) or
+  [a virtual table](.claude/skills/add-virtual-table/SKILL.md), and for
+  [moving or renaming a header](.claude/skills/move-header/SKILL.md).
 - `.claude/agents/sqlite-orm-reviewer.md` - a reviewer agent working through the review checklist.
