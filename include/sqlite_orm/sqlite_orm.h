@@ -1355,6 +1355,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #pragma once
 
+/** @file The pointer-passing interface: pointer types, the pointer values `pointer_arg` and `pointer_binding`,
+ *        and their binding helpers.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3020000
 #include <type_traits>
@@ -1471,7 +1475,7 @@ namespace sqlite_orm::internal {
     struct is_printable : std::bool_constant<is_printable_v<T>> {};
 }
 
-// Values of the pointer-passing interface, defined in `pointer_value.h`; always false before SQLite 3.20.
+// Values of the pointer-passing interface, defined in `pointer_passing.h`; always false before SQLite 3.20.
 // The top-level headers include it ahead of `storage.h`, as the marshaling headers evaluate them non-dependently.
 namespace sqlite_orm::internal {
     /*
@@ -1820,7 +1824,7 @@ namespace sqlite_orm::internal {
 
 // #include "../sqlite3/sqlite3_types.h"
 //  int64
-// #include "pointer_value.h"
+// #include "pointer_passing.h"
 
 #if SQLITE_VERSION_NUMBER >= 3020000
 SQLITE_ORM_EXPORT namespace sqlite_orm {
