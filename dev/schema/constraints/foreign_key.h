@@ -169,9 +169,9 @@ namespace sqlite_orm::internal {
 
         columns_type _columns;
         references_type _references;
-        on_fk_update_delete<foreign_key_t, true> on_update;
-        on_fk_update_delete<foreign_key_t, false> on_delete;
-        fk_enforcement_state _deferrable;
+        on_fk_update_delete<foreign_key_t, true> on_update{};
+        on_fk_update_delete<foreign_key_t, false> on_delete{};
+        fk_enforcement_state _deferrable{};
 
         static_assert(!std::is_same<source_type, void>::value, "All columns must have the same mapped type");
         static_assert(!std::is_same<target_type, void>::value, "All references must have the same mapped type");
