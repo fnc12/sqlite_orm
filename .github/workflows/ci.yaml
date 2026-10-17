@@ -254,6 +254,89 @@ jobs:
         run: ctest --test-dir build --verbose --output-on-failure
 
   # ===================
+  # Linux builds of the C++ named module, with the standard library modules provided by CMake 4.5 and Ninja
+  # ===================
+  linux-named-module:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "gcc-16, C++26"
+            cc: gcc-16
+            cxx: g++-16
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_26=ON"
+            compiler_packages: g++-16
+            compiler_ppa: ppa:ubuntu-toolchain-r/test
+            # Ubuntu prior to 26.04 ships a libstdc++.modules.json with wrong source paths
+            fix_libstdcxx_modules_json: true
+
+          - name: "clang-21, libc++, C++23"
+            cc: clang-21
+            cxx: clang++-21
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
+            cxx_flags: "-stdlib=libc++"
+            compiler_packages: clang-21 libc++-21-dev libc++abi-21-dev
+            llvm_repo: "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main"
+
+    name: Linux - Named module, ${{ matrix.name }}
+
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+      CMAKE_VERSION: 4.5.0-rc1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install compiler, Ninja and SQLite
+        run: |
+          if [ -n "${{ matrix.compiler_ppa }}" ]; then
+            sudo add-apt-repository -y ${{ matrix.compiler_ppa }}
+          fi
+          if [ -n "${{ matrix.llvm_repo }}" ]; then
+            wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+            sudo add-apt-repository -y "${{ matrix.llvm_repo }}"
+          fi
+          sudo apt-get update
+          sudo apt-get install -y ${{ matrix.compiler_packages }} ninja-build libsqlite3-dev
+
+      - name: Install CMake ${{ env.CMAKE_VERSION }}
+        run: |
+          curl -sL https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz | tar -xz -C ${{ runner.temp }}
+          echo "${{ runner.temp }}/cmake-${CMAKE_VERSION}-linux-x86_64/bin" >> $GITHUB_PATH
+
+      - name: Fix libstdc++.modules.json
+        if: matrix.fix_libstdcxx_modules_json
+        run: |
+          python3 - "$($CXX -print-file-name=libstdc++.modules.json)" "${{ runner.temp }}/libstdc++.modules.json" <<'EOF'
+          import json, os, sys
+          manifest, fixed = sys.argv[1], sys.argv[2]
+          with open(manifest) as f:
+              data = json.load(f)
+          for module in data["modules"]:
+              path = os.path.normpath(os.path.join(os.path.dirname(manifest), module["source-path"]))
+              if not os.path.exists(path):
+                  path = os.path.join("/usr/include", module["source-path"].split("include/", 1)[1])
+              module["source-path"] = path
+          with open(fixed, "w") as f:
+              json.dump(data, f, indent=2)
+          print(json.dumps(data, indent=2))
+          EOF
+          echo "STDLIB_MODULES_JSON=-DCMAKE_CXX_STDLIB_MODULES_JSON=${{ runner.temp }}/libstdc++.modules.json" >> $GITHUB_ENV
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build -G Ninja ${{ matrix.cxx_standard }} -DCMAKE_CXX_FLAGS="${{ matrix.cxx_flags }}" $STDLIB_MODULES_JSON
+
+      - name: Build
+        run: cmake --build build --target module_tests
+
+      - name: Test
+        run: ctest --test-dir build --verbose --output-on-failure --no-tests=error -R module_tests
+
+  # ===================
   # macOS builds
   # ===================
   macos:
