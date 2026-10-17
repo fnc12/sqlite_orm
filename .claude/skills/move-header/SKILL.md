@@ -30,8 +30,7 @@ Search for the old path and its basename (`grep -rn 'old_name.h'`) in:
   if the header is registered there.
 - `not_single_header_include/sqlite_orm/sqlite_orm.h` and `third_party/amalgamate/config.json`, if it
   is a top-level header: both, in the same order.
-- `AGENTS.md`, `docs/internals/`, `.claude/agents/` and `.claude/skills/`. `docs/plans/` records
-  past designs and is not updated.
+- `AGENTS.md`, `docs/internals/`, `docs/plans/`, `.claude/agents/` and `.claude/skills/`.
 
 A moved header must not gain a guarded inclusion on the way: guard contents, never an `#include`.
 

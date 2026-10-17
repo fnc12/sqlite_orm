@@ -466,6 +466,13 @@ namespace sqlite_orm::internal {
      *
      *  Deliberately internal: sqlite_orm defines all built-in functions itself.
      *
+     *  The definitions are published in the `sqlite_orm` namespace as copies; a using-declaration is not
+     *  exportable, as it would name an entity with module linkage. A function template facade publishes
+     *  a definition instead where the public function takes the return type as a template argument,
+     *  checks its arguments, or shares its name with other function templates (`count`, `replace`)
+     *  or with a global C library function (`abs`, `round`, `time`, `random`, `strftime`, `printf`):
+     *  an object of that name would make unqualified lookup ambiguous under `using namespace sqlite_orm`.
+     *
      *  Examples:
      *  inline constexpr auto lower = "LOWER"_builtin.scalar<std::string(std::string_view)>();
      *  inline constexpr auto substr = "SUBSTR"_builtin.scalar<std::string(std::string_view, int), std::string(std::string_view, int, int)>();

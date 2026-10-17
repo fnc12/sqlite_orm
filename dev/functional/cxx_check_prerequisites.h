@@ -33,6 +33,10 @@
 
 // note: The check is deliberately limited to the C++17 library features sqlite_orm relies on;
 // e.g. `__cpp_lib_hardware_interference_size` is a C++17 feature that libc++ still does not provide.
+// It also rules out libstdc++ 7-8 and libc++ 7, which provide these features but no populated `<version>`
+// (libc++ 7's is an empty stub). Testing the feature headers themselves instead would include the standard library
+// ahead of everything, which conflicts with the `SQLITE_ORM_IMPORT_STD_MODULE` build.
+// The Apple deployment target (macOS 10.14 / iOS 12 for `std::optional`) is beyond any macro test.
 #if ((__cpp_lib_void_t < 201411L || __cpp_lib_bool_constant < 201505L) ||                                              \
      (__cpp_lib_logical_traits < 201510L || __cpp_lib_type_trait_variable_templates < 201510L) ||                      \
      (__cpp_lib_is_aggregate < 201703L)) ||                                                                            \

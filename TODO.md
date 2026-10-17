@@ -31,6 +31,14 @@
 * the `fts5vocab` virtual table
 * the remaining PRAGMA table-valued functions with rowsets (`index_list`, `index_info`/`index_xinfo`, `foreign_key_list`, `foreign_key_check`, `table_list`, `database_list`, `collation_list`, `function_list`, ...), C++26 reflection only: the module tag of a reflected eponymous table could be a generic `reflected_eponymous_module<O>`, its `name()` taken from a `static constexpr` copy of the row type's `orm_name` annotation, so that each pragma needs only its annotated row type and its entry in `make_pragma_tables()`; `table_info`/`table_xinfo` would then need their annotation conditionally, as their row types exist before C++26
 
+* `as_result<R>(expr)`: a result type override for any expression (generalizing `as_optional`), as the successor of the built-in functions' `R` template parameters
+* checking the arguments of a built-in function call against its nominal parameter types
+
+## Reflection
+
+* reflection-based `make_table<T>()`: getter/setter columns, per-field opt-out (`[[= transient]]`), column renaming by annotation, `check()` as an annotation
+* foreign keys as annotations: needs constexpr ON UPDATE/ON DELETE actions, whose mutators reach the enclosing foreign key through `addressof_enclosing` today
+
 ## Schema synchronisation
 
 * `FOREIGN KEY` - sync_schema fk comparison and ability of two tables to have fk to each other (`PRAGMA foreign_key_list(%table_name%);` may be useful)
