@@ -54,7 +54,9 @@ primary template.
 **The configuration is universally available.** Every header can rely on
 `dev/functional/config.h` without including it: the C++ feature and compiler macros, the
 platform macros, `SQLITE_ORM_EXPORT`, and the SQLite version and feature macros
-(`SQLITE_VERSION_NUMBER`, `SQLITE_ORM_JSON_SUPPORTED`, ...). This covers configuration only.
+(`SQLITE_VERSION_NUMBER`, `SQLITE_ORM_JSON_SUPPORTED`, ...). Code depending on a compile option
+of SQLite tests the feature macro `dev/sqlite3/sqlite3_config.h` derives from it, never the
+`SQLITE_ENABLE_*` macro itself. This covers configuration only.
 A header that uses the SQLite C API (functions, types, constants such as
 `SQLITE_OPEN_READONLY`) includes `<sqlite3.h>` itself, and a header that uses a sqlite_orm
 symbol includes the header declaring it.

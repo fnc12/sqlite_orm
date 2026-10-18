@@ -24,7 +24,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     inline auto make_builtin_tables() {
         return std::tuple_cat(std::tuple{make_sqlite_schema_table()},
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
                               std::tuple{make_dbstat_table()},
 #endif
 #if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)

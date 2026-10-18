@@ -62,7 +62,7 @@ TEST_CASE("statement_serializer core functions") {
         expected = "MAX(1, 2, 3, 4)";
         value = serialize(expression, context);
     }
-#ifdef SQLITE_ENABLE_MATH_FUNCTIONS
+#ifdef SQLITE_ORM_MATH_FUNCTIONS_SUPPORTED
     SECTION("ACOS") {
         context.use_parentheses = false;
         SECTION("default return type") {
@@ -416,7 +416,7 @@ TEST_CASE("statement_serializer core functions") {
     }
 #endif
     SECTION("SOUNDEX") {
-#ifdef SQLITE_SOUNDEX
+#ifdef SQLITE_ORM_SOUNDEX_SUPPORTED
         constexpr auto expression = soundex("Vaso");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
@@ -568,7 +568,7 @@ TEST_CASE("statement_serializer newer core functions") {
         value = serialize(expression, context);
     }
 #endif
-#ifdef SQLITE_ENABLE_PERCENTILE
+#ifdef SQLITE_ORM_PERCENTILE_SUPPORTED
     SECTION("MEDIAN") {
         auto expression = median(1);
         expected = "MEDIAN(1)";

@@ -10,7 +10,7 @@ using internal::table_definition, internal::insertable_table_definition;
 template<class Elements>
 using table_values_index_sequence = internal::filter_tuple_sequence_t<Elements, internal::is_literal>;
 
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
 TEST_CASE("generic vtab and dbstat layout tests") {
     using internal::dbstat_module_tag;
     struct mystat : dbstat {};
@@ -150,7 +150,7 @@ TEST_CASE("pragma_table_xinfo layout tests") {
 #endif
 #endif
 
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
 TEST_CASE("fts5 layout tests") {
     using internal::fts5_module_tag;
     struct Post {
@@ -174,7 +174,7 @@ TEST_CASE("fts5 layout tests") {
 }
 #endif
 
-#ifdef SQLITE_ENABLE_RTREE
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
 TEST_CASE("rtree layout tests") {
     using internal::rtree_module_tag;
     struct DemoIndex {

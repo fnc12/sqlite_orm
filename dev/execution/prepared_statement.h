@@ -45,7 +45,7 @@ namespace sqlite_orm::internal {
             }
         }
 #endif
-#if SQLITE_VERSION_NUMBER >= 3026000 and defined(SQLITE_ENABLE_NORMALIZE)
+#ifdef SQLITE_ORM_NORMALIZE_SUPPORTED
         std::string normalized_sql() const {
             if (orm_gsl::czstring sql = sqlite3_normalized_sql(this->stmt)) {
                 return sql;

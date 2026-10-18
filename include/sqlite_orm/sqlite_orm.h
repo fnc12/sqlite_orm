@@ -333,6 +333,48 @@ using std::nullptr_t;
 #define SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
 #endif
 
+/*
+ *  FTS5 is part of the amalgamation as of SQLite 3.9.0, compiled in by default by the amalgamation's configure script,
+ *  but not by the source tree's; other builds request it with `SQLITE_ENABLE_FTS5` [https://sqlite.org/fts5.html].
+ *  Since a distribution need not define the latter in a header the consumer sees, sqlite_orm assumes FTS5 as of 3.9.0.
+ */
+#if defined(SQLITE_ENABLE_FTS5) || SQLITE_VERSION_NUMBER >= 3009000
+#define SQLITE_ORM_FTS5_SUPPORTED
+#endif
+
+/*
+ *  The features below are compiled into SQLite only on request, so sqlite_orm offers them only if the requesting macro
+ *  is visible to it, e.g. through vcpkg's `sqlite3-vcpkg-config.h`, or defined by the project.
+ */
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#define SQLITE_ORM_DBSTAT_SUPPORTED
+#endif
+
+#ifdef SQLITE_ENABLE_RTREE
+#define SQLITE_ORM_RTREE_SUPPORTED
+#endif
+
+#ifdef SQLITE_ENABLE_MATH_FUNCTIONS
+#define SQLITE_ORM_MATH_FUNCTIONS_SUPPORTED
+#endif
+
+#ifdef SQLITE_ENABLE_PERCENTILE
+#define SQLITE_ORM_PERCENTILE_SUPPORTED
+#endif
+
+#ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
+#define SQLITE_ORM_OFFSET_SQL_FUNC_SUPPORTED
+#endif
+
+#ifdef SQLITE_SOUNDEX
+#define SQLITE_ORM_SOUNDEX_SUPPORTED
+#endif
+
+//  `sqlite3_normalized_sql()` exists as of SQLite 3.26.0
+#if SQLITE_VERSION_NUMBER >= 3026000 && defined(SQLITE_ENABLE_NORMALIZE)
+#define SQLITE_ORM_NORMALIZE_SUPPORTED
+#endif
+
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
 #else
@@ -5461,7 +5503,7 @@ namespace sqlite_orm::internal {
     using is_base_table_element_or_constraint =
         mpl::invoke_t<mpl::disjunction<check_if<is_column>, check_if<is_base_table_constraint>>, T>;
 
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
     template<class T>
     using is_fts5_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
                                                                                check_if<is_prefix>,
@@ -5471,7 +5513,7 @@ namespace sqlite_orm::internal {
                                                               T>;
 #endif
 
-#ifdef SQLITE_ENABLE_RTREE
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
     template<class T>
     using is_rtree_table_element_or_constraint = is_column<T>;
 #endif
@@ -8693,7 +8735,7 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
 #if SQLITE_VERSION_NUMBER >= 3024000
     /**
      *  Auxiliary virtual table column
@@ -8729,7 +8771,7 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
     /**
      *  prefix=N table constraint factory function. Used in FTS virtual tables.
      *
@@ -8766,7 +8808,7 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
     /**
      *  tokenize='...'' table constraint factory function. Used in FTS virtual tables.
      *
@@ -8813,7 +8855,7 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
     /**
      *  content='' table constraint factory function. Used in FTS virtual tables.
      *
@@ -8865,7 +8907,7 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
     /**
      *  UNINDEXED column constraint factory function. Used in FTS virtual tables.
      *
@@ -17377,7 +17419,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
-#ifdef SQLITE_ENABLE_PERCENTILE
+#ifdef SQLITE_ORM_PERCENTILE_SUPPORTED
     struct median_string {
         std::string_view serialize() const {
             return "MEDIAN";
@@ -17502,7 +17544,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
-#ifdef SQLITE_ENABLE_PERCENTILE
+#ifdef SQLITE_ORM_PERCENTILE_SUPPORTED
     /**
      *  MEDIAN(X) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
      *
@@ -17575,7 +17617,7 @@ namespace sqlite_orm::internal {
 #if SQLITE_VERSION_NUMBER >= 3044000
     inline constexpr auto string_agg = "STRING_AGG"_builtin.aggregate<std::string(anything, std::string_view)>();
 #endif
-#ifdef SQLITE_ENABLE_PERCENTILE
+#ifdef SQLITE_ORM_PERCENTILE_SUPPORTED
     inline constexpr auto median = "MEDIAN"_builtin.aggregate<std::unique_ptr<double>(anything)>();
     inline constexpr auto percentile = "PERCENTILE"_builtin.aggregate<std::unique_ptr<double>(anything, double)>();
     inline constexpr auto percentile_cont =
@@ -17632,7 +17674,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     inline constexpr orm_builtin_function auto string_agg = internal::string_agg;
 #endif
-#ifdef SQLITE_ENABLE_PERCENTILE
+#ifdef SQLITE_ORM_PERCENTILE_SUPPORTED
     /**
      *  MEDIAN(X) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
      *
@@ -20563,7 +20605,7 @@ namespace sqlite_orm::internal {
             }
         }
 #endif
-#if SQLITE_VERSION_NUMBER >= 3026000 and defined(SQLITE_ENABLE_NORMALIZE)
+#ifdef SQLITE_ORM_NORMALIZE_SUPPORTED
         std::string normalized_sql() const {
             if (orm_gsl::czstring sql = sqlite3_normalized_sql(this->stmt)) {
                 return sql;
@@ -26766,7 +26808,7 @@ namespace sqlite_orm::internal {
         }
     };
 
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
     template<class T>
     struct statement_serializer<T, std::enable_if_t<is_unindexed<T>::value>> {
         using statement_type = T;
@@ -31283,7 +31325,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
-#ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
+#ifdef SQLITE_ORM_OFFSET_SQL_FUNC_SUPPORTED
     struct sqlite_offset_string {
         std::string_view serialize() const {
             return "SQLITE_OFFSET";
@@ -31320,7 +31362,7 @@ namespace sqlite_orm::internal {
         }
     };
 
-#ifdef SQLITE_SOUNDEX
+#ifdef SQLITE_ORM_SOUNDEX_SUPPORTED
     struct soundex_string {
         std::string_view serialize() const {
             return "SOUNDEX";
@@ -31657,7 +31699,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<N>{std::forward<N>(n)}};
     }
 #endif
-#ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
+#ifdef SQLITE_ORM_OFFSET_SQL_FUNC_SUPPORTED
     /**
      *  SQLITE_OFFSET(X) function https://www.sqlite.org/lang_corefunc.html#sqlite_offset
      *
@@ -31749,7 +31791,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Y, Z>{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
     }
 #endif
-#ifdef SQLITE_SOUNDEX
+#ifdef SQLITE_ORM_SOUNDEX_SUPPORTED
     /**
      *  SOUNDEX(X) function https://www.sqlite.org/lang_corefunc.html#soundex
      */
@@ -31971,7 +32013,7 @@ namespace sqlite_orm::internal {
     inline constexpr auto sqlite_compileoption_get =
         "SQLITE_COMPILEOPTION_GET"_builtin.scalar<std::unique_ptr<std::string>(int)>();
 #endif
-#ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
+#ifdef SQLITE_ORM_OFFSET_SQL_FUNC_SUPPORTED
     inline constexpr auto sqlite_offset = "SQLITE_OFFSET"_builtin.scalar<std::unique_ptr<int64>(anything)>();
 #endif
     inline constexpr auto coalesce =
@@ -31986,7 +32028,7 @@ namespace sqlite_orm::internal {
     inline constexpr auto substring =
         "SUBSTRING"_builtin.scalar<std::string(std::string_view, int), std::string(std::string_view, int, int)>();
 #endif
-#ifdef SQLITE_SOUNDEX
+#ifdef SQLITE_ORM_SOUNDEX_SUPPORTED
     inline constexpr auto soundex = "SOUNDEX"_builtin.scalar<std::string(std::string_view)>();
 #endif
 #if SQLITE_VERSION_NUMBER >= 3008001
@@ -32166,7 +32208,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     inline constexpr orm_builtin_function auto sqlite_compileoption_get = internal::sqlite_compileoption_get;
 #endif
-#ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
+#ifdef SQLITE_ORM_OFFSET_SQL_FUNC_SUPPORTED
     /**
      *  SQLITE_OFFSET(X) function https://www.sqlite.org/lang_corefunc.html#sqlite_offset
      *
@@ -32219,7 +32261,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     inline constexpr orm_builtin_function auto substring = internal::substring;
 #endif
-#ifdef SQLITE_SOUNDEX
+#ifdef SQLITE_ORM_SOUNDEX_SUPPORTED
     /**
      *  SOUNDEX(X) function https://www.sqlite.org/lang_corefunc.html#soundex
      */
@@ -32563,7 +32605,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../ast/builtin_function.h"
 
-#ifdef SQLITE_ENABLE_MATH_FUNCTIONS
+#ifdef SQLITE_ORM_MATH_FUNCTIONS_SUPPORTED
 
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
 namespace sqlite_orm::internal {
@@ -34500,7 +34542,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "dbos/dbstat.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
 #include <type_traits>  //  std::is_convertible
 #include <tuple>  //  std::tuple_size, std::tuple
 #include <utility>  //  std::move, std::index_sequence_for
@@ -34520,7 +34562,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../ast/table_reference.h"
 
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
 namespace sqlite_orm::internal {
     struct dbstat_module_tag : eponymous_module {
         // simplify conceptual/meta programming
@@ -34625,7 +34667,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return make_virtual_table<dbstat>(internal::dbstat_module_tag::name(), using_dbstat());
     }
 }
-#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
+#endif  //  SQLITE_ORM_DBSTAT_SUPPORTED
 
 // #include "dbos/generate_series.h"
 
@@ -34733,7 +34775,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     inline auto make_builtin_tables() {
         return std::tuple_cat(std::tuple{make_sqlite_schema_table()},
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
                               std::tuple{make_dbstat_table()},
 #endif
 #if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
@@ -34746,7 +34788,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "dbos/fts5.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
 #include <tuple>  //  std::tuple_size, std::make_tuple, std::get, std::tuple_cat, std::apply
 #include <utility>  //  std::forward, std::move
 #include <vector>
@@ -34764,7 +34806,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../vocabulary/node_algorithms.h"
 
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
 namespace sqlite_orm::internal {
     struct fts5_module_tag {
         // simplify conceptual/meta programming
@@ -34973,7 +35015,7 @@ namespace sqlite_orm::internal {
 #endif
 }
 
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     /**
@@ -35179,7 +35221,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
 #include <string_view>  //  std::string_view
 #endif
 #endif
@@ -35234,7 +35276,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
 namespace sqlite_orm::internal {
     /*
      *  The hidden FTS5 rank column as the deprecated `order_by(rank())` refers to it, i.e. not bound to a table.
@@ -35267,7 +35309,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "dbos/rtree.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ENABLE_RTREE
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
 #include <type_traits>  // std::is_same
 #include <tuple>  // std::tuple_element, std::make_tuple, std::apply
 #include <utility>  // std::forward
@@ -35290,7 +35332,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../../sqlite3/sqlite3_types.h"
 //  int64
 
-#ifdef SQLITE_ENABLE_RTREE
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
 namespace sqlite_orm::internal {
     struct rtree_module_tag {
         // simplify conceptual/meta programming
