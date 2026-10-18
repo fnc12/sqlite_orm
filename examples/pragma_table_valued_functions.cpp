@@ -55,7 +55,7 @@ int main() {
 
     //  SELECT "pragma_table_info".* FROM "pragma_table_info"('products')
     cout << "Columns of 'products' (generated columns are not listed by pragma_table_info):" << endl;
-    for (const table_info& column: storage.select(object<table_info>(), from(pragma_table_info_table("products")))) {
+    for (const table_info& column: storage.select(object<table_info>(), from(pragma_table_info("products")))) {
         cout << "  " << column.cid << ' ' << column.name << ' ' << column.type << (column.notnull ? " NOT NULL" : "")
              << (column.dflt_value.empty() ? "" : " DEFAULT " + column.dflt_value) << (column.pk ? " PRIMARY KEY" : "")
              << endl;
@@ -79,7 +79,7 @@ int main() {
     //  WHERE ("pragma_table_xinfo"."hidden" != 0)
     cout << "Generated columns of 'products':" << endl;
     for (auto& [name, hidden]: storage.select(columns(&table_xinfo::name, &table_xinfo::hidden),
-                                              from(pragma_table_xinfo_table("products", "main")),
+                                              from(pragma_table_xinfo("products", "main")),
                                               where(c(&table_xinfo::hidden) != 0))) {
         cout << "  " << name << (hidden == 2 ? " (VIRTUAL)" : hidden == 3 ? " (STORED)" : "") << endl;
     }
@@ -93,7 +93,7 @@ int main() {
     cout << "Columns of all tables:" << endl;
     for (auto& [tableName, columnName, type]:
          storage.select(columns(&sqlite_master::name, &table_info::name, &table_info::type),
-                        from(sqlite_master_table, pragma_table_info_table(&sqlite_master::name)),
+                        from(sqlite_master_table, pragma_table_info(&sqlite_master::name)),
                         where(c(&sqlite_master::type) == "table"),
                         multi_order_by(order_by(&sqlite_master::name), order_by(&table_info::cid)))) {
         cout << "  " << tableName << '.' << columnName << ' ' << type << endl;
