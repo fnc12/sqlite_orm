@@ -229,7 +229,7 @@ in. Two manifests, **siblings to `vocabulary/`**, restore it:
   `node_algorithms.h`: `field_predicates.h` today.
 
 The top-level headers (`not_single_header_include/sqlite_orm/sqlite_orm.h`, and
-`third_party/amalgamate/config.json` in the same order) include them, not the trait's users.
+`third_party/amalgamate/sqlite_orm.json` in the same order) include them, not the trait's users.
 That suffices for traits evaluated inside templates, i.e. in user code. A trait evaluated for
 a concrete type while the headers are processed — a customization point instantiated for
 `std::string` in non-template code — needs its definition earlier: hence the manifests, and

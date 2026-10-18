@@ -65,7 +65,7 @@
             "args": [
                 "third_party/amalgamate/amalgamate.py",
                 "-c",
-                "third_party/amalgamate/config.json",
+                "third_party/amalgamate/sqlite_orm.json",
                 "-s",
                 "."
             ],

@@ -22,7 +22,7 @@ if [[ "$version" != 20 ]]; then
 fi
 
 echo "Regenerating the amalgamation"
-"$python" third_party/amalgamate/amalgamate.py -c third_party/amalgamate/config.json -s .
+"$python" third_party/amalgamate/amalgamate.py -c third_party/amalgamate/sqlite_orm.json -s .
 
 echo "Formatting the sources"
 "$clang_format" --Wno-error=unknown -i -style=file \
