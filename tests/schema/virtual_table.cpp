@@ -337,15 +337,15 @@ TEST_CASE("pragma_table_info virtual table") {
         REQUIRE_FALSE(storage.table_exists("pragma_table_info"));
     }
     SECTION("table-valued function") {
-        auto rows = storage.select(&table_info::name, from(pragma_table_info_table("users")));
+        auto rows = storage.select(&table_info::name, from(pragma_table_info("users")));
         REQUIRE_THAT(rows, Equals(std::vector<std::string>{"id", "name", "nickname"}));
     }
     SECTION("schema argument") {
-        auto rows = storage.select(&table_info::name, from(pragma_table_info_table("users", "main")));
+        auto rows = storage.select(&table_info::name, from(pragma_table_info("users", "main")));
         REQUIRE_THAT(rows, Equals(std::vector<std::string>{"id", "name", "nickname"}));
     }
     SECTION("objects") {
-        auto rows = storage.select(object<table_info>(), from(pragma_table_info_table("users")));
+        auto rows = storage.select(object<table_info>(), from(pragma_table_info("users")));
         auto expected = storage.pragma.table_info("users");
         std::vector<row_type> actualRows, expectedRows;
         for (const auto& row: rows) {
@@ -360,13 +360,13 @@ TEST_CASE("pragma_table_info virtual table") {
         auto names = storage.select(&table_info::name, where(c(&table_info::hidden::arg) == "users"));
         REQUIRE_THAT(names, Equals(std::vector<std::string>{"id", "name", "nickname"}));
 
-        auto args = storage.select(&table_info::hidden::arg, from(pragma_table_info_table("users")));
+        auto args = storage.select(&table_info::hidden::arg, from(pragma_table_info("users")));
         REQUIRE_THAT(args, Equals(std::vector<std::string>{"users", "users", "users"}));
     }
     SECTION("default value") {
         //  `DEFAULT ''` is reported as the SQL expression text `''`, no default as an empty string (NULL)
         auto rows =
-            storage.select(columns(&table_info::name, &table_info::dflt_value), from(pragma_table_info_table("users")));
+            storage.select(columns(&table_info::name, &table_info::dflt_value), from(pragma_table_info("users")));
         REQUIRE_THAT(
             rows,
             Equals(std::vector<std::tuple<std::string, std::string>>{{"id", ""}, {"name", "''"}, {"nickname", ""}}));
@@ -397,11 +397,11 @@ TEST_CASE("pragma_table_xinfo virtual table") {
     }
     SECTION("table-valued function") {
         auto rows =
-            storage.select(columns(&table_xinfo::name, &table_xinfo::hidden), from(pragma_table_xinfo_table("users")));
+            storage.select(columns(&table_xinfo::name, &table_xinfo::hidden), from(pragma_table_xinfo("users")));
         REQUIRE_THAT(rows, Equals(std::vector<std::tuple<std::string, int>>{{"id", 0}, {"name", 0}}));
     }
     SECTION("objects") {
-        auto rows = storage.select(object<table_xinfo>(), from(pragma_table_xinfo_table("users", "main")));
+        auto rows = storage.select(object<table_xinfo>(), from(pragma_table_xinfo("users", "main")));
         auto expected = storage.pragma.table_xinfo("users");
         std::vector<row_type> actualRows, expectedRows;
         for (const auto& row: rows) {

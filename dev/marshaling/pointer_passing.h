@@ -1,5 +1,9 @@
 #pragma once
 
+/** @file The pointer-passing interface: pointer types, the pointer values `pointer_arg` and `pointer_binding`,
+ *        and their binding helpers.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3020000
 #include <type_traits>
