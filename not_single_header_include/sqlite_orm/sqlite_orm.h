@@ -2,7 +2,7 @@
 
 /** @file The top-level header of the library, when used as separate headers rather than as the amalgamation.
  *
- *  The order of the headers below matters, and `third_party/amalgamate/config.json` lists them in the same order.
+ *  The order of the headers below matters, and `third_party/amalgamate/sqlite_orm.json` lists them in the same order.
  *  Vocabulary traits are declared `extern const` and defined by the headers of what they classify, which arrive here
  *  rather than through the headers using them. That suffices for evaluations inside templates, which happen in user
  *  code; a trait evaluated for a concrete type while the headers are processed needs its definition included ahead.

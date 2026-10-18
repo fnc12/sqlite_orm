@@ -12,7 +12,7 @@ names the document that holds the rule; the rules themselves are not repeated he
   closed single-node composition → `vocabulary/algorithms/`, search across a collection →
   `schema/algorithms/`.
 - A new top-level header appears in both `not_single_header_include/sqlite_orm/sqlite_orm.h`
-  and `third_party/amalgamate/config.json`, in the same order
+  and `third_party/amalgamate/sqlite_orm.json`, in the same order
   (`scripts/check-amalgamation-sources.sh`).
 - A header reached through `dev/config/config.h` defines macros only: it is published as
   `<sqlite_orm/sqlite_orm_config.h>`, which consumers of the named module include ahead of `import sqlite_orm;`.

@@ -28,7 +28,7 @@ Search for the old path and its basename (`grep -rn 'old_name.h'`) in:
   header; keep each include's trailing comment naming what it is included for.
 - `dev/node_definitions.h`, `dev/node_algorithm_definitions.h` and `dev/interface_definitions.h`,
   if the header is registered there.
-- `not_single_header_include/sqlite_orm/sqlite_orm.h` and `third_party/amalgamate/config.json`, if it
+- `not_single_header_include/sqlite_orm/sqlite_orm.h` and `third_party/amalgamate/sqlite_orm.json`, if it
   is a top-level header: both, in the same order.
 - `AGENTS.md`, `docs/internals/`, `docs/plans/`, `.claude/agents/` and `.claude/skills/`.
 

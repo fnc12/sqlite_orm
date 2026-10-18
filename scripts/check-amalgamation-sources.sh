@@ -15,7 +15,7 @@ while read -r header config; do
         status=1
     fi
 done <<'PAIRS'
-not_single_header_include/sqlite_orm/sqlite_orm.h third_party/amalgamate/config.json
+not_single_header_include/sqlite_orm/sqlite_orm.h third_party/amalgamate/sqlite_orm.json
 not_single_header_include/sqlite_orm/sqlite_orm_config.h third_party/amalgamate/config_header.json
 PAIRS
 exit $status
