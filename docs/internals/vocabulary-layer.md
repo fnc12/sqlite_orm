@@ -233,7 +233,7 @@ The top-level headers (`not_single_header_include/sqlite_orm/sqlite_orm.h`, and
 That suffices for traits evaluated inside templates, i.e. in user code. A trait evaluated for
 a concrete type while the headers are processed — a customization point instantiated for
 `std::string` in non-template code — needs its definition earlier: hence the manifests, and
-`marshaling/pointer_value.h`, come ahead of `storage.h`. Otherwise the evaluation binds to the
+`marshaling/pointer_passing.h`, come ahead of `storage.h`. Otherwise the evaluation binds to the
 bare `extern const` declaration, which MSVC rejects as not a constant expression and GCC and
 Clang silently accept.
 

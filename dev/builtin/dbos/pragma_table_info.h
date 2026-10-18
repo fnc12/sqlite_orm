@@ -114,7 +114,7 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-    inline constexpr orm_table_reference auto pragma_table_info_table = c<table_info>();
+    inline constexpr orm_table_reference auto pragma_table_info = c<table_info>();
 }
 
 #if SQLITE_VERSION_NUMBER >= 3026000
@@ -139,7 +139,7 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-    inline constexpr orm_table_reference auto pragma_table_xinfo_table = c<table_xinfo>();
+    inline constexpr orm_table_reference auto pragma_table_xinfo = c<table_xinfo>();
 }
 #endif
 

@@ -47,7 +47,8 @@ which takes precedence where both apply.
   the public customization points binding, extracting and printing values (`statement_binder.h`,
   `row_extractor.h`, `field_printer.h`), what assembles or disassembles several values at once
   (`parameter_binders.h`, `struct_extractor.h`, `values_to_tuple.h`), and the pointer-passing
-  interface's values (`pointer_value.h`), which exist only to be bound and extracted.
+  interface's values (`pointer_passing.h`, the `"carray"` pointer type in
+  `carray_pointer_passing.h`), which exist only to be bound and extracted.
 - `dev/result_set/` - What a query yields and how it is iterated: the C++ result type of an
   expression (`column_result.h`), the column expressions of a select (`column_expression.h`)
   and the references to them (`column_reference.h`), and the lazy views over a select or the

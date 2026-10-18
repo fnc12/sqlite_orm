@@ -5,7 +5,7 @@
  *  Each is defined where what it reads is: a predicate derived from the type itself in `field_predicates.h`;
  *  a predicate testing a customization point next to that point (`is_bindable_v` in `statement_binder.h`,
  *  `is_printable_v` in `field_printer.h`, `is_integer_mapped_v` in `type_printer.h`); the pointer-passing
- *  predicates with its values in `marshaling/pointer_value.h`, which the top-level headers include ahead of
+ *  predicates with its values in `marshaling/pointer_passing.h`, which the top-level headers include ahead of
  *  the storage, as the customization points are instantiated for concrete types while the headers are processed.
  */
 
@@ -68,7 +68,7 @@ namespace sqlite_orm::internal {
     struct is_printable : std::bool_constant<is_printable_v<T>> {};
 }
 
-// Values of the pointer-passing interface, defined in `pointer_value.h`; always false before SQLite 3.20.
+// Values of the pointer-passing interface, defined in `pointer_passing.h`; always false before SQLite 3.20.
 // The top-level headers include it ahead of `storage.h`, as the marshaling headers evaluate them non-dependently.
 namespace sqlite_orm::internal {
     /*
