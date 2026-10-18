@@ -17,9 +17,9 @@ pointers. License: AGPL for open source, MIT after purchase.
   or renaming a header.**
 - `include/sqlite_orm/sqlite_orm.h` - the **generated** single-header amalgamation of `dev/`.
   Never edit it by hand: change `dev/` and regenerate it (see [Before every commit](#before-every-commit)).
-  `include/sqlite_orm/config.h` is generated the same way, from `dev/config/config.h`.
+  `include/sqlite_orm/sqlite_orm_config.h` is generated the same way, from `dev/config/config.h`.
 - `not_single_header_include/sqlite_orm/` - the non-amalgamated variants. The includes of
-  `sqlite_orm.h` and `config.h` and the `sources` of `third_party/amalgamate/config.json` and
+  `sqlite_orm.h` and `sqlite_orm_config.h` and the `sources` of `third_party/amalgamate/config.json` and
   `config_header.json` respectively list the same headers in the same order; change both
   together (`scripts/check-amalgamation-sources.sh` checks it).
 - `modules/` - the C++20 named module; public symbols are declared in

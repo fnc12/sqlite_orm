@@ -76,7 +76,7 @@ which takes precedence where both apply.
   carrying a DSL expression.
 - `dev/config/` - The configuration, macros only: the public set in `config.h` (detection of the
   language, standard library, compiler and platform, and sqlite_orm's capability macros
-  `SQLITE_ORM_WITH_*`), also published as `<sqlite_orm/config.h>` for consumers of the named
+  `SQLITE_ORM_WITH_*`), also published as `<sqlite_orm/sqlite_orm_config.h>` for consumers of the named
   module, the macros sqlite_orm's own code is spelled with in
   `internal_macros.h`, and the `prologue.h`/`epilogue.h` pair around the library.
 - `dev/functional/` - General-purpose C++ utilities with no SQL or DSL meaning: the prelude

@@ -50,7 +50,9 @@ if(SQLITE_ORM_MODULE_INTERFACE_UNIT)
     set_target_properties(sqlite_orm_module PROPERTIES
         CXX_SCAN_FOR_MODULES ON)
 
-    # note: the compile options that affect the module's content need to match those of the importing sources
+    # note: the compile options that affect the module's content need to match those of the importing sources,
+    # where <sqlite_orm/sqlite_orm_config.h> evaluates the configuration again; hence they are PUBLIC,
+    # and so must be any configuration macro a project adds, e.g. `SQLITE_ORM_ENABLE_FTS5`
     if(SQLITE_ORM_OMITS_CODECVT)
         target_compile_definitions(sqlite_orm_module PUBLIC SQLITE_ORM_OMITS_CODECVT=1)
     endif()

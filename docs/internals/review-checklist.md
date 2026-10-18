@@ -15,7 +15,7 @@ names the document that holds the rule; the rules themselves are not repeated he
   and `third_party/amalgamate/config.json`, in the same order
   (`scripts/check-amalgamation-sources.sh`).
 - A header reached through `dev/config/config.h` defines macros only: it is published as
-  `<sqlite_orm/config.h>`, which consumers of the named module include ahead of `import sqlite_orm;`.
+  `<sqlite_orm/sqlite_orm_config.h>`, which consumers of the named module include ahead of `import sqlite_orm;`.
   Macros used only by sqlite_orm's own code go into `dev/config/internal_macros.h`.
 
 ## Vocabulary
