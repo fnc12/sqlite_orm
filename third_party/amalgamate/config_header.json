@@ -1,0 +1,9 @@
+{
+  "project": "SQLite ORM",
+  "_comment": "The public configuration, for consumers of the named module; the sources match the includes of not_single_header_include/sqlite_orm/config.h.",
+  "target": "include/sqlite_orm/config.h",
+  "sources": [
+    "dev/config/config.h"
+  ],
+  "include_paths": [ "dev" ]
+}
