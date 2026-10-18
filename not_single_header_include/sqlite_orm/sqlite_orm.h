@@ -8,10 +8,12 @@
  *  code; a trait evaluated for a concrete type while the headers are processed needs its definition included ahead.
  */
 
-#include "../../dev/functional/start_macros.h"
+#include "../../dev/config/prologue.h"
 // Although every header file typically needs to contain all the necessary files, the configuration is an exception (as it would be easily forgotten).
 // Therefore, we include the configuration and all underlying C++ core features to make them universally available.
-#include "../../dev/functional/config.h"
+#include "../../dev/config/config.h"
+#include "../../dev/config/internal_macros.h"
+#include "../../dev/functional/cxx_universal.h"
 
 // the SQLite C library interface
 #include "../../dev/sqlite3_interface.h"
@@ -38,4 +40,4 @@
 #include "../../dev/builtin/functions.h"
 #include "../../dev/builtin/dbos.h"
 
-#include "../../dev/functional/finish_macros.h"
+#include "../../dev/config/epilogue.h"

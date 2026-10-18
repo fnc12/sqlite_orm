@@ -1,23 +1,11 @@
 #pragma once
 
 /*
- *  This header defines macros for circumventing compiler quirks on which sqlite_orm depends.
- *  May amend cxx_core_features.h
+ *  Compiler detection, and the workarounds for compiler quirks sqlite_orm depends on.
+ *  May amend language_features.h.
  */
 
-#ifdef __clang__
-#define SQLITE_ORM_DO_PRAGMA(...) _Pragma(#__VA_ARGS__)
-#endif
-
-#ifdef __clang__
-#define SQLITE_ORM_CLANG_SUPPRESS(warnoption, ...)                                                                     \
-    SQLITE_ORM_DO_PRAGMA(clang diagnostic push)                                                                        \
-    SQLITE_ORM_DO_PRAGMA(clang diagnostic ignored warnoption)                                                          \
-    __VA_ARGS__                                                                                                        \
-    SQLITE_ORM_DO_PRAGMA(clang diagnostic pop)
-#else
-#define SQLITE_ORM_CLANG_SUPPRESS(warnoption, ...) __VA_ARGS__
-#endif
+#include "language_features.h"
 
 #if defined(_MSC_VER) && !defined(__clang__)
 #define SQLITE_ORM_MS_MSVC
@@ -30,19 +18,6 @@
 #if defined(__GNUC__) && !defined(__clang__)
 #define SQLITE_ORM_GNU_GCC
 #endif
-
-#ifdef SQLITE_ORM_MS_MSVC
-#define SQLITE_ORM_DO_PRAGMA(...) __pragma(__VA_ARGS__)
-#endif
-
-#ifdef SQLITE_ORM_MS_MSVC
-#define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) SQLITE_ORM_DO_PRAGMA(warning(suppress : warncode))
-#else
-#define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) __VA_ARGS__
-#endif
-
-// msvc has the bad habit of diagnosing overalignment of types with an explicit alignment specifier.
-#define SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(...) SQLITE_ORM_MSVC_SUPPRESS(4324, __VA_ARGS__)
 
 #if defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1920)
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION

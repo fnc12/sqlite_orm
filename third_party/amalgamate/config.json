@@ -3,8 +3,10 @@
   "_comment": "The sources are ordered like the includes of not_single_header_include/sqlite_orm/sqlite_orm.h, which explains why the order matters.",
   "target": "include/sqlite_orm/sqlite_orm.h",
   "sources": [
-    "dev/functional/start_macros.h",
-    "dev/functional/config.h",
+    "dev/config/prologue.h",
+    "dev/config/config.h",
+    "dev/config/internal_macros.h",
+    "dev/functional/cxx_universal.h",
 
     "dev/sqlite3_interface.h",
 
@@ -25,7 +27,7 @@
     "dev/builtin/functions.h",
     "dev/builtin/dbos.h",
 
-    "dev/functional/finish_macros.h"
+    "dev/config/epilogue.h"
   ],
   "include_paths": [ "dev" ]
 }

@@ -21,5 +21,5 @@ stage, commit or run builds; Bash is for read-only git commands (`git diff`, `gi
    outlier. Mark a finding as uncertain where the documents leave room. If nothing is found,
    say so in one line.
 
-Do not report a missing include of `dev/functional/config.h`, and do not comment on
+Do not report a missing include of a `dev/config/` header, and do not comment on
 correctness beyond what a convention covers unless it is an evident bug.

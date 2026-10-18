@@ -51,10 +51,11 @@ projections, never pattern-matching the concrete node. **Register the header in
 `dev/node_definitions.h`**: a missing entry compiles, and the trait silently falls back to its
 primary template.
 
-**The configuration is universally available.** Every header can rely on
-`dev/functional/config.h` without including it: the C++ feature and compiler macros, the
-platform macros, `SQLITE_ORM_EXPORT`, and the SQLite version and feature macros
-(`SQLITE_VERSION_NUMBER`, `SQLITE_ORM_JSON_SUPPORTED`, ...). This covers configuration only.
+**The configuration is universally available.** Every header can rely on `dev/config/`
+without including it: the C++ feature and compiler macros, the platform macros, the SQLite
+version and feature macros (`SQLITE_VERSION_NUMBER`, `SQLITE_ORM_JSON_SUPPORTED`, ...), the
+capability macros (`SQLITE_ORM_WITH_CTE`, ...) and the internal macros
+(`SQLITE_ORM_EXPORT`, ...). This covers configuration only.
 A header that uses the SQLite C API (functions, types, constants such as
 `SQLITE_OPEN_READONLY`) includes `<sqlite3.h>` itself, and a header that uses a sqlite_orm
 symbol includes the header declaring it.
