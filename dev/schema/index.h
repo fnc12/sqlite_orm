@@ -7,7 +7,7 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
-#include "../tuple_helper/tuple_traits.h"
+#include "../functional/tuple_helper/tuple_traits.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause, is_index_element_of_v
 #include "indexed_column.h"  // make_indexed_column

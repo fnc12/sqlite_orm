@@ -5,8 +5,8 @@
 #include <tuple>  //  std::tuple, std::tuple_cat, std::tuple_element
 #endif
 
-#include "../functional/mpl/conditional.h"
-#include "../functional/index_sequence_util.h"
+#include "../mpl/conditional.h"
+#include "../index_sequence_util.h"
 
 namespace sqlite_orm::internal {
     template<typename... input_t>

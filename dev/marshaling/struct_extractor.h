@@ -13,7 +13,7 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/gsl.h"
 #include "../functional/type_traits.h"
-#include "../tuple_helper/tuple_transformer.h"
+#include "../functional/tuple_helper/tuple_transformer.h"
 #include "../vocabulary/node_traits.h"  //  table_reference, is_table_reference_v
 #include "../schema/algorithms/table_lookup.h"
 #include "column_result_proxy.h"

@@ -13,7 +13,7 @@
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/type_traits.h"
-#include "../tuple_helper/tuple_transformer.h"
+#include "../functional/tuple_helper/tuple_transformer.h"
 #include "../error_code.h"
 #include "../ast/alias.h"
 #include "../vocabulary/node_traits.h"

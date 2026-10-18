@@ -2271,11 +2271,11 @@ namespace sqlite_orm::internal {
 
 // #include "../sqlite3/sqlite3_types.h"
 //  int64
-// #include "../tuple_helper/tuple_traits.h"
+// #include "../functional/tuple_helper/tuple_traits.h"
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../cxx_type_traits_polyfill.h"
 
-// #include "../functional/mpl.h"
+// #include "../mpl.h"
 
 /*
  *  Symbols for 'template metaprogramming' (compile-time template programming),
@@ -4948,16 +4948,16 @@ namespace sqlite_orm::internal {
 
 // #include "../../functional/mpl.h"
 
-// #include "../../tuple_helper/tuple_filter.h"
+// #include "../../functional/tuple_helper/tuple_filter.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::integral_constant, std::index_sequence, std::conditional, std::declval
 #include <tuple>  //  std::tuple, std::tuple_cat, std::tuple_element
 #endif
 
-// #include "../functional/mpl/conditional.h"
+// #include "../mpl/conditional.h"
 
-// #include "../functional/index_sequence_util.h"
+// #include "../index_sequence_util.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::index_sequence
@@ -5142,9 +5142,9 @@ namespace sqlite_orm::internal {
 /** @file Closed alias templates computing per-column type tuples of a single table definition.
  */
 
-// #include "../../tuple_helper/tuple_filter.h"
+// #include "../../functional/tuple_helper/tuple_filter.h"
 
-// #include "../../tuple_helper/tuple_transformer.h"
+// #include "../../functional/tuple_helper/tuple_transformer.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_reference, std::common_type, std::index_sequence, std::make_index_sequence, std::forward, std::move, std::integral_constant, std::declval
@@ -5152,9 +5152,9 @@ namespace sqlite_orm::internal {
 #include <functional>  //  std::invoke
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../cxx_type_traits_polyfill.h"
 
-// #include "../functional/cxx_utility_polyfill.h"
+// #include "../cxx_utility_polyfill.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>
@@ -5184,7 +5184,7 @@ namespace sqlite_orm::internal {
     }
 }
 //  polyfill::forward_like
-// #include "../functional/cxx_functional_polyfill.h"
+// #include "../cxx_functional_polyfill.h"
 
 #ifdef SQLITE_ORM_IMPORT_STD_MODULE
 #include <version>
@@ -5246,7 +5246,7 @@ namespace sqlite_orm {
     namespace polyfill = internal::polyfill;
 }
 //  polyfill::identity
-// #include "../functional/mpl.h"
+// #include "../mpl.h"
 
 namespace sqlite_orm::internal {
     template<class Pack, template<class...> class Op>
@@ -5523,7 +5523,7 @@ namespace sqlite_orm::internal {
 
 // #include "../../functional/mpl.h"
 
-// #include "../../tuple_helper/tuple_traits.h"
+// #include "../../functional/tuple_helper/tuple_traits.h"
 
 // #include "../node_traits.h"
 
@@ -6380,9 +6380,9 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/mpl.h"
 
-// #include "../tuple_helper/tuple_filter.h"
+// #include "../functional/tuple_helper/tuple_filter.h"
 
-// #include "../tuple_helper/tuple_transformer.h"
+// #include "../functional/tuple_helper/tuple_transformer.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -6470,9 +6470,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/type_traits.h"
 
-// #include "../tuple_helper/tuple_filter.h"
+// #include "../functional/tuple_helper/tuple_filter.h"
 
-// #include "../tuple_helper/tuple_iteration.h"
+// #include "../functional/tuple_helper/tuple_iteration.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::get, std::tuple_element, std::tuple_size
@@ -6539,7 +6539,7 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "../tuple_helper/tuple_transformer.h"
+// #include "../functional/tuple_helper/tuple_transformer.h"
 
 // #include "../member_traits/member_traits.h"
 
@@ -6843,9 +6843,9 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/mpl.h"
 
-// #include "../tuple_helper/tuple_filter.h"
+// #include "../functional/tuple_helper/tuple_filter.h"
 
-// #include "../tuple_helper/tuple_traits.h"
+// #include "../functional/tuple_helper/tuple_traits.h"
 
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
@@ -7485,7 +7485,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../tuple_helper/tuple_traits.h"
+// #include "../functional/tuple_helper/tuple_traits.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -8175,7 +8175,7 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "../../tuple_helper/same_or_void.h"
+// #include "../../functional/tuple_helper/same_or_void.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
@@ -12249,7 +12249,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/is_base_template_of.h"
 
-// #include "../tuple_helper/tuple_iteration.h"
+// #include "../functional/tuple_helper/tuple_iteration.h"
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -12397,7 +12397,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cstring_literal.h"
 
-// #include "../tuple_helper/tuple_transformer.h"
+// #include "../functional/tuple_helper/tuple_transformer.h"
 
 // #include "alias.h"
 
@@ -12411,7 +12411,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../tuple_helper/tuple_traits.h"
+// #include "../functional/tuple_helper/tuple_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
 // clause predicates
@@ -12997,7 +12997,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/index_sequence_util.h"
 
-// #include "../../tuple_helper/tuple_filter.h"
+// #include "../../functional/tuple_helper/tuple_filter.h"
 
 // #include "../../vocabulary/node_traits.h"
 
@@ -13274,7 +13274,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/cxx_functional_polyfill.h"
 //  polyfill::identity
-// #include "../../tuple_helper/tuple_traits.h"
+// #include "../../functional/tuple_helper/tuple_traits.h"
 
 // #include "../../vocabulary/node_traits.h"
 
@@ -13291,7 +13291,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../tuple_helper/tuple_traits.h"
+// #include "../functional/tuple_helper/tuple_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
 // is_select_clause
@@ -13745,7 +13745,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/cxx_functional_polyfill.h"
 //  polyfill::identity
-// #include "../../tuple_helper/tuple_traits.h"
+// #include "../../functional/tuple_helper/tuple_traits.h"
 
 // #include "../../vocabulary/node_traits.h"
 
@@ -13936,7 +13936,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/type_traits.h"
 
-// #include "../../tuple_helper/tuple_traits.h"
+// #include "../../functional/tuple_helper/tuple_traits.h"
 
 // #include "../../serialization/serializer_context.h"
 
@@ -14067,7 +14067,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "../../tuple_helper/tuple_traits.h"
+// #include "../../functional/tuple_helper/tuple_traits.h"
 
 // #include "../../vocabulary/node_traits.h"
 
@@ -14174,7 +14174,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/type_traits.h"
 //  value_unref_type_t
-// #include "../../tuple_helper/tuple_traits.h"
+// #include "../../functional/tuple_helper/tuple_traits.h"
 
 // #include "../../vocabulary/node_traits.h"
 
@@ -17080,13 +17080,13 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 
-// #include "../tuple_helper/tuple_traits.h"
+// #include "../functional/tuple_helper/tuple_traits.h"
 
-// #include "../tuple_helper/tuple_filter.h"
+// #include "../functional/tuple_helper/tuple_filter.h"
 
-// #include "../tuple_helper/tuple_transformer.h"
+// #include "../functional/tuple_helper/tuple_transformer.h"
 
-// #include "../tuple_helper/tuple_iteration.h"
+// #include "../functional/tuple_helper/tuple_iteration.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -18080,9 +18080,9 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 //  common_type_of_t
-// #include "../tuple_helper/tuple_traits.h"
+// #include "../functional/tuple_helper/tuple_traits.h"
 
-// #include "../tuple_helper/tuple_fy.h"
+// #include "../functional/tuple_helper/tuple_fy.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>
@@ -18102,9 +18102,9 @@ namespace sqlite_orm::internal {
     using tuplify_t = typename tuplify<T>::type;
 }
 
-// #include "../tuple_helper/tuple_filter.h"
+// #include "../functional/tuple_helper/tuple_filter.h"
 
-// #include "../tuple_helper/tuple_transformer.h"
+// #include "../functional/tuple_helper/tuple_transformer.h"
 
 // #include "../member_traits/member_traits.h"
 
@@ -18122,7 +18122,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 
-// #include "../tuple_helper/tuple_transformer.h"
+// #include "../functional/tuple_helper/tuple_transformer.h"
 
 // #include "../vocabulary/node_traits.h"
 //  is_table_reference
@@ -18182,7 +18182,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 
-// #include "../tuple_helper/tuple_fy.h"
+// #include "../functional/tuple_helper/tuple_fy.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -18340,11 +18340,11 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/mpl.h"
 
-// #include "../tuple_helper/tuple_filter.h"
+// #include "../functional/tuple_helper/tuple_filter.h"
 //  tuple_from_index_sequence_t
-// #include "../tuple_helper/tuple_traits.h"
+// #include "../functional/tuple_helper/tuple_traits.h"
 //  tuple_has_type
-// #include "../tuple_helper/tuple_transformer.h"
+// #include "../functional/tuple_helper/tuple_transformer.h"
 //  create_from_tuple
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 //  is_with_clause
@@ -19234,9 +19234,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/type_traits.h"
 
-// #include "../../tuple_helper/tuple_filter.h"
+// #include "../../functional/tuple_helper/tuple_filter.h"
 
-// #include "../../tuple_helper/tuple_iteration.h"
+// #include "../../functional/tuple_helper/tuple_iteration.h"
 
 // #include "../../vocabulary/node_traits.h"
 
@@ -19289,11 +19289,11 @@ namespace sqlite_orm::internal {
 
 // #include "../../functional/type_traits.h"
 
-// #include "../../tuple_helper/tuple_traits.h"
+// #include "../../functional/tuple_helper/tuple_traits.h"
 
-// #include "../../tuple_helper/tuple_filter.h"
+// #include "../../functional/tuple_helper/tuple_filter.h"
 
-// #include "../../tuple_helper/tuple_iteration.h"
+// #include "../../functional/tuple_helper/tuple_iteration.h"
 
 // #include "../../vocabulary/node_traits.h"
 
@@ -20033,7 +20033,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 
-// #include "../tuple_helper/tuple_iteration.h"
+// #include "../functional/tuple_helper/tuple_iteration.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -21406,7 +21406,7 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_v
 
 // #include "../functional/type_traits.h"
 
-// #include "../tuple_helper/tuple_transformer.h"
+// #include "../functional/tuple_helper/tuple_transformer.h"
 
 // #include "../vocabulary/node_traits.h"
 //  table_reference, is_table_reference_v
@@ -21732,7 +21732,7 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 
 // #include "../sqlite3/sqlite3_xdestroy.h"
 
-// #include "../tuple_helper/tuple_iteration.h"
+// #include "../functional/tuple_helper/tuple_iteration.h"
 
 // #include "../vocabulary/node_traits.h"
 // projections
@@ -21993,7 +21993,7 @@ namespace sqlite_orm {
 
 // #include "../functional/type_traits.h"
 
-// #include "../tuple_helper/tuple_iteration.h"
+// #include "../functional/tuple_helper/tuple_iteration.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -25081,7 +25081,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 
-// #include "../tuple_helper/tuple_filter.h"
+// #include "../functional/tuple_helper/tuple_filter.h"
 
 // #include "../ast/crud/insert.h"
 // conflict_action
@@ -25190,9 +25190,9 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 
-// #include "../tuple_helper/tuple_traits.h"
+// #include "../functional/tuple_helper/tuple_traits.h"
 
-// #include "../tuple_helper/tuple_iteration.h"
+// #include "../functional/tuple_helper/tuple_iteration.h"
 
 // #include "../error_code.h"
 
@@ -25315,7 +25315,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 
-// #include "../tuple_helper/tuple_transformer.h"
+// #include "../functional/tuple_helper/tuple_transformer.h"
 
 // #include "../error_code.h"
 
@@ -28067,7 +28067,7 @@ namespace sqlite_orm::internal {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "tuple_helper/tuple_fy.h"
+// #include "functional/tuple_helper/tuple_fy.h"
 
 // #include "vocabulary/node_traits.h"
 
@@ -28096,7 +28096,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 
-// #include "../tuple_helper/tuple_transformer.h"
+// #include "../functional/tuple_helper/tuple_transformer.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -30279,7 +30279,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <optional>  //  std::optional
 #endif
 
-// #include "../tuple_helper/tuple_traits.h"
+// #include "../functional/tuple_helper/tuple_traits.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -30707,7 +30707,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 
-// #include "../tuple_helper/tuple_filter.h"
+// #include "../functional/tuple_helper/tuple_filter.h"
 
 // #include "../execution/prepared_statement.h"
 
@@ -31119,7 +31119,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "../../tuple_helper/tuple_traits.h"
+// #include "../../functional/tuple_helper/tuple_traits.h"
 //  count_tuple
 // #include "../../ast/literal.h"
 //  literal_holder
@@ -34510,7 +34510,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/gsl.h"
 
-// #include "../../tuple_helper/tuple_filter.h"
+// #include "../../functional/tuple_helper/tuple_filter.h"
 
 // #include "../../member_traits/member_traits.h"
 
@@ -35279,7 +35279,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/mpl.h"
 
-// #include "../../tuple_helper/tuple_filter.h"
+// #include "../../functional/tuple_helper/tuple_filter.h"
 
 // #include "../../vocabulary/node_traits.h"
 

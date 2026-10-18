@@ -76,5 +76,5 @@ which takes precedence where both apply.
   carrying a DSL expression.
 - `dev/functional/` - The configuration (`config.h`, the C++ feature and compiler macros) and
   general-purpose C++ utilities with no SQL or DSL meaning: polyfills, metaprogramming
-  (`mpl.h`), reflection helpers (`meta_util.h`).
-- `dev/tuple_helper/` - Generic algorithms over tuples and type lists.
+  (`mpl.h`), reflection helpers (`meta_util.h`), and in `tuple_helper/` generic algorithms over
+  tuples and type lists.

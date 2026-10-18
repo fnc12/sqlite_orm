@@ -8,8 +8,8 @@
 #endif
 
 #include "../../functional/type_traits.h"
-#include "../../tuple_helper/tuple_filter.h"
-#include "../../tuple_helper/tuple_iteration.h"
+#include "../../functional/tuple_helper/tuple_filter.h"
+#include "../../functional/tuple_helper/tuple_iteration.h"
 #include "../../vocabulary/node_traits.h"
 #include "../db_objects.h"
 

@@ -8,7 +8,7 @@
 #include <optional>  //  std::optional
 #endif
 
-#include "../tuple_helper/tuple_traits.h"
+#include "../functional/tuple_helper/tuple_traits.h"
 #include "../vocabulary/node_traits.h"
 #include "../serialization/default_value_extractor.h"
 #include "column.h"

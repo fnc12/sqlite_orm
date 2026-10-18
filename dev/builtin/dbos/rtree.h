@@ -11,7 +11,7 @@
 
 #include "../../functional/gsl.h"
 #include "../../functional/mpl.h"
-#include "../../tuple_helper/tuple_filter.h"
+#include "../../functional/tuple_helper/tuple_filter.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/node_algorithms.h"
 #include "../../schema/virtual_table.h"
