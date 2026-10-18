@@ -54,9 +54,8 @@ if(SQLITE_ORM_MODULE_INTERFACE_UNIT)
     if(SQLITE_ORM_OMITS_CODECVT)
         target_compile_definitions(sqlite_orm_module PUBLIC SQLITE_ORM_OMITS_CODECVT=1)
     endif()
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 16 AND CMAKE_CXX_STANDARD GREATER_EQUAL 26)
-        target_compile_options(sqlite_orm_module PUBLIC -freflection)
-    endif()
+    # note: no `-freflection` for GCC 16: it fails to read back the compiled module
+    # ("failed to read compiled module cluster ...: Bad file data")
 
     target_link_libraries(sqlite_orm_module PUBLIC sqlite_orm)
 endif()
