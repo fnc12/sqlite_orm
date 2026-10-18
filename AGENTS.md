@@ -20,7 +20,7 @@ pointers. License: AGPL for open source, MIT after purchase.
   `include/sqlite_orm/sqlite_orm_config.h` is generated the same way, from `dev/config/config.h`.
 - `not_single_header_include/sqlite_orm/` - the non-amalgamated variants. The includes of
   `sqlite_orm.h` and `sqlite_orm_config.h` and the `sources` of `third_party/amalgamate/sqlite_orm.json` and
-  `config_header.json` respectively list the same headers in the same order; change both
+  `sqlite_orm_config.json` respectively list the same headers in the same order; change both
   together (`scripts/check-amalgamation-sources.sh` checks it).
 - `modules/` - the C++20 named module; public symbols are declared in
   `SQLITE_ORM_EXPORT namespace sqlite_orm`.

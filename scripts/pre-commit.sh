@@ -23,7 +23,7 @@ fi
 
 echo "Regenerating the amalgamation"
 "$python" third_party/amalgamate/amalgamate.py -c third_party/amalgamate/sqlite_orm.json -s .
-"$python" third_party/amalgamate/amalgamate.py -c third_party/amalgamate/config_header.json -s .
+"$python" third_party/amalgamate/amalgamate.py -c third_party/amalgamate/sqlite_orm_config.json -s .
 
 echo "Formatting the sources"
 "$clang_format" --Wno-error=unknown -i -style=file \
