@@ -1,16 +1,16 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if
-#include <tuple>  //  std::tuple
-#include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
+#include <tuple>  //  std::tuple
+#include <type_traits>  //  std::enable_if
+#include <utility>  //  std::pair
 #endif
 
-#include "../functional/type_traits.h"
-#include "../tuple_helper/tuple_filter.h"
-#include "../execution/prepared_statement.h"
 #include "../functional/optional_container.h"
+#include "../functional/type_traits.h"
+#include "../execution/prepared_statement.h"
+#include "../tuple_helper/tuple_filter.h"
 #include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {

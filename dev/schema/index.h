@@ -1,15 +1,15 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple, std::declval, std::tuple_element_t
 #include <string>  //  std::string
+#include <tuple>  //  std::tuple, std::declval, std::tuple_element_t
 #include <utility>  //  std::forward
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../tuple_helper/tuple_traits.h"
-#include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause, is_index_element_of_v
+#include "../vocabulary/node_traits.h"
 #include "indexed_column.h"  // make_indexed_column
 
 namespace sqlite_orm::internal {

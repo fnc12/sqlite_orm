@@ -1,7 +1,7 @@
 #include <sqlite_orm/sqlite_orm.h>
 
-#include <string>
 #include <iostream>
+#include <string>
 
 using std::cout;
 using std::endl;

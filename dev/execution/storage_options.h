@@ -4,10 +4,10 @@
 #ifdef SQLITE_ORM_IMPORT_STD_MODULE
 #include <version>
 #else
-#include <type_traits>  //  std::is_aggregate
-#include <utility>  //  std::move
 #include <functional>  //  std::function
 #include <string_view>  //  std::string_view
+#include <type_traits>  //  std::is_aggregate
+#include <utility>  //  std::move
 #endif
 
 #include "../builtin/vfs.h"  //  default_vfs_name

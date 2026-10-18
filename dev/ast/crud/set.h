@@ -5,16 +5,16 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple, std::tuple_size
-#include <string>  //  std::string
-#include <vector>  //  std::vector
 #include <set>  //  std::set
+#include <string>  //  std::string
+#include <tuple>  //  std::tuple, std::tuple_size
 #include <utility>  //  std::pair
+#include <vector>  //  std::vector
 #endif
 
 #include "../../functional/type_traits.h"
-#include "../../tuple_helper/tuple_traits.h"
 #include "../../serialization/serializer_context.h"
+#include "../../tuple_helper/tuple_traits.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 

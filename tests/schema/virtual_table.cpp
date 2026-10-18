@@ -1,7 +1,7 @@
+#include <catch2/catch_all.hpp>
 #include <cstdint>  //  std::int32_t
 #include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch_all.hpp>
 
 extern "C" int sqlite3_series_init(sqlite3*, char**, const sqlite3_api_routines*);
 

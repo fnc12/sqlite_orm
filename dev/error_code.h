@@ -5,8 +5,8 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <system_error>  //  std::error_code, std::error_category, std::is_error_code_enum
 #include <string>  //  std::string
+#include <system_error>  //  std::error_code, std::error_category, std::is_error_code_enum
 #include <type_traits>  //  std::true_type
 #endif
 

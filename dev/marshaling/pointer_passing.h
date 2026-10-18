@@ -6,8 +6,8 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3020000
-#include <type_traits>
 #include <memory>
+#include <type_traits>
 #include <utility>
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
@@ -16,8 +16,8 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
-#include "../functional/gsl.h"
 #include "../functional/cstring_literal.h"
+#include "../functional/gsl.h"
 #include "../sqlite3/sqlite3_xdestroy.h"
 #include "../vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_pointer_arg_v, is_pointer_binding_v
 

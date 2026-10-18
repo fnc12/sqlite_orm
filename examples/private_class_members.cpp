@@ -8,9 +8,9 @@
  *  setter: `void O::*(F)`
  */
 
-#include <sqlite_orm/sqlite_orm.h>
-#include <iostream>
 #include <assert.h>
+#include <iostream>
+#include <sqlite_orm/sqlite_orm.h>
 
 using std::cout;
 using std::endl;

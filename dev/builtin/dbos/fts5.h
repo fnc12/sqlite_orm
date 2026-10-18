@@ -2,18 +2,18 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#include <optional>  //  std::optional
 #include <tuple>  //  std::tuple_size, std::make_tuple, std::get, std::tuple_cat, std::apply
 #include <utility>  //  std::forward, std::move
 #include <vector>
-#include <optional>  //  std::optional
 #endif
 #endif
 
 #include "../../functional/gsl.h"
 #include "../../member_traits/member_traits.h"
 #include "../../schema/virtual_table.h"
-#include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/node_algorithms.h"
+#include "../../vocabulary/node_traits.h"
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 namespace sqlite_orm::internal {

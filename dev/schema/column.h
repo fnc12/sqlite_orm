@@ -1,9 +1,9 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple
-#include <string>  //  std::string
 #include <optional>  //  std::optional
+#include <string>  //  std::string
+#include <tuple>  //  std::tuple
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_member_object_pointer, std::is_signed
 #include <utility>  //  std::move, std::index_sequence, std::make_index_sequence
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
@@ -14,14 +14,14 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/meta_util.h"
 #include "../functional/type_traits.h"
+#include "../member_traits/member_traits.h"
 #include "../sqlite3/sqlite3_types.h"  //  int64
 #include "../tuple_helper/tuple_traits.h"
-#include "../member_traits/member_traits.h"
 #include "../type_mapping/type_is_nullable.h"
-#include "column_identifier.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "column_identifier.h"
 
 namespace sqlite_orm::internal {
     struct empty_setter {};

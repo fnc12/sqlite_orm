@@ -6,14 +6,14 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <functional>  //  std::invoke
+#include <tuple>  //  std::tuple, std::tuple_size
 #include <type_traits>  //  std::enable_if, std::conjunction, std::is_same, std::is_convertible, std::declval
 #include <utility>  //  std::move, std::forward, std::pair
-#include <tuple>  //  std::tuple, std::tuple_size
-#include <functional>  //  std::invoke
 #endif
 
-#include "../../functional/cxx_type_traits_polyfill.h"
 #include "../../functional/cxx_functional_polyfill.h"  //  polyfill::identity
+#include "../../functional/cxx_type_traits_polyfill.h"
 #include "../../tuple_helper/tuple_traits.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits

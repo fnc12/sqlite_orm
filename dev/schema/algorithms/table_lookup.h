@@ -13,16 +13,16 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if, std::is_same, std::is_void
-#include <tuple>  // std::tuple_size, std::get
-#include <utility>  //  std::index_sequence, std::make_index_sequence
 #include <string>  //  std::string
+#include <tuple>  // std::tuple_size, std::get
+#include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if, std::is_same, std::is_void
+#include <utility>  //  std::index_sequence, std::make_index_sequence
 #endif
 
 #include "../../functional/cxx_type_traits_polyfill.h"
 #include "../../functional/type_traits.h"
-#include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/node_algorithms.h"  //  column_field_types_t, column_field_expressions_t
+#include "../../vocabulary/node_traits.h"
 #include "../db_objects.h"
 
 namespace sqlite_orm::internal {

@@ -2,20 +2,20 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_RTREE
-#include <type_traits>  // std::is_same
-#include <tuple>  // std::tuple_element, std::make_tuple, std::apply
-#include <utility>  // std::forward
 #include <cstdint>  //  std::int32_t
+#include <tuple>  // std::tuple_element, std::make_tuple, std::apply
+#include <type_traits>  // std::is_same
+#include <utility>  // std::forward
 #endif
 #endif
 
 #include "../../functional/gsl.h"
 #include "../../functional/mpl.h"
-#include "../../tuple_helper/tuple_filter.h"
-#include "../../vocabulary/node_traits.h"
-#include "../../vocabulary/node_algorithms.h"
 #include "../../schema/virtual_table.h"
 #include "../../sqlite3/sqlite3_types.h"  //  int64
+#include "../../tuple_helper/tuple_filter.h"
+#include "../../vocabulary/node_algorithms.h"
+#include "../../vocabulary/node_traits.h"
 
 #ifdef SQLITE_ENABLE_RTREE
 namespace sqlite_orm::internal {

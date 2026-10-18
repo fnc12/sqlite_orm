@@ -9,9 +9,9 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <vector>  //  std::vector
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
+#include <vector>  //  std::vector
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"

@@ -2,10 +2,10 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
-#include <type_traits>  //  std::remove_const, std::true_type, std::false_type
-#include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_element, std::get, std::apply, std::tuple_cat
+#include <type_traits>  //  std::remove_const, std::true_type, std::false_type
 #include <utility>  //  std::forward, std::move
+#include <vector>  //  std::vector
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
@@ -13,13 +13,13 @@
 #include "../functional/mpl.h"
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_transformer.h"
-#include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"
+#include "../vocabulary/node_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
-#include "constraints/generated_always.h"
-#include "table_base.h"
 #include "column.h"  //  sqlite_orm::make_column
+#include "constraints/generated_always.h"
 #include "dbo_name.h"
+#include "table_base.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm { struct table_xinfo; }
 

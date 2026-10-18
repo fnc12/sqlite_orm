@@ -5,22 +5,22 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
-#include <type_traits>  //  std::disjunction
-#include <vector>  //  std::vector
-#include <tuple>  //  std::tuple
-#include <utility>  //  std::move, std::forward
-#include <sstream>  //  std::ostringstream
 #include <ostream>  //  std::flush
+#include <sstream>  //  std::ostringstream
+#include <string>  //  std::string
+#include <tuple>  //  std::tuple
+#include <type_traits>  //  std::disjunction
+#include <utility>  //  std::move, std::forward
+#include <vector>  //  std::vector
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/type_traits.h"
 #include "../builtin/collations.h"  //  collate_argument, collate_argument_to_string
 #include "../serialization/serializer_context.h"
-#include "literal.h"
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause, is_integer_mapped
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "literal.h"
 
 namespace sqlite_orm::internal {
     struct order_by_base {

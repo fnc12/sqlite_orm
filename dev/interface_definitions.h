@@ -7,7 +7,7 @@
  *  They are included here once, after all declarations.
  */
 
+#include "ast/crud/set_definitions.h"
+#include "execution/storage_definitions.h"
 #include "schema/column_definitions.h"
 #include "schema/table_definitions.h"
-#include "execution/storage_definitions.h"
-#include "ast/crud/set_definitions.h"

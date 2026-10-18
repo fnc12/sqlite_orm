@@ -4,10 +4,10 @@
  * http://www.sqlitetutorial.net/sqlite-sample-database/ an place the file near executable.
  */
 
-#include <sqlite_orm/sqlite_orm.h>
-#include <string>
 #include <iostream>
 #include <memory>
+#include <sqlite_orm/sqlite_orm.h>
+#include <string>
 
 using std::cout;
 using std::endl;

@@ -1,7 +1,6 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 
-#include <type_traits>  //  std::is_same
 #include <string>  //  std::string
 #include <type_traits>  //  std::is_same
 

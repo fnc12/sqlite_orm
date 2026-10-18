@@ -3,8 +3,8 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_VIEW
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-#include <utility>  // std::forward, std::move, std::index_sequence, std::make_index_sequence
 #include <meta>  // std::meta::info, std::meta::identifier_of
+#include <utility>  // std::forward, std::move, std::index_sequence, std::make_index_sequence
 #endif
 #endif
 #endif
@@ -14,8 +14,8 @@
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "column.h"  // sqlite_orm::make_column
-#include "table_base.h"
 #include "dbo_name.h"
+#include "table_base.h"
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_WITH_VIEW

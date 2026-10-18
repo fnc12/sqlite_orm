@@ -6,24 +6,24 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
+#include <memory>  //  std::unique_ptr
+#include <optional>  //  std::optional
 #include <stdexcept>  //  std::domain_error
+#include <string>  //  std::string
+#include <string_view>  //  std::string_view
 #include <tuple>  //  std::tuple, std::make_tuple
 #include <type_traits>  //  std::enable_if, std::conditional, std::is_void, std::is_member_pointer, std::is_constant_evaluated
 #include <utility>  //  std::move, std::forward
-#include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
-#include <optional>  //  std::optional
-#include <string_view>  //  std::string_view
 #endif
 
 #include "../../functional/cxx_type_traits_polyfill.h"
-#include "../../tuple_helper/tuple_traits.h"  //  count_tuple
-#include "../../ast/literal.h"  //  literal_holder
-#include "../../vocabulary/node_traits.h"  //  is_into, is_column_pointer
-#include "../../vocabulary/node_algorithms.h"  //  argument, common_argument_type
 #include "../../ast/builtin_function.h"
+#include "../../ast/literal.h"  //  literal_holder
 #include "../../sqlite3/sqlite3_types.h"  //  int64
+#include "../../tuple_helper/tuple_traits.h"  //  count_tuple
+#include "../../vocabulary/node_algorithms.h"  //  argument, common_argument_type
+#include "../../vocabulary/node_traits.h"  //  is_into, is_column_pointer
 
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
 namespace sqlite_orm::internal {

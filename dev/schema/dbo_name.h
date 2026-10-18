@@ -9,8 +9,8 @@
 #endif
 #endif
 
-#include "../functional/gsl.h"
 #include "../functional/cstring_literal.h"
+#include "../functional/gsl.h"
 #include "../functional/meta_util.h"
 #include "../functional/mpl.h"
 #include "../tuple_helper/tuple_filter.h"

@@ -1,10 +1,10 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
-#include <type_traits>  //  std::is_same
 #include <cstddef>  //  nullptr_t
 #include <memory>  //  std::unique_ptr
 #include <optional>  //  std::optional
+#include <sqlite_orm/sqlite_orm.h>
 #include <string>  //  std::string
+#include <type_traits>  //  std::is_same
 #include <vector>  //  std::vector
 
 using namespace sqlite_orm;

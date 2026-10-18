@@ -1,25 +1,25 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::index_sequence, std::remove_cvref
-#include <tuple>
 #include <array>
-#include <string>
-#include <ostream>
-#include <utility>  //  std::exchange, std::tuple_size, std::make_index_sequence
 #include <functional>  //  std::invoke
+#include <ostream>
+#include <string>
 #include <string_view>  //  std::string_view
+#include <tuple>
+#include <type_traits>  //  std::index_sequence, std::remove_cvref
+#include <utility>  //  std::exchange, std::tuple_size, std::make_index_sequence
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, polyfill::is_detected
 #include "../functional/cxx_functional_polyfill.h"  // polyfill::unwrap_reference
+#include "../functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, polyfill::is_detected
 #include "../functional/gsl.h"
 #include "../functional/type_traits.h"
-#include "../tuple_helper/tuple_iteration.h"
-#include "../vocabulary/node_traits.h"
-#include "../vocabulary/node_fwd.h"  // column_constraints, order_by_t
-#include "../schema/column_identifier.h"
 #include "../error_code.h"
+#include "../schema/column_identifier.h"
+#include "../tuple_helper/tuple_iteration.h"
+#include "../vocabulary/node_fwd.h"  // column_constraints, order_by_t
+#include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
     template<class T, class Ctx>

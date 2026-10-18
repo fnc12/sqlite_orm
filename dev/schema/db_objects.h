@@ -9,14 +9,14 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::true_type, std::false_type, std::negation, std::disjunction, std::conditional_t
 #include <tuple>  //  std::tuple, std::get, std::tuple_size_v, std::tuple_element_t, std::tuple_cat
+#include <type_traits>  //  std::true_type, std::false_type, std::negation, std::disjunction, std::conditional_t
 #include <utility>  //  std::index_sequence, std::make_index_sequence, std::forward, std::move
 #endif
 
-#include "../functional/type_traits.h"
 #include "../functional/index_sequence_util.h"
 #include "../functional/mpl.h"
+#include "../functional/type_traits.h"
 #include "../tuple_helper/tuple_filter.h"  //  tuple_from_index_sequence_t
 #include "../tuple_helper/tuple_traits.h"  //  tuple_has_type
 #include "../tuple_helper/tuple_transformer.h"  //  create_from_tuple

@@ -1,7 +1,7 @@
-#include <sqlite3.h>
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 #include <cstdio>  //  std::remove
+#include <sqlite3.h>
+#include <sqlite_orm/sqlite_orm.h>
 
 using namespace sqlite_orm;
 

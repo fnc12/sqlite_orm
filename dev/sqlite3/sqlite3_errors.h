@@ -6,9 +6,9 @@
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <system_error>  //  std::error_code, std::error_category, std::system_error, std::is_error_code_enum
-#include <string>  //  std::string
 #include <sstream>  //  std::ostringstream
+#include <string>  //  std::string
+#include <system_error>  //  std::error_code, std::error_category, std::system_error, std::is_error_code_enum
 #include <type_traits>  //  std::true_type
 #include <utility>  //  std::forward
 #endif

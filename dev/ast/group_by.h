@@ -7,8 +7,8 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
-#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     template<class T, class... Args>

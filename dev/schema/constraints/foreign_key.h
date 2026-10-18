@@ -1,18 +1,18 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_same
+#include <functional>  //  std::ref
 #include <ostream>  //  std::ostream
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple, std::tuple_size
-#include <functional>  //  std::ref
+#include <type_traits>  //  std::is_same
 #include <utility>  //  std::forward, std::move
 #endif
 
 #include "../../functional/cxx_type_traits_polyfill.h"
 #include "../../functional/addressof.h"
-#include "../../tuple_helper/same_or_void.h"
 #include "../../member_traits/field_of.h"
+#include "../../tuple_helper/same_or_void.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 

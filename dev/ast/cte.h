@@ -4,23 +4,23 @@
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
 #endif
-#include <type_traits>  //  std::enable_if, std::remove_cvref, std::remove_const, std::is_convertible, std::is_same, std::is_member_pointer
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
-#include <utility>  //  std::forward, std::move
 #include <tuple>  //  std::tuple, std::ignore, std::tuple_size
+#include <type_traits>  //  std::enable_if, std::remove_cvref, std::remove_const, std::is_convertible, std::is_same, std::is_member_pointer
+#include <utility>  //  std::forward, std::move
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
-#include "../functional/type_traits.h"
 #include "../functional/cstring_literal.h"
+#include "../functional/type_traits.h"
 #include "../tuple_helper/tuple_transformer.h"
-#include "alias.h"
-#include "select.h"
-#include "compound_operator.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/semantic_traits_fwd.h"  // Included to specialize traits
+#include "alias.h"
+#include "compound_operator.h"
+#include "select.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm::internal {

@@ -1,23 +1,23 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_member_pointer, std::remove_cvref
+#include <functional>  //  std::invoke
 #include <string>  //  std::string
 #include <tuple>  // std::tuple, std::tuple_size
-#include <functional>  //  std::invoke
+#include <type_traits>  //  std::is_member_pointer, std::remove_cvref
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/mpl.h"
 #include "../functional/type_traits.h"
+#include "../member_traits/field_of.h"
+#include "../member_traits/member_traits.h"
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_iteration.h"
 #include "../tuple_helper/tuple_transformer.h"
-#include "../member_traits/member_traits.h"
-#include "../member_traits/field_of.h"
-#include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_fwd.h"  // primary_key_t, column_field
+#include "../vocabulary/node_traits.h"
 #include "column_identifier.h"
 #include "table_identifier.h"
 

@@ -2,9 +2,9 @@
 //  This example is obtained from here http://www.sqlitetutorial.net/sqlite-self-join/
 //
 
-#include <sqlite_orm/sqlite_orm.h>
-#include <iostream>
 #include <assert.h>
+#include <iostream>
+#include <sqlite_orm/sqlite_orm.h>
 
 #if SQLITE_VERSION_NUMBER >= 3006019
 #define ENABLE_THIS_EXAMPLE

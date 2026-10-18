@@ -2,9 +2,9 @@
  *  Ths example is implemented from here https://www.tutorialspoint.com/sqlite/sqlite_having_clause.htm
  */
 
+#include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
 #include <string>
-#include <iostream>
 
 using std::cout;
 using std::endl;

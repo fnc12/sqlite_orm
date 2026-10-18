@@ -1,7 +1,7 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 #include <cstdio>  //  std::remove
 #include <filesystem>  //  std::filesystem::exists
+#include <sqlite_orm/sqlite_orm.h>
 #include <string_view>  //  std::string_view
 #include "catch_matchers.h"
 

@@ -13,10 +13,10 @@
 #endif
 
 #ifdef ENABLE_THIS_EXAMPLE
-#include <iostream>
-#include <string>
-#include <numbers>
 #include <cmath>
+#include <iostream>
+#include <numbers>
+#include <string>
 
 using namespace sqlite_orm;
 using std::cout, std::endl;

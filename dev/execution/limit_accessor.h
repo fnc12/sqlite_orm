@@ -2,8 +2,8 @@
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <map>  //  std::map
 #include <functional>  //  std::function, std::reference_wrapper
+#include <map>  //  std::map
 #include <utility>  //  std::move
 #endif
 

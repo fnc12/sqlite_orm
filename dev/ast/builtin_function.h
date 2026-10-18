@@ -7,26 +7,26 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_same, std::is_void, std::type_identity, std::conditional, std::remove_cvref
-#include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
 #include <string_view>  //  std::string_view
+#include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_void, std::type_identity, std::conditional, std::remove_cvref
 #include <utility>  //  std::move, std::forward
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-#include <concepts>  //  std::convertible_to
 #include <algorithm>  //  std::copy_n
+#include <concepts>  //  std::convertible_to
 #endif
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
-#include "../functional/is_base_template_of.h"
-#include "../functional/type_traits.h"  //  satisfies, orm_function_sig
 #include "../functional/cstring_literal.h"
 #include "../functional/function_traits.h"  //  function_arguments, function_return_type_t
-#include "operand_tags.h"  //  arithmetic_t
-#include "../vocabulary/node_traits.h"  //  is_where, expression_type_t
+#include "../functional/is_base_template_of.h"
+#include "../functional/type_traits.h"  //  satisfies, orm_function_sig
 #include "../vocabulary/node_algorithms.h"  //  argument, common_argument_type
+#include "../vocabulary/node_traits.h"  //  is_where, expression_type_t
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
+#include "operand_tags.h"  //  arithmetic_t
 #include "window.h"  //  over_t, validate_over_arguments
 
 namespace sqlite_orm::internal {

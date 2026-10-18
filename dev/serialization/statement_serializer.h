@@ -1,53 +1,53 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref, std::disjunction
 #include <sstream>  //  std::ostringstream
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
-#include <vector>  //  std::vector
+#include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref, std::disjunction
 #include <utility>  //  std::make_pair
+#include <vector>  //  std::vector
 #ifndef SQLITE_ORM_OMITS_CODECVT
-#include <locale>  // std::wstring_convert
 #include <codecvt>  //  std::codecvt_utf8_utf16
+#include <locale>  // std::wstring_convert
 #endif
-#include <memory>
 #include <array>
-#include <list>  //  std::list
 #include <functional>  //  std::invoke
+#include <list>  //  std::list
+#include <memory>
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
 #include <ranges>  //  std::views::transform
 #endif
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, std::disjunction
 #include "../functional/cxx_functional_polyfill.h"  // polyfill::identity
-#include "../functional/gsl.h"
+#include "../functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, std::disjunction
 #include "../functional/always_default.h"
+#include "../functional/gsl.h"
 #include "../functional/mpl.h"
 #include "../functional/type_traits.h"
-#include "../tuple_helper/tuple_filter.h"
 #include "../ast/crud/insert.h"  // conflict_action
-#include "../ast/result_columns.h"
 #include "../ast/crud/set.h"
-#include "../execution/prepared_statement.h"
-#include "../type_mapping/type_printer.h"
-#include "../marshaling/field_printer.h"
 #include "../ast/literal.h"
-#include "table_name_collector.h"
+#include "../ast/result_columns.h"
+#include "../builtin/collations.h"  //  collate_argument_to_string
+#include "../error_code.h"
+#include "../execution/prepared_statement.h"
+#include "../marshaling/field_printer.h"
+#include "../marshaling/statement_binder.h"
+#include "../schema/constraints/generated_always.h"  // basic_generated_always
+#include "../schema/constraints/primary_key.h"  // conflict_clause_t
+#include "../tuple_helper/tuple_filter.h"
+#include "../type_mapping/type_printer.h"
+#include "../vocabulary/node_algorithms.h"
+#include "../vocabulary/node_fwd.h"  // column_constraints
+#include "../vocabulary/node_traits.h"
 #include "column_expressions_collector.h"
 #include "cte_column_names_collector.h"
 #include "order_by_serializer.h"
-#include "serializing_util.h"
-#include "../marshaling/statement_binder.h"
 #include "quoting.h"
-#include "../error_code.h"
-#include "../schema/constraints/primary_key.h"  // conflict_clause_t
-#include "../schema/constraints/generated_always.h"  // basic_generated_always
-#include "../builtin/collations.h"  //  collate_argument_to_string
-#include "../vocabulary/node_algorithms.h"
-#include "../vocabulary/node_traits.h"
-#include "../vocabulary/node_fwd.h"  // column_constraints
+#include "serializing_util.h"
+#include "table_name_collector.h"
 
 namespace sqlite_orm::internal {
     template<class T, class SFINAE = void>

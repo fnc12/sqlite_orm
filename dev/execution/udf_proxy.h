@@ -3,11 +3,11 @@
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <assert.h>  //  assert macro
-#include <type_traits>  //  std::true_type, std::false_type
-#include <new>  //  std::bad_alloc
-#include <memory>  //  std::allocator, std::allocator_traits, std::unique_ptr
-#include <string>  //  std::string
 #include <functional>  //  std::function
+#include <memory>  //  std::allocator, std::allocator_traits, std::unique_ptr
+#include <new>  //  std::bad_alloc
+#include <string>  //  std::string
+#include <type_traits>  //  std::true_type, std::false_type
 #include <utility>  //  std::move, std::pair
 #endif
 

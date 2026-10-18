@@ -1,6 +1,6 @@
+#include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
 #include <string>
-#include <iostream>
 
 using namespace sqlite_orm;
 using std::cout;

@@ -5,22 +5,22 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <ostream>  //  std::flush
+#include <sstream>  //  std::ostringstream
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
 #include <type_traits>  //  std::enable_if, std::disjunction, std::conjunction, std::negation
 #include <utility>  //  std::move, std::forward
-#include <sstream>  //  std::ostringstream
-#include <ostream>  //  std::flush
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/is_base_template_of.h"
 #include "../builtin/collations.h"  //  collate_argument
-#include "operand_tags.h"
-#include "operators.h"  //  conc_t
 #include "../vocabulary/node_algorithms.h"  // unwrap_expression, are_valid_operands
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "collate.h"
+#include "operand_tags.h"
+#include "operators.h"  //  conc_t
 
 namespace sqlite_orm::internal {
     /**

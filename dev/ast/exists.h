@@ -5,8 +5,8 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
-#include "operand_tags.h"
 #include "../vocabulary/node_traits.h"
+#include "operand_tags.h"
 
 namespace sqlite_orm::internal {
     template<class T>

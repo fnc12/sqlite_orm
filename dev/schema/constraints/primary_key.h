@@ -1,8 +1,8 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_base_of
 #include <tuple>  //  std::tuple
+#include <type_traits>  //  std::is_base_of
 #include <utility>  //  std::forward, std::move
 #endif
 

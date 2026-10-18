@@ -1,8 +1,8 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 
-#include <type_traits>  //  std::is_same
 #include <ctime>  //  std::time_t
+#include <type_traits>  //  std::is_same
 
 #include "../../static_tests/static_tests_storage_traits.h"
 

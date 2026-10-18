@@ -5,8 +5,8 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::remove_reference, std::remove_const, std::void_t
 #include <tuple>  //  std::get
+#include <type_traits>  //  std::enable_if, std::remove_reference, std::remove_const, std::void_t
 #include <utility>  //  std::declval, std::move
 #endif
 

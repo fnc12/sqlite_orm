@@ -2,25 +2,25 @@
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_arithmetic, std::is_same
+#include <cstring>  //  strncpy
 #include <memory>  //  std::default_delete
+#include <optional>  //  std::optional
 #include <string>  //  std::string, std::wstring
 #include <string_view>  //  std::string_view
+#include <type_traits>  //  std::enable_if, std::is_arithmetic, std::is_same
 #include <vector>  //  std::vector
-#include <cstring>  //  strncpy
-#include <optional>  //  std::optional
 #ifndef SQLITE_ORM_OMITS_CODECVT
-#include <locale>  // std::wstring_convert
 #include <codecvt>  //  std::codecvt_utf8_utf16
+#include <locale>  // std::wstring_convert
 #endif
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/type_traits.h"
+#include "../sqlite3/sqlite3_xdestroy.h"
+#include "../type_mapping/arithmetic_tag.h"
 #include "../type_mapping/is_std_ptr.h"
 #include "../vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_bindable_v
-#include "../type_mapping/arithmetic_tag.h"
-#include "../sqlite3/sqlite3_xdestroy.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 

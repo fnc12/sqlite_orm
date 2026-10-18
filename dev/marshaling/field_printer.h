@@ -1,21 +1,21 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
-#include <sstream>  //  std::ostringstream
-#include <vector>  //  std::vector
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #include <optional>  //  std::optional
+#include <sstream>  //  std::ostringstream
+#include <string>  //  std::string
+#include <vector>  //  std::vector
 #ifndef SQLITE_ORM_OMITS_CODECVT
-#include <locale>  // std::wstring_convert
 #include <codecvt>  //  std::codecvt_utf8_utf16
+#include <locale>  // std::wstring_convert
 #endif
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/type_traits.h"
-#include "../vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_printable_v
 #include "../type_mapping/is_std_ptr.h"
+#include "../vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_printable_v
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 

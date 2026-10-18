@@ -1,8 +1,8 @@
+#include <catch2/catch_all.hpp>
+#include <cstdio>  //  std::remove
+#include <cstring>  //  std::strcmp
 #include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch_all.hpp>
-#include <cstring>  //  std::strcmp
-#include <cstdio>  //  std::remove
 #include "catch_matchers.h"
 
 using namespace sqlite_orm;

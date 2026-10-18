@@ -1,9 +1,9 @@
 #pragma once
 
+#include <ostream>  //  std::ostream
+#include <sqlite_orm/sqlite_orm.h>
 #include <string>  //  std::string
 #include <tuple>  //  std::ignore
-#include <sqlite_orm/sqlite_orm.h>
-#include <ostream>  //  std::ostream
 
 namespace PreparedStatementTests {
     struct User {

@@ -1,12 +1,12 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::integral_constant, std::index_sequence, std::conditional, std::declval
 #include <tuple>  //  std::tuple, std::tuple_cat, std::tuple_element
+#include <type_traits>  //  std::integral_constant, std::index_sequence, std::conditional, std::declval
 #endif
 
-#include "../functional/mpl/conditional.h"
 #include "../functional/index_sequence_util.h"
+#include "../functional/mpl/conditional.h"
 
 namespace sqlite_orm::internal {
     template<typename... input_t>

@@ -5,8 +5,8 @@
  *  RELEASE SAVEPOINT name;              -> storage.release_savepoint("name") / guard.release()
  *  ROLLBACK TO SAVEPOINT name;          -> storage.rollback_to_savepoint("name") / guard.rollback_to()
  */
-#include <sqlite_orm/sqlite_orm.h>
 #include <iostream>
+#include <sqlite_orm/sqlite_orm.h>
 
 using std::cout;
 using std::endl;

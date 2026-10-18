@@ -2,23 +2,23 @@
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <utility>  //  std::move, std::remove_cvref
 #include <functional>  //  std::reference_wrapper
+#include <utility>  //  std::move, std::remove_cvref
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
 #include <ranges>  //  std::ranges::view_interface
 #endif
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
-#include "result_set_iterator.h"
-#include "../marshaling/parameter_binders.h"  //  expression_parameter_binder
-#include "../traversal/ast_iterator.h"
 #include "../execution/connection_holder.h"
-#include "../serialization/serializer_context.h"
-#include "../sqlite3/sqlite3_statements.h"
-#include "../sqlite3/sqlite3_deleters.h"  //  statement_finalizer
-#include "../vocabulary/node_traits.h"  // projections
+#include "../marshaling/parameter_binders.h"  //  expression_parameter_binder
 #include "../schema/db_objects.h"
+#include "../serialization/serializer_context.h"
+#include "../sqlite3/sqlite3_deleters.h"  //  statement_finalizer
+#include "../sqlite3/sqlite3_statements.h"
+#include "../traversal/ast_iterator.h"
+#include "../vocabulary/node_traits.h"  // projections
+#include "result_set_iterator.h"
 
 namespace sqlite_orm::internal {
     /*  

@@ -4,9 +4,9 @@
  *  single line and separately, inserting a subclass object and inserting a vector.
  */
 
+#include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
 #include <string>
-#include <iostream>
 
 using std::cout;
 using std::endl;

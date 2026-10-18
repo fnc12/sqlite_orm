@@ -13,11 +13,11 @@
  *  TEXT is mapped to std::string.
  *  BLOB is mapped to std::vector<char>.
 */
-#include <sqlite_orm/sqlite_orm.h>
 #include <any>
+#include <cstdio>  //  std::remove
 #include <iomanip>  // std::hex, std::setw, std::setfill
 #include <iostream>
-#include <cstdio>  //  std::remove
+#include <sqlite_orm/sqlite_orm.h>
 
 using namespace sqlite_orm;
 using std::cout;

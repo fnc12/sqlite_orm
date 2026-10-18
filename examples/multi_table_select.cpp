@@ -2,9 +2,9 @@
  *  Example implemented from here http://sqlite.awardspace.info/syntax/sqlitepg05.htm
  */
 
+#include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
 #include <string>
-#include <iostream>
 
 using std::cout;
 using std::endl;

@@ -2,16 +2,16 @@
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
 #include <cstdlib>  //  ::atof, ::atoi, ::atoll
 #include <cstring>  //  ::strlen
 #include <string>  //  std::string, std::wstring
+#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
 #ifndef SQLITE_ORM_OMITS_CODECVT
-#include <locale>  // std::wstring_convert
 #include <codecvt>  //  std::codecvt_utf8_utf16
+#include <locale>  // std::wstring_convert
 #endif
-#include <vector>  //  std::vector
 #include <optional>  //  std::optional
+#include <vector>  //  std::vector
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>
 #endif
@@ -20,8 +20,8 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/gsl.h"
 #include "../functional/type_traits.h"
-#include "../type_mapping/is_std_ptr.h"
 #include "../type_mapping/arithmetic_tag.h"
+#include "../type_mapping/is_std_ptr.h"
 #include "../vocabulary/algorithms/field_predicates_fwd.h"  //  is_pointer_arg, is_pointer_binding
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

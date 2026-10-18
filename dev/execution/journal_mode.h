@@ -3,13 +3,13 @@
 #include <sqlite3.h>
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <array>  //  std::array
-#include <string>  //  std::string
-#include <utility>  //  std::pair
 #include <algorithm>  //  std::ranges::transform
+#include <array>  //  std::array
 #include <cctype>  // std::toupper
+#include <string>  //  std::string
 #include <string_view>  //  std::string_view
 #include <system_error>  //  std::system_error
+#include <utility>  //  std::pair
 #endif
 
 #include "../functional/gsl.h"

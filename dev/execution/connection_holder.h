@@ -3,18 +3,18 @@
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <atomic>  // std::atomic_int, memory order flags
+#include <functional>  //  std::function
 #include <mutex>  //  std::mutex, std::lock_guard
+#include <string>  //  std::string
 #include <thread>  // std::thread::id
 #include <utility>  // std::swap, std::exchange
-#include <functional>  //  std::function
-#include <string>  //  std::string
 #endif
 
 #include "../functional/cxx_scope_guard.h"
-#include "../functional/interference_size.h"
 #include "../functional/gsl.h"
-#include "../sqlite3/sqlite3_errors.h"
+#include "../functional/interference_size.h"
 #include "../builtin/vfs.h"
+#include "../sqlite3/sqlite3_errors.h"
 #include "db_open_mode.h"
 #include "storage_options.h"
 

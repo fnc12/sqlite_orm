@@ -1,6 +1,6 @@
+#include <catch2/catch_all.hpp>
 #include <chrono>
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
 

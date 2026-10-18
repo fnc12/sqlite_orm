@@ -4,13 +4,13 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_base_of, std::is_integral, std::is_signed, std::enable_if, std::is_same, std::disjunction
 #include <string>  //  std::string, std::wstring
 #include <string_view>  //  std::string_view, std::wstring_view
+#include <type_traits>  //  std::is_base_of, std::is_integral, std::is_signed, std::enable_if, std::is_same, std::disjunction
 #endif
 
-#include "../../sqlite3/sqlite3_types.h"  //  int64
 #include "../../functional/gsl.h"  // orm_gsl::czstring, orm_gsl::cwzstring
+#include "../../sqlite3/sqlite3_types.h"  //  int64
 #include "../../type_mapping/type_printer.h"
 #include "field_predicates_fwd.h"  // Included to specialize field predicates
 

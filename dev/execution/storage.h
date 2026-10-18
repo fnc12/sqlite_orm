@@ -2,70 +2,70 @@
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <memory>  //  std::unique_ptr/shared_ptr, std::make_unique
-#include <system_error>  //  std::system_error
-#include <string>  //  std::string
-#include <type_traits>  //  std::remove_reference, std::remove_cvref, std::decay
-#include <functional>  //   std::identity, std::invoke
-#include <sstream>  //  std::ostringstream
-#include <ostream>  //  std::flush
-#include <map>  //  std::map
-#include <vector>  //  std::vector
-#include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple, std::tie
-#include <utility>  //  std::forward, std::pair
 #include <algorithm>  //  std::for_each, std::ranges::for_each
+#include <functional>  //   std::identity, std::invoke
+#include <map>  //  std::map
+#include <memory>  //  std::unique_ptr/shared_ptr, std::make_unique
 #include <optional>  //  std::optional
+#include <ostream>  //  std::flush
+#include <sstream>  //  std::ostringstream
+#include <string>  //  std::string
+#include <system_error>  //  std::system_error
+#include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple, std::tie
+#include <type_traits>  //  std::remove_reference, std::remove_cvref, std::decay
+#include <utility>  //  std::forward, std::pair
+#include <vector>  //  std::vector
 #ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
 #include <generator>
 #endif
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/cxx_functional_polyfill.h"  //  polyfill::identity
+#include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/gsl.h"
 #include "../functional/mpl.h"
 #include "../functional/type_traits.h"
-#include "../tuple_helper/tuple_traits.h"
-#include "../tuple_helper/tuple_filter.h"
-#include "../tuple_helper/tuple_transformer.h"
-#include "../tuple_helper/tuple_iteration.h"
-#include "../vocabulary/node_traits.h"
-#include "../vocabulary/node_algorithms.h"
-#include "../vocabulary/node_fwd.h"  // column_field
-#include "../error_code.h"
 #include "../ast/alias.h"
-#include "../marshaling/field_printer.h"
-#include "../ast/operators.h"
-#include "../ast/result_columns.h"
-#include "../ast/cte.h"
-#include "../sqlite3/sqlite3_types.h"  //  int64
-#include "../sqlite3/sqlite3_statements.h"
-#include "../builtin/functions/aggregate.h"
-#include "../marshaling/statement_binder.h"
-#include "../marshaling/parameter_binders.h"
-#include "../result_set/column_result.h"
-#include "sync_schema_result.h"
-#include "../schema/algorithms/sync_order.h"
-#include "../builtin/dbos/pragma_table_info.h"
-#include "../schema/algorithms/table_filters.h"
-#include "../schema/algorithms/column_lookup.h"
-#include "../result_set/mapped_view.h"
-#include "../result_set/result_set_view.h"
-#include "../traversal/ast_iterator.h"
-#include "storage_base.h"
 #include "../ast/crud/get.h"
 #include "../ast/crud/insert.h"
+#include "../ast/crud/remove.h"
 #include "../ast/crud/replace.h"
 #include "../ast/crud/update.h"
-#include "../ast/crud/remove.h"
-#include "prepared_statement.h"
-#include "../serialization/statement_serializer.h"
-#include "../serialization/serializing_util.h"
-#include "../serialization/serializer_context.h"
-#include "../marshaling/object_from_column_builder.h"
-#include "../marshaling/struct_extractor.h"  // make_row_extractor
-#include "../schema/constraints/generated_always.h"  // basic_generated_always
+#include "../ast/cte.h"
+#include "../ast/operators.h"
+#include "../ast/result_columns.h"
+#include "../builtin/dbos/pragma_table_info.h"
+#include "../builtin/functions/aggregate.h"
 #include "../cte_db_objects.h"
+#include "../error_code.h"
+#include "../marshaling/field_printer.h"
+#include "../marshaling/object_from_column_builder.h"
+#include "../marshaling/parameter_binders.h"
+#include "../marshaling/statement_binder.h"
+#include "../marshaling/struct_extractor.h"  // make_row_extractor
+#include "../result_set/column_result.h"
+#include "../result_set/mapped_view.h"
+#include "../result_set/result_set_view.h"
+#include "../schema/algorithms/column_lookup.h"
+#include "../schema/algorithms/sync_order.h"
+#include "../schema/algorithms/table_filters.h"
+#include "../schema/constraints/generated_always.h"  // basic_generated_always
+#include "../serialization/serializer_context.h"
+#include "../serialization/serializing_util.h"
+#include "../serialization/statement_serializer.h"
+#include "../sqlite3/sqlite3_statements.h"
+#include "../sqlite3/sqlite3_types.h"  //  int64
+#include "../traversal/ast_iterator.h"
+#include "../tuple_helper/tuple_filter.h"
+#include "../tuple_helper/tuple_iteration.h"
+#include "../tuple_helper/tuple_traits.h"
+#include "../tuple_helper/tuple_transformer.h"
+#include "../vocabulary/node_algorithms.h"
+#include "../vocabulary/node_fwd.h"  // column_field
+#include "../vocabulary/node_traits.h"
+#include "prepared_statement.h"
+#include "storage_base.h"
+#include "sync_schema_result.h"
 #include "udf_existence_checker.h"
 
 namespace sqlite_orm::internal {

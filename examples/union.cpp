@@ -2,11 +2,11 @@
  *  This example was grabbed from here https://www.tutorialspoint.com/sqlite/sqlite_unions_clause.htm
  */
 
+#include <algorithm>
+#include <assert.h>
+#include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
 #include <string>
-#include <assert.h>
-#include <algorithm>
-#include <iostream>
 
 #if SQLITE_VERSION_NUMBER >= 3006019
 #define ENABLE_THIS_EXAMPLE

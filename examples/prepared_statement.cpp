@@ -6,8 +6,8 @@
  *  Once a statement is prepared it holds a connection to a database inside. This connection will be open
  *  until at least one statement object exists.
  */
-#include <sqlite_orm/sqlite_orm.h>
 #include <iostream>
+#include <sqlite_orm/sqlite_orm.h>
 
 using namespace sqlite_orm;
 

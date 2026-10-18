@@ -1,24 +1,24 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_base_of
-#include <string>  //  std::string
-#include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
+#include <string>  //  std::string
 #include <system_error>
+#include <type_traits>  //  std::is_base_of
 #include <utility>  //  std::move
+#include <vector>  //  std::vector
 #endif
 
 #include "../functional/type_traits.h"
-#include "../tuple_helper/tuple_traits.h"
-#include "../tuple_helper/tuple_iteration.h"
 #include "../error_code.h"
 #include "../schema/algorithms/table_lookup.h"  //  pick_table
-#include "quoting.h"
-#include "../vocabulary/node_traits.h"
-#include "../vocabulary/node_algorithms.h"  // access_column_expression, mapped_type_of_t
 #include "../schema/column_identifier.h"
 #include "../schema/table_identifier.h"
+#include "../tuple_helper/tuple_iteration.h"
+#include "../tuple_helper/tuple_traits.h"
+#include "../vocabulary/node_algorithms.h"  // access_column_expression, mapped_type_of_t
+#include "../vocabulary/node_traits.h"
+#include "quoting.h"
 
 namespace sqlite_orm::internal {
     template<class T, class Ctx>

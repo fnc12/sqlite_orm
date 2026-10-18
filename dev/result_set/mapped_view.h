@@ -5,16 +5,16 @@
 #include <utility>  //  std::forward, std::move
 #endif
 
-#include "../marshaling/row_extractor.h"
-#include "../marshaling/parameter_binders.h"  //  expression_parameter_binder
-#include "mapped_iterator.h"
-#include "../traversal/ast_iterator.h"
-#include "../execution/prepared_statement.h"
 #include "../ast/crud/get.h"
 #include "../execution/connection_holder.h"
+#include "../execution/prepared_statement.h"
+#include "../marshaling/parameter_binders.h"  //  expression_parameter_binder
+#include "../marshaling/row_extractor.h"
 #include "../serialization/serializer_context.h"
-#include "../sqlite3/sqlite3_statements.h"
 #include "../sqlite3/sqlite3_deleters.h"  //  statement_finalizer
+#include "../sqlite3/sqlite3_statements.h"
+#include "../traversal/ast_iterator.h"
+#include "mapped_iterator.h"
 
 namespace sqlite_orm::internal {
     /**

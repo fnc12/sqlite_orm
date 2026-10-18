@@ -14,11 +14,11 @@
 
 #include "../../functional/index_sequence_util.h"
 #include "../../functional/type_traits.h"
-#include "../../tuple_helper/tuple_traits.h"
 #include "../../tuple_helper/tuple_filter.h"
 #include "../../tuple_helper/tuple_iteration.h"
-#include "../../vocabulary/node_traits.h"
+#include "../../tuple_helper/tuple_traits.h"
 #include "../../vocabulary/node_algorithms.h"  //  col_index_sequence_of, col_index_sequence_with, mapped_type_of_t
+#include "../../vocabulary/node_traits.h"
 #include "../cte_mapping.h"
 #include "../db_objects.h"
 #include "table_lookup.h"

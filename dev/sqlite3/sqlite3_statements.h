@@ -6,10 +6,10 @@
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
-#include <utility>  //  std::move
 #include <functional>  //  std::function
+#include <string>  //  std::string
 #include <string_view>  //  std::string_view
+#include <utility>  //  std::move
 #endif
 
 #include "../functional/gsl.h"

@@ -13,12 +13,12 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/gsl.h"
 #include "../functional/type_traits.h"
+#include "../schema/algorithms/table_lookup.h"
 #include "../tuple_helper/tuple_transformer.h"
 #include "../vocabulary/node_traits.h"  //  table_reference, is_table_reference_v
-#include "../schema/algorithms/table_lookup.h"
 #include "column_result_proxy.h"
-#include "row_extractor.h"
 #include "object_from_column_builder.h"
+#include "row_extractor.h"
 
 namespace sqlite_orm::internal {
 

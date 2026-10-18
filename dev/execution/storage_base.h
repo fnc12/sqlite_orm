@@ -2,47 +2,47 @@
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <algorithm>  //  std::find_if, std::ranges::find
 #include <cstdlib>  // atoi
-#include <memory>  //  std::allocator, std::unique_ptr, std::make_unique
 #include <functional>  //  std::function, std::bind, std::bind_front
-#include <string>  //  std::string
-#include <string_view>  //  std::string_view
-#include <optional>  //  std::optional
-#include <sstream>  //  std::ostringstream
-#include <ostream>  //  std::flush
-#include <utility>  //  std::move
-#include <system_error>  //  std::system_error
-#include <vector>  //  std::vector
 #include <list>  //  std::list
 #include <map>  //  std::map
-#include <type_traits>  //  std::is_same, std::is_aggregate
-#include <algorithm>  //  std::find_if, std::ranges::find
+#include <memory>  //  std::allocator, std::unique_ptr, std::make_unique
+#include <optional>  //  std::optional
+#include <ostream>  //  std::flush
+#include <sstream>  //  std::ostringstream
+#include <string>  //  std::string
+#include <string_view>  //  std::string_view
+#include <system_error>  //  std::system_error
 #include <tuple>  //  std::apply
+#include <type_traits>  //  std::is_same, std::is_aggregate
+#include <utility>  //  std::move
+#include <vector>  //  std::vector
 #endif
 
-#include "../sqlite3/sqlite3_types.h"  //  int64
-#include "../sqlite3/sqlite3_statements.h"
+#include "../ast/app_function.h"
+#include "../builtin/dbos/pragma_table_info.h"
+#include "../error_code.h"
+#include "../marshaling/arg_values.h"
+#include "../marshaling/row_extractor.h"
+#include "../marshaling/values_to_tuple.h"
+#include "../serialization/quoting.h"
+#include "../serialization/serializing_util.h"
 #include "../sqlite3/sqlite3_errors.h"
+#include "../sqlite3/sqlite3_statements.h"
+#include "../sqlite3/sqlite3_types.h"  //  int64
 #include "../sqlite3/sqlite3_xdestroy.h"
 #include "../tuple_helper/tuple_iteration.h"
 #include "../vocabulary/node_traits.h"  // projections
-#include "pragma.h"
-#include "limit_accessor.h"
-#include "transaction_guard.h"
-#include "savepoint.h"
-#include "../marshaling/row_extractor.h"
-#include "connection_holder.h"
 #include "backup.h"
-#include "../ast/app_function.h"
-#include "../marshaling/values_to_tuple.h"
-#include "udf_proxy.h"
-#include "../marshaling/arg_values.h"
-#include "transaction_state.h"
-#include "../serialization/quoting.h"
-#include "../serialization/serializing_util.h"
-#include "../builtin/dbos/pragma_table_info.h"
+#include "connection_holder.h"
+#include "limit_accessor.h"
+#include "pragma.h"
+#include "savepoint.h"
 #include "storage_options.h"
-#include "../error_code.h"
+#include "transaction_guard.h"
+#include "transaction_state.h"
+#include "udf_proxy.h"
 
 namespace sqlite_orm::internal {
     /**

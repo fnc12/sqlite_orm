@@ -21,5 +21,5 @@ using std::nullptr_t;
 #endif
 
 #include "cxx_check_prerequisites.h"
-#include "cxx_core_features.h"
 #include "cxx_compiler_quirks.h"
+#include "cxx_core_features.h"

@@ -2,9 +2,9 @@
  *  Implemented this example https://www.w3resource.com/sqlite/sqlite-natural-join.php
  */
 
+#include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
 #include <string>
-#include <iostream>
 
 using std::cout;
 using std::endl;

@@ -5,27 +5,27 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <type_traits>  //  std::is_member_pointer_v, std::is_same_v
-#include <tuple>  //  std::tuple, std::get, std::ignore, std::tuple_size_v, std::tuple_element_t
 #include <string>  //  std::string
-#include <vector>  //  std::vector
+#include <tuple>  //  std::tuple, std::get, std::ignore, std::tuple_size_v, std::tuple_element_t
+#include <type_traits>  //  std::is_member_pointer_v, std::is_same_v
 #include <utility>  //  std::index_sequence, std::make_index_sequence, std::move
+#include <vector>  //  std::vector
 #endif
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "tuple_helper/tuple_fy.h"
-#include "vocabulary/node_traits.h"
-#include "vocabulary/node_algorithms.h"  //  access_leftmost_select
-#include "ast/cte.h"
 #include "ast/alias.h"
-#include "schema/cte_mapping.h"
-#include "schema/db_objects.h"
-#include "result_set/column_result.h"
+#include "ast/cte.h"
 #include "result_set/column_expression.h"
 #include "result_set/column_reference.h"
-#include "serialization/serializer_context.h"
+#include "result_set/column_result.h"
+#include "schema/cte_mapping.h"
+#include "schema/db_objects.h"
 #include "serialization/cte_column_names_collector.h"
+#include "serialization/serializer_context.h"
+#include "tuple_helper/tuple_fy.h"
+#include "vocabulary/node_algorithms.h"  //  access_leftmost_select
+#include "vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)

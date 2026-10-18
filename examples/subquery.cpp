@@ -1,10 +1,10 @@
 /**
  *  Implemented from here https://www.w3resource.com/sqlite/sqlite-subqueries.php
  */
+#include <iostream>
+#include <memory>
 #include <sqlite_orm/sqlite_orm.h>
 #include <string>
-#include <memory>
-#include <iostream>
 
 using std::cout;
 using std::endl;

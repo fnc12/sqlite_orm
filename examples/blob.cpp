@@ -1,9 +1,9 @@
 
+#include <assert.h>
+#include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
 #include <string>
 #include <vector>
-#include <iostream>
-#include <assert.h>
 
 using std::cout;
 using std::endl;

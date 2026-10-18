@@ -1,10 +1,10 @@
 #pragma once
-#include <system_error>
-#include <sstream>
-#include <optional>  //  std::optional
-#include <vector>  //  std::vector
-#include <catch2/matchers/catch_matchers_templated.hpp>
 #include <catch2/matchers/catch_matchers_range_equals.hpp>
+#include <catch2/matchers/catch_matchers_templated.hpp>
+#include <optional>  //  std::optional
+#include <sstream>
+#include <system_error>
+#include <vector>  //  std::vector
 
 class ErrorCodeExceptionMatcher : public Catch::Matchers::MatcherGenericBase {
   public:

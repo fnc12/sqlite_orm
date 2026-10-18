@@ -7,9 +7,9 @@
 #include <tuple>  //  std::tuple, std::tuple_cat
 #endif
 
-#include "sqlite_schema.h"
 #include "dbstat.h"
 #include "pragma_table_info.h"
+#include "sqlite_schema.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**

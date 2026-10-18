@@ -5,9 +5,9 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string_view>  //  std::string_view
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::move, std::forward
-#include <string_view>  //  std::string_view
 #endif
 
 #include "../../ast/builtin_function.h"

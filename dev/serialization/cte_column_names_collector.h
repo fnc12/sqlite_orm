@@ -2,23 +2,23 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <string>  //  std::to_string
-#include <vector>
 #include <functional>  //  std::reference_wrapper
+#include <string>  //  std::to_string
 #include <system_error>
 #include <type_traits>  //  std::is_member_pointer, std::is_same, std::remove_cvref
 #include <utility>  //  std::move
+#include <vector>
 #endif
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/type_traits.h"
-#include "../tuple_helper/tuple_transformer.h"
-#include "../error_code.h"
 #include "../ast/alias.h"
-#include "../vocabulary/node_traits.h"
-#include "../vocabulary/node_algorithms.h"  // access_column_expression, mapped_type_of_t
+#include "../error_code.h"
 #include "../schema/column_identifier.h"
+#include "../tuple_helper/tuple_transformer.h"
+#include "../vocabulary/node_algorithms.h"  // access_column_expression, mapped_type_of_t
+#include "../vocabulary/node_traits.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm::internal {

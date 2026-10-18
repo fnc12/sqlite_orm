@@ -1,6 +1,6 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 #include <cstdio>  //  std::remove
+#include <sqlite_orm/sqlite_orm.h>
 
 #if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;

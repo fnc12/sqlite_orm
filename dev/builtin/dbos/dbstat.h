@@ -2,19 +2,19 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
-#include <type_traits>  //  std::is_convertible
-#include <tuple>  //  std::tuple_size, std::tuple
-#include <utility>  //  std::move, std::index_sequence_for
 #include <string>  //  std::string
+#include <tuple>  //  std::tuple_size, std::tuple
+#include <type_traits>  //  std::is_convertible
+#include <utility>  //  std::move, std::index_sequence_for
 #endif
 #endif
 
 #include "../../functional/gsl.h"
-#include "../../tuple_helper/tuple_filter.h"
-#include "../../member_traits/member_traits.h"
-#include "../../schema/virtual_table.h"
 #include "../../ast/literal.h"
 #include "../../ast/table_reference.h"
+#include "../../member_traits/member_traits.h"
+#include "../../schema/virtual_table.h"
+#include "../../tuple_helper/tuple_filter.h"
 
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 namespace sqlite_orm::internal {

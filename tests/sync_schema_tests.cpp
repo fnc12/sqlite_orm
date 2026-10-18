@@ -1,8 +1,8 @@
+#include <catch2/catch_all.hpp>
 #include <cstdint>
 #include <cstdio>  //  std::remove
 #include <memory>  //  std::unique_ptr, std::make_unique
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
 

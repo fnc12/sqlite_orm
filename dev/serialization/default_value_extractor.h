@@ -5,8 +5,8 @@
 #endif
 
 #include "../schema/constraints/default.h"
-#include "serializer_context.h"
 #include "../schema/db_objects.h"
+#include "serializer_context.h"
 
 namespace sqlite_orm::internal {
     template<class T, class Ctx>

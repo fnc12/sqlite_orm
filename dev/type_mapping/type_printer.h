@@ -1,17 +1,17 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_base_of
-#include <string>  //  std::string
-#include <vector>  //  std::vector
 #include <optional>  //  std::optional
+#include <string>  //  std::string
+#include <type_traits>  //  std::is_base_of
+#include <vector>  //  std::vector
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/gsl.h"
 #include "../functional/type_traits.h"
-#include "is_std_ptr.h"
 #include "../vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_integer_mapped_v
+#include "is_std_ptr.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
