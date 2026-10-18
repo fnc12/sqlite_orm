@@ -36,6 +36,15 @@
 #endif
 
 /*
+ *  The math functions are part of the amalgamation as of SQLite 3.35.0, compiled in by default by the configure script
+ *  on unix and by `Makefile.msc` on Windows; other builds request them with `SQLITE_ENABLE_MATH_FUNCTIONS`
+ *  [https://sqlite.org/compile.html]. As with FTS5, sqlite_orm assumes them as of 3.35.0.
+ */
+#if defined(SQLITE_ENABLE_MATH_FUNCTIONS) || SQLITE_VERSION_NUMBER >= 3035000
+#define SQLITE_ORM_MATH_FUNCTIONS_SUPPORTED
+#endif
+
+/*
  *  The features below are compiled into SQLite only on request, so sqlite_orm offers them only if the requesting macro
  *  is visible to it, e.g. through vcpkg's `sqlite3-vcpkg-config.h`, or defined by the project.
  */
@@ -45,10 +54,6 @@
 
 #ifdef SQLITE_ENABLE_RTREE
 #define SQLITE_ORM_RTREE_SUPPORTED
-#endif
-
-#ifdef SQLITE_ENABLE_MATH_FUNCTIONS
-#define SQLITE_ORM_MATH_FUNCTIONS_SUPPORTED
 #endif
 
 #ifdef SQLITE_ENABLE_PERCENTILE

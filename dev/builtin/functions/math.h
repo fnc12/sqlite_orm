@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file The built-in mathematical functions https://www.sqlite.org/lang_mathfunc.html,
- *        available if SQLite is compiled with SQLITE_ENABLE_MATH_FUNCTIONS.
+ *        available as of SQLite 3.35.0 [see `SQLITE_ORM_MATH_FUNCTIONS_SUPPORTED` in sqlite3/sqlite3_config.h].
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
