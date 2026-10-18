@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
 #include <type_traits>  //  std::is_convertible
 #include <tuple>  //  std::tuple_size, std::tuple
 #include <utility>  //  std::move, std::index_sequence_for
@@ -16,7 +16,7 @@
 #include "../../ast/literal.h"
 #include "../../ast/table_reference.h"
 
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
 namespace sqlite_orm::internal {
     struct dbstat_module_tag : eponymous_module {
         // simplify conceptual/meta programming
@@ -121,4 +121,4 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return make_virtual_table<dbstat>(internal::dbstat_module_tag::name(), using_dbstat());
     }
 }
-#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
+#endif  //  SQLITE_ORM_DBSTAT_SUPPORTED

@@ -1194,7 +1194,7 @@ namespace sqlite_orm::internal {
         }
     };
 
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
     template<class T>
     struct statement_serializer<T, std::enable_if_t<is_unindexed<T>::value>> {
         using statement_type = T;

@@ -240,7 +240,7 @@ TEST_CASE("built-in function static") {
                        column_result_of_t<db_objects_tuple<>,
                                           decltype(lower.template operator()<std::optional<argument<0>>>(&User::id))>,
                        std::optional<int>>);
-#ifdef SQLITE_ENABLE_MATH_FUNCTIONS
+#ifdef SQLITE_ORM_MATH_FUNCTIONS_SUPPORTED
         // function template facade over a definition object, keeping the `<R>` spelling
         STATIC_REQUIRE(orm_builtin_function<decltype(internal::acos)>);
         STATIC_REQUIRE(

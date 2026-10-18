@@ -63,7 +63,7 @@ TEST_CASE("table name collector") {
         }
         REQUIRE(collector.table_names == expected);
     }
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
     SECTION("from hidden") {
         const std::tuple dbObjects2{make_dbstat_table()};
         const std::string& tableName = std::get<0>(dbObjects2).name;
@@ -132,7 +132,7 @@ TEST_CASE("table name collector") {
         REQUIRE(collector.table_names == expected);
     }
 #endif
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
     SECTION("highlight") {
         using user_hidden = fts5::hidden_fields_of<User>;
         const std::string& tableName = std::get<0>(dbObjects).name;

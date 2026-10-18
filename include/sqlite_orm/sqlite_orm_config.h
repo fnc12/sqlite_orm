@@ -323,6 +323,53 @@
 #define SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
 #endif
 
+/*
+ *  FTS5 is part of the amalgamation as of SQLite 3.9.0, compiled in by default by the amalgamation's configure script,
+ *  but not by the source tree's; other builds request it with `SQLITE_ENABLE_FTS5` [https://sqlite.org/fts5.html].
+ *  Since a distribution need not define the latter in a header the consumer sees, sqlite_orm assumes FTS5 as of 3.9.0.
+ */
+#if defined(SQLITE_ENABLE_FTS5) || SQLITE_VERSION_NUMBER >= 3009000
+#define SQLITE_ORM_FTS5_SUPPORTED
+#endif
+
+/*
+ *  The math functions are part of the amalgamation as of SQLite 3.35.0, compiled in by default by the configure script
+ *  on unix and by `Makefile.msc` on Windows; other builds request them with `SQLITE_ENABLE_MATH_FUNCTIONS`
+ *  [https://sqlite.org/compile.html]. As with FTS5, sqlite_orm assumes them as of 3.35.0.
+ */
+#if defined(SQLITE_ENABLE_MATH_FUNCTIONS) || SQLITE_VERSION_NUMBER >= 3035000
+#define SQLITE_ORM_MATH_FUNCTIONS_SUPPORTED
+#endif
+
+/*
+ *  The features below are compiled into SQLite only on request, so sqlite_orm offers them only if the requesting macro
+ *  is visible to it, e.g. through vcpkg's `sqlite3-vcpkg-config.h`, or defined by the project.
+ */
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#define SQLITE_ORM_DBSTAT_SUPPORTED
+#endif
+
+#ifdef SQLITE_ENABLE_RTREE
+#define SQLITE_ORM_RTREE_SUPPORTED
+#endif
+
+#ifdef SQLITE_ENABLE_PERCENTILE
+#define SQLITE_ORM_PERCENTILE_SUPPORTED
+#endif
+
+#ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
+#define SQLITE_ORM_OFFSET_SQL_FUNC_SUPPORTED
+#endif
+
+#ifdef SQLITE_SOUNDEX
+#define SQLITE_ORM_SOUNDEX_SUPPORTED
+#endif
+
+//  `sqlite3_normalized_sql()` exists as of SQLite 3.26.0
+#if SQLITE_VERSION_NUMBER >= 3026000 && defined(SQLITE_ENABLE_NORMALIZE)
+#define SQLITE_ORM_NORMALIZE_SUPPORTED
+#endif
+
 #if (defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&              \
     (defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED))
 #define SQLITE_ORM_WITH_CPP20_ALIASES

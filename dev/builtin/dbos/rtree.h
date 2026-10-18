@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ENABLE_RTREE
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
 #include <type_traits>  // std::is_same
 #include <tuple>  // std::tuple_element, std::make_tuple, std::apply
 #include <utility>  // std::forward
@@ -17,7 +17,7 @@
 #include "../../schema/virtual_table.h"
 #include "../../sqlite3/sqlite3_types.h"  //  int64
 
-#ifdef SQLITE_ENABLE_RTREE
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
 namespace sqlite_orm::internal {
     struct rtree_module_tag {
         // simplify conceptual/meta programming
