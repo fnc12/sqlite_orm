@@ -91,9 +91,9 @@ TEST_CASE("generate_series layout tests") {
 TEST_CASE("pragma_table_info layout tests") {
     using internal::pragma_table_info_module_tag;
 
-    STATIC_REQUIRE(is_table_reference_v<decltype(pragma_table_info_table)>);
+    STATIC_REQUIRE(is_table_reference_v<decltype(pragma_table_info)>);
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    STATIC_REQUIRE(orm_table_reference<decltype(pragma_table_info_table)>);
+    STATIC_REQUIRE(orm_table_reference<decltype(pragma_table_info)>);
 #endif
 
     SECTION("default table definition") {
@@ -119,9 +119,9 @@ TEST_CASE("pragma_table_info layout tests") {
 TEST_CASE("pragma_table_xinfo layout tests") {
     using internal::pragma_table_xinfo_module_tag;
 
-    STATIC_REQUIRE(is_table_reference_v<decltype(pragma_table_xinfo_table)>);
+    STATIC_REQUIRE(is_table_reference_v<decltype(pragma_table_xinfo)>);
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    STATIC_REQUIRE(orm_table_reference<decltype(pragma_table_xinfo_table)>);
+    STATIC_REQUIRE(orm_table_reference<decltype(pragma_table_xinfo)>);
 #endif
 
     SECTION("data member and nested struct named `hidden`") {

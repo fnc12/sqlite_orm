@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-cd "$(git rev-parse --show-toplevel)"
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 header=not_single_header_include/sqlite_orm/sqlite_orm.h
 config=third_party/amalgamate/config.json
