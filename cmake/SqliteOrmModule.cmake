@@ -45,6 +45,11 @@ if(SQLITE_ORM_MODULE_INTERFACE_UNIT)
 
     target_compile_features(sqlite_orm_module PUBLIC cxx_std_23)
 
+    # note: CMake provides the standard library modules only to targets that are scanned for imports by policy CMP0155,
+    # which the minimum required CMake version leaves unset, even if their sources are in a module file set
+    set_target_properties(sqlite_orm_module PROPERTIES
+        CXX_SCAN_FOR_MODULES ON)
+
     # note: the compile options that affect the module's content need to match those of the importing sources
     if(SQLITE_ORM_OMITS_CODECVT)
         target_compile_definitions(sqlite_orm_module PUBLIC SQLITE_ORM_OMITS_CODECVT=1)
