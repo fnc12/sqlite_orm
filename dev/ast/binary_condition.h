@@ -9,7 +9,7 @@
 #include <string_view>  //  std::string_view
 #include <type_traits>  //  std::enable_if, std::disjunction, std::conjunction, std::negation
 #include <utility>  //  std::move, std::forward
-#include <sstream>  //  std::stringstream
+#include <sstream>  //  std::ostringstream
 #include <ostream>  //  std::flush
 #endif
 
@@ -110,7 +110,7 @@ namespace sqlite_orm::internal {
 
         template<class C>
         named_collate<is_equal_t> collate() const {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << C::name() << std::flush;
             return {*this, ss.str()};
         }

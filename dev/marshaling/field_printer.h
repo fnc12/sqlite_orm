@@ -2,7 +2,7 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
-#include <sstream>  //  std::stringstream
+#include <sstream>  //  std::ostringstream
 #include <vector>  //  std::vector
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #include <optional>  //  std::optional
@@ -46,7 +46,7 @@ namespace sqlite_orm {
     template<class T>
     struct field_printer<T, internal::match_if<std::is_arithmetic, T>> {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const T& t) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << t;
             return ss.str();
         }
@@ -58,7 +58,7 @@ namespace sqlite_orm {
     template<>
     struct field_printer<unsigned char, void> {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const unsigned char& t) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << +t;
             return ss.str();
         }
@@ -70,7 +70,7 @@ namespace sqlite_orm {
     template<>
     struct field_printer<signed char, void> {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const signed char& t) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << +t;
             return ss.str();
         }
@@ -82,7 +82,7 @@ namespace sqlite_orm {
     template<>
     struct field_printer<char, void> {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const char& t) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << +t;
             return ss.str();
         }
@@ -98,7 +98,7 @@ namespace sqlite_orm {
     template<>
     struct field_printer<std::vector<char>, void> {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const std::vector<char>& t) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << std::hex;
             for (auto c: t) {
                 ss << c;
