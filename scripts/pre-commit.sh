@@ -4,13 +4,13 @@
 # the order of the amalgamation sources (scripts/check-amalgamation-sources.sh) and the paths named in the
 # documentation (scripts/check-doc-paths.sh).
 #
-# Runs on Linux, macOS and WSL, from anywhere inside the repository.
+# Runs on Linux, macOS and WSL, from any directory.
 # Environment: CLANG_FORMAT (default clang-format-20), PYTHON (default python3).
 
 set -euo pipefail
 shopt -s globstar nullglob
 
-cd "$(git rev-parse --show-toplevel)"
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 clang_format="${CLANG_FORMAT:-clang-format-20}"
 python="${PYTHON:-python3}"

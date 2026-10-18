@@ -8,7 +8,7 @@
 set -euo pipefail
 shopt -s globstar nullglob
 
-cd "$(git rev-parse --show-toplevel)"
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 if (($#)); then
     documents=("$@")
