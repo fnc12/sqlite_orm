@@ -88,9 +88,10 @@ jobs:
         run: |
           vcpkg install sqlite3[core,dbstat,math,json1,fts5,rtree,soundex] catch2 --triplet ${{ matrix.triplet }} --overlay-triplets=${{ github.workspace }}/vcpkg/triplets
 
+      # note: the named module tests are built by named-module.yaml
       - name: Configure CMake
         run: |
-          cmake -S . -B build -A ${{ matrix.arch }} ${{ matrix.toolset && format('-T {0}', matrix.toolset) || '' }} ${{ matrix.cxx_standard }} -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
+          cmake -S . -B build -A ${{ matrix.arch }} ${{ matrix.toolset && format('-T {0}', matrix.toolset) || '' }} ${{ matrix.cxx_standard }} -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake -DSQLITE_ORM_BUILD_MODULE_TESTS=OFF
 
       - name: Build
         run: cmake --build build --config Release --parallel
