@@ -114,7 +114,8 @@ ctest --test-dir build                         # all tests
   `tests/statement_serializer_tests/`.
 - CI builds on Linux, Windows and macOS with several compilers and C++ standards.
   `-Werror=reorder` is on for GCC and Clang; MSVC builds with `/bigobj` and `/EHsc`.
-- The named module tests (`tests/named_module/`, built from `modules/`) need C++23 and either
+- The named module tests (`tests/named_module/`) import the module from target
+  `sqlite_orm_module` (`cmake/SqliteOrmModule.cmake`). It needs C++23 and either
   MSVC with a Visual Studio generator or the Ninja generator with CMake 4.5;
   `-DSQLITE_ORM_BUILD_MODULE_TESTS=OFF` skips them. CI runs them in
   `.github/workflows/named-module.yaml` only.
