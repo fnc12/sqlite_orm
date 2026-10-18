@@ -10,7 +10,8 @@
 
     "dev/error_code.h",
     "dev/serialization/quoting.h",
-    "dev/marshaling/pointer_value.h",
+    "dev/marshaling/pointer_passing.h",
+    "dev/marshaling/carray_pointer_passing.h",
 
     "dev/node_definitions.h",
     "dev/node_algorithm_definitions.h",
@@ -23,8 +24,6 @@
     "dev/builtin/vfs.h",
     "dev/builtin/functions.h",
     "dev/builtin/dbos.h",
-
-    "dev/carray.h",
 
     "dev/functional/finish_macros.h"
   ],
