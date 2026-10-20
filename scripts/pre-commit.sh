@@ -25,8 +25,12 @@ echo "Regenerating the amalgamation"
 "$python" third_party/amalgamate/amalgamate.py -c third_party/amalgamate/config.json -s .
 
 echo "Formatting the sources"
-"$clang_format" --Wno-error=unknown -i -style=file \
-    include/**/*.h dev/**/*.h tests/**/*.h tests/**/*.cpp examples/**/*.cpp
+# all C++ sources of the source folders; .clang-format-ignore excludes some of them
+sources=()
+for dir in include dev tests examples modules not_single_header_include; do
+    sources+=("$dir"/**/*.{h,cpp,cppm,cxx,ixx})
+done
+"$clang_format" --Wno-error=unknown -i -style=file "${sources[@]}"
 
 crlf_files=()
 while IFS= read -r -d '' path; do

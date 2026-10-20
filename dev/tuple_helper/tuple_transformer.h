@@ -92,7 +92,7 @@ namespace sqlite_orm::internal {
                                                              std::integral_constant<size_t, 0u>{}));
 
     template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
-    constexpr R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
+    constexpr R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, [[maybe_unused]] Projection project = {}) {
         return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
     }
 
@@ -101,7 +101,7 @@ namespace sqlite_orm::internal {
      *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
      */
     template<class R, class Tpl, class Projection = polyfill::identity>
-    constexpr R create_from_tuple(Tpl&& tpl, Projection project = {}) {
+    constexpr R create_from_tuple(Tpl&& tpl, [[maybe_unused]] Projection project = {}) {
         auto& [... elements] = tpl;
         return R{std::invoke(project, polyfill::forward_like<Tpl>(elements))...};
     }
@@ -118,7 +118,7 @@ namespace sqlite_orm::internal {
 #endif
 
     template<template<typename...> class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
-    constexpr auto create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
+    constexpr auto create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, [[maybe_unused]] Projection project = {}) {
         return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
     }
 
@@ -127,7 +127,7 @@ namespace sqlite_orm::internal {
      *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
      */
     template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
-    constexpr auto create_from_tuple(Tpl&& tpl, Projection project = {}) {
+    constexpr auto create_from_tuple(Tpl&& tpl, [[maybe_unused]] Projection project = {}) {
         auto& [... elements] = tpl;
         return R{std::invoke(project, polyfill::forward_like<Tpl>(elements))...};
     }
