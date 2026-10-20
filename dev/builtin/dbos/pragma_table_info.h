@@ -74,7 +74,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                     decltype(pk) pk_,
                     decltype(hidden) hidden_) :
             cid(cid_), name(std::move(name_)), type(std::move(type_)), notnull(notnull_),
-            dflt_value(std::move(dflt_value_)), pk(pk_), hidden{hidden_} {}
+            dflt_value(std::move(dflt_value_)), pk(pk_), hidden(hidden_) {}
 #endif
 
         /**
