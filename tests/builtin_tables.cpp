@@ -100,7 +100,7 @@ TEST_CASE("builtin tables bundle") {
         auto tableNames = storage.select(&sqlite_master::name, where(c(&sqlite_master::type) == "table"));
         REQUIRE_THAT(tableNames, Equals(std::vector<std::string>{"users"}));
 #if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
-        auto columnNames = storage.select(&table_info::name, from(pragma_table_info_table("users")));
+        auto columnNames = storage.select(&table_info::name, from(pragma_table_info("users")));
         REQUIRE_THAT(columnNames, Equals(std::vector<std::string>{"id", "name"}));
 #endif
     }

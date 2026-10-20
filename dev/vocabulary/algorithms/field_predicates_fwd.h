@@ -62,7 +62,7 @@ namespace sqlite_orm::internal {
     struct is_printable : std::bool_constant<is_printable_v<T>> {};
 }
 
-// Values of the pointer-passing interface, defined in `pointer_value.h`; always false before SQLite 3.20.
+// Values of the pointer-passing interface, defined in `pointer_passing.h`; always false before SQLite 3.20.
 // The top-level headers include it ahead of `storage.h`, as the marshaling headers evaluate them non-dependently.
 namespace sqlite_orm::internal {
     /*
