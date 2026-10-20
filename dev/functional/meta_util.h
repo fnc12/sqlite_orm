@@ -15,6 +15,9 @@ namespace sqlite_orm::internal {
     /**
      *  Reflects the non-static data members of `T` and its base classes
      *  and returns them as a fixed-size span of `std::meta::info` reflections.
+     *
+     *  Callers iterating them in nested lambdas bind the result to a `static constexpr` local (marked "gcc"):
+     *  GCC captures a function-local `constexpr` variable by reference there, which then is no constant expression.
      */
     template<class T>
     consteval auto extract_members() {

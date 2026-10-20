@@ -111,6 +111,8 @@ namespace sqlite_orm::internal {
         }
 
       private:
+        //  not constexpr, as `addressof_enclosing` reinterpret_casts; hence a foreign key with actions
+        //  cannot be an annotation value
         foreign_key_type copy_fk(foreign_key_action newAction) const {
             const foreign_key_type* thisFk;
             if constexpr (forUpdate) {
