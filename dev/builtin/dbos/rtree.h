@@ -3,7 +3,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_RTREE
 #include <type_traits>  // std::is_same
-#include <tuple>  // std::tuple_element, std::make_tuple
+#include <tuple>  // std::tuple_element, std::make_tuple, std::apply
 #include <utility>  // std::forward
 #include <cstdint>  //  std::int32_t
 #endif
@@ -70,6 +70,25 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+    /**
+     *  Factory function for a RTREE virtual table definition.
+     *
+     *  The columns are reflected from the non-static data members of O and their annotations.
+     *
+     *  Example: `make_virtual_table(using_rtree<DemoIndex>())`
+     */
+    template<class O>
+    auto using_rtree() {
+        return std::apply(
+            [](auto&&... definition) static {
+                return using_rtree(std::forward<decltype(definition)>(definition)...);
+            },
+            internal::make_reflected_columns<O>());
+    }
+#endif
+
     /**
      *  Factory function for a RTREE_I32 virtual table definition.
      */
@@ -79,5 +98,23 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+    /**
+     *  Factory function for a RTREE_I32 virtual table definition.
+     *
+     *  The columns are reflected from the non-static data members of O and their annotations.
+     *
+     *  Example: `make_virtual_table(using_rtree_i32<DemoIndex>())`
+     */
+    template<class O>
+    auto using_rtree_i32() {
+        return std::apply(
+            [](auto&&... definition) static {
+                return using_rtree_i32(std::forward<decltype(definition)>(definition)...);
+            },
+            internal::make_reflected_columns<O>());
+    }
+#endif
 }
 #endif

@@ -528,6 +528,12 @@ namespace sqlite_orm::internal {
     using check_if_has_not = mpl::not_<mpl::contains_fn<TraitFn>>;
 
     /*
+     *  Quoted trait metafunction that checks whether a tuple contains only types with given trait.
+     */
+    template<template<class...> class TraitFn>
+    using check_if_has_only = mpl::not_<mpl::contains<check_if_not<TraitFn>>>;
+
+    /*
      *  Quoted metafunction that checks whether a tuple contains given type.
      */
     template<class T>
