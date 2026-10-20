@@ -5329,7 +5329,7 @@ namespace sqlite_orm::internal {
                                                              std::integral_constant<size_t, 0u>{}));
 
     template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
-    constexpr R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
+    constexpr R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, [[maybe_unused]] Projection project = {}) {
         return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
     }
 
@@ -5338,7 +5338,7 @@ namespace sqlite_orm::internal {
      *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
      */
     template<class R, class Tpl, class Projection = polyfill::identity>
-    constexpr R create_from_tuple(Tpl&& tpl, Projection project = {}) {
+    constexpr R create_from_tuple(Tpl&& tpl, [[maybe_unused]] Projection project = {}) {
         auto& [... elements] = tpl;
         return R{std::invoke(project, polyfill::forward_like<Tpl>(elements))...};
     }
@@ -5355,7 +5355,7 @@ namespace sqlite_orm::internal {
 #endif
 
     template<template<typename...> class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
-    constexpr auto create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
+    constexpr auto create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, [[maybe_unused]] Projection project = {}) {
         return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
     }
 
@@ -5364,7 +5364,7 @@ namespace sqlite_orm::internal {
      *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
      */
     template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
-    constexpr auto create_from_tuple(Tpl&& tpl, Projection project = {}) {
+    constexpr auto create_from_tuple(Tpl&& tpl, [[maybe_unused]] Projection project = {}) {
         auto& [... elements] = tpl;
         return R{std::invoke(project, polyfill::forward_like<Tpl>(elements))...};
     }
@@ -7511,7 +7511,7 @@ namespace sqlite_orm::internal {
         using column_type = C;
 
         column_type _column_or_expression;
-        std::string _collation_name;
+        std::string _collation_name{};
         int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
 
         indexed_column_t<column_type> collate(std::string name) && {
@@ -8378,9 +8378,9 @@ namespace sqlite_orm::internal {
 
         columns_type _columns;
         references_type _references;
-        on_fk_update_delete<foreign_key_t, true> on_update;
-        on_fk_update_delete<foreign_key_t, false> on_delete;
-        fk_enforcement_state _deferrable;
+        on_fk_update_delete<foreign_key_t, true> on_update{};
+        on_fk_update_delete<foreign_key_t, false> on_delete{};
+        fk_enforcement_state _deferrable{};
 
         static_assert(!std::is_same<source_type, void>::value, "All columns must have the same mapped type");
         static_assert(!std::is_same<target_type, void>::value, "All references must have the same mapped type");
@@ -21418,6 +21418,12 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_v
 
 // #include "object_from_column_builder.h"
 
+// GCC misdiagnoses the increments in the brace-init-lists below, whose initializer clauses are sequenced left to right.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsequence-point"
+#endif
+
 namespace sqlite_orm::internal {
 
     /*
@@ -21537,6 +21543,10 @@ namespace sqlite_orm::internal {
         O extract(sqlite3_value* value) const = delete;
     };
 }
+
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 //  make_row_extractor
 // #include "../marshaling/column_result_proxy.h"
 
