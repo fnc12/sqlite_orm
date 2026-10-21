@@ -27,9 +27,10 @@ From the bottom up:
 `member_traits.h` holds closed pointer-to-member mechanics: a member's field type
 (getter/setter/object), its enclosing class, casting from base to derived.
 `field_of.h` holds `is_field_of_v` (is a pointer-to-member of `Base` usable as one of
-`Derived`; does a `column_pointer` match a target type) and `compare_fields()`.
-`is_field_of_v` is open, yet stays outside `vocabulary/`: it is pointer-to-member
-computation, not DSL classification, and must be eager because concepts reference it.
+`Derived`) and `compare_fields()`. `is_field_of_v` is open: `ast/column_pointer.h`
+specializes it for a `column_pointer` of the target type, so this tier depends on nothing in
+the DSL. It stays outside `vocabulary/`: it is pointer-to-member computation, not DSL
+classification, and must be eager because concepts reference it.
 
 ### `vocabulary/` — the layer proper
 

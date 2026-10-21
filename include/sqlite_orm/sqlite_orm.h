@@ -3130,42 +3130,10 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "../vocabulary/node_fwd.h"
-
-/** @file Forward-declarations of concrete nodes that have to be used directly in template programming,
- *        e.g. for base-class overloads, partial specializations or metafunctions.
- */
-
-SQLITE_ORM_EXPORT namespace sqlite_orm { struct alias_tag; }
-
-namespace sqlite_orm::internal {
-    template<class... Cs>
-    struct primary_key_t;
-
-    template<class G, class S>
-    struct column_field;
-
-    template<class... Op>
-    struct column_constraints;
-
-    struct table_identifier;
-
-    template<class T, class F>
-    struct column_pointer;
-
-    template<class O>
-    struct table_reference;
-
-    template<class C>
-    struct indexed_column_t;
-
-    struct order_by_base;
-}
-// column_pointer
-
 namespace sqlite_orm::internal {
     /*
-     *  This trait can be used to check whether the object type of a member pointer or column pointer matches the target type.
+     *  This trait can be used to check whether the object type of a field matches the target type.
+     *  Open: field holders specialize it, e.g. `column_pointer`.
      *  
      *  One use case is the ability to create column reference to an aliased table column of a derived object field without explicitly using a column pointer.
      *  E.g.
@@ -3180,9 +3148,6 @@ namespace sqlite_orm::internal {
      */
     template<class O, class Base, class F>
     constexpr bool is_field_of_v<F Base::*, O, std::enable_if_t<std::is_convertible<F Base::*, F O::*>::value>> = true;
-
-    template<class F, class T>
-    constexpr bool is_field_of_v<column_pointer<T, F>, T, void> = true;
 
     template<class F, class T>
     using is_field_of = std::bool_constant<is_field_of_v<F, T>>;
@@ -4480,6 +4445,36 @@ namespace sqlite_orm::internal {
 // #include "../../functional/type_traits.h"
 //  orm_names_type
 // #include "../node_fwd.h"
+
+/** @file Forward-declarations of concrete nodes that have to be used directly in template programming,
+ *        e.g. for base-class overloads, partial specializations or metafunctions.
+ */
+
+SQLITE_ORM_EXPORT namespace sqlite_orm { struct alias_tag; }
+
+namespace sqlite_orm::internal {
+    template<class... Cs>
+    struct primary_key_t;
+
+    template<class G, class S>
+    struct column_field;
+
+    template<class... Op>
+    struct column_constraints;
+
+    struct table_identifier;
+
+    template<class T, class F>
+    struct column_pointer;
+
+    template<class O>
+    struct table_reference;
+
+    template<class C>
+    struct indexed_column_t;
+
+    struct order_by_base;
+}
 //  alias_tag
 // #include "grammar_traits_fwd.h"
 
@@ -10505,6 +10500,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/type_traits.h"
 
+// #include "../member_traits/field_of.h"
+// Included to specialize is_field_of_v
 // #include "../vocabulary/node_traits.h"
 //  node projections, is_alias_holder
 // #include "../vocabulary/traits/structural_traits_fwd.h"
@@ -10530,6 +10527,9 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> = true;
+
+    template<class F, class T>
+    constexpr bool is_field_of_v<column_pointer<T, F>, T, void> = true;
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     template<class A>

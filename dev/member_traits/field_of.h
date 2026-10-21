@@ -5,11 +5,11 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
-#include "../vocabulary/node_fwd.h"  // column_pointer
 
 namespace sqlite_orm::internal {
     /*
-     *  This trait can be used to check whether the object type of a member pointer or column pointer matches the target type.
+     *  This trait can be used to check whether the object type of a field matches the target type.
+     *  Open: field holders specialize it, e.g. `column_pointer`.
      *  
      *  One use case is the ability to create column reference to an aliased table column of a derived object field without explicitly using a column pointer.
      *  E.g.
@@ -24,9 +24,6 @@ namespace sqlite_orm::internal {
      */
     template<class O, class Base, class F>
     constexpr bool is_field_of_v<F Base::*, O, std::enable_if_t<std::is_convertible<F Base::*, F O::*>::value>> = true;
-
-    template<class F, class T>
-    constexpr bool is_field_of_v<column_pointer<T, F>, T, void> = true;
 
     template<class F, class T>
     using is_field_of = std::bool_constant<is_field_of_v<F, T>>;
