@@ -2938,13 +2938,13 @@ namespace sqlite_orm::internal {
     using count_tuple = mpl::invoke_t<counts_if_has<Pred>, Pack, mpl::quote_fn<ProjOp>>;
 }
 
-// #include "../member_traits/member_traits.h"
+// #include "../functional/member_traits.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_function, std::true_type, std::false_type
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm::internal {
     // SFINAE friendly trait to get a member object pointer's field type
@@ -3120,15 +3120,15 @@ namespace sqlite_orm::internal {
 #endif
 #endif
 
-// #include "../../member_traits/member_traits.h"
+// #include "../../functional/member_traits.h"
 
-// #include "../../member_traits/field_of.h"
+// #include "../../functional/field_of.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_convertible, std::bool_constant
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm::internal {
     /*
@@ -6536,9 +6536,9 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/tuple_helper/tuple_transformer.h"
 
-// #include "../member_traits/member_traits.h"
+// #include "../functional/member_traits.h"
 
-// #include "../member_traits/field_of.h"
+// #include "../functional/field_of.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -7984,7 +7984,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
-// #include "../../member_traits/field_of.h"
+// #include "../../functional/field_of.h"
 
 // #include "../../vocabulary/node_traits.h"
 //  orm_table_reference, auto_decay_table_ref_t
@@ -8211,7 +8211,7 @@ namespace sqlite_orm::internal {
 #endif
 }
 
-// #include "../../member_traits/field_of.h"
+// #include "../../functional/field_of.h"
 
 // #include "../../vocabulary/node_traits.h"
 
@@ -10485,7 +10485,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/type_traits.h"
 
-// #include "../member_traits/field_of.h"
+// #include "../functional/field_of.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -10500,7 +10500,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/type_traits.h"
 
-// #include "../member_traits/field_of.h"
+// #include "../functional/field_of.h"
 // Included to specialize is_field_of_v
 // #include "../vocabulary/node_traits.h"
 //  node projections, is_alias_holder
@@ -18106,7 +18106,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/tuple_helper/tuple_transformer.h"
 
-// #include "../member_traits/member_traits.h"
+// #include "../functional/member_traits.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -19886,7 +19886,7 @@ namespace sqlite_orm {
 
 // #include "../functional/type_traits.h"
 
-// #include "../member_traits/member_traits.h"
+// #include "../functional/member_traits.h"
 
 // #include "../vocabulary/node_fwd.h"
 // column_field
@@ -34512,7 +34512,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/tuple_helper/tuple_filter.h"
 
-// #include "../../member_traits/member_traits.h"
+// #include "../../functional/member_traits.h"
 
 // #include "../../schema/virtual_table.h"
 
@@ -34756,7 +34756,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/gsl.h"
 
-// #include "../../member_traits/member_traits.h"
+// #include "../../functional/member_traits.h"
 
 // #include "../../schema/virtual_table.h"
 
