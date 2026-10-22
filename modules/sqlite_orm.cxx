@@ -9,6 +9,11 @@ module;
 #include <assert.h>  //  assert macro
 #endif
 
+// Non-modular headers that sqlite_orm includes: in the module purview, their declarations would be attached to
+// module `sqlite_orm` and conflict with those of the standard library modules.
+#include <version>
+#include <sqlite3.h>
+
 export module sqlite_orm;
 
 #ifdef SQLITE_ORM_IMPORT_STD_MODULE

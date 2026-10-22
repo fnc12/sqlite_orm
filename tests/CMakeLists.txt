@@ -3,45 +3,32 @@ cmake_minimum_required (VERSION 3.16)
 # Note: find_package(SQLite3 REQUIRED) already done in top-level CMakeLists
 FetchContent_MakeAvailable(Catch2)
 
-option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
+option(SQLITE_ORM_BUILD_MODULE_TESTS "Build the named module tests where the toolchain provides the standard library modules" ON)
 
 include(ucm)
 
+if(SQLITE_ORM_BUILD_MODULE_TESTS AND TARGET sqlite_orm_module)
+    message(STATUS "SQLITE_ORM: Build module tests")
 
-# Consuming the standard library as C++ named module is a C++23 standard library feature and additionally requires support from build systems.
-# At the time of adding support for sqlite_orm as a C++ named module, CMake has still only experimental features to
-# effect the provision of the the C++ Standard Library Modules [see `CMAKE_EXPERIMENTAL_CXX_IMPORT_STD`].
-# 
-# However, Visual C++ has an option that instructs MSBuild to automatically provision the standard modules,
-# and this option is ON by default when using the `/std:c++latest` compiler switch:
-# "Build ISO C++23 Standard Library Modules", MSBuild property `BuildStlModules`.
-if(CMAKE_CXX_STANDARD GREATER_EQUAL 23 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.28.2 AND MSVC AND MSVC_VERSION GREATER_EQUAL 1930)
     add_executable(module_tests
         named_module/named_module.cpp
     )
 
-    target_sources(module_tests
-        PRIVATE FILE_SET all_modules TYPE CXX_MODULES
-        BASE_DIRS ../modules
-        FILES ../modules/sqlite_orm.ixx
-    )
-
-    target_compile_features(module_tests PUBLIC cxx_std_23)
-
-    if(SQLITE_ORM_OMITS_CODECVT)
-        message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
-        target_compile_definitions(module_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
-    endif()
+    # note: the sources outside of a module file set are scanned for imports only with policy CMP0155,
+    # which the minimum required CMake version leaves unset
+    set_target_properties(module_tests PROPERTIES
+        CXX_SCAN_FOR_MODULES ON)
 
     target_precompile_headers(module_tests PRIVATE
         <sqlite3.h>)
 
-    # note: sqlite3 already linked in top-level CMakeLists
-    target_link_libraries(module_tests PRIVATE sqlite_orm)
+    target_link_libraries(module_tests PRIVATE sqlite_orm_module)
 
     add_test(NAME "module_tests"
         COMMAND module_tests
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+elseif(SQLITE_ORM_BUILD_MODULE_TESTS AND CMAKE_CXX_STANDARD GREATER_EQUAL 23)
+    message(STATUS "SQLITE_ORM: No module tests, the toolchain does not provide the standard library modules")
 endif()
 
 # Glob all .cpp files recursively in the current directory
