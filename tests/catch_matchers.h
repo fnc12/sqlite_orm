@@ -16,7 +16,7 @@ class ErrorCodeExceptionMatcher : public Catch::Matchers::MatcherGenericBase {
 
   protected:
     std::string describe() const override {
-        std::stringstream ss;
+        std::ostringstream ss;
         ss << this->errorCode;
         return ss.str();
     }

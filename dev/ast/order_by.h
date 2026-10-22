@@ -10,7 +10,7 @@
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::move, std::forward
-#include <sstream>  //  std::stringstream
+#include <sstream>  //  std::ostringstream
 #include <ostream>  //  std::flush
 #endif
 
@@ -98,7 +98,7 @@ namespace sqlite_orm::internal {
 
         template<class C>
         order_by_t collate() const {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << C::name() << std::flush;
             return this->collate(ss.str());
         }

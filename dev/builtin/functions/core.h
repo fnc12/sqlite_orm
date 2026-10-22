@@ -176,7 +176,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
-#ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
+#ifdef SQLITE_ORM_OFFSET_SQL_FUNC_SUPPORTED
     struct sqlite_offset_string {
         std::string_view serialize() const {
             return "SQLITE_OFFSET";
@@ -213,7 +213,7 @@ namespace sqlite_orm::internal {
         }
     };
 
-#ifdef SQLITE_SOUNDEX
+#ifdef SQLITE_ORM_SOUNDEX_SUPPORTED
     struct soundex_string {
         std::string_view serialize() const {
             return "SOUNDEX";
@@ -550,7 +550,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<N>{std::forward<N>(n)}};
     }
 #endif
-#ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
+#ifdef SQLITE_ORM_OFFSET_SQL_FUNC_SUPPORTED
     /**
      *  SQLITE_OFFSET(X) function https://www.sqlite.org/lang_corefunc.html#sqlite_offset
      *
@@ -642,7 +642,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Y, Z>{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
     }
 #endif
-#ifdef SQLITE_SOUNDEX
+#ifdef SQLITE_ORM_SOUNDEX_SUPPORTED
     /**
      *  SOUNDEX(X) function https://www.sqlite.org/lang_corefunc.html#soundex
      */
@@ -864,7 +864,7 @@ namespace sqlite_orm::internal {
     inline constexpr auto sqlite_compileoption_get =
         "SQLITE_COMPILEOPTION_GET"_builtin.scalar<std::unique_ptr<std::string>(int)>();
 #endif
-#ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
+#ifdef SQLITE_ORM_OFFSET_SQL_FUNC_SUPPORTED
     inline constexpr auto sqlite_offset = "SQLITE_OFFSET"_builtin.scalar<std::unique_ptr<int64>(anything)>();
 #endif
     inline constexpr auto coalesce =
@@ -879,7 +879,7 @@ namespace sqlite_orm::internal {
     inline constexpr auto substring =
         "SUBSTRING"_builtin.scalar<std::string(std::string_view, int), std::string(std::string_view, int, int)>();
 #endif
-#ifdef SQLITE_SOUNDEX
+#ifdef SQLITE_ORM_SOUNDEX_SUPPORTED
     inline constexpr auto soundex = "SOUNDEX"_builtin.scalar<std::string(std::string_view)>();
 #endif
 #if SQLITE_VERSION_NUMBER >= 3008001
@@ -1059,7 +1059,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     inline constexpr orm_builtin_function auto sqlite_compileoption_get = internal::sqlite_compileoption_get;
 #endif
-#ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
+#ifdef SQLITE_ORM_OFFSET_SQL_FUNC_SUPPORTED
     /**
      *  SQLITE_OFFSET(X) function https://www.sqlite.org/lang_corefunc.html#sqlite_offset
      *
@@ -1112,7 +1112,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     inline constexpr orm_builtin_function auto substring = internal::substring;
 #endif
-#ifdef SQLITE_SOUNDEX
+#ifdef SQLITE_ORM_SOUNDEX_SUPPORTED
     /**
      *  SOUNDEX(X) function https://www.sqlite.org/lang_corefunc.html#soundex
      */

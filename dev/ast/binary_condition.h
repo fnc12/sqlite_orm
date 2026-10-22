@@ -9,7 +9,7 @@
 #include <string_view>  //  std::string_view
 #include <type_traits>  //  std::enable_if, std::disjunction, std::conjunction, std::negation
 #include <utility>  //  std::move, std::forward
-#include <sstream>  //  std::stringstream
+#include <sstream>  //  std::ostringstream
 #include <ostream>  //  std::flush
 #endif
 
@@ -110,7 +110,7 @@ namespace sqlite_orm::internal {
 
         template<class C>
         named_collate<is_equal_t> collate() const {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << C::name() << std::flush;
             return {*this, ss.str()};
         }
@@ -574,19 +574,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
     }
 
-    /**
-     *  [Deprecation notice] This function is deprecated and will be removed in v1.10. Use the accurately named function `less_than(...)` instead.
-     */
-    template<class L, class R>
-    [[deprecated("Use the accurately named function `less_than(...)` instead")]] internal::
-        less_than_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>>
-        lesser_than(L lhs, R rhs) {
-        static_assert(internal::are_valid_operands<L, R>::value,
-                      "lesser_than() arguments must be bindable values or sqlite_orm-recognized operands: member "
-                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
-        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
-    }
-
     template<class L, class R>
     constexpr internal::less_than_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>> lt(L lhs,
                                                                                                            R rhs) {
@@ -601,19 +588,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     less_or_equal(L lhs, R rhs) {
         static_assert(internal::are_valid_operands<L, R>::value,
                       "less_or_equal() arguments must be bindable values or sqlite_orm-recognized operands: member "
-                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
-        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
-    }
-
-    /**
-     *  [Deprecation notice] This function is deprecated and will be removed in v1.10. Use the accurately named function `less_or_equal(...)` instead.
-     */
-    template<class L, class R>
-    [[deprecated("Use the accurately named function `less_or_equal(...)` instead")]] internal::
-        less_or_equal_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>>
-        lesser_or_equal(L lhs, R rhs) {
-        static_assert(internal::are_valid_operands<L, R>::value,
-                      "lesser_or_equal() arguments must be bindable values or sqlite_orm-recognized operands: member "
                       "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
     }

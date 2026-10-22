@@ -7,7 +7,7 @@
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_reference, std::remove_cvref, std::decay
 #include <functional>  //   std::identity, std::invoke
-#include <sstream>  //  std::stringstream
+#include <sstream>  //  std::ostringstream
 #include <ostream>  //  std::flush
 #include <map>  //  std::map
 #include <vector>  //  std::vector
@@ -185,7 +185,7 @@ namespace sqlite_orm::internal {
         void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
             std::string sql;
             {
-                std::stringstream ss;
+                std::ostringstream ss;
                 ss << "ALTER TABLE " << streaming_identifier(tableName) << " DROP COLUMN "
                    << streaming_identifier(columnName) << std::flush;
                 sql = ss.str();
@@ -210,7 +210,7 @@ namespace sqlite_orm::internal {
             if (this->object_exists(db, "table", backupTableName)) {
                 int suffix = 1;
                 do {
-                    std::stringstream ss;
+                    std::ostringstream ss;
                     ss << suffix << std::flush;
                     auto anotherBackupTableName = backupTableName + ss.str();
                     if (!this->object_exists(db, "table", anotherBackupTableName)) {
@@ -907,7 +907,7 @@ namespace sqlite_orm::internal {
         template<class O, satisfies<is_mapped, db_objects_type, O> = true>
         std::string dump(const O& object) const {
             auto& table = this->get_table<O>();
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "{ ";
             table.for_each_column([&ss, &object, first = true](auto& column) mutable {
                 using field_type = field_type_t<std::remove_reference_t<decltype(column)>>;
@@ -1120,12 +1120,6 @@ namespace sqlite_orm::internal {
             this->assert_mapped_type<O>();
             auto& table = this->get_table<O>();
             return table.name;
-        }
-
-        template<class F, class O>
-        [[deprecated("Use the more accurately named function `find_column_name()`")]] const std::string*
-        column_name(F O::* memberPointer) const {
-            return internal::find_column_name(this->db_objects, memberPointer);
         }
 
         template<class F, class O>
@@ -1377,7 +1371,7 @@ namespace sqlite_orm::internal {
             context_t context{this->db_objects};
             std::string sql;
             {
-                std::stringstream ss;
+                std::ostringstream ss;
                 ss << "ALTER TABLE " << streaming_identifier(tableName) << " ADD COLUMN " << serialize(column, context)
                    << std::flush;
                 sql = ss.str();

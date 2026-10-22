@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
 #include <tuple>  //  std::tuple_size, std::make_tuple, std::get, std::tuple_cat, std::apply
 #include <utility>  //  std::forward, std::move
 #include <vector>
@@ -15,7 +15,7 @@
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/node_algorithms.h"
 
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
 namespace sqlite_orm::internal {
     struct fts5_module_tag {
         // simplify conceptual/meta programming

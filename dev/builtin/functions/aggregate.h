@@ -97,7 +97,7 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
-#ifdef SQLITE_ENABLE_PERCENTILE
+#ifdef SQLITE_ORM_PERCENTILE_SUPPORTED
     struct median_string {
         std::string_view serialize() const {
             return "MEDIAN";
@@ -222,7 +222,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
-#ifdef SQLITE_ENABLE_PERCENTILE
+#ifdef SQLITE_ORM_PERCENTILE_SUPPORTED
     /**
      *  MEDIAN(X) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
      *
@@ -295,7 +295,7 @@ namespace sqlite_orm::internal {
 #if SQLITE_VERSION_NUMBER >= 3044000
     inline constexpr auto string_agg = "STRING_AGG"_builtin.aggregate<std::string(anything, std::string_view)>();
 #endif
-#ifdef SQLITE_ENABLE_PERCENTILE
+#ifdef SQLITE_ORM_PERCENTILE_SUPPORTED
     inline constexpr auto median = "MEDIAN"_builtin.aggregate<std::unique_ptr<double>(anything)>();
     inline constexpr auto percentile = "PERCENTILE"_builtin.aggregate<std::unique_ptr<double>(anything, double)>();
     inline constexpr auto percentile_cont =
@@ -352,7 +352,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     inline constexpr orm_builtin_function auto string_agg = internal::string_agg;
 #endif
-#ifdef SQLITE_ENABLE_PERCENTILE
+#ifdef SQLITE_ORM_PERCENTILE_SUPPORTED
     /**
      *  MEDIAN(X) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
      *

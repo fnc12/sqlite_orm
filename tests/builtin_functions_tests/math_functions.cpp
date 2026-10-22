@@ -3,7 +3,7 @@
 
 using namespace sqlite_orm;
 
-#ifdef SQLITE_ENABLE_MATH_FUNCTIONS
+#ifdef SQLITE_ORM_MATH_FUNCTIONS_SUPPORTED
 
 constexpr double Epsilon = 0.0001;
 static bool is_double_eq(double a, double b, double epsilon) {
@@ -445,4 +445,4 @@ TEST_CASE("math functions") {
     }
 }
 
-#endif  //  SQLITE_ENABLE_MATH_FUNCTIONS
+#endif  //  SQLITE_ORM_MATH_FUNCTIONS_SUPPORTED

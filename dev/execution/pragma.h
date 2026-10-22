@@ -8,7 +8,7 @@
 #include <functional>  //  std::function
 #include <utility>  //  std::move
 #include <vector>  //  std::vector
-#include <sstream>  //  std::stringstream
+#include <sstream>  //  std::ostringstream
 #endif
 
 #include "../functional/gsl.h"
@@ -138,13 +138,13 @@ namespace sqlite_orm::internal {
 
         template<class T>
         std::vector<std::string> integrity_check(T table_name) {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "integrity_check(" << streaming_identifier(table_name) << ")";
             return this->get_pragma<std::vector<std::string>>(ss.str());
         }
 
         std::vector<std::string> integrity_check(int n) {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "integrity_check(" << n << ")";
             return this->get_pragma<std::vector<std::string>>(ss.str());
         }
@@ -160,7 +160,7 @@ namespace sqlite_orm::internal {
             std::vector<sqlite_orm::table_xinfo> result;
             std::string sql;
             {
-                std::stringstream ss;
+                std::ostringstream ss;
                 ss << "PRAGMA "
                       "table_xinfo("
                    << streaming_identifier(tableName) << ")";
@@ -194,7 +194,7 @@ namespace sqlite_orm::internal {
 
             std::string sql;
             {
-                std::stringstream ss;
+                std::ostringstream ss;
                 ss << "PRAGMA "
                       "table_info("
                    << streaming_identifier(tableName) << ")";
@@ -246,19 +246,19 @@ namespace sqlite_orm::internal {
          */
         template<class T>
         void set_pragma(std::string_view name, const T& value, sqlite3* db = nullptr) {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "PRAGMA " << name << " = " << value;
             this->set_pragma_impl(ss.str(), db);
         }
 
         void set_pragma(std::string_view name, sqlite_orm::journal_mode value, sqlite3* db = nullptr) {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "PRAGMA " << name << " = " << journal_mode_to_string(value);
             this->set_pragma_impl(ss.str(), db);
         }
 
         void set_pragma(std::string_view name, sqlite_orm::locking_mode value, sqlite3* db = nullptr) {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "PRAGMA " << name << " = " << locking_mode_to_string(value);
             this->set_pragma_impl(ss.str(), db);
         }
