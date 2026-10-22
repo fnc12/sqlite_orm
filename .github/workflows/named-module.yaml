@@ -140,10 +140,11 @@ jobs:
           $sudo apt-get update
           $sudo apt-get install -y ${{ matrix.compiler_packages }} ninja-build libsqlite3-dev
 
+      # note: `RUNNER_TEMP` is the temporary directory as seen from the container, `runner.temp` that of the runner
       - name: Install CMake ${{ env.CMAKE_VERSION }}
         run: |
-          curl -sL https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz | tar -xz -C ${{ runner.temp }}
-          echo "${{ runner.temp }}/cmake-${CMAKE_VERSION}-linux-x86_64/bin" >> $GITHUB_PATH
+          curl -sL https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz | tar -xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/cmake-${CMAKE_VERSION}-linux-x86_64/bin" >> $GITHUB_PATH
 
       # Rewrites the module source paths of the standard library's module manifest to existing absolute paths:
       # relative to the manifest, to its symlink target, or else found by the path below the leading `..` components.
