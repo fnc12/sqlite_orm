@@ -73,10 +73,11 @@ which takes precedence where both apply.
   result codes, callback conventions - rather than sqlite_orm's own concepts. Merely using the
   C API does not qualify: `prepared_statement.h` owns a `sqlite3_stmt`, but is a storage concept
   carrying a DSL expression.
-- `dev/config/` - The configuration, macros only: the public set in `config.h` (detection of the
-  language, standard library, compiler and platform, and sqlite_orm's capability macros
-  `SQLITE_ORM_WITH_*`), the macros sqlite_orm's own code is spelled with in
-  `internal_macros.h`, and the `prologue.h`/`epilogue.h` pair around the library.
+- `dev/config/` - The configuration, macros only: the public set in `config.h` (the toolchain
+  detection and sqlite_orm's capability macros `SQLITE_ORM_WITH_*`), the macros sqlite_orm's
+  own code is spelled with in `internal_macros.h`, and the `prologue.h`/`epilogue.h` pair around
+  the library. `toolchain/` holds the detection of the C++ language, standard library, compiler
+  and platform sqlite_orm is built with, and the check of its prerequisites.
 - `dev/functional/` - General-purpose C++ utilities with no SQL or DSL meaning: the prelude
   `cxx_universal.h` that the umbrella header includes after the configuration, polyfills,
   metaprogramming (`mpl.h`), reflection helpers (`meta_util.h`), pointer-to-member mechanics

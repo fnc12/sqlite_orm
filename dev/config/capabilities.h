@@ -4,8 +4,8 @@
  *  The optional features sqlite_orm offers with the language, standard library and SQLite in use.
  */
 
-#include "language_features.h"
-#include "stdlib_features.h"
+#include "toolchain/language_features.h"
+#include "toolchain/stdlib_features.h"
 #include "../sqlite3/sqlite3_config.h"
 
 #if (defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&              \

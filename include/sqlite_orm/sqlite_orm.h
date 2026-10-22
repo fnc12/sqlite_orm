@@ -35,7 +35,7 @@ __pragma(push_macro("max"))
  *  Macros only, no declarations.
  */
 
-// #include "prerequisites.h"
+// #include "toolchain/check_prerequisites.h"
 
 /*
  *  This header detects missing core C++ language features and standard library features
@@ -82,7 +82,7 @@ __pragma(push_macro("max"))
 #error A fully C++17-compliant standard library is required (libstdc++ 9, libc++ 8, MSVC 19.16 or newer).
 #endif
 
-// #include "language_features.h"
+// #include "toolchain/language_features.h"
 
 /*
  *  Detection of the C++ core language features.
@@ -156,7 +156,7 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
 #endif
 
-// #include "compiler_quirks.h"
+// #include "toolchain/compiler_quirks.h"
 
 /*
  *  Compiler detection, and the workarounds for compiler quirks sqlite_orm depends on.
@@ -226,7 +226,7 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_BROKEN_CPP20_VIEWS
 #endif
 
-// #include "platform.h"
+// #include "toolchain/platform.h"
 
 #if defined(_WIN32)
 #define SQLITE_ORM_WIN
@@ -263,13 +263,13 @@ __pragma(push_macro("max"))
 #error "Unknown target platform detected"
 #endif
 
-// #include "stdlib_features.h"
+// #include "toolchain/stdlib_features.h"
 
 /*
  *  Detection of the C++ standard library features.
  */
 
-// #include "prerequisites.h"
+// #include "check_prerequisites.h"
 
 // #include "language_features.h"
 
@@ -313,9 +313,9 @@ __pragma(push_macro("max"))
  *  The optional features sqlite_orm offers with the language, standard library and SQLite in use.
  */
 
-// #include "language_features.h"
+// #include "toolchain/language_features.h"
 
-// #include "stdlib_features.h"
+// #include "toolchain/stdlib_features.h"
 
 // #include "../sqlite3/sqlite3_config.h"
 
