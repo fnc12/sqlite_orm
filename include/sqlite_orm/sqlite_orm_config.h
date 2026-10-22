@@ -6,7 +6,9 @@
  *  Macros only, no declarations.
  *
  *  Published as <sqlite_orm/sqlite_orm_config.h> for consumers of the named module, which cannot export macros:
- *  include it ahead of `import sqlite_orm;`.
+ *  include it ahead of `import sqlite_orm;` and `import std;`.
+ *  GCC fails including it after either, as the standard library's inline definitions from `<version>`
+ *  then clash with those reachable from the module.
  *  The include guard is shared by both published headers, which each contain this header.
  */
 
