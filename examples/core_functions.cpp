@@ -1170,7 +1170,7 @@ int main(int, char** argv) {
 
     //  SELECT round(0.5)
     cout << "SELECT round(0.5) = " << storage.select(round(0.5)).front() << endl;
-#ifdef SQLITE_SOUNDEX
+#ifdef SQLITE_ORM_SOUNDEX_SUPPORTED
     //  SELECT soundex('Schn Thomson')
     cout << "SELECT soundex('Schn Thomson') = " << storage.select(soundex("Schn Thomson")).front() << endl;
 #endif
@@ -1288,7 +1288,7 @@ int main(int, char** argv) {
     cout << "SELECT unistr('\\u00e4') = " << storage.select(unistr("\\u00e4")).front() << endl;
 #endif
 
-#if defined(SQLITE_ENABLE_PERCENTILE)
+#ifdef SQLITE_ORM_PERCENTILE_SUPPORTED
     //  SELECT median(points), percentile(points, 90) FROM marvel
     {
         auto medianPoints = storage.select(median<std::optional<double>>(&MarvelHero::points)).front();
