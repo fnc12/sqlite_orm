@@ -13,11 +13,11 @@
 #ifndef SQLITE_ORM_CONFIG_INCLUDED
 #define SQLITE_ORM_CONFIG_INCLUDED
 
-#include "prerequisites.h"
-#include "language_features.h"
-#include "compiler_quirks.h"
-#include "platform.h"
-#include "stdlib_features.h"
+#include "toolchain/check_prerequisites.h"
+#include "toolchain/language_features.h"
+#include "toolchain/compiler_quirks.h"
+#include "toolchain/platform.h"
+#include "toolchain/stdlib_features.h"
 #include "capabilities.h"
 
 #endif

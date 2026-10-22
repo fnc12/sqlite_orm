@@ -21,8 +21,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     inline constexpr orm_pointer_type auto carray_pointer_tag = "carray"_pointer_type;
-    // [Deprecation notice] This type is deprecated and will be removed in v1.10. Use the inline variable `carray_pointer_tag` instead.
-    using carray_pvt [[deprecated]] = decltype("carray"_pointer_type);
 
     template<typename P>
     using carray_pointer_arg = pointer_arg_t<P, carray_pointer_tag>;
@@ -43,34 +41,19 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return bind_pointer<carray_pointer_tag>(p, std::move(d));
     }
 
-    template<class P>
-    static_carray_pointer_binding<P> bind_carray_pointer_statically(P* p) noexcept {
-        return bind_pointer_statically<carray_pointer_tag>(p);
-    }
-
     /**
      *  Wrap a pointer of type 'carray' for binding it to a statement.
-     *  
+     *
      *  Note: 'Static' means that ownership of the pointed-to-object won't be transferred
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
-    template<class P, class D>
-    [[deprecated("Use the better named function `bind_carray_pointer(...)`")]] carray_pointer_binding<P, D>
-    bindable_carray_pointer(P* p, D d) noexcept {
-        return bind_pointer<carray_pointer_tag>(p, std::move(d));
-    }
-
     template<class P>
-    [[deprecated(
-        "Use the better named function `bind_carray_pointer_statically(...)` ")]] static_carray_pointer_binding<P>
-    statically_bindable_carray_pointer(P* p) noexcept {
+    static_carray_pointer_binding<P> bind_carray_pointer_statically(P* p) noexcept {
         return bind_pointer_statically<carray_pointer_tag>(p);
     }
 #else
     inline constexpr const char carray_pointer_name[] = "carray";
     using carray_pointer_type = std::integral_constant<orm_gsl::czstring, carray_pointer_name>;
-    // [Deprecation notice] This type is deprecated and will be removed in v1.10. Use the alias type `carray_pointer_type` instead.
-    using carray_pvt [[deprecated]] = carray_pointer_type;
 
     template<typename P>
     using carray_pointer_arg = pointer_arg<P, carray_pointer_type>;
@@ -100,19 +83,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class P>
     static_carray_pointer_binding<P> bind_carray_pointer_statically(P* p) noexcept {
         return bind_pointer_statically<carray_pointer_type>(p);
-    }
-
-    template<class P, class D>
-    [[deprecated("Use the better named function `bind_carray_pointer(...)`")]] carray_pointer_binding<P, D>
-    bindable_carray_pointer(P* p, D d) noexcept {
-        return bind_carray_pointer(p, std::move(d));
-    }
-
-    template<class P>
-    [[deprecated(
-        "Use the better named function `bind_carray_pointer_statically(...)` ")]] static_carray_pointer_binding<P>
-    statically_bindable_carray_pointer(P* p) noexcept {
-        return bind_carray_pointer_statically(p);
     }
 #endif
 

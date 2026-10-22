@@ -10,11 +10,11 @@
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::move, std::forward
-#include <sstream>  //  std::stringstream
+#include <sstream>  //  std::ostringstream
 #include <ostream>  //  std::flush
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/type_traits.h"
 #include "../builtin/collations.h"  //  collate_argument, collate_argument_to_string
 #include "../serialization/serializer_context.h"
@@ -98,7 +98,7 @@ namespace sqlite_orm::internal {
 
         template<class C>
         order_by_t collate() const {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << C::name() << std::flush;
             return this->collate(ss.str());
         }

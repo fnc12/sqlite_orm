@@ -4,7 +4,7 @@
  *  Detection of the C++ standard library features.
  */
 
-#include "prerequisites.h"
+#include "check_prerequisites.h"
 #include "language_features.h"
 #include "compiler_quirks.h"
 

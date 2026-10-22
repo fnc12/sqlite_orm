@@ -418,6 +418,13 @@ TEST_CASE("pragma_table_xinfo virtual table") {
             where(c(&table_xinfo::hidden::arg) == "users" and c(&table_xinfo::hidden::schema) == "main"));
         REQUIRE_THAT(names, Equals(std::vector<std::string>{"id", "name"}));
     }
+    SECTION("join with hidden columns of the same name") {
+        auto names =
+            storage.select(&table_xinfo::name,
+                           inner_join<table_info>(on(c(&table_info::name) == &table_xinfo::name)),
+                           where(c(&table_xinfo::hidden::arg) == "users" and c(&table_info::hidden::arg) == "users"));
+        REQUIRE_THAT(names, Equals(std::vector<std::string>{"id", "name"}));
+    }
 }
 #endif
 #endif

@@ -11,12 +11,12 @@
 #endif
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/meta_util.h"
 #include "../functional/type_traits.h"
 #include "../sqlite3/sqlite3_types.h"  //  int64
 #include "../functional/tuple_helper/tuple_traits.h"
-#include "../member_traits/member_traits.h"
+#include "../functional/member_traits.h"
 #include "../type_mapping/type_is_nullable.h"
 #include "column_identifier.h"
 #include "../vocabulary/node_algorithms.h"

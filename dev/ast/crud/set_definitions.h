@@ -5,7 +5,7 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <sstream>  //  std::stringstream
+#include <sstream>  //  std::ostringstream
 #endif
 
 #include "../../functional/type_traits.h"
@@ -26,7 +26,7 @@ namespace sqlite_orm::internal {
 
         auto lhsContext = this->context;
         lhsContext.omit_table_name = true;
-        std::stringstream ss;
+        std::ostringstream ss;
         ss << serialize(assign.lhs, lhsContext) << ' ' << assign.serialize() << ' '
            << serialize(assign.rhs, this->context);
         this->entries.push_back({ss.str()});

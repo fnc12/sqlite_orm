@@ -4,17 +4,17 @@
 #include <type_traits>  //  std::enable_if, std::is_same
 #include <utility>  //  std::make_index_sequence, std::move
 #include <string>  //  std::string
-#include <sstream>  //  std::stringstream
+#include <sstream>  //  std::ostringstream
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <array>
 #endif
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/mpl/conditional.h"
 #include "../functional/cstring_literal.h"
 #include "../functional/type_traits.h"
-#include "../member_traits/field_of.h"
+#include "../functional/field_of.h"
 #include "../vocabulary/node_traits.h"
 #include "column_pointer.h"
 #include "../vocabulary/node_fwd.h"  // table_identifier
@@ -136,7 +136,7 @@ namespace sqlite_orm::internal {
     template<class A>
     struct alias_extractor<A, match_if<is_alias, A>> {
         static std::string extract() {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << A::get();
             return ss.str();
         }

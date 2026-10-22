@@ -4,7 +4,7 @@
 #include <type_traits>
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/type_traits.h"
 #include "../functional/tuple_helper/tuple_transformer.h"
 #include "../vocabulary/node_traits.h"  //  is_table_reference

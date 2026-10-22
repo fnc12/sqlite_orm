@@ -13,7 +13,7 @@
 #endif
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
+#include "functional/cxx_polyfill/type_traits.h"
 #include "functional/tuple_helper/tuple_fy.h"
 #include "vocabulary/node_traits.h"
 #include "vocabulary/node_algorithms.h"  //  access_leftmost_select

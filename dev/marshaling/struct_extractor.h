@@ -10,7 +10,7 @@
 #include <utility>  //  std::index_sequence_for, std::move
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/gsl.h"
 #include "../functional/type_traits.h"
 #include "../functional/tuple_helper/tuple_transformer.h"
@@ -19,6 +19,12 @@
 #include "column_result_proxy.h"
 #include "row_extractor.h"
 #include "object_from_column_builder.h"
+
+// GCC misdiagnoses the increments in the brace-init-lists below, whose initializer clauses are sequenced left to right.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsequence-point"
+#endif
 
 namespace sqlite_orm::internal {
 
@@ -139,3 +145,7 @@ namespace sqlite_orm::internal {
         O extract(sqlite3_value* value) const = delete;
     };
 }
+
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif

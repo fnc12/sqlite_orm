@@ -3,7 +3,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <array>
 #include <string>  //  std::string
-#include <sstream>  //  std::stringstream
+#include <sstream>  //  std::ostringstream
 #include <utility>  //  std::exchange
 #endif
 
@@ -54,7 +54,7 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
+            std::ostringstream ss;
             auto newContext = context;
             newContext.omit_table_name = false;
 
@@ -71,7 +71,7 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
                                                         const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << static_cast<std::string>(orderBy) << " ";
             static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
 #ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED

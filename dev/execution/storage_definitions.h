@@ -7,7 +7,7 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same
-#include <sstream>  //  std::stringstream
+#include <sstream>  //  std::ostringstream
 #include <ostream>  //  std::flush
 #include <functional>  //  std::reference_wrapper, std::cref
 #include <algorithm>  //  std::find_if, std::ranges::find
@@ -169,7 +169,7 @@ namespace sqlite_orm::internal {
 
         std::string sql;
         {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "INSERT INTO " << streaming_identifier(destinationTableName) << " ("
                << streaming_identifiers(columnNames) << ") "
                << "SELECT " << streaming_identifiers(columnNames) << " FROM " << streaming_identifier(sourceTableName)

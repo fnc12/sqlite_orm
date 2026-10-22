@@ -11,7 +11,7 @@
 
 #include "../../functional/gsl.h"
 #include "../../functional/tuple_helper/tuple_filter.h"
-#include "../../member_traits/member_traits.h"
+#include "../../functional/member_traits.h"
 #include "../../schema/virtual_table.h"
 #include "../../ast/literal.h"
 #include "../../ast/table_reference.h"

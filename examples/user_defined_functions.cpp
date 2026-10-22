@@ -78,7 +78,7 @@ struct AcceleratedSumFunction {
     }
 
     std::string fin() const {
-        std::stringstream ss;
+        std::ostringstream ss;
         ss << "(";
         for (size_t i = 0; i < this->list.size(); ++i) {
             ss << this->list[i];
