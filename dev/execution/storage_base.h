@@ -8,7 +8,7 @@
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
 #include <optional>  //  std::optional
-#include <sstream>  //  std::stringstream
+#include <sstream>  //  std::ostringstream
 #include <ostream>  //  std::flush
 #include <utility>  //  std::move
 #include <system_error>  //  std::system_error
@@ -259,7 +259,7 @@ namespace sqlite_orm::internal {
          *  More info: https://www.sqlite.org/lang_vacuum.html#vacuuminto
          */
         void vacuum_into(std::string_view filename) {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "VACUUM INTO " << quote_string_literal(std::string{filename}) << std::flush;
             auto connection = this->get_connection();
             this->executor.perform_void_exec(connection.get(), ss.str().c_str());
@@ -280,7 +280,7 @@ namespace sqlite_orm::internal {
          *  More info: https://www.sqlite.org/lang_analyze.html
          */
         void analyze(std::string_view name) {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "ANALYZE " << streaming_identifier(name) << std::flush;
             auto connection = this->get_connection();
             this->executor.perform_void_exec(connection.get(), ss.str().c_str());
@@ -300,7 +300,7 @@ namespace sqlite_orm::internal {
          *  More info: https://www.sqlite.org/lang_reindex.html
          */
         void reindex(std::string_view name) {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "REINDEX " << streaming_identifier(name) << std::flush;
             auto connection = this->get_connection();
             this->executor.perform_void_exec(connection.get(), ss.str().c_str());
@@ -340,7 +340,7 @@ namespace sqlite_orm::internal {
         void rename_table_internal(sqlite3* db, std::string_view oldName, std::string_view newName) const {
             std::string sql;
             {
-                std::stringstream ss;
+                std::ostringstream ss;
                 ss << "ALTER TABLE " << streaming_identifier(oldName) << " RENAME TO " << streaming_identifier(newName)
                    << std::flush;
                 sql = ss.str();
@@ -349,7 +349,7 @@ namespace sqlite_orm::internal {
         }
 
         static std::string savepoint_sql(std::string_view statementPrefix, const std::string& savepointName) {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << statementPrefix << streaming_identifier(savepointName);
             return ss.str();
         }
@@ -904,7 +904,7 @@ namespace sqlite_orm::internal {
                                               C collatingObject;
                                               return collatingObject(leftLength, lhs, rightLength, rhs);
                                           };
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << C::name() << std::flush;
             this->create_collation(ss.str(), std::move(func));
         }
@@ -941,7 +941,7 @@ namespace sqlite_orm::internal {
          */
         template<class C>
         void delete_collation() {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << C::name() << std::flush;
             this->create_collation(ss.str(), {});
         }
@@ -1184,7 +1184,7 @@ namespace sqlite_orm::internal {
 
             auto connection = this->get_connection();
             data_t objectNames;
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "SELECT name FROM sqlite_master WHERE type=" << quote_string_literal(std::string(type)) << std::flush;
             this->executor.perform_exec(
                 connection.get(),
@@ -1203,7 +1203,7 @@ namespace sqlite_orm::internal {
         void foreign_keys(sqlite3* db, bool value) {
             std::string sql;
             {
-                std::stringstream ss;
+                std::ostringstream ss;
                 ss << "PRAGMA foreign_keys = " << value << std::flush;
                 sql = ss.str();
             }
@@ -1423,7 +1423,7 @@ namespace sqlite_orm::internal {
         }
 
         void drop_dbo_internal(sqlite3* db, orm_gsl::czstring dboKeyword, std::string_view dboName, bool ifExists) {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "DROP " << dboKeyword;
             if (ifExists) {
                 ss << " IF EXISTS";
@@ -1434,7 +1434,7 @@ namespace sqlite_orm::internal {
 
         bool object_exists(sqlite3* db, std::string_view type, std::string_view dboName) const {
             bool result = false;
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal(std::string{type})
                << " AND name = " << quote_string_literal(std::string{dboName}) << std::flush;
             this->executor.perform_exec(
@@ -1451,7 +1451,7 @@ namespace sqlite_orm::internal {
 
         std::string retrieve_object_sql(sqlite3* db, std::string_view type, std::string_view dboName) const {
             std::string result;
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "SELECT sql FROM sqlite_master WHERE type = " << quote_string_literal(std::string{type})
                << " AND name = " << quote_string_literal(std::string{dboName}) << std::flush;
             this->executor.perform_exec(
