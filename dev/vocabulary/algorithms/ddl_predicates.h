@@ -57,7 +57,7 @@ namespace sqlite_orm::internal {
     using is_base_table_element_or_constraint =
         mpl::invoke_t<mpl::disjunction<check_if<is_column>, check_if<is_base_table_constraint>>, T>;
 
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
     template<class T>
     using is_fts5_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
                                                                                check_if<is_prefix>,
@@ -67,7 +67,7 @@ namespace sqlite_orm::internal {
                                                               T>;
 #endif
 
-#ifdef SQLITE_ENABLE_RTREE
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
     template<class T>
     using is_rtree_table_element_or_constraint = is_column<T>;
 #endif

@@ -3,7 +3,7 @@
 
 using namespace sqlite_orm;
 
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
 TEST_CASE("statement_serializer dbstat") {
     struct mystat : dbstat {};
     constexpr auto mystat_table = c<mystat>();
