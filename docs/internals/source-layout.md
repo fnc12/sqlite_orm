@@ -30,7 +30,6 @@ which takes precedence where both apply.
 
 - `dev/vocabulary/` - Traits, projections and algorithms classifying a single node; its
   manifests `dev/node_definitions.h` and `dev/node_algorithm_definitions.h` sit next to it.
-- `dev/member_traits/` - Pointer-to-member mechanics, one tier below the DSL.
 - `dev/traversal/` - Walking an expression tree: `ast_iterator.h` visits its nodes,
   `node_tuple.h` flattens it into a tuple. Traversal, not vocabulary: neither classifies a node.
 
@@ -80,5 +79,6 @@ which takes precedence where both apply.
   `internal_macros.h`, and the `prologue.h`/`epilogue.h` pair around the library.
 - `dev/functional/` - General-purpose C++ utilities with no SQL or DSL meaning: the prelude
   `cxx_universal.h` that the umbrella header includes after the configuration, polyfills,
-  metaprogramming (`mpl.h`), reflection helpers (`meta_util.h`), and in `tuple_helper/` generic
-  algorithms over tuples and type lists.
+  metaprogramming (`mpl.h`), reflection helpers (`meta_util.h`), pointer-to-member mechanics
+  (`member_traits.h`, `field_of.h`), and in `tuple_helper/` generic algorithms over tuples and
+  type lists.

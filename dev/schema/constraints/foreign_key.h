@@ -12,7 +12,7 @@
 #include "../../functional/cxx_type_traits_polyfill.h"
 #include "../../functional/addressof.h"
 #include "../../functional/tuple_helper/same_or_void.h"
-#include "../../member_traits/field_of.h"
+#include "../../functional/field_of.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
@@ -171,9 +171,9 @@ namespace sqlite_orm::internal {
 
         columns_type _columns;
         references_type _references;
-        on_fk_update_delete<foreign_key_t, true> on_update;
-        on_fk_update_delete<foreign_key_t, false> on_delete;
-        fk_enforcement_state _deferrable;
+        on_fk_update_delete<foreign_key_t, true> on_update{};
+        on_fk_update_delete<foreign_key_t, false> on_delete{};
+        fk_enforcement_state _deferrable{};
 
         static_assert(!std::is_same<source_type, void>::value, "All columns must have the same mapped type");
         static_assert(!std::is_same<target_type, void>::value, "All references must have the same mapped type");

@@ -7,6 +7,7 @@
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/type_traits.h"
+#include "../functional/field_of.h"  // Included to specialize is_field_of_v
 #include "../vocabulary/node_traits.h"  //  node projections, is_alias_holder
 #include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
@@ -29,6 +30,9 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> = true;
+
+    template<class F, class T>
+    constexpr bool is_field_of_v<column_pointer<T, F>, T, void> = true;
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     template<class A>

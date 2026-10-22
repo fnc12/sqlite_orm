@@ -13,8 +13,8 @@
 #include "../functional/tuple_helper/tuple_filter.h"
 #include "../functional/tuple_helper/tuple_iteration.h"
 #include "../functional/tuple_helper/tuple_transformer.h"
-#include "../member_traits/member_traits.h"
-#include "../member_traits/field_of.h"
+#include "../functional/member_traits.h"
+#include "../functional/field_of.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_fwd.h"  // primary_key_t, column_field

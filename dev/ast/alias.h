@@ -14,7 +14,7 @@
 #include "../functional/mpl/conditional.h"
 #include "../functional/cstring_literal.h"
 #include "../functional/type_traits.h"
-#include "../member_traits/field_of.h"
+#include "../functional/field_of.h"
 #include "../vocabulary/node_traits.h"
 #include "column_pointer.h"
 #include "../vocabulary/node_fwd.h"  // table_identifier
