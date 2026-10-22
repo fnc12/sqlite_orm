@@ -412,8 +412,8 @@ Looks like magic but it works very simple. Cute function `c` (column) takes a cl
 * is_not_equal
 * greater_than
 * greater_or_equal
-* lesser_than
-* lesser_or_equal
+* less_than
+* less_or_equal
 * is_null
 * is_not_null
 

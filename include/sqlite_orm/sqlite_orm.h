@@ -1604,12 +1604,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  - structure implicitly yielding a function pointer
      *  
      *  @note Use one of the factory functions to create a pointer binding,
-     *  e.g. bindable_carray_pointer or statically_bindable_carray_pointer().
+     *  e.g. bind_carray_pointer() or bind_carray_pointer_statically().
      *  
      *  @example
      *  ```
      *  int64 rememberedId;
-     *  storage.select(func<remember_fn>(&Object::id, statically_bindable_carray_pointer(&rememberedId)));
+     *  storage.select(func<remember_fn>(&Object::id, bind_carray_pointer_statically(&rememberedId)));
      *  ```
      */
     template<typename P, typename T, typename D>
@@ -1719,24 +1719,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return B{p, std::move(d)};
     }
 
-    template<class T, class P, class D>
-    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D>
-    bindable_pointer(P* p, D d) noexcept {
-        return bind_pointer<T>(p, std::move(d));
-    }
-
-    template<class T, class P, class D>
-    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D>
-    bindable_pointer(std::unique_ptr<P, D> p) noexcept {
-        return bind_pointer<T>(p.release(), p.get_deleter());
-    }
-
-    template<typename B>
-    [[deprecated("Use the better named function `bind_pointer(...)`")]] B
-    bindable_pointer(typename B::qualified_type* p, typename B::deleter_type d = {}) noexcept {
-        return bind_pointer<B>(p, std::move(d));
-    }
-
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Wrap a pointer, its type (tag) and its deleter function for binding it to a statement.
@@ -1770,19 +1752,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<typename B>
     B bind_pointer_statically(typename B::qualified_type* p,
                               typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
-        return bind_pointer<B>(p);
-    }
-
-    template<class T, class P>
-    [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] static_pointer_binding<P, T>
-    statically_bindable_pointer(P* p) noexcept {
-        return bind_pointer<T>(p, null_xdestroy_f);
-    }
-
-    template<typename B>
-    [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] B
-    statically_bindable_pointer(typename B::qualified_type* p,
-                                typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
         return bind_pointer<B>(p);
     }
 
@@ -1841,8 +1810,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     inline constexpr orm_pointer_type auto carray_pointer_tag = "carray"_pointer_type;
-    // [Deprecation notice] This type is deprecated and will be removed in v1.10. Use the inline variable `carray_pointer_tag` instead.
-    using carray_pvt [[deprecated]] = decltype("carray"_pointer_type);
 
     template<typename P>
     using carray_pointer_arg = pointer_arg_t<P, carray_pointer_tag>;
@@ -1863,34 +1830,19 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return bind_pointer<carray_pointer_tag>(p, std::move(d));
     }
 
-    template<class P>
-    static_carray_pointer_binding<P> bind_carray_pointer_statically(P* p) noexcept {
-        return bind_pointer_statically<carray_pointer_tag>(p);
-    }
-
     /**
      *  Wrap a pointer of type 'carray' for binding it to a statement.
-     *  
+     *
      *  Note: 'Static' means that ownership of the pointed-to-object won't be transferred
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
-    template<class P, class D>
-    [[deprecated("Use the better named function `bind_carray_pointer(...)`")]] carray_pointer_binding<P, D>
-    bindable_carray_pointer(P* p, D d) noexcept {
-        return bind_pointer<carray_pointer_tag>(p, std::move(d));
-    }
-
     template<class P>
-    [[deprecated(
-        "Use the better named function `bind_carray_pointer_statically(...)` ")]] static_carray_pointer_binding<P>
-    statically_bindable_carray_pointer(P* p) noexcept {
+    static_carray_pointer_binding<P> bind_carray_pointer_statically(P* p) noexcept {
         return bind_pointer_statically<carray_pointer_tag>(p);
     }
 #else
     inline constexpr const char carray_pointer_name[] = "carray";
     using carray_pointer_type = std::integral_constant<orm_gsl::czstring, carray_pointer_name>;
-    // [Deprecation notice] This type is deprecated and will be removed in v1.10. Use the alias type `carray_pointer_type` instead.
-    using carray_pvt [[deprecated]] = carray_pointer_type;
 
     template<typename P>
     using carray_pointer_arg = pointer_arg<P, carray_pointer_type>;
@@ -1920,19 +1872,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class P>
     static_carray_pointer_binding<P> bind_carray_pointer_statically(P* p) noexcept {
         return bind_pointer_statically<carray_pointer_type>(p);
-    }
-
-    template<class P, class D>
-    [[deprecated("Use the better named function `bind_carray_pointer(...)`")]] carray_pointer_binding<P, D>
-    bindable_carray_pointer(P* p, D d) noexcept {
-        return bind_carray_pointer(p, std::move(d));
-    }
-
-    template<class P>
-    [[deprecated(
-        "Use the better named function `bind_carray_pointer_statically(...)` ")]] static_carray_pointer_binding<P>
-    statically_bindable_carray_pointer(P* p) noexcept {
-        return bind_carray_pointer_statically(p);
     }
 #endif
 
@@ -10316,19 +10255,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
     }
 
-    /**
-     *  [Deprecation notice] This function is deprecated and will be removed in v1.10. Use the accurately named function `less_than(...)` instead.
-     */
-    template<class L, class R>
-    [[deprecated("Use the accurately named function `less_than(...)` instead")]] internal::
-        less_than_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>>
-        lesser_than(L lhs, R rhs) {
-        static_assert(internal::are_valid_operands<L, R>::value,
-                      "lesser_than() arguments must be bindable values or sqlite_orm-recognized operands: member "
-                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
-        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
-    }
-
     template<class L, class R>
     constexpr internal::less_than_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>> lt(L lhs,
                                                                                                            R rhs) {
@@ -10343,19 +10269,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     less_or_equal(L lhs, R rhs) {
         static_assert(internal::are_valid_operands<L, R>::value,
                       "less_or_equal() arguments must be bindable values or sqlite_orm-recognized operands: member "
-                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
-        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
-    }
-
-    /**
-     *  [Deprecation notice] This function is deprecated and will be removed in v1.10. Use the accurately named function `less_or_equal(...)` instead.
-     */
-    template<class L, class R>
-    [[deprecated("Use the accurately named function `less_or_equal(...)` instead")]] internal::
-        less_or_equal_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>>
-        lesser_or_equal(L lhs, R rhs) {
-        static_assert(internal::are_valid_operands<L, R>::value,
-                      "lesser_or_equal() arguments must be bindable values or sqlite_orm-recognized operands: member "
                       "pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
     }
@@ -29521,12 +29434,6 @@ namespace sqlite_orm::internal {
             this->assert_mapped_type<O>();
             auto& table = this->get_table<O>();
             return table.name;
-        }
-
-        template<class F, class O>
-        [[deprecated("Use the more accurately named function `find_column_name()`")]] const std::string*
-        column_name(F O::* memberPointer) const {
-            return internal::find_column_name(this->db_objects, memberPointer);
         }
 
         template<class F, class O>

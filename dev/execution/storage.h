@@ -1123,12 +1123,6 @@ namespace sqlite_orm::internal {
         }
 
         template<class F, class O>
-        [[deprecated("Use the more accurately named function `find_column_name()`")]] const std::string*
-        column_name(F O::* memberPointer) const {
-            return internal::find_column_name(this->db_objects, memberPointer);
-        }
-
-        template<class F, class O>
         const std::string* find_column_name(F O::* memberPointer) const {
             return internal::find_column_name(this->db_objects, memberPointer);
         }
