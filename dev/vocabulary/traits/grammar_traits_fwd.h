@@ -6,7 +6,7 @@
  *        Definitions of these traits are in the corresponding header files of the grammar nodes.
  */
 
-#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/cxx_polyfill/type_traits.h"
 
 // Schema classifier traits
 namespace sqlite_orm::internal {

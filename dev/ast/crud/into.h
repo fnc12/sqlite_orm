@@ -3,7 +3,7 @@
 /** @file The INTO clause naming the table a raw INSERT or REPLACE targets.
  */
 
-#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/cxx_polyfill/type_traits.h"
 #include "../../vocabulary/node_traits.h"  //  orm_table_reference, auto_decay_table_ref_t
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 

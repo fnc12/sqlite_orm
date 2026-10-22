@@ -20,8 +20,8 @@
 #endif
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, std::disjunction
-#include "../functional/cxx_functional_polyfill.h"  // polyfill::identity
+#include "../functional/cxx_polyfill/type_traits.h"  // std::remove_cvref, std::disjunction
+#include "../functional/cxx_polyfill/functional.h"  // polyfill::identity
 #include "../functional/gsl.h"
 #include "../functional/always_default.h"
 #include "../functional/mpl.h"

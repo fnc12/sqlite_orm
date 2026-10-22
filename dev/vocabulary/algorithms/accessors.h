@@ -10,7 +10,7 @@
 #include <utility>  //  std::declval, std::move
 #endif
 
-#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/cxx_polyfill/type_traits.h"
 #include "../../functional/type_traits.h"  //  match_if, value_unref_type, forward_lvalue_ref
 #include "../node_traits.h"
 

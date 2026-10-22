@@ -10,7 +10,7 @@
 #include <utility>  //  std::index_sequence_for, std::move
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/gsl.h"
 #include "../functional/type_traits.h"
 #include "../functional/tuple_helper/tuple_transformer.h"

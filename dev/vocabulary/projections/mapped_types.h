@@ -12,7 +12,7 @@
 #include <type_traits>  //  std::remove_const
 #endif
 
-#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/cxx_polyfill/type_traits.h"
 #include "../node_fwd.h"
 
 namespace sqlite_orm::internal {

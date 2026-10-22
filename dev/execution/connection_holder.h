@@ -10,7 +10,7 @@
 #include <string>  //  std::string
 #endif
 
-#include "../functional/cxx_scope_guard.h"
+#include "../functional/cxx_polyfill/scope_guard.h"
 #include "../functional/interference_size.h"
 #include "../functional/gsl.h"
 #include "../sqlite3/sqlite3_errors.h"

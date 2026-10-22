@@ -20,8 +20,8 @@
 #endif
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
-#include "../functional/cxx_functional_polyfill.h"  //  polyfill::identity
+#include "../functional/cxx_polyfill/type_traits.h"
+#include "../functional/cxx_polyfill/functional.h"  //  polyfill::identity
 #include "../functional/gsl.h"
 #include "../functional/mpl.h"
 #include "../functional/type_traits.h"
