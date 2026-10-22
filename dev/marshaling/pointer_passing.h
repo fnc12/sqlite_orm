@@ -117,12 +117,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  - structure implicitly yielding a function pointer
      *  
      *  @note Use one of the factory functions to create a pointer binding,
-     *  e.g. bindable_carray_pointer or statically_bindable_carray_pointer().
+     *  e.g. bind_carray_pointer() or bind_carray_pointer_statically().
      *  
      *  @example
      *  ```
      *  int64 rememberedId;
-     *  storage.select(func<remember_fn>(&Object::id, statically_bindable_carray_pointer(&rememberedId)));
+     *  storage.select(func<remember_fn>(&Object::id, bind_carray_pointer_statically(&rememberedId)));
      *  ```
      */
     template<typename P, typename T, typename D>
@@ -232,24 +232,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return B{p, std::move(d)};
     }
 
-    template<class T, class P, class D>
-    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D>
-    bindable_pointer(P* p, D d) noexcept {
-        return bind_pointer<T>(p, std::move(d));
-    }
-
-    template<class T, class P, class D>
-    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D>
-    bindable_pointer(std::unique_ptr<P, D> p) noexcept {
-        return bind_pointer<T>(p.release(), p.get_deleter());
-    }
-
-    template<typename B>
-    [[deprecated("Use the better named function `bind_pointer(...)`")]] B
-    bindable_pointer(typename B::qualified_type* p, typename B::deleter_type d = {}) noexcept {
-        return bind_pointer<B>(p, std::move(d));
-    }
-
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Wrap a pointer, its type (tag) and its deleter function for binding it to a statement.
@@ -283,19 +265,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<typename B>
     B bind_pointer_statically(typename B::qualified_type* p,
                               typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
-        return bind_pointer<B>(p);
-    }
-
-    template<class T, class P>
-    [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] static_pointer_binding<P, T>
-    statically_bindable_pointer(P* p) noexcept {
-        return bind_pointer<T>(p, null_xdestroy_f);
-    }
-
-    template<typename B>
-    [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] B
-    statically_bindable_pointer(typename B::qualified_type* p,
-                                typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
         return bind_pointer<B>(p);
     }
 

@@ -45,7 +45,7 @@ static std::optional<std::chrono::sys_days> sysDaysFromString(const std::string&
     using namespace std::literals;
     using namespace std::chrono;
 
-    std::stringstream ss{s};
+    std::istringstream ss{s};
     std::chrono::sys_days tt;
     ss >> std::chrono::parse("%F"s, tt);
     if (!ss.fail()) {
