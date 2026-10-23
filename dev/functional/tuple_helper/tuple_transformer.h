@@ -9,7 +9,7 @@
 #include "../cxx_polyfill/type_traits.h"
 #include "../cxx_polyfill/utility.h"  //  polyfill::forward_like
 #include "../cxx_polyfill/functional.h"  //  polyfill::identity
-#include "../mpl.h"
+#include "../mpl/quoted_metafunctions.h"
 
 namespace sqlite_orm::internal {
     template<class Pack, template<class...> class Op>

@@ -2296,7 +2296,7 @@ namespace sqlite_orm::internal {
 
 // #include "../cxx_polyfill/type_traits.h"
 
-// #include "../mpl.h"
+// #include "../mpl/quoted_metafunctions.h"
 
 /*
  *  Symbols for 'template metaprogramming' (compile-time template programming),
@@ -2331,9 +2331,9 @@ namespace sqlite_orm::internal {
 #include <initializer_list>
 #endif
 
-// #include "cxx_polyfill/type_traits.h"
+// #include "../cxx_polyfill/type_traits.h"
 
-// #include "mpl/conditional.h"
+// #include "conditional.h"
 
 namespace sqlite_orm::internal::mpl {
     /*
@@ -4962,7 +4962,7 @@ namespace sqlite_orm::internal {
  *        yielding an index sequence of the matching positions.
  */
 
-// #include "../../functional/mpl.h"
+// #include "../../functional/mpl/quoted_metafunctions.h"
 
 // #include "../../functional/tuple_helper/tuple_filter.h"
 
@@ -5262,7 +5262,7 @@ namespace sqlite_orm {
     namespace polyfill = internal::polyfill;
 }
 //  polyfill::identity
-// #include "../mpl.h"
+// #include "../mpl/quoted_metafunctions.h"
 
 namespace sqlite_orm::internal {
     template<class Pack, template<class...> class Op>
@@ -5429,7 +5429,7 @@ namespace sqlite_orm::internal {
 
 // #include "../../functional/cxx_polyfill/type_traits.h"
 
-// #include "../../functional/mpl.h"
+// #include "../../functional/mpl/quoted_metafunctions.h"
 
 // #include "../node_traits.h"
 
@@ -5537,7 +5537,7 @@ namespace sqlite_orm::internal {
 
 // #include "../../functional/cxx_polyfill/type_traits.h"
 
-// #include "../../functional/mpl.h"
+// #include "../../functional/mpl/quoted_metafunctions.h"
 
 // #include "../../functional/tuple_helper/tuple_traits.h"
 
@@ -6071,7 +6071,7 @@ namespace sqlite_orm::internal {
 
 // #include "../../functional/cxx_polyfill/type_traits.h"
 
-// #include "../../functional/mpl.h"
+// #include "../../functional/mpl/quoted_metafunctions.h"
 
 // #include "../../functional/type_traits.h"
 //  common_type_of
@@ -6394,7 +6394,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/meta_util.h"
 
-// #include "../functional/mpl.h"
+// #include "../functional/mpl/quoted_metafunctions.h"
 
 // #include "../functional/tuple_helper/tuple_filter.h"
 
@@ -6482,7 +6482,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_polyfill/type_traits.h"
 
-// #include "../functional/mpl.h"
+// #include "../functional/mpl/quoted_metafunctions.h"
 
 // #include "../functional/type_traits.h"
 
@@ -6857,7 +6857,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/meta_util.h"
 
-// #include "../functional/mpl.h"
+// #include "../functional/mpl/quoted_metafunctions.h"
 
 // #include "../functional/tuple_helper/tuple_filter.h"
 
@@ -11266,7 +11266,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "cxx_polyfill/type_traits.h"
 
-// #include "mpl.h"
+// #include "mpl/quoted_metafunctions.h"
 
 namespace sqlite_orm::internal {
     /*
@@ -12988,7 +12988,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/type_traits.h"
 
-// #include "../../functional/mpl.h"
+// #include "../../functional/mpl/quoted_metafunctions.h"
 
 // #include "../../functional/index_sequence_util.h"
 
@@ -17071,7 +17071,7 @@ namespace sqlite_orm::internal {
 //  polyfill::identity
 // #include "../functional/gsl.h"
 
-// #include "../functional/mpl.h"
+// #include "../functional/mpl/quoted_metafunctions.h"
 
 // #include "../functional/type_traits.h"
 
@@ -18071,7 +18071,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/cxx_polyfill/type_traits.h"
 
-// #include "../functional/mpl.h"
+// #include "../functional/mpl/quoted_metafunctions.h"
 
 // #include "../functional/type_traits.h"
 //  common_type_of_t
@@ -18333,7 +18333,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/index_sequence_util.h"
 
-// #include "../functional/mpl.h"
+// #include "../functional/mpl/quoted_metafunctions.h"
 
 // #include "../functional/tuple_helper/tuple_filter.h"
 //  tuple_from_index_sequence_t
@@ -25082,7 +25082,7 @@ namespace sqlite_orm::internal {
     constexpr always_default_of<R> always_default{};
 }
 
-// #include "../functional/mpl.h"
+// #include "../functional/mpl/quoted_metafunctions.h"
 
 // #include "../functional/type_traits.h"
 
@@ -28099,7 +28099,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/cxx_polyfill/type_traits.h"
 
-// #include "../functional/mpl.h"
+// #include "../functional/mpl/quoted_metafunctions.h"
 
 // #include "../functional/type_traits.h"
 
@@ -35278,7 +35278,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/gsl.h"
 
-// #include "../../functional/mpl.h"
+// #include "../../functional/mpl/quoted_metafunctions.h"
 
 // #include "../../functional/tuple_helper/tuple_filter.h"
 

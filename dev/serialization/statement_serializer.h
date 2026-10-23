@@ -24,7 +24,7 @@
 #include "../functional/cxx_polyfill/functional.h"  // polyfill::identity
 #include "../functional/gsl.h"
 #include "../functional/always_default.h"
-#include "../functional/mpl.h"
+#include "../functional/mpl/quoted_metafunctions.h"
 #include "../functional/type_traits.h"
 #include "../functional/tuple_helper/tuple_filter.h"
 #include "../ast/crud/insert.h"  // conflict_action

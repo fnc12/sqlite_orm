@@ -10,7 +10,7 @@
 #endif
 
 #include "../../functional/gsl.h"
-#include "../../functional/mpl.h"
+#include "../../functional/mpl/quoted_metafunctions.h"
 #include "../../functional/tuple_helper/tuple_filter.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/node_algorithms.h"

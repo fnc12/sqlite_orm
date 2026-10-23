@@ -33,8 +33,8 @@
 #include <initializer_list>
 #endif
 
-#include "cxx_polyfill/type_traits.h"
-#include "mpl/conditional.h"
+#include "../cxx_polyfill/type_traits.h"
+#include "conditional.h"
 
 namespace sqlite_orm::internal::mpl {
     template<template<class...> class Fn>

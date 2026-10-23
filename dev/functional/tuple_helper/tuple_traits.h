@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../cxx_polyfill/type_traits.h"
-#include "../mpl.h"
+#include "../mpl/quoted_metafunctions.h"
 
 // convenience metafunction algorithms
 namespace sqlite_orm::internal {

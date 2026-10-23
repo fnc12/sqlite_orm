@@ -9,7 +9,7 @@
 #endif
 
 #include "../../functional/cxx_polyfill/type_traits.h"
-#include "../../functional/mpl.h"
+#include "../../functional/mpl/quoted_metafunctions.h"
 #include "../../functional/type_traits.h"  //  common_type_of
 
 namespace sqlite_orm::internal {
