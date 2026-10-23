@@ -23,6 +23,7 @@
 #include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/cxx_polyfill/functional.h"  //  polyfill::identity
 #include "../functional/gsl.h"
+#include "../functional/mpl/conditional.h"
 #include "../functional/mpl/convenience.h"
 #include "../functional/type_traits.h"
 #include "../functional/tuple_helper/tuple_traits.h"

@@ -17086,6 +17086,8 @@ namespace sqlite_orm::internal {
 //  polyfill::identity
 // #include "../functional/gsl.h"
 
+// #include "../functional/mpl/conditional.h"
+
 // #include "../functional/mpl/convenience.h"
 
 // #include "../functional/type_traits.h"
@@ -30726,6 +30728,8 @@ namespace sqlite_orm::internal {
 #endif
 
 // #include "../functional/type_traits.h"
+
+// #include "../functional/mpl/conditional.h"
 
 // #include "../functional/tuple_helper/tuple_filter.h"
 
