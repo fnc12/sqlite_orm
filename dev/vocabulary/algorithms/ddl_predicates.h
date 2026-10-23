@@ -12,7 +12,7 @@
 #endif
 
 #include "../../functional/cxx_polyfill/type_traits.h"
-#include "../../functional/mpl/quoted_metafunctions.h"
+#include "../../functional/mpl/convenience.h"
 #include "../node_traits.h"
 #include "field_predicates_fwd.h"  // is_rowid_alias_capable
 

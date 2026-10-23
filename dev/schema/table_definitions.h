@@ -10,6 +10,7 @@
 #include <algorithm>  //  std::find_if, std::ranges::find
 #endif
 
+#include "../functional/mpl/convenience.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../type_mapping/type_printer.h"

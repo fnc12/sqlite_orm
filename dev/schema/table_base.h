@@ -8,7 +8,7 @@
 #endif
 
 #include "../functional/cxx_polyfill/type_traits.h"
-#include "../functional/mpl/quoted_metafunctions.h"
+#include "../functional/mpl/convenience.h"
 #include "../functional/type_traits.h"
 #include "../functional/tuple_helper/tuple_filter.h"
 #include "../functional/tuple_helper/tuple_iteration.h"

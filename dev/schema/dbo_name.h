@@ -12,7 +12,7 @@
 #include "../functional/gsl.h"
 #include "../functional/cstring_literal.h"
 #include "../functional/meta_util.h"
-#include "../functional/mpl/quoted_metafunctions.h"
+#include "../functional/mpl/convenience.h"
 #include "../functional/tuple_helper/tuple_filter.h"
 #include "../functional/tuple_helper/tuple_traits.h"
 

@@ -4,7 +4,7 @@
  *        yielding an index sequence of the matching positions.
  */
 
-#include "../../functional/mpl/quoted_metafunctions.h"
+#include "../../functional/mpl/convenience.h"
 #include "../../functional/tuple_helper/tuple_filter.h"
 #include "../node_traits.h"
 #include "field_predicates_fwd.h"  //  is_bindable

@@ -16,6 +16,7 @@
 #include "../functional/gsl.h"
 #include "../functional/type_traits.h"
 #include "../functional/tuple_helper/tuple_iteration.h"
+#include "../functional/mpl/convenience.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_fwd.h"  // column_constraints, order_by_t
 #include "../schema/column_identifier.h"
