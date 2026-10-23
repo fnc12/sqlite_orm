@@ -47,12 +47,12 @@ namespace sqlite_orm::internal::mpl {
      *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
      */
     template<class T, class SFINAE = void>
-    constexpr bool is_quoted_metafuntion_v = false;
+    constexpr bool is_quoted_metafunction_v = false;
     template<class Q>
-    constexpr bool is_quoted_metafuntion_v<Q, std::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
+    constexpr bool is_quoted_metafunction_v<Q, std::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
 
     template<class T>
-    struct is_quoted_metafuntion : std::bool_constant<is_quoted_metafuntion_v<T>> {};
+    struct is_quoted_metafunction : std::bool_constant<is_quoted_metafunction_v<T>> {};
 
     /*  
      *  Type pack.
@@ -387,7 +387,7 @@ namespace sqlite_orm::internal::mpl {
 
     /*
      *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list (possibly projected),
-     *  and returns the index constant of the first element for which the predicate returns true.
+     *  and returns an index constant holding the number of elements for which the predicate returns true.
      */
     template<class PredicateQ>
     struct counts {
@@ -413,8 +413,8 @@ namespace sqlite_orm::internal::mpl {
     using counts_fn = counts<quote_fn<PredicateFn>>;
 
     /*
-     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list (possibly projected),
-     *  and returns the index constant of the first element for which the predicate returns true.
+     *  Quoted metafunction that invokes the specified quoted trait metafunction on each element of a type list (possibly projected),
+     *  and returns a bool constant telling whether the trait holds for any element.
      */
     template<class TraitQ>
     struct contains {
