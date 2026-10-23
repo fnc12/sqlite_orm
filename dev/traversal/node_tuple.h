@@ -8,9 +8,9 @@
 #endif
 
 #include "../functional/optional_container.h"
+#include "../functional/tuple_helper/tuple_filter.h"
 #include "../functional/type_traits.h"
 #include "../execution/prepared_statement.h"
-#include "../tuple_helper/tuple_filter.h"
 #include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {

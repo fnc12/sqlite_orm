@@ -9,7 +9,7 @@
 #endif
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../execution/connection_holder.h"
 #include "../marshaling/parameter_binders.h"  //  expression_parameter_binder
 #include "../schema/db_objects.h"

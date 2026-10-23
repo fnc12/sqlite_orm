@@ -5,7 +5,7 @@
 #include <type_traits>  //  std::is_same, std::remove_reference, std::remove_cvref
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"  //  polyfill::remove_cvref_t
+#include "../functional/cxx_polyfill/type_traits.h"  //  polyfill::remove_cvref_t
 #include "../functional/index_sequence_util.h"  //  index_sequence_value_at
 #include "../functional/type_traits.h"  //  forward_lvalue_ref
 #include "../traversal/ast_iterator.h"  //  iterate_ast

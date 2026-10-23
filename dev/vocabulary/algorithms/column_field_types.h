@@ -3,8 +3,8 @@
 /** @file Closed alias templates computing per-column type tuples of a single table definition.
  */
 
-#include "../../tuple_helper/tuple_filter.h"
-#include "../../tuple_helper/tuple_transformer.h"
+#include "../../functional/tuple_helper/tuple_filter.h"
+#include "../../functional/tuple_helper/tuple_transformer.h"
 #include "../node_traits.h"
 
 namespace sqlite_orm::internal {

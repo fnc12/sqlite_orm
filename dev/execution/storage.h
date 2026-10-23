@@ -20,10 +20,14 @@
 #endif
 #endif
 
-#include "../functional/cxx_functional_polyfill.h"  //  polyfill::identity
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/functional.h"  //  polyfill::identity
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/gsl.h"
 #include "../functional/mpl.h"
+#include "../functional/tuple_helper/tuple_filter.h"
+#include "../functional/tuple_helper/tuple_iteration.h"
+#include "../functional/tuple_helper/tuple_traits.h"
+#include "../functional/tuple_helper/tuple_transformer.h"
 #include "../functional/type_traits.h"
 #include "../ast/alias.h"
 #include "../ast/crud/get.h"
@@ -56,10 +60,6 @@
 #include "../sqlite3/sqlite3_statements.h"
 #include "../sqlite3/sqlite3_types.h"  //  int64
 #include "../traversal/ast_iterator.h"
-#include "../tuple_helper/tuple_filter.h"
-#include "../tuple_helper/tuple_iteration.h"
-#include "../tuple_helper/tuple_traits.h"
-#include "../tuple_helper/tuple_transformer.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_fwd.h"  // column_field
 #include "../vocabulary/node_traits.h"

@@ -10,7 +10,7 @@
 #include <utility>  // std::swap, std::exchange
 #endif
 
-#include "../functional/cxx_scope_guard.h"
+#include "../functional/cxx_polyfill/scope_guard.h"
 #include "../functional/gsl.h"
 #include "../functional/interference_size.h"
 #include "../builtin/vfs.h"

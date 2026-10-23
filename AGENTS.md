@@ -18,7 +18,7 @@ pointers. License: AGPL for open source, MIT after purchase.
 - `include/sqlite_orm/sqlite_orm.h` - the **generated** single-header amalgamation of `dev/`.
   Never edit it by hand: change `dev/` and regenerate it (see [Before every commit](#before-every-commit)).
 - `not_single_header_include/sqlite_orm/sqlite_orm.h` - the non-amalgamated variant. Its
-  includes and the `sources` of `third_party/amalgamate/config.json` list the same headers in
+  includes and the `sources` of `third_party/amalgamate/sqlite_orm.json` list the same headers in
   the same order; change both together (`scripts/check-amalgamation-sources.sh` checks it).
 - `modules/` - the C++20 named module; public symbols are declared in
   `SQLITE_ORM_EXPORT namespace sqlite_orm`.
@@ -51,10 +51,13 @@ projections, never pattern-matching the concrete node. **Register the header in
 `dev/node_definitions.h`**: a missing entry compiles, and the trait silently falls back to its
 primary template.
 
-**The configuration is universally available.** Every header can rely on
-`dev/functional/config.h` without including it: the C++ feature and compiler macros, the
-platform macros, `SQLITE_ORM_EXPORT`, and the SQLite version and feature macros
-(`SQLITE_VERSION_NUMBER`, `SQLITE_ORM_JSON_SUPPORTED`, ...). This covers configuration only.
+**The configuration is universally available.** Every header can rely on `dev/config/`
+without including it: the C++ feature and compiler macros, the platform macros, the SQLite
+version and feature macros (`SQLITE_VERSION_NUMBER`, `SQLITE_ORM_JSON_SUPPORTED`, ...), the
+capability macros (`SQLITE_ORM_WITH_CTE`, ...) and the internal macros
+(`SQLITE_ORM_EXPORT`, ...). Code depending on a compile option of SQLite tests the feature
+macro `dev/sqlite3/sqlite3_config.h` derives from it, never the `SQLITE_ENABLE_*` macro
+itself. This covers configuration only.
 A header that uses the SQLite C API (functions, types, constants such as
 `SQLITE_OPEN_READONLY`) includes `<sqlite3.h>` itself, and a header that uses a sqlite_orm
 symbol includes the header declaring it.
@@ -111,7 +114,8 @@ ctest --test-dir build                         # all tests
   `tests/statement_serializer_tests/`.
 - CI builds on Linux, Windows and macOS with several compilers and C++ standards.
   `-Werror=reorder` is on for GCC and Clang; MSVC builds with `/bigobj` and `/EHsc`.
-- The named module tests (`tests/named_module/`, built from `modules/`) need C++23 and either
+- The named module tests (`tests/named_module/`) import the module from target
+  `sqlite_orm_module` (`cmake/SqliteOrmModule.cmake`). It needs C++23 and either
   MSVC with a Visual Studio generator or the Ninja generator with CMake 4.5;
   `-DSQLITE_ORM_BUILD_MODULE_TESTS=OFF` skips them. CI runs them in
   `.github/workflows/named-module.yaml` only.

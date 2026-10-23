@@ -1410,7 +1410,7 @@ TEST_CASE("sqlite_compileoption_get") {
 }
 #endif
 
-#ifdef SQLITE_ENABLE_OFFSET_SQL_FUNC
+#ifdef SQLITE_ORM_OFFSET_SQL_FUNC_SUPPORTED
 TEST_CASE("sqlite_offset") {
     struct User {
         int id = 0;
@@ -1613,7 +1613,7 @@ TEST_CASE("aggregate functions") {
     }
 }
 
-#ifdef SQLITE_SOUNDEX
+#ifdef SQLITE_ORM_SOUNDEX_SUPPORTED
 TEST_CASE("soundex") {
     auto storage = make_storage({});
     auto rows = storage.select(soundex("Robert"));
@@ -1741,7 +1741,7 @@ TEST_CASE("unistr_quote") {
 }
 #endif
 
-#ifdef SQLITE_ENABLE_PERCENTILE
+#ifdef SQLITE_ORM_PERCENTILE_SUPPORTED
 TEST_CASE("median and percentile") {
     struct Score {
         int id = 0;

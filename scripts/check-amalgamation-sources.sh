@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Checks that the includes of not_single_header_include/sqlite_orm/sqlite_orm.h and the `sources` of
-# third_party/amalgamate/config.json list the same headers in the same order.
+# third_party/amalgamate/sqlite_orm.json list the same headers in the same order.
 
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 header=not_single_header_include/sqlite_orm/sqlite_orm.h
-config=third_party/amalgamate/config.json
+config=third_party/amalgamate/sqlite_orm.json
 
 if ! diff -u --label "$header" --label "$config" \
     <(sed -nE 's|^#include "\.\./\.\./(dev/[^"]+)"|\1|p' "$header") \

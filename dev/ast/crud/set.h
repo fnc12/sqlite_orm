@@ -12,9 +12,9 @@
 #include <vector>  //  std::vector
 #endif
 
+#include "../../functional/tuple_helper/tuple_traits.h"
 #include "../../functional/type_traits.h"
 #include "../../serialization/serializer_context.h"
-#include "../../tuple_helper/tuple_traits.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 

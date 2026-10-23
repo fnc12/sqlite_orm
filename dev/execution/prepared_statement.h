@@ -9,7 +9,7 @@
 #include <utility>  //  std::move, std::exchange
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/gsl.h"
 #include "../sqlite3/sqlite3_deleters.h"  //  sqlite3_memory_deleter
 #include "connection_holder.h"
@@ -45,7 +45,7 @@ namespace sqlite_orm::internal {
             }
         }
 #endif
-#if SQLITE_VERSION_NUMBER >= 3026000 and defined(SQLITE_ENABLE_NORMALIZE)
+#ifdef SQLITE_ORM_NORMALIZE_SUPPORTED
         std::string normalized_sql() const {
             if (orm_gsl::czstring sql = sqlite3_normalized_sql(this->stmt)) {
                 return sql;

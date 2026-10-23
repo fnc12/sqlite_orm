@@ -13,7 +13,8 @@
 #endif
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
+#include "functional/cxx_polyfill/type_traits.h"
+#include "functional/tuple_helper/tuple_fy.h"
 #include "ast/alias.h"
 #include "ast/cte.h"
 #include "result_set/column_expression.h"
@@ -23,7 +24,6 @@
 #include "schema/db_objects.h"
 #include "serialization/cte_column_names_collector.h"
 #include "serialization/serializer_context.h"
-#include "tuple_helper/tuple_fy.h"
 #include "vocabulary/node_algorithms.h"  //  access_leftmost_select
 #include "vocabulary/node_traits.h"
 

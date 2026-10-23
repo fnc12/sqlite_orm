@@ -6,7 +6,7 @@
 #include <type_traits>  //  std::false_type, std::true_type, std::enable_if
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 

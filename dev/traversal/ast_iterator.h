@@ -6,11 +6,11 @@
 #include <vector>  //  std::vector
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
+#include "../functional/tuple_helper/tuple_iteration.h"
 #include "../functional/type_traits.h"
 #include "../ast/alias.h"
 #include "../execution/prepared_statement.h"
-#include "../tuple_helper/tuple_iteration.h"
 #include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {

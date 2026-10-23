@@ -5,8 +5,8 @@
 #include <type_traits>  //  std::integral_constant, std::index_sequence, std::conditional, std::declval
 #endif
 
-#include "../functional/index_sequence_util.h"
-#include "../functional/mpl/conditional.h"
+#include "../index_sequence_util.h"
+#include "../mpl/conditional.h"
 
 namespace sqlite_orm::internal {
     template<typename... input_t>

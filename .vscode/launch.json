@@ -19,7 +19,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/third_party/amalgamate/amalgamate.py",
             "args": [
-                "-c", "${workspaceFolder}/third_party/amalgamate/config.json",
+                "-c", "${workspaceFolder}/third_party/amalgamate/sqlite_orm.json",
                 "-s", "${workspaceFolder}"
             ],
             "cwd": "${workspaceFolder}",

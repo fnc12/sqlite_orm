@@ -40,7 +40,8 @@ dropped:
 ## 3. Guards
 
 Guard both definitions the same way when the function depends on the SQLite version
-(`#if SQLITE_VERSION_NUMBER >= 3050000`) or on a compile option (`#ifdef SQLITE_ENABLE_PERCENTILE`).
+(`#if SQLITE_VERSION_NUMBER >= 3050000`) or on a compile option of SQLite, through its feature macro in `dev/sqlite3/sqlite3_config.h`
+(`#ifdef SQLITE_ORM_PERCENTILE_SUPPORTED`); add one there for a new compile option.
 Guard the contents, never an `#include`.
 
 ## 4. Tests

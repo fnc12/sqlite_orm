@@ -196,7 +196,7 @@ TEST_CASE("mapped type of") {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     STATIC_REQUIRE(std::is_same<mapped_type_of_t<decltype(sqlite_schema)>, sqlite_master>::value);
 #endif
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
     STATIC_REQUIRE(std::is_same<mapped_type_of_t<dbstat::hidden>, dbstat>::value);
 #endif
 #if SQLITE_VERSION_NUMBER >= 3008012

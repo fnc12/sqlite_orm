@@ -9,13 +9,13 @@
 #include <vector>  //  std::vector
 #endif
 
+#include "../functional/tuple_helper/tuple_iteration.h"
+#include "../functional/tuple_helper/tuple_traits.h"
 #include "../functional/type_traits.h"
 #include "../error_code.h"
 #include "../schema/algorithms/table_lookup.h"  //  pick_table
 #include "../schema/column_identifier.h"
 #include "../schema/table_identifier.h"
-#include "../tuple_helper/tuple_iteration.h"
-#include "../tuple_helper/tuple_traits.h"
 #include "../vocabulary/node_algorithms.h"  // access_column_expression, mapped_type_of_t
 #include "../vocabulary/node_traits.h"
 #include "quoting.h"

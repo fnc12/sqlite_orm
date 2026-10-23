@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ENABLE_RTREE
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
 #include <cstdint>  //  std::int32_t
 #include <tuple>  // std::tuple_element, std::make_tuple, std::apply
 #include <type_traits>  // std::is_same
@@ -11,13 +11,13 @@
 
 #include "../../functional/gsl.h"
 #include "../../functional/mpl.h"
+#include "../../functional/tuple_helper/tuple_filter.h"
 #include "../../schema/virtual_table.h"
 #include "../../sqlite3/sqlite3_types.h"  //  int64
-#include "../../tuple_helper/tuple_filter.h"
 #include "../../vocabulary/node_algorithms.h"
 #include "../../vocabulary/node_traits.h"
 
-#ifdef SQLITE_ENABLE_RTREE
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
 namespace sqlite_orm::internal {
     struct rtree_module_tag {
         // simplify conceptual/meta programming

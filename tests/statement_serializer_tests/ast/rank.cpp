@@ -16,7 +16,7 @@ TEST_CASE("statement_serializer rank") {
         value = serialize(node, context);
         expected = "RANK()";
     }
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
     SECTION("order by rank") {
         //  the deprecated spelling of the hidden FTS5 rank column
         auto node = order_by(rank());

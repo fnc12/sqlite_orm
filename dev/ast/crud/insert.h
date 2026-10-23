@@ -12,9 +12,9 @@
 #include <utility>  //  std::move, std::forward, std::pair
 #endif
 
-#include "../../functional/cxx_functional_polyfill.h"  //  polyfill::identity
-#include "../../functional/cxx_type_traits_polyfill.h"
-#include "../../tuple_helper/tuple_traits.h"
+#include "../../functional/cxx_polyfill/functional.h"  //  polyfill::identity
+#include "../../functional/cxx_polyfill/type_traits.h"
+#include "../../functional/tuple_helper/tuple_traits.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../../vocabulary/traits/semantic_traits_fwd.h"  // Included to specialize traits

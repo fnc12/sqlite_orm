@@ -10,9 +10,9 @@
 #endif
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
+#include "../functional/tuple_helper/tuple_fy.h"
 #include "../functional/type_traits.h"
-#include "../tuple_helper/tuple_fy.h"
 #include "../vocabulary/node_traits.h"
 #include "column.h"
 #include "table_base.h"

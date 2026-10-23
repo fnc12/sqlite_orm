@@ -6,9 +6,9 @@
 #include <utility>  //  std::forward, std::move
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/is_base_template_of.h"
-#include "../tuple_helper/tuple_iteration.h"
+#include "../functional/tuple_helper/tuple_iteration.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {

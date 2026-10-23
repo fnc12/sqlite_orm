@@ -1062,7 +1062,7 @@ TEST_CASE("Node tuple") {
         STATIC_REQUIRE(std::is_same_v<Tuple, ExpectedTuple>);
     }
 #endif
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
     SECTION("table-valued") {
         auto expression = from(dbstat_table, dbstat_table("main", true));
         using Tuple = typename node_tuple<decltype(expression)>::type;

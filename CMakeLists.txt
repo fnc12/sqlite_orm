@@ -107,6 +107,13 @@ endif()
 ucm_print_flags()
 message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
+option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
+
+# Named module
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    include(SqliteOrmModule)
+endif()
+
 # Tests
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
     add_subdirectory(tests)

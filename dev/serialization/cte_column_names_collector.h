@@ -11,12 +11,12 @@
 #endif
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
+#include "../functional/tuple_helper/tuple_transformer.h"
 #include "../functional/type_traits.h"
 #include "../ast/alias.h"
 #include "../error_code.h"
 #include "../schema/column_identifier.h"
-#include "../tuple_helper/tuple_transformer.h"
 #include "../vocabulary/node_algorithms.h"  // access_column_expression, mapped_type_of_t
 #include "../vocabulary/node_traits.h"
 

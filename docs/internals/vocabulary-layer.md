@@ -17,19 +17,20 @@ From the bottom up:
 
 | Tier | Location | Subject |
 |---|---|---|
-| Language mechanics | `dev/member_traits/` | Pointer-to-member mechanics. Not SQL, not DSL. |
+| Language mechanics | `dev/functional/` | General-purpose C++ utilities, among them pointer-to-member mechanics. Not SQL, not DSL. |
 | DSL vocabulary | `dev/vocabulary/` | Classification of, and computation over, a **single** node or type. |
 | Node definitions | `dev/schema/`, `dev/ast/` | The concrete node structs, each specializing the vocabulary axes in place. |
 | Schema-level algorithms | `dev/schema/algorithms/` | Search/traversal **across a collection** of nodes. Consumes vocabulary; is not vocabulary. |
 
-### `member_traits/` — one tier below the DSL
+### Pointer-to-member mechanics — one tier below the DSL
 
-`member_traits.h` holds closed pointer-to-member mechanics: a member's field type
+`functional/member_traits.h` holds closed pointer-to-member mechanics: a member's field type
 (getter/setter/object), its enclosing class, casting from base to derived.
-`field_of.h` holds `is_field_of_v` (is a pointer-to-member of `Base` usable as one of
-`Derived`; does a `column_pointer` match a target type) and `compare_fields()`.
-`is_field_of_v` is open, yet stays outside `vocabulary/`: it is pointer-to-member
-computation, not DSL classification, and must be eager because concepts reference it.
+`functional/field_of.h` holds `is_field_of_v` (is a pointer-to-member of `Base` usable as one of
+`Derived`) and `compare_fields()`. `is_field_of_v` is open: `ast/column_pointer.h`
+specializes it for a `column_pointer` of the target type, so this tier depends on nothing in
+the DSL. It stays outside `vocabulary/`: it is pointer-to-member computation, not DSL
+classification.
 
 ### `vocabulary/` — the layer proper
 
@@ -229,7 +230,7 @@ in. Two manifests, **siblings to `vocabulary/`**, restore it:
   `node_algorithms.h`: `field_predicates.h` today.
 
 The top-level headers (`not_single_header_include/sqlite_orm/sqlite_orm.h`, and
-`third_party/amalgamate/config.json` in the same order) include them, not the trait's users.
+`third_party/amalgamate/sqlite_orm.json` in the same order) include them, not the trait's users.
 That suffices for traits evaluated inside templates, i.e. in user code. A trait evaluated for
 a concrete type while the headers are processed — a customization point instantiated for
 `std::string` in non-template code — needs its definition earlier: hence the manifests, and
@@ -328,7 +329,7 @@ Decided, not yet done.
 
 Deliberately unresolved; revisit when there is a concrete reason to.
 
-- **Struct→table / expression→table mapping.** A possible tier above `member_traits/` and
+- **Struct→table / expression→table mapping.** A possible tier above `functional/` and
   `vocabulary/`: schema-wide resolution, consuming vocabulary. Naming and folder undecided.
   `table_type_of` is not this tier: it extracts a type a node captured, without a schema.
 - **Names of the built-in function definitions in `internal`** (`max`, `min`, `count`, ...).

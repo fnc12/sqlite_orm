@@ -2,16 +2,18 @@
 
 /** @file The top-level header of the library, when used as separate headers rather than as the amalgamation.
  *
- *  The order of the headers below matters, and `third_party/amalgamate/config.json` lists them in the same order.
+ *  The order of the headers below matters, and `third_party/amalgamate/sqlite_orm.json` lists them in the same order.
  *  Vocabulary traits are declared `extern const` and defined by the headers of what they classify, which arrive here
  *  rather than through the headers using them. That suffices for evaluations inside templates, which happen in user
  *  code; a trait evaluated for a concrete type while the headers are processed needs its definition included ahead.
  */
 
-#include "../../dev/functional/start_macros.h"
+#include "../../dev/config/prologue.h"
 // Although every header file typically needs to contain all the necessary files, the configuration is an exception (as it would be easily forgotten).
 // Therefore, we include the configuration and all underlying C++ core features to make them universally available.
-#include "../../dev/functional/config.h"
+#include "../../dev/config/config.h"
+#include "../../dev/config/internal_macros.h"
+#include "../../dev/functional/cxx_universal.h"
 
 // the SQLite C library interface
 #include "../../dev/sqlite3_interface.h"
@@ -38,4 +40,4 @@
 #include "../../dev/builtin/functions.h"
 #include "../../dev/builtin/dbos.h"
 
-#include "../../dev/functional/finish_macros.h"
+#include "../../dev/config/epilogue.h"

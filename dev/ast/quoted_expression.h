@@ -5,8 +5,8 @@
 #include <utility>  //  std::move, std::forward, std::declval
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
-#include "../functional/cxx_utility_polyfill.h"  //  polyfill::forward_like
+#include "../functional/cxx_polyfill/type_traits.h"
+#include "../functional/cxx_polyfill/utility.h"  //  polyfill::forward_like
 #include "../vocabulary/node_algorithms.h"  // unwrap_expression_t
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits

@@ -40,7 +40,7 @@ TEST_CASE("builtin tables bundle") {
 
     SECTION("contents") {
         constexpr size_t expectedSize = 1
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
                                         + 1
 #endif
 #if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)

@@ -17,7 +17,7 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
 #define ENABLE_THIS_EXAMPLE
 #endif
 

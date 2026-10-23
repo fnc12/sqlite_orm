@@ -20,6 +20,7 @@
 #include <vector>  //  std::vector
 #endif
 
+#include "../functional/tuple_helper/tuple_iteration.h"
 #include "../ast/app_function.h"
 #include "../builtin/dbos/pragma_table_info.h"
 #include "../error_code.h"
@@ -32,7 +33,6 @@
 #include "../sqlite3/sqlite3_statements.h"
 #include "../sqlite3/sqlite3_types.h"  //  int64
 #include "../sqlite3/sqlite3_xdestroy.h"
-#include "../tuple_helper/tuple_iteration.h"
 #include "../vocabulary/node_traits.h"  // projections
 #include "backup.h"
 #include "connection_holder.h"

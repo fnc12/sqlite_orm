@@ -3,76 +3,26 @@ cmake_minimum_required (VERSION 3.16)
 # Note: find_package(SQLite3 REQUIRED) already done in top-level CMakeLists
 FetchContent_MakeAvailable(Catch2)
 
-option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
 option(SQLITE_ORM_BUILD_MODULE_TESTS "Build the named module tests where the toolchain provides the standard library modules" ON)
 
 include(ucm)
 
-
-# Consuming the standard library as C++ named module is a C++23 standard library feature and additionally requires support from build systems:
-# - Visual C++ has an option that instructs MSBuild to automatically provision the standard modules,
-#   and this option is ON by default when using the `/std:c++latest` compiler switch:
-#   "Build ISO C++23 Standard Library Modules", MSBuild property `BuildStlModules`.
-# - CMake 4.5 provides the standard modules with the Ninja generators, for GCC 15 (GCC 16 on macOS), Clang 18.1.2 and MSVC 14.36 or newer
-#   [see section "import std Support" of the `cmake-cxxmodules` manual].
-#   The standard library's module manifest can be overridden with `CMAKE_CXX_STDLIB_MODULES_JSON`,
-#   e.g. for the broken `libstdc++.modules.json` shipped by Ubuntu prior to 26.04.
-set(SQLITE_ORM_MODULE_INTERFACE_UNIT "")
-if(SQLITE_ORM_BUILD_MODULE_TESTS AND CMAKE_CXX_STANDARD GREATER_EQUAL 23)
-    if(CMAKE_GENERATOR MATCHES "^Visual Studio")
-        if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" AND MSVC_VERSION GREATER_EQUAL 1930 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.28.2)
-            set(SQLITE_ORM_MODULE_INTERFACE_UNIT sqlite_orm.ixx)
-        endif()
-    elseif(CMAKE_GENERATOR MATCHES "Ninja" AND CMAKE_VERSION VERSION_GREATER_EQUAL 4.5)
-        if(APPLE)
-            set(SQLITE_ORM_GCC_IMPORT_STD_VERSION 16)
-        else()
-            set(SQLITE_ORM_GCC_IMPORT_STD_VERSION 15)
-        endif()
-        if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" AND MSVC_VERSION GREATER_EQUAL 1936)
-            set(SQLITE_ORM_MODULE_INTERFACE_UNIT sqlite_orm.ixx)
-        elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL ${SQLITE_ORM_GCC_IMPORT_STD_VERSION})
-            set(SQLITE_ORM_MODULE_INTERFACE_UNIT sqlite_orm.cxx)
-        elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 18.1.2)
-            set(SQLITE_ORM_MODULE_INTERFACE_UNIT sqlite_orm.cppm)
-        endif()
-    endif()
-endif()
-
-if(SQLITE_ORM_MODULE_INTERFACE_UNIT)
-    message(STATUS "SQLITE_ORM: Build module tests with modules/${SQLITE_ORM_MODULE_INTERFACE_UNIT}")
+if(SQLITE_ORM_BUILD_MODULE_TESTS AND TARGET sqlite_orm_module)
+    message(STATUS "SQLITE_ORM: Build module tests")
 
     add_executable(module_tests
         named_module/named_module.cpp
     )
 
-    target_sources(module_tests
-        PRIVATE FILE_SET all_modules TYPE CXX_MODULES
-        BASE_DIRS ../modules
-        FILES ../modules/${SQLITE_ORM_MODULE_INTERFACE_UNIT}
-    )
-
-    target_compile_features(module_tests PUBLIC cxx_std_23)
-
-    # note: the sources outside of the module file set are scanned for imports only with policy CMP0155,
+    # note: the sources outside of a module file set are scanned for imports only with policy CMP0155,
     # which the minimum required CMake version leaves unset
     set_target_properties(module_tests PROPERTIES
         CXX_SCAN_FOR_MODULES ON)
 
-    if(SQLITE_ORM_OMITS_CODECVT)
-        message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
-        target_compile_definitions(module_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
-    endif()
-
     target_precompile_headers(module_tests PRIVATE
         <sqlite3.h>)
-    # note: the module interface unit includes <sqlite3.h> in its global module fragment;
-    # GCC rejects the forced inclusion of a precompiled header ahead of the global module fragment
-    set_source_files_properties(../modules/${SQLITE_ORM_MODULE_INTERFACE_UNIT} PROPERTIES
-        SKIP_PRECOMPILE_HEADERS ON)
 
-    # note: sqlite3 already linked in top-level CMakeLists
-    target_link_libraries(module_tests PRIVATE sqlite_orm)
+    target_link_libraries(module_tests PRIVATE sqlite_orm_module)
 
     add_test(NAME "module_tests"
         COMMAND module_tests

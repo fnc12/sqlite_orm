@@ -6,20 +6,20 @@
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_arithmetic, std::is_base_of
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
+#include "../functional/member_traits.h"
 #include "../functional/mpl.h"
+#include "../functional/tuple_helper/tuple_filter.h"
+#include "../functional/tuple_helper/tuple_fy.h"
+#include "../functional/tuple_helper/tuple_traits.h"
+#include "../functional/tuple_helper/tuple_transformer.h"
 #include "../functional/type_traits.h"  //  common_type_of_t
 #include "../ast/alias.h"
 #include "../ast/app_function.h"
 #include "../marshaling/column_result_proxy.h"
-#include "../member_traits/member_traits.h"
 #include "../schema/algorithms/table_lookup.h"  // schema_pick_table_t, schema_mapped_column_field_types
 #include "../schema/cte_mapping.h"
 #include "../sqlite3/sqlite3_types.h"  //  int64
-#include "../tuple_helper/tuple_filter.h"
-#include "../tuple_helper/tuple_fy.h"
-#include "../tuple_helper/tuple_traits.h"
-#include "../tuple_helper/tuple_transformer.h"
 #include "../vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value, mapped_type_of_t
 #include "../vocabulary/node_traits.h"
 

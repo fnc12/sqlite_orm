@@ -10,11 +10,11 @@
 #endif
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/cstring_literal.h"
+#include "../functional/field_of.h"
 #include "../functional/mpl/conditional.h"
 #include "../functional/type_traits.h"
-#include "../member_traits/field_of.h"
 #include "../vocabulary/node_fwd.h"  // table_identifier
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits

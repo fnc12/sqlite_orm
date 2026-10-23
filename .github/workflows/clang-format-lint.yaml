@@ -9,6 +9,6 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: clang-format lint
-      uses: DoozyX/clang-format-lint-action@8b8bbdd8669eec54682e720ebe2fb19d9387fdb0
+      uses: jidicula/clang-format-action@v4.18.0
       with:
-        clangFormatVersion: 20
+        clang-format-version: 20

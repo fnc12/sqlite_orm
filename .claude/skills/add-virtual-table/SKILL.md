@@ -12,7 +12,8 @@ The headers live in `dev/builtin/dbos/`, one per module, included by the umbrell
 `dev/builtin/dbos/rtree.h` (a module with application-defined columns).
 
 Guard each header's contents, never its inclusion, with what the module needs: the SQLite version
-(`#if SQLITE_VERSION_NUMBER >= 3008012`), a compile option (`#ifdef SQLITE_ENABLE_DBSTAT_VTAB`) or
+(`#if SQLITE_VERSION_NUMBER >= 3008012`), a compile option of SQLite through its feature macro in `dev/sqlite3/sqlite3_config.h`
+(`#ifdef SQLITE_ORM_DBSTAT_SUPPORTED`), or
 reflection (`SQLITE_ORM_REFLECTION_SUPPORTED`).
 
 ## 1. The module tag

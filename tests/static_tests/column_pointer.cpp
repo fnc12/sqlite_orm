@@ -160,7 +160,7 @@ TEST_CASE("column pointers") {
 #endif
     }
     SECTION("table reference expressions") {
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
         runTest<internal::from2_t<table_valued_expression<dbstat, const char*>>>(from(dbstat_table("main")));
         runTest<internal::from2_t<table_reference<dbstat>, table_valued_expression<dbstat, const char*>>>(
             from(dbstat_table, dbstat_table("main")));

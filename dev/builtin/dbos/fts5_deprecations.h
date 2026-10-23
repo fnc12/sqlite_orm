@@ -16,7 +16,7 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
 #include <string_view>  //  std::string_view
 #endif
 #endif
@@ -26,7 +26,7 @@
 #include <utility>  //  std::move
 #endif
 
-#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/cxx_polyfill/type_traits.h"
 #include "../../ast/operand_tags.h"  //  negatable_t
 #include "../../ast/order_by.h"  //  order_by_t
 #include "../../serialization/statement_serializer.h"  //  statement_serializer
@@ -64,7 +64,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
 namespace sqlite_orm::internal {
     /*
      *  The hidden FTS5 rank column as the deprecated `order_by(rank())` refers to it, i.e. not bound to a table.

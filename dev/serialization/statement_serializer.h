@@ -20,11 +20,12 @@
 #endif
 #endif
 
-#include "../functional/cxx_functional_polyfill.h"  // polyfill::identity
-#include "../functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, std::disjunction
+#include "../functional/cxx_polyfill/functional.h"  // polyfill::identity
+#include "../functional/cxx_polyfill/type_traits.h"  // std::remove_cvref, std::disjunction
 #include "../functional/always_default.h"
 #include "../functional/gsl.h"
 #include "../functional/mpl.h"
+#include "../functional/tuple_helper/tuple_filter.h"
 #include "../functional/type_traits.h"
 #include "../ast/crud/insert.h"  // conflict_action
 #include "../ast/crud/set.h"
@@ -37,7 +38,6 @@
 #include "../marshaling/statement_binder.h"
 #include "../schema/constraints/generated_always.h"  // basic_generated_always
 #include "../schema/constraints/primary_key.h"  // conflict_clause_t
-#include "../tuple_helper/tuple_filter.h"
 #include "../type_mapping/type_printer.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_fwd.h"  // column_constraints
@@ -620,10 +620,12 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            using table_type = table_type_of_t<statement_type>;
+
             std::ostringstream ss;
             if (auto* columnName = find_column_name(context.db_objects, expression)) {
                 ss << streaming_identifier(
-                    !context.omit_table_name ? lookup_table_name<table_type_of_t<E>>(context.db_objects) : "",
+                    !context.omit_table_name ? lookup_table_name<mapped_type_of_t<table_type>>(context.db_objects) : "",
                     *columnName,
                     "");
             } else {
@@ -1194,7 +1196,7 @@ namespace sqlite_orm::internal {
         }
     };
 
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
     template<class T>
     struct statement_serializer<T, std::enable_if_t<is_unindexed<T>::value>> {
         using statement_type = T;

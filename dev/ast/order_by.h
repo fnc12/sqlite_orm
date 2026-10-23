@@ -14,7 +14,7 @@
 #include <vector>  //  std::vector
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/type_traits.h"
 #include "../builtin/collations.h"  //  collate_argument, collate_argument_to_string
 #include "../serialization/serializer_context.h"

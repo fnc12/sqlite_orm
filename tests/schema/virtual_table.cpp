@@ -16,7 +16,7 @@ namespace {
 
 using namespace sqlite_orm;
 
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
 TEST_CASE("fts5 virtual table schema") {
     using Catch::Matchers::UnorderedEquals;
     struct Post {
@@ -180,7 +180,7 @@ TEST_CASE("issue1410") {
 #endif
 #endif
 
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
 TEST_CASE("dbstat virtual table schema") {
     SECTION("eponymous") {
         SECTION("definition") {
@@ -418,11 +418,18 @@ TEST_CASE("pragma_table_xinfo virtual table") {
             where(c(&table_xinfo::hidden::arg) == "users" and c(&table_xinfo::hidden::schema) == "main"));
         REQUIRE_THAT(names, Equals(std::vector<std::string>{"id", "name"}));
     }
+    SECTION("join with hidden columns of the same name") {
+        auto names =
+            storage.select(&table_xinfo::name,
+                           inner_join<table_info>(on(c(&table_info::name) == &table_xinfo::name)),
+                           where(c(&table_xinfo::hidden::arg) == "users" and c(&table_info::hidden::arg) == "users"));
+        REQUIRE_THAT(names, Equals(std::vector<std::string>{"id", "name"}));
+    }
 }
 #endif
 #endif
 
-#ifdef SQLITE_ENABLE_RTREE
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
 TEST_CASE("rtree virtual table schema") {
     struct DemoIndex {
         int64 id;
@@ -460,7 +467,7 @@ TEST_CASE("rtree virtual table schema") {
 #endif
 
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
 namespace {
     struct[[= "reflected_posts"_orm_name]] ReflectedPost {
         std::string title;
@@ -497,7 +504,7 @@ TEST_CASE("reflection-based fts5 virtual table") {
 }
 #endif
 
-#ifdef SQLITE_ENABLE_RTREE
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
 namespace {
     struct[[= "reflected_demo_index"_orm_name]] ReflectedDemoIndex {
         [[= primary_key()]] int64 id;

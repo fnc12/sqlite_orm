@@ -16,7 +16,7 @@
 #include <type_traits>  //  std::is_member_pointer
 #endif
 
-#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/cxx_polyfill/type_traits.h"
 #include "../node_traits.h"
 #include "field_predicates_fwd.h"  // is_bindable
 

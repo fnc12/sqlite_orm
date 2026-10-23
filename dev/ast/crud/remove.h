@@ -10,9 +10,9 @@
 #include <utility>  //  std::move, std::forward
 #endif
 
-#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/cxx_polyfill/type_traits.h"
+#include "../../functional/tuple_helper/tuple_traits.h"
 #include "../../functional/type_traits.h"  //  value_unref_type_t
-#include "../../tuple_helper/tuple_traits.h"
 #include "../../vocabulary/node_algorithms.h"  // clause predicates, is_bindable_v
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits

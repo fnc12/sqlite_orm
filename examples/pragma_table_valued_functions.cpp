@@ -64,7 +64,7 @@ int main() {
 
     //  The table name can also be given as a constraint on the hidden column 'arg':
     //  SELECT "pragma_table_info"."name" FROM "pragma_table_info"
-    //  WHERE (("arg" = 'departments') AND ("pragma_table_info"."pk" > 0))
+    //  WHERE (("pragma_table_info"."arg" = 'departments') AND ("pragma_table_info"."pk" > 0))
     cout << "Primary key columns of 'departments':" << endl;
     for (auto& name: storage.select(&table_info::name,
                                     where(c(&table_info::hidden::arg) == "departments" and c(&table_info::pk) > 0))) {
