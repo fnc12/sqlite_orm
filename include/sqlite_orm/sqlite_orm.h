@@ -4982,7 +4982,7 @@ namespace sqlite_orm::internal {
 // #include "../../functional/tuple_helper/tuple_filter.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::integral_constant, std::index_sequence, std::conditional, std::declval
+#include <type_traits>  //  std::integral_constant, std::index_sequence, std::declval
 #include <tuple>  //  std::tuple, std::tuple_cat, std::tuple_element
 #endif
 
@@ -7184,7 +7184,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>  // std::convertible_to
 #endif
-#include <type_traits>  //  std::is_base_of, std::conditional_t, std::false_type, std::true_type
+#include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 #include <string>  //  std::string
 #include <tuple>  //  std::make_tuple, std::tuple_cat, std::apply
 #include <utility>  //  std::move, std::forward
@@ -7195,6 +7195,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../functional/gsl.h"
 
 // #include "../functional/type_traits.h"
+
+// #include "../functional/mpl/conditional.h"
 
 // #include "../vocabulary/node_traits.h"
 //  orm_table_reference, auto_decay_table_ref_t
@@ -7252,7 +7254,7 @@ namespace sqlite_orm::internal {
      */
     template<class M, class... Cs>
     struct virtual_table_traits : virtual_table_module_traits<M> {
-        using definition_type = std::conditional_t<virtual_table_module_traits<M>::is_eponymous::value,
+        using definition_type = mpl::conditional_t<virtual_table_module_traits<M>::is_eponymous::value,
                                                    table_definition<Cs...>,
                                                    insertable_table_definition<Cs...>>;
         using elements_type = elements_type_t<definition_type>;
@@ -11259,7 +11261,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_same, std::is_void, std::type_identity, std::conditional, std::remove_cvref
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_void, std::type_identity, std::remove_cvref
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
 #include <string_view>  //  std::string_view
 #include <utility>  //  std::move, std::forward
@@ -11357,6 +11359,8 @@ namespace sqlite_orm::internal {
     struct function_traits<F O::*> : function_traits<F> {};
 }
 //  function_arguments, function_return_type_t
+// #include "../functional/mpl/conditional.h"
+
 // #include "operand_tags.h"
 //  arithmetic_t
 // #include "../vocabulary/node_traits.h"
@@ -11856,7 +11860,7 @@ namespace sqlite_orm::internal {
 
     template<size_t Argc, class KindedSig, class... KindedSigs>
     struct matched_builtin_signature<Argc, KindedSig, KindedSigs...>
-        : std::conditional_t<builtin_signature_accepts<typename KindedSig::signature_type, Argc>(),
+        : mpl::conditional_t<builtin_signature_accepts<typename KindedSig::signature_type, Argc>(),
                              std::type_identity<KindedSig>,
                              matched_builtin_signature<Argc, KindedSigs...>> {};
 
@@ -11877,15 +11881,15 @@ namespace sqlite_orm::internal {
 
     template<class R, class R0, class... Params>
     struct with_return_type<R, scalar_sig<R0(Params...)>>
-        : std::type_identity<scalar_sig<std::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+        : std::type_identity<scalar_sig<mpl::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
 
     template<class R, class R0, class... Params>
     struct with_return_type<R, aggregate_sig<R0(Params...)>>
-        : std::type_identity<aggregate_sig<std::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+        : std::type_identity<aggregate_sig<mpl::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
 
     template<class R, class R0, class... Params>
     struct with_return_type<R, window_sig<R0(Params...)>>
-        : std::type_identity<window_sig<std::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+        : std::type_identity<window_sig<mpl::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
 
     template<class R, class KindedSig>
     using with_return_type_t = typename with_return_type<R, KindedSig>::type;
@@ -18088,6 +18092,8 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/cxx_polyfill/type_traits.h"
 
+// #include "../functional/mpl/conditional.h"
+
 // #include "../functional/mpl/quoted_metafunctions.h"
 
 // #include "../functional/type_traits.h"
@@ -18341,7 +18347,7 @@ namespace sqlite_orm::internal {
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::true_type, std::false_type, std::negation, std::disjunction, std::conditional_t
+#include <type_traits>  //  std::true_type, std::false_type, std::negation, std::disjunction
 #include <tuple>  //  std::tuple, std::get, std::tuple_size_v, std::tuple_element_t, std::tuple_cat
 #include <utility>  //  std::index_sequence, std::make_index_sequence, std::forward, std::move
 #endif
@@ -18349,6 +18355,8 @@ namespace sqlite_orm::internal {
 // #include "../functional/type_traits.h"
 
 // #include "../functional/index_sequence_util.h"
+
+// #include "../functional/mpl/conditional.h"
 
 // #include "../functional/mpl/convenience.h"
 
@@ -18410,7 +18418,7 @@ namespace sqlite_orm::internal {
     template<size_t K, class Specs, size_t... Idx>
     struct bundled_dbo_index_sequence<K, Specs, std::index_sequence<Idx...>>
         // index `Idx` of the tuple if kept, nothing otherwise
-        : flatten_idxseq<std::conditional_t<is_unique_bundled_dbo<K, Idx, Specs>::value,
+        : flatten_idxseq<mpl::conditional_t<is_unique_bundled_dbo<K, Idx, Specs>::value,
                                             std::index_sequence<Idx>,
                                             std::index_sequence<>>...> {};
 
@@ -18733,7 +18741,7 @@ namespace sqlite_orm::internal {
      *  for its column result.
      */
     template<class DBOs, class Arg>
-    using argument_result_of_t = typename std::conditional_t<is_bindable_v<Arg> && !is_text_value<Arg>::value,
+    using argument_result_of_t = typename mpl::conditional_t<is_bindable_v<Arg> && !is_text_value<Arg>::value,
                                                              polyfill::type_identity<Arg>,
                                                              column_result_of<DBOs, Arg>>::type;
 

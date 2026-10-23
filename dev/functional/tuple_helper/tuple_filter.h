@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::integral_constant, std::index_sequence, std::conditional, std::declval
+#include <type_traits>  //  std::integral_constant, std::index_sequence, std::declval
 #include <tuple>  //  std::tuple, std::tuple_cat, std::tuple_element
 #endif
 
