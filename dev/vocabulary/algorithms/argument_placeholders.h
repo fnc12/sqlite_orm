@@ -5,12 +5,12 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::common_type
 #include <tuple>  //  std::tuple, std::tuple_element
 #endif
 
 #include "../../functional/cxx_polyfill/type_traits.h"
 #include "../../functional/mpl/quoted_metafunctions.h"
-#include "../../functional/type_traits.h"  //  common_type_of
 
 namespace sqlite_orm::internal {
     /*
@@ -49,11 +49,11 @@ namespace sqlite_orm::internal {
 
     template<size_t... I, class ArgsTuple, class ResolveQ>
     struct substitute_arguments<common_argument_type<I...>, ArgsTuple, ResolveQ>
-        : common_type_of<std::tuple<mpl::invoke_t<ResolveQ, std::tuple_element_t<I, ArgsTuple>>...>> {};
+        : std::common_type<mpl::invoke_t<ResolveQ, std::tuple_element_t<I, ArgsTuple>>...> {};
 
     template<class... Args, class ResolveQ>
     struct substitute_arguments<common_argument_type<>, std::tuple<Args...>, ResolveQ>
-        : common_type_of<std::tuple<mpl::invoke_t<ResolveQ, Args>...>> {};
+        : std::common_type<mpl::invoke_t<ResolveQ, Args>...> {};
 
     template<class R, class ArgsTuple, class ResolveQ>
     using substitute_arguments_t = typename substitute_arguments<R, ArgsTuple, ResolveQ>::type;

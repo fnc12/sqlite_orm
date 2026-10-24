@@ -213,7 +213,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  - state-less (empty) deleter
      *  - non-capturing lambda
      *  
-     *  Type-safety is garanteed by checking whether the deleter or yielded function pointer
+     *  Type-safety is guaranteed by checking whether the deleter or yielded function pointer
      *  is invocable with the non-q-qualified pointer value.
      */
     template<typename P, typename D>
@@ -234,7 +234,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  - non-capturing lambda
      *  ... and yield a function pointer of type xdestroy_fn_t.
      *  
-     *  Type-safety is garanteed by checking whether the deleter or yielded function pointer
+     *  Type-safety is guaranteed by checking whether the deleter or yielded function pointer
      *  is invocable with the non-q-qualified pointer value.
      */
     template<typename P, typename D>

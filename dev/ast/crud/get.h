@@ -20,6 +20,7 @@
 
 #include "../../functional/cxx_polyfill/type_traits.h"
 #include "../../functional/type_traits.h"
+#include "../../functional/ref_unwrapping.h"  //  value_unref_type_t
 #include "../../functional/mpl/convenience.h"
 #include "../../functional/index_sequence_util.h"
 #include "../../functional/tuple_helper/tuple_filter.h"
