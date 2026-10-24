@@ -4,7 +4,7 @@
  */
 
 #include "../../functional/tuple_helper/tuple_filter.h"
-#include "../../functional/tuple_helper/tuple_transformer.h"
+#include "../../functional/mpl/convenience.h"
 #include "../node_traits.h"
 
 namespace sqlite_orm::internal {

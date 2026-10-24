@@ -438,6 +438,44 @@ namespace sqlite_orm::internal::mpl {
 
     template<template<class...> class TraitFn>
     using contains_fn = contains<quote_fn<TraitFn>>;
+
+    /*
+     *  Quoted metafunction that invokes the specified quoted metafunction on each element of a type list,
+     *  and returns the type list of the results.
+     */
+    template<class Q>
+    struct transforms {
+        template<class Pack>
+        struct invoke_this_fn;
+
+        template<template<class...> class Pack, class... T>
+        struct invoke_this_fn<Pack<T...>> {
+            using type = Pack<typename Q::template fn<T>...>;
+        };
+
+        template<class Pack>
+        using fn = typename invoke_this_fn<Pack>::type;
+    };
+
+    /*
+     *  Quoted metafunction that invokes the specified metafunction on each element of a type list,
+     *  and returns the type list of the results.
+     *  
+     *  `Fn` is invoked directly, so that errors in `Fn` surface unaltered.
+     */
+    template<template<class...> class Fn>
+    struct transforms_fn {
+        template<class Pack>
+        struct invoke_this_fn;
+
+        template<template<class...> class Pack, class... T>
+        struct invoke_this_fn<Pack<T...>> {
+            using type = Pack<invoke_fn_t<Fn, T>...>;
+        };
+
+        template<class Pack>
+        using fn = typename invoke_this_fn<Pack>::type;
+    };
 }
 
 namespace sqlite_orm {

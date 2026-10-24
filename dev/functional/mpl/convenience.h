@@ -198,6 +198,14 @@ namespace sqlite_orm::internal::mpl {
          */
         template<class Pack, template<class...> class Pred, template<class...> class ProjOp = polyfill::type_identity_t>
         using count_tuple = invoke_t<counts_if_has<Pred>, Pack, quote_fn<ProjOp>>;
+
+        /*
+         *  Higher-order metafunction that transforms the types of a tuple.
+         *  
+         *  `Op` is a metafunction
+         */
+        template<class Pack, template<class...> class Op>
+        using transform_tuple_t = invoke_t<transforms_fn<Op>, Pack>;
     }
 }
 

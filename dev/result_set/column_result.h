@@ -12,7 +12,6 @@
 #include "../functional/mpl/convenience.h"
 #include "../functional/tuple_helper/tuple_fy.h"
 #include "../functional/tuple_helper/tuple_filter.h"
-#include "../functional/tuple_helper/tuple_transformer.h"
 #include "../functional/member_traits.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value, mapped_type_of_t
