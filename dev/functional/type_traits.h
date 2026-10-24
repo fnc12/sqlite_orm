@@ -9,51 +9,13 @@
 
 #include "cxx_polyfill/type_traits.h"
 
-// C++ generic traits used throughout the library
+// generic type traits
 namespace sqlite_orm::internal {
     template<class T, class... Types>
     using is_any_of = std::disjunction<std::is_same<T, Types>...>;
 
     template<class T>
-    using is_eval_order_garanteed = std::is_aggregate<T>;
-}
-
-// SFINAE helpers for types and functions
-namespace sqlite_orm::internal {
-    // enable_if for types
-    template<template<typename...> class Op, class... Args>
-    using match_if = std::enable_if_t<Op<Args...>::value>;
-
-    // enable_if for types
-    template<template<typename...> class Op, class... Args>
-    using match_if_not = std::enable_if_t<std::negation<Op<Args...>>::value>;
-
-    // enable_if for types
-    template<class T, template<typename...> class Primary>
-    using match_specialization_of = std::enable_if_t<polyfill::is_specialization_of<T, Primary>::value>;
-
-    // enable_if for functions
-    template<template<typename...> class Op, class... Args>
-    using satisfies = std::enable_if_t<Op<Args...>::value, bool>;
-
-    // enable_if for functions
-    template<template<typename...> class Op, class... Args>
-    using satisfies_not = std::enable_if_t<std::negation<Op<Args...>>::value, bool>;
-
-    // enable_if for functions
-    template<class T, template<typename...> class Primary>
-    using satisfies_is_specialization_of = std::enable_if_t<polyfill::is_specialization_of<T, Primary>::value, bool>;
-}
-
-// type name template alias projectors for syntactic sugar
-namespace sqlite_orm::internal {
-    template<typename T>
-    using type_t = typename T::type;
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<auto a>
-    using auto_type_t = typename decltype(a)::type;
-#endif
+    using is_eval_order_guaranteed = std::is_aggregate<T>;
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     template<typename T>
@@ -61,18 +23,7 @@ namespace sqlite_orm::internal {
 #endif
 }
 
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    template<class T>
-    concept orm_names_type = requires { typename T::type; };
-
-    /** @short Specifies that a type is a function signature (i.e. a function in the C++ type system).
-     */
-    template<class Sig>
-    concept orm_function_sig = std::is_function_v<Sig>;
-#endif
-}
-
+// type computations over packs
 namespace sqlite_orm::internal {
     template<class Pack>
     struct common_type_of;
@@ -117,5 +68,45 @@ namespace sqlite_orm::internal {
 
     template<class A, class... Args>
     struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
+#endif
+}
+
+// SFINAE helpers
+namespace sqlite_orm::internal {
+    // enable_if for types
+    template<template<typename...> class Op, class... Args>
+    using match_if = std::enable_if_t<Op<Args...>::value>;
+
+    template<template<typename...> class Op, class... Args>
+    using match_if_not = std::enable_if_t<std::negation<Op<Args...>>::value>;
+
+    // enable_if for functions
+    template<template<typename...> class Op, class... Args>
+    using satisfies = std::enable_if_t<Op<Args...>::value, bool>;
+
+    template<template<typename...> class Op, class... Args>
+    using satisfies_not = std::enable_if_t<std::negation<Op<Args...>>::value, bool>;
+}
+
+// type name projectors
+namespace sqlite_orm::internal {
+    template<typename T>
+    using type_t = typename T::type;
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<auto a>
+    using auto_type_t = typename decltype(a)::type;
+#endif
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    template<class T>
+    concept orm_names_type = requires { typename T::type; };
+
+    /** @short Specifies that a type is a function signature (i.e. a function in the C++ type system).
+     */
+    template<class Sig>
+    concept orm_function_sig = std::is_function_v<Sig>;
 #endif
 }
