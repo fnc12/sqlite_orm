@@ -49,7 +49,7 @@ namespace sqlite_orm {
             struct table_fk_references {
                 using foreign_keys = table_foreign_keys_t<Table, Lookup>;
 
-                using type = transform_tuple_t<foreign_keys, source_type_t>;
+                using type = transform_tuple<foreign_keys, source_type_t>;
             };
 
             /**
