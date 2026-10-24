@@ -2712,6 +2712,44 @@ namespace sqlite_orm::internal::mpl {
 
     template<template<class...> class TraitFn>
     using contains_fn = contains<quote_fn<TraitFn>>;
+
+    /*
+     *  Quoted metafunction that invokes the specified quoted metafunction on each element of a type list,
+     *  and returns the type list of the results.
+     */
+    template<class Q>
+    struct transforms {
+        template<class Pack>
+        struct invoke_this_fn;
+
+        template<template<class...> class Pack, class... T>
+        struct invoke_this_fn<Pack<T...>> {
+            using type = Pack<typename Q::template fn<T>...>;
+        };
+
+        template<class Pack>
+        using fn = typename invoke_this_fn<Pack>::type;
+    };
+
+    /*
+     *  Quoted metafunction that invokes the specified metafunction on each element of a type list,
+     *  and returns the type list of the results.
+     *  
+     *  `Fn` is invoked directly, so that errors in `Fn` surface unaltered.
+     */
+    template<template<class...> class Fn>
+    struct transforms_fn {
+        template<class Pack>
+        struct invoke_this_fn;
+
+        template<template<class...> class Pack, class... T>
+        struct invoke_this_fn<Pack<T...>> {
+            using type = Pack<invoke_fn_t<Fn, T>...>;
+        };
+
+        template<class Pack>
+        using fn = typename invoke_this_fn<Pack>::type;
+    };
 }
 
 namespace sqlite_orm {
@@ -2909,6 +2947,14 @@ namespace sqlite_orm::internal::mpl {
          */
         template<class Pack, template<class...> class Pred, template<class...> class ProjOp = polyfill::type_identity_t>
         using count_tuple = invoke_t<counts_if_has<Pred>, Pack, quote_fn<ProjOp>>;
+
+        /*
+         *  Higher-order metafunction that transforms the types of a tuple.
+         *  
+         *  `Op` is a metafunction
+         */
+        template<class Pack, template<class...> class Op>
+        using transform_tuple = invoke_t<transforms_fn<Op>, Pack>;
     }
 }
 
@@ -5117,242 +5163,7 @@ namespace sqlite_orm::internal {
 
 // #include "../../functional/tuple_helper/tuple_filter.h"
 
-// #include "../../functional/tuple_helper/tuple_transformer.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::remove_reference, std::common_type, std::index_sequence, std::make_index_sequence, std::forward, std::move, std::integral_constant, std::declval
-#include <tuple>  //  std::tuple_size, std::get
-#include <functional>  //  std::invoke
-#endif
-
-// #include "../cxx_polyfill/type_traits.h"
-
-// #include "../cxx_polyfill/utility.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <utility>
-#endif
-
-namespace sqlite_orm::internal {
-    namespace polyfill {
-#if __cpp_lib_forward_like >= 202207L
-        using std::forward_like;
-#else
-        template<class T, class U>
-        constexpr auto&& forward_like(U&& x) noexcept {
-            constexpr bool is_adding_const = std::is_const_v<std::remove_reference_t<T>>;
-            if constexpr (std::is_lvalue_reference_v<T&&>) {
-                if constexpr (is_adding_const)
-                    return std::as_const(x);
-                else
-                    return static_cast<U&>(x);
-            } else {
-                if constexpr (is_adding_const)
-                    return std::move(std::as_const(x));
-                else
-                    return std::move(x);
-            }
-        }
-#endif
-    }
-}
-//  polyfill::forward_like
-// #include "../cxx_polyfill/functional.h"
-
-#ifdef SQLITE_ORM_IMPORT_STD_MODULE
-#include <version>
-#else
-#include <functional>  //  std::reference_wrapper
-#include <type_traits>  //  std::decay_t
-#include <utility>  //  std::forward
-#endif
-
-namespace sqlite_orm::internal::polyfill {
-    // C++20 or later (unfortunately there's no feature test macro).
-    // Stupidly, clang says C++20, but `std::identity` was only implemented in libc++ 13 and libstd++-v3 10
-    // (the latter is used on Linux).
-    // gcc got it right and reports C++20 only starting with v10.
-    // The check here doesn't care and checks the library versions in use.
-    //
-    // Another way of detection would be the constrained algorithms feature-test macro __cpp_lib_ranges
-#if (__cplusplus >= 202002L) &&                                                                                        \
-    ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
-    using std::identity;
-#else
-    struct identity {
-        template<class T>
-        constexpr T&& operator()(T&& v) const noexcept {
-            return std::forward<T>(v);
-        }
-
-        using is_transparent = int;
-    };
-#endif
-
-#if __cpp_lib_unwrap_ref >= 201811L
-    using std::unwrap_reference, std::unwrap_reference_t, std::unwrap_ref_decay, std::unwrap_ref_decay_t;
-#else
-    template<class T>
-    struct unwrap_reference {
-        using type = T;
-    };
-
-    template<class T>
-    struct unwrap_reference<std::reference_wrapper<T>> {
-        using type = T&;
-    };
-
-    template<class T>
-    using unwrap_reference_t = typename unwrap_reference<T>::type;
-
-    template<class T>
-    using unwrap_ref_decay_t = unwrap_reference_t<std::decay_t<T>>;
-
-    template<class T>
-    struct unwrap_ref_decay {
-        using type = unwrap_ref_decay_t<T>;
-    };
-#endif
-}
-
-namespace sqlite_orm {
-    namespace polyfill = internal::polyfill;
-}
-//  polyfill::identity
-// #include "../mpl/quoted_metafunctions.h"
-
-namespace sqlite_orm::internal {
-    template<class Pack, template<class...> class Op>
-    struct tuple_transformer;
-
-    template<template<class...> class Pack, class... Types, template<class...> class Op>
-    struct tuple_transformer<Pack<Types...>, Op> {
-        using type = Pack<mpl::invoke_fn_t<Op, Types>...>;
-    };
-
-    /*
-     *  Transform specified tuple.
-     *  
-     *  `Op` is a metafunction.
-     */
-    template<class Pack, template<class...> class Op>
-    using transform_tuple_t = typename tuple_transformer<Pack, Op>::type;
-
-    /*
-     *  Apply a projection to a tuple's elements filtered by the specified indexes, and combine the results.
-     *  
-     *  @note It's a glorified version of `std::apply()` and a variant of `std::accumulate()`.
-     *  It combines filtering the tuple (indexes), transforming the elements (projection) and finally applying the callable (combine).
-     *  
-     *  @note `project` is called using `std::invoke`, which is `constexpr` since C++20.
-     */
-    template<class CombineOp, class Tpl, size_t... Idx, class Projector, class Init>
-    SQLITE_ORM_CONSTEXPR_CPP20 auto
-    recombine_tuple(CombineOp combine, const Tpl& tpl, std::index_sequence<Idx...>, Projector project, Init initial) {
-        return combine(initial, std::invoke(project, std::get<Idx>(tpl))...);
-    }
-
-    /*
-     *  Apply a projection to a tuple's elements, and combine the results.
-     *  
-     *  @note It's a glorified version of `std::apply()` and a variant of `std::accumulate()`.
-     *  It combines filtering the tuple (indexes), transforming the elements (projection) and finally applying the callable (combine).
-     *  
-     *  @note `project` is called using `std::invoke`, which is `constexpr` since C++20.
-     */
-    template<class CombineOp, class Tpl, class Projector, class Init>
-    SQLITE_ORM_CONSTEXPR_CPP20 auto
-    recombine_tuple(CombineOp combine, const Tpl& tpl, Projector project, Init initial) {
-        return recombine_tuple(std::move(combine),
-                               std::forward<decltype(tpl)>(tpl),
-                               std::make_index_sequence<std::tuple_size<Tpl>::value>{},
-                               std::move(project),
-                               std::move(initial));
-    }
-
-    /*
-     *  Function object that takes integral constants and returns the sum of their values as an integral constant.
-     *  Because it's a "transparent" functor, it must be called with at least one argument, otherwise it cannot deduce the integral constant type.
-     */
-    struct plus_fold_integrals {
-        template<class... Integrals>
-        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(const Integrals&...) SQLITE_ORM_OR_CONST_CALLOP {
-            using integral_type = std::common_type_t<typename Integrals::value_type...>;
-            return std::integral_constant<integral_type, (Integrals::value + ...)>{};
-        }
-    };
-
-    /*
-     *  Function object that takes a type, applies a projection on it, and returns the tuple size of the projected type (as an integral constant).
-     *  The projection is applied on the argument type, not the argument value/object.
-     */
-    template<template<class...> class NestedProject>
-    struct project_nested_tuple_size {
-        template<class T>
-        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {
-            return typename std::tuple_size<NestedProject<T>>::type{};
-        }
-    };
-
-    template<template<class...> class NestedProject, class Tpl, class IdxSeq>
-    using nested_tuple_size_for_t = decltype(recombine_tuple(plus_fold_integrals{},
-                                                             std::declval<Tpl>(),
-                                                             IdxSeq{},
-                                                             project_nested_tuple_size<NestedProject>{},
-                                                             std::integral_constant<size_t, 0u>{}));
-
-    template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
-    constexpr R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, [[maybe_unused]] Projection project = {}) {
-        return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
-    }
-
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
-    /*
-     *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
-     */
-    template<class R, class Tpl, class Projection = polyfill::identity>
-    constexpr R create_from_tuple(Tpl&& tpl, [[maybe_unused]] Projection project = {}) {
-        auto& [... elements] = tpl;
-        return R{std::invoke(project, polyfill::forward_like<Tpl>(elements))...};
-    }
-#else
-    /*
-     *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
-     */
-    template<class R, class Tpl, class Projection = polyfill::identity>
-    constexpr R create_from_tuple(Tpl&& tpl, Projection project = {}) {
-        return create_from_tuple<R>(std::forward<Tpl>(tpl),
-                                    std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
-                                    std::forward<Projection>(project));
-    }
-#endif
-
-    template<template<typename...> class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
-    constexpr auto create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, [[maybe_unused]] Projection project = {}) {
-        return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
-    }
-
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
-    /*
-     *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
-     */
-    template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
-    constexpr auto create_from_tuple(Tpl&& tpl, [[maybe_unused]] Projection project = {}) {
-        auto& [... elements] = tpl;
-        return R{std::invoke(project, polyfill::forward_like<Tpl>(elements))...};
-    }
-#else
-    /*
-     *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
-     */
-    template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
-    constexpr auto create_from_tuple(Tpl&& tpl, Projection project = {}) {
-        return create_from_tuple<R>(std::forward<Tpl>(tpl),
-                                    std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
-                                    std::forward<Projection>(project));
-    }
-#endif
-}
+// #include "../../functional/mpl/convenience.h"
 
 // #include "../node_traits.h"
 
@@ -5361,14 +5172,14 @@ namespace sqlite_orm::internal {
      *  The field types of a table definition's columns, in column order.
      */
     template<class Table>
-    using column_field_types_t = transform_tuple_t<filter_tuple_t<elements_type_t<Table>, is_column>, field_type_t>;
+    using column_field_types_t = transform_tuple<filter_tuple_t<elements_type_t<Table>, is_column>, field_type_t>;
 
     /**
      *  The member pointers a table definition's columns are mapped by, in column order.
      */
     template<class Table>
     using column_field_expressions_t =
-        transform_tuple_t<filter_tuple_t<elements_type_t<Table>, is_column>, member_pointer_type_t>;
+        transform_tuple<filter_tuple_t<elements_type_t<Table>, is_column>, member_pointer_type_t>;
 }
 
 // #include "algorithms/ddl_predicates.h"
@@ -6416,6 +6227,224 @@ namespace sqlite_orm::internal {
 // #include "../functional/tuple_helper/tuple_filter.h"
 
 // #include "../functional/tuple_helper/tuple_transformer.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::remove_reference, std::common_type, std::index_sequence, std::make_index_sequence, std::forward, std::move, std::integral_constant, std::declval
+#include <tuple>  //  std::tuple_size, std::get
+#include <functional>  //  std::invoke
+#endif
+
+// #include "../cxx_polyfill/type_traits.h"
+
+// #include "../cxx_polyfill/utility.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <utility>
+#endif
+
+namespace sqlite_orm::internal {
+    namespace polyfill {
+#if __cpp_lib_forward_like >= 202207L
+        using std::forward_like;
+#else
+        template<class T, class U>
+        constexpr auto&& forward_like(U&& x) noexcept {
+            constexpr bool is_adding_const = std::is_const_v<std::remove_reference_t<T>>;
+            if constexpr (std::is_lvalue_reference_v<T&&>) {
+                if constexpr (is_adding_const)
+                    return std::as_const(x);
+                else
+                    return static_cast<U&>(x);
+            } else {
+                if constexpr (is_adding_const)
+                    return std::move(std::as_const(x));
+                else
+                    return std::move(x);
+            }
+        }
+#endif
+    }
+}
+//  polyfill::forward_like
+// #include "../cxx_polyfill/functional.h"
+
+#ifdef SQLITE_ORM_IMPORT_STD_MODULE
+#include <version>
+#else
+#include <functional>  //  std::reference_wrapper
+#include <type_traits>  //  std::decay_t
+#include <utility>  //  std::forward
+#endif
+
+namespace sqlite_orm::internal::polyfill {
+    // C++20 or later (unfortunately there's no feature test macro).
+    // Stupidly, clang says C++20, but `std::identity` was only implemented in libc++ 13 and libstd++-v3 10
+    // (the latter is used on Linux).
+    // gcc got it right and reports C++20 only starting with v10.
+    // The check here doesn't care and checks the library versions in use.
+    //
+    // Another way of detection would be the constrained algorithms feature-test macro __cpp_lib_ranges
+#if (__cplusplus >= 202002L) &&                                                                                        \
+    ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
+    using std::identity;
+#else
+    struct identity {
+        template<class T>
+        constexpr T&& operator()(T&& v) const noexcept {
+            return std::forward<T>(v);
+        }
+
+        using is_transparent = int;
+    };
+#endif
+
+#if __cpp_lib_unwrap_ref >= 201811L
+    using std::unwrap_reference, std::unwrap_reference_t, std::unwrap_ref_decay, std::unwrap_ref_decay_t;
+#else
+    template<class T>
+    struct unwrap_reference {
+        using type = T;
+    };
+
+    template<class T>
+    struct unwrap_reference<std::reference_wrapper<T>> {
+        using type = T&;
+    };
+
+    template<class T>
+    using unwrap_reference_t = typename unwrap_reference<T>::type;
+
+    template<class T>
+    using unwrap_ref_decay_t = unwrap_reference_t<std::decay_t<T>>;
+
+    template<class T>
+    struct unwrap_ref_decay {
+        using type = unwrap_ref_decay_t<T>;
+    };
+#endif
+}
+
+namespace sqlite_orm {
+    namespace polyfill = internal::polyfill;
+}
+//  polyfill::identity
+
+namespace sqlite_orm::internal {
+    /*
+     *  Apply a projection to a tuple's elements filtered by the specified indexes, and combine the results.
+     *  
+     *  @note It's a glorified version of `std::apply()` and a variant of `std::accumulate()`.
+     *  It combines filtering the tuple (indexes), transforming the elements (projection) and finally applying the callable (combine).
+     *  
+     *  @note `project` is called using `std::invoke`, which is `constexpr` since C++20.
+     */
+    template<class CombineOp, class Tpl, size_t... Idx, class Projector, class Init>
+    SQLITE_ORM_CONSTEXPR_CPP20 auto
+    recombine_tuple(CombineOp combine, const Tpl& tpl, std::index_sequence<Idx...>, Projector project, Init initial) {
+        return combine(initial, std::invoke(project, std::get<Idx>(tpl))...);
+    }
+
+    /*
+     *  Apply a projection to a tuple's elements, and combine the results.
+     *  
+     *  @note It's a glorified version of `std::apply()` and a variant of `std::accumulate()`.
+     *  It combines filtering the tuple (indexes), transforming the elements (projection) and finally applying the callable (combine).
+     *  
+     *  @note `project` is called using `std::invoke`, which is `constexpr` since C++20.
+     */
+    template<class CombineOp, class Tpl, class Projector, class Init>
+    SQLITE_ORM_CONSTEXPR_CPP20 auto
+    recombine_tuple(CombineOp combine, const Tpl& tpl, Projector project, Init initial) {
+        return recombine_tuple(std::move(combine),
+                               std::forward<decltype(tpl)>(tpl),
+                               std::make_index_sequence<std::tuple_size<Tpl>::value>{},
+                               std::move(project),
+                               std::move(initial));
+    }
+
+    /*
+     *  Function object that takes integral constants and returns the sum of their values as an integral constant.
+     *  Because it's a "transparent" functor, it must be called with at least one argument, otherwise it cannot deduce the integral constant type.
+     */
+    struct plus_fold_integrals {
+        template<class... Integrals>
+        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(const Integrals&...) SQLITE_ORM_OR_CONST_CALLOP {
+            using integral_type = std::common_type_t<typename Integrals::value_type...>;
+            return std::integral_constant<integral_type, (Integrals::value + ...)>{};
+        }
+    };
+
+    /*
+     *  Function object that takes a type, applies a projection on it, and returns the tuple size of the projected type (as an integral constant).
+     *  The projection is applied on the argument type, not the argument value/object.
+     */
+    template<template<class...> class NestedProject>
+    struct project_nested_tuple_size {
+        template<class T>
+        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {
+            return typename std::tuple_size<NestedProject<T>>::type{};
+        }
+    };
+
+    template<template<class...> class NestedProject, class Tpl, class IdxSeq>
+    using nested_tuple_size_for_t = decltype(recombine_tuple(plus_fold_integrals{},
+                                                             std::declval<Tpl>(),
+                                                             IdxSeq{},
+                                                             project_nested_tuple_size<NestedProject>{},
+                                                             std::integral_constant<size_t, 0u>{}));
+
+    template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
+    constexpr R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, [[maybe_unused]] Projection project = {}) {
+        return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
+    }
+
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+    /*
+     *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
+     */
+    template<class R, class Tpl, class Projection = polyfill::identity>
+    constexpr R create_from_tuple(Tpl&& tpl, [[maybe_unused]] Projection project = {}) {
+        auto& [... elements] = tpl;
+        return R{std::invoke(project, polyfill::forward_like<Tpl>(elements))...};
+    }
+#else
+    /*
+     *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
+     */
+    template<class R, class Tpl, class Projection = polyfill::identity>
+    constexpr R create_from_tuple(Tpl&& tpl, Projection project = {}) {
+        return create_from_tuple<R>(std::forward<Tpl>(tpl),
+                                    std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
+                                    std::forward<Projection>(project));
+    }
+#endif
+
+    template<template<typename...> class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
+    constexpr auto create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, [[maybe_unused]] Projection project = {}) {
+        return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
+    }
+
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+    /*
+     *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
+     */
+    template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
+    constexpr auto create_from_tuple(Tpl&& tpl, [[maybe_unused]] Projection project = {}) {
+        auto& [... elements] = tpl;
+        return R{std::invoke(project, polyfill::forward_like<Tpl>(elements))...};
+    }
+#else
+    /*
+     *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
+     */
+    template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
+    constexpr auto create_from_tuple(Tpl&& tpl, Projection project = {}) {
+        return create_from_tuple<R>(std::forward<Tpl>(tpl),
+                                    std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
+                                    std::forward<Projection>(project));
+    }
+#endif
+}
 
 // #include "../vocabulary/node_traits.h"
 
@@ -12372,7 +12401,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cstring_literal.h"
 
-// #include "../functional/tuple_helper/tuple_transformer.h"
+// #include "../functional/mpl/convenience.h"
 
 // #include "alias.h"
 
@@ -12652,7 +12681,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
         using builder_type = cte_builder<std::remove_const_t<Moniker>,
-                                         transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
+                                         transform_tuple<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 
@@ -12669,7 +12698,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
         using builder_type = cte_builder<std::remove_const_t<decltype(moniker)>,
-                                         transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
+                                         transform_tuple<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 #endif
@@ -18083,8 +18112,6 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/tuple_helper/tuple_filter.h"
 
-// #include "../functional/tuple_helper/tuple_transformer.h"
-
 // #include "../functional/member_traits.h"
 
 // #include "../vocabulary/node_traits.h"
@@ -18099,7 +18126,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/cxx_polyfill/type_traits.h"
 
-// #include "../functional/tuple_helper/tuple_transformer.h"
+// #include "../functional/mpl/convenience.h"
 
 // #include "../vocabulary/node_traits.h"
 //  is_table_reference
@@ -18138,7 +18165,7 @@ namespace sqlite_orm::internal {
      */
     template<class Tpl>
     struct column_result_proxy<Tpl, std::enable_if_t<polyfill::is_specialization_of_v<Tpl, std::tuple>>>
-        : tuple_transformer<Tpl, column_result_proxy_t> {};
+        : polyfill::type_identity<transform_tuple<Tpl, column_result_proxy_t>> {};
 }
 
 // #include "../ast/alias.h"
@@ -18636,7 +18663,7 @@ namespace sqlite_orm::internal {
     using column_result_of_t = typename column_result_of<DBOs, T>::type;
 
     template<class DBOs, class Tpl>
-    using column_result_for_tuple_t = transform_tuple_t<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
+    using column_result_for_tuple_t = transform_tuple<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
 
     template<class DBOs, class T>
     struct column_result_of<DBOs, T, match_if<is_as_optional, T>> {
@@ -28087,9 +28114,9 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/mpl/quoted_metafunctions.h"
 
-// #include "../functional/type_traits.h"
+// #include "../functional/mpl/convenience.h"
 
-// #include "../functional/tuple_helper/tuple_transformer.h"
+// #include "../functional/type_traits.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -28165,8 +28192,9 @@ namespace sqlite_orm::internal {
      */
     template<class DBOs, class T>
     struct column_expression_of<DBOs, T, std::enable_if_t<is_asterisk_v<T> && is_table_alias_v<type_t<T>>>>
-        : tuple_transformer<typename schema_mapped_column_field_expressions<DBOs, type_t<type_t<T>>>::type,
-                            qualify_by_alias<type_t<T>>::template apply_t> {};
+        : polyfill::type_identity<
+              transform_tuple<typename schema_mapped_column_field_expressions<DBOs, type_t<type_t<T>>>::type,
+                              qualify_by_alias<type_t<T>>::template apply_t>> {};
 
     /**
      *  Resolve multiple columns.
@@ -28174,7 +28202,8 @@ namespace sqlite_orm::internal {
      */
     template<class DBOs, class T>
     struct column_expression_of<DBOs, T, match_if<is_columns, T>>
-        : tuple_transformer<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn> {};
+        : polyfill::type_identity<
+              transform_tuple<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn>> {};
 
     /**
      *  Resolve multiple columns.
@@ -28182,7 +28211,8 @@ namespace sqlite_orm::internal {
      */
     template<class DBOs, class T>
     struct column_expression_of<DBOs, T, match_if<is_struct, T>>
-        : tuple_transformer<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn> {};
+        : polyfill::type_identity<
+              transform_tuple<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn>> {};
 
     /**
      *  Resolve column(s) of subselect.

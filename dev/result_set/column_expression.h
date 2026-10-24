@@ -7,8 +7,8 @@
 
 #include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/mpl/quoted_metafunctions.h"
+#include "../functional/mpl/convenience.h"
 #include "../functional/type_traits.h"
-#include "../functional/tuple_helper/tuple_transformer.h"
 #include "../vocabulary/node_traits.h"
 #include "../ast/result_columns.h"
 #include "../ast/alias.h"
@@ -79,8 +79,9 @@ namespace sqlite_orm::internal {
      */
     template<class DBOs, class T>
     struct column_expression_of<DBOs, T, std::enable_if_t<is_asterisk_v<T> && is_table_alias_v<type_t<T>>>>
-        : tuple_transformer<typename schema_mapped_column_field_expressions<DBOs, type_t<type_t<T>>>::type,
-                            qualify_by_alias<type_t<T>>::template apply_t> {};
+        : polyfill::type_identity<
+              transform_tuple<typename schema_mapped_column_field_expressions<DBOs, type_t<type_t<T>>>::type,
+                              qualify_by_alias<type_t<T>>::template apply_t>> {};
 
     /**
      *  Resolve multiple columns.
@@ -88,7 +89,8 @@ namespace sqlite_orm::internal {
      */
     template<class DBOs, class T>
     struct column_expression_of<DBOs, T, match_if<is_columns, T>>
-        : tuple_transformer<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn> {};
+        : polyfill::type_identity<
+              transform_tuple<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn>> {};
 
     /**
      *  Resolve multiple columns.
@@ -96,7 +98,8 @@ namespace sqlite_orm::internal {
      */
     template<class DBOs, class T>
     struct column_expression_of<DBOs, T, match_if<is_struct, T>>
-        : tuple_transformer<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn> {};
+        : polyfill::type_identity<
+              transform_tuple<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn>> {};
 
     /**
      *  Resolve column(s) of subselect.
