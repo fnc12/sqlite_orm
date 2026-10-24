@@ -6,9 +6,9 @@
 #include <functional>  //  std::invoke
 #endif
 
-#include "../cxx_type_traits_polyfill.h"
-#include "../cxx_utility_polyfill.h"  //  polyfill::forward_like
-#include "../cxx_functional_polyfill.h"  //  polyfill::identity
+#include "../cxx_polyfill/type_traits.h"
+#include "../cxx_polyfill/utility.h"  //  polyfill::forward_like
+#include "../cxx_polyfill/functional.h"  //  polyfill::identity
 #include "../mpl.h"
 
 namespace sqlite_orm::internal {

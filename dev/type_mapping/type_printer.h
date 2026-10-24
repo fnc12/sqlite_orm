@@ -7,7 +7,7 @@
 #include <optional>  //  std::optional
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/gsl.h"
 #include "../functional/type_traits.h"
 #include "is_std_ptr.h"

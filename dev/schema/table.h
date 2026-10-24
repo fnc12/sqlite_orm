@@ -8,7 +8,7 @@
 #include <utility>  //  std::forward, std::move
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/meta_util.h"
 #include "../functional/mpl.h"
 #include "../functional/tuple_helper/tuple_filter.h"

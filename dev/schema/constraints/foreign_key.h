@@ -9,7 +9,7 @@
 #include <utility>  //  std::forward, std::move
 #endif
 
-#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/cxx_polyfill/type_traits.h"
 #include "../../functional/addressof.h"
 #include "../../functional/tuple_helper/same_or_void.h"
 #include "../../functional/field_of.h"

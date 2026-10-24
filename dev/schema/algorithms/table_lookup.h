@@ -19,7 +19,7 @@
 #include <string>  //  std::string
 #endif
 
-#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/cxx_polyfill/type_traits.h"
 #include "../../functional/type_traits.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/node_algorithms.h"  //  column_field_types_t, column_field_expressions_t

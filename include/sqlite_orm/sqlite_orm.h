@@ -29,29 +29,13 @@ __pragma(push_macro("max"))
 #endif  // defined(_MSC_VER)
 #pragma once
 
-// #include "cxx_universal.h"
-
 /*
- *  This header makes central C++ functionality on which sqlite_orm depends universally available:
- *  - alternative operator representations
- *  - ::size_t, ::ptrdiff_t, std::nullptr_t
- *  - C++ core language feature macros
- *  - macros for dealing with compiler quirks
- *  - macros for exporting symbols from the C++ named module
+ *  The public configuration: detection of the language, standard library, compiler and platform,
+ *  the SQLite version and feature macros, and sqlite_orm's capabilities.
+ *  Macros only, no declarations.
  */
 
-#include <iso646.h>  //  alternative operator representations
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <cstddef>  //  sqlite_orm is using ::size_t, ::ptrdiff_t, std::nullptr_t everywhere, pull it in early
-// earlier libcxx versions didn't make std::nullptr_t available in the global namespace via stddef.h,
-// though it should have according to C++ documentation (see https://en.cppreference.com/w/cpp/types/std::nullptr_t#Notes).
-using std::nullptr_t;
-// Further note on the use of nullptr_t:
-// msvc 14.40 has problems finding `::nullptr_t` within sqlite_orm when consuming sqlite_orm as a named module.
-// Hence, sqlite_orm is internally using `std::nullptr_t` instead.
-#endif
-
-// #include "cxx_check_prerequisites.h"
+// #include "toolchain/check_prerequisites.h"
 
 /*
  *  This header detects missing core C++ language features and standard library features
@@ -98,11 +82,11 @@ using std::nullptr_t;
 #error A fully C++17-compliant standard library is required (libstdc++ 9, libc++ 8, MSVC 19.16 or newer).
 #endif
 
-// #include "cxx_core_features.h"
+// #include "toolchain/language_features.h"
 
 /*
- *  This header detects core C++ language features.
- *  May be updated/overwritten by cxx_compiler_quirks.h
+ *  Detection of the C++ core language features.
+ *  May be amended by compiler_quirks.h.
  */
 
 #ifdef __has_cpp_attribute
@@ -172,26 +156,14 @@ using std::nullptr_t;
 #define SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
 #endif
 
-// #include "cxx_compiler_quirks.h"
+// #include "toolchain/compiler_quirks.h"
 
 /*
- *  This header defines macros for circumventing compiler quirks on which sqlite_orm depends.
- *  May amend cxx_core_features.h
+ *  Compiler detection, and the workarounds for compiler quirks sqlite_orm depends on.
+ *  May amend language_features.h.
  */
 
-#ifdef __clang__
-#define SQLITE_ORM_DO_PRAGMA(...) _Pragma(#__VA_ARGS__)
-#endif
-
-#ifdef __clang__
-#define SQLITE_ORM_CLANG_SUPPRESS(warnoption, ...)                                                                     \
-    SQLITE_ORM_DO_PRAGMA(clang diagnostic push)                                                                        \
-    SQLITE_ORM_DO_PRAGMA(clang diagnostic ignored warnoption)                                                          \
-    __VA_ARGS__                                                                                                        \
-    SQLITE_ORM_DO_PRAGMA(clang diagnostic pop)
-#else
-#define SQLITE_ORM_CLANG_SUPPRESS(warnoption, ...) __VA_ARGS__
-#endif
+// #include "language_features.h"
 
 #if defined(_MSC_VER) && !defined(__clang__)
 #define SQLITE_ORM_MS_MSVC
@@ -204,19 +176,6 @@ using std::nullptr_t;
 #if defined(__GNUC__) && !defined(__clang__)
 #define SQLITE_ORM_GNU_GCC
 #endif
-
-#ifdef SQLITE_ORM_MS_MSVC
-#define SQLITE_ORM_DO_PRAGMA(...) __pragma(__VA_ARGS__)
-#endif
-
-#ifdef SQLITE_ORM_MS_MSVC
-#define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) SQLITE_ORM_DO_PRAGMA(warning(suppress : warncode))
-#else
-#define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) __VA_ARGS__
-#endif
-
-// msvc has the bad habit of diagnosing overalignment of types with an explicit alignment specifier.
-#define SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(...) SQLITE_ORM_MSVC_SUPPRESS(4324, __VA_ARGS__)
 
 #if defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1920)
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
@@ -267,7 +226,7 @@ using std::nullptr_t;
 #define SQLITE_ORM_BROKEN_CPP20_VIEWS
 #endif
 
-// #include "platform_definitions.h"
+// #include "toolchain/platform.h"
 
 #if defined(_WIN32)
 #define SQLITE_ORM_WIN
@@ -304,7 +263,60 @@ using std::nullptr_t;
 #error "Unknown target platform detected"
 #endif
 
-// pull in SQLite3 configuration early, such that version and feature macros are globally available in sqlite_orm
+// #include "toolchain/stdlib_features.h"
+
+/*
+ *  Detection of the C++ standard library features.
+ */
+
+// #include "check_prerequisites.h"
+
+// #include "language_features.h"
+
+// #include "compiler_quirks.h"
+
+#if __cpp_lib_is_constant_evaluated >= 201811L
+#define SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
+#endif
+
+#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
+#define SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#endif
+
+#if __cpp_lib_ranges >= 201911L
+#define SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#endif
+
+#if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_BROKEN_CPP20_VIEWS)
+#define SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+#endif
+
+#if __cpp_lib_generator >= 202207L
+#define SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+#endif
+
+// C++20 or later (unfortunately there's no feature test macro).
+// Stupidly, clang says C++20, but `std::default_sentinel_t` was only implemented in libc++ 13 and libstd++-v3 10
+// (the latter is used on Linux).
+// gcc got it right and reports C++20 only starting with v10.
+// The check here doesn't care and checks the library versions in use.
+//
+// Another way of detection might be the feature-test macro __cpp_lib_concepts
+#if (__cplusplus >= 202002L) &&                                                                                        \
+    ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
+#define SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
+#endif
+
+// #include "capabilities.h"
+
+/*
+ *  The optional features sqlite_orm offers with the language, standard library and SQLite in use.
+ */
+
+// #include "toolchain/language_features.h"
+
+// #include "toolchain/stdlib_features.h"
+
 // #include "../sqlite3/sqlite3_config.h"
 
 #include <sqlite3.h>
@@ -380,6 +392,26 @@ using std::nullptr_t;
 #define SQLITE_ORM_NORMALIZE_SUPPORTED
 #endif
 
+#if (defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&              \
+    (defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED))
+#define SQLITE_ORM_WITH_CPP20_ALIASES
+#endif
+
+#define SQLITE_ORM_WITH_CTE
+
+#if defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+#define SQLITE_ORM_WITH_VIEW
+#endif
+
+#pragma once
+
+/*
+ *  The macros sqlite_orm's own code is spelled with: module export, keywords and attributes
+ *  depending on the language version, and the suppression of compiler diagnostics.
+ */
+
+// #include "config.h"
+
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
 #else
@@ -419,26 +451,6 @@ using std::nullptr_t;
 #define SQLITE_ORM_CONSTEVAL constexpr
 #endif
 
-#if __cpp_lib_is_constant_evaluated >= 201811L
-#define SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
-#endif
-
-#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
-#define SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-#endif
-
-#if __cpp_lib_ranges >= 201911L
-#define SQLITE_ORM_CPP20_RANGES_SUPPORTED
-#endif
-
-#if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_BROKEN_CPP20_VIEWS)
-#define SQLITE_ORM_CPP20_VIEWS_SUPPORTED
-#endif
-
-#if __cpp_lib_generator >= 202207L
-#define SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
-#endif
-
 #ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
 #define SQLITE_ORM_STATIC_CALLOP static
 #define SQLITE_ORM_OR_CONST_CALLOP
@@ -447,27 +459,50 @@ using std::nullptr_t;
 #define SQLITE_ORM_OR_CONST_CALLOP const
 #endif
 
-// C++20 or later (unfortunately there's no feature test macro).
-// Stupidly, clang says C++20, but `std::default_sentinel_t` was only implemented in libc++ 13 and libstd++-v3 10
-// (the latter is used on Linux).
-// gcc got it right and reports C++20 only starting with v10.
-// The check here doesn't care and checks the library versions in use.
-//
-// Another way of detection might be the feature-test macro __cpp_lib_concepts
-#if (__cplusplus >= 202002L) &&                                                                                        \
-    ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
-#define SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
+#ifdef __clang__
+#define SQLITE_ORM_DO_PRAGMA(...) _Pragma(#__VA_ARGS__)
 #endif
 
-#if (defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&              \
-    (defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED))
-#define SQLITE_ORM_WITH_CPP20_ALIASES
+#ifdef __clang__
+#define SQLITE_ORM_CLANG_SUPPRESS(warnoption, ...)                                                                     \
+    SQLITE_ORM_DO_PRAGMA(clang diagnostic push)                                                                        \
+    SQLITE_ORM_DO_PRAGMA(clang diagnostic ignored warnoption)                                                          \
+    __VA_ARGS__                                                                                                        \
+    SQLITE_ORM_DO_PRAGMA(clang diagnostic pop)
+#else
+#define SQLITE_ORM_CLANG_SUPPRESS(warnoption, ...) __VA_ARGS__
 #endif
 
-#define SQLITE_ORM_WITH_CTE
+#ifdef SQLITE_ORM_MS_MSVC
+#define SQLITE_ORM_DO_PRAGMA(...) __pragma(__VA_ARGS__)
+#endif
 
-#if defined(SQLITE_ORM_REFLECTION_SUPPORTED)
-#define SQLITE_ORM_WITH_VIEW
+#ifdef SQLITE_ORM_MS_MSVC
+#define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) SQLITE_ORM_DO_PRAGMA(warning(suppress : warncode))
+#else
+#define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) __VA_ARGS__
+#endif
+
+// msvc has the bad habit of diagnosing overalignment of types with an explicit alignment specifier.
+#define SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(...) SQLITE_ORM_MSVC_SUPPRESS(4324, __VA_ARGS__)
+#pragma once
+
+/*
+ *  This header makes central C++ functionality on which sqlite_orm depends universally available:
+ *  - alternative operator representations
+ *  - ::size_t, ::ptrdiff_t, std::nullptr_t
+ *  - the inline namespace `sqlite_orm::literals`
+ */
+
+#include <iso646.h>  //  alternative operator representations
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <cstddef>  //  sqlite_orm is using ::size_t, ::ptrdiff_t, std::nullptr_t everywhere, pull it in early
+// earlier libcxx versions didn't make std::nullptr_t available in the global namespace via stddef.h,
+// though it should have according to C++ documentation (see https://en.cppreference.com/w/cpp/types/std::nullptr_t#Notes).
+using std::nullptr_t;
+// Further note on the use of nullptr_t:
+// msvc 14.40 has problems finding `::nullptr_t` within sqlite_orm when consuming sqlite_orm as a named module.
+// Hence, sqlite_orm is internally using `std::nullptr_t` instead.
 #endif
 
 // define the inline namespace "literals" so that it is available even if it was not introduced by a feature
@@ -901,7 +936,7 @@ namespace sqlite_orm::internal {
 #endif
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 #ifdef SQLITE_ORM_IMPORT_STD_MODULE
 #include <version>
@@ -1421,7 +1456,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/gsl.h"
 
@@ -1473,7 +1508,7 @@ namespace sqlite_orm::internal {
  *  the storage, as the customization points are instantiated for concrete types while the headers are processed.
  */
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // Derived from the type itself, defined in `field_predicates.h`
 namespace sqlite_orm::internal {
@@ -1965,7 +2000,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/meta_util.h"
 
@@ -2094,7 +2129,7 @@ namespace sqlite_orm::internal {
 #endif
 #endif
 
-// #include "cxx_type_traits_polyfill.h"
+// #include "cxx_polyfill/type_traits.h"
 
 // C++ generic traits used throughout the library
 namespace sqlite_orm::internal {
@@ -2259,7 +2294,7 @@ namespace sqlite_orm::internal {
 //  int64
 // #include "../functional/tuple_helper/tuple_traits.h"
 
-// #include "../cxx_type_traits_polyfill.h"
+// #include "../cxx_polyfill/type_traits.h"
 
 // #include "../mpl.h"
 
@@ -2296,7 +2331,7 @@ namespace sqlite_orm::internal {
 #include <initializer_list>
 #endif
 
-// #include "cxx_type_traits_polyfill.h"
+// #include "cxx_polyfill/type_traits.h"
 
 // #include "mpl/conditional.h"
 
@@ -2930,7 +2965,7 @@ namespace sqlite_orm::internal {
 #include <type_traits>  //  std::enable_if, std::is_function, std::true_type, std::false_type
 #endif
 
-// #include "cxx_type_traits_polyfill.h"
+// #include "cxx_polyfill/type_traits.h"
 
 namespace sqlite_orm::internal {
     // SFINAE friendly trait to get a member object pointer's field type
@@ -3037,7 +3072,7 @@ namespace sqlite_orm::internal {
 #include <optional>  //  std::optional
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -3114,7 +3149,7 @@ namespace sqlite_orm::internal {
 #include <type_traits>  //  std::enable_if, std::is_convertible, std::bool_constant
 #endif
 
-// #include "cxx_type_traits_polyfill.h"
+// #include "cxx_polyfill/type_traits.h"
 
 namespace sqlite_orm::internal {
     /*
@@ -3176,7 +3211,7 @@ namespace sqlite_orm::internal {
  *        Definitions of these traits are in the corresponding header files of the grammar nodes.
  */
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // Schema classifier traits
 namespace sqlite_orm::internal {
@@ -4239,7 +4274,7 @@ namespace sqlite_orm::internal {
  *        `quoting_traits_fwd.h`; that would be a subdivision of the structural axis, not a new axis.
  */
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // Structural traits
 namespace sqlite_orm::internal {
@@ -4315,7 +4350,7 @@ namespace sqlite_orm::internal {
 /** @file Cross-cutting role/capability traits in purview of the sqlite_orm EDSL.
  */
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -4531,7 +4566,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <type_traits>  //  std::remove_reference
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../functional/type_traits.h"
 
@@ -4784,7 +4819,7 @@ namespace sqlite_orm::internal {
 #include <type_traits>  //  std::remove_const
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../node_fwd.h"
 
@@ -5133,9 +5168,9 @@ namespace sqlite_orm::internal {
 #include <functional>  //  std::invoke
 #endif
 
-// #include "../cxx_type_traits_polyfill.h"
+// #include "../cxx_polyfill/type_traits.h"
 
-// #include "../cxx_utility_polyfill.h"
+// #include "../cxx_polyfill/utility.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>
@@ -5165,7 +5200,7 @@ namespace sqlite_orm::internal {
     }
 }
 //  polyfill::forward_like
-// #include "../cxx_functional_polyfill.h"
+// #include "../cxx_polyfill/functional.h"
 
 #ifdef SQLITE_ORM_IMPORT_STD_MODULE
 #include <version>
@@ -5392,7 +5427,7 @@ namespace sqlite_orm::internal {
 #include <type_traits>  //  std::is_same
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../functional/mpl.h"
 
@@ -5500,7 +5535,7 @@ namespace sqlite_orm::internal {
 #include <initializer_list>
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../functional/mpl.h"
 
@@ -5681,7 +5716,7 @@ namespace sqlite_orm::internal {
  *  the element factories enforce that on the argument each is handed.
  */
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../node_traits.h"
 
@@ -5750,7 +5785,7 @@ namespace sqlite_orm::internal {
 #include <type_traits>  //  std::is_member_pointer
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../node_traits.h"
 
@@ -5799,7 +5834,7 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::declval, std::move
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../functional/type_traits.h"
 //  match_if, value_unref_type, forward_lvalue_ref
@@ -5988,7 +6023,7 @@ namespace sqlite_orm::internal {
 #include <optional>  //  std::optional
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 namespace sqlite_orm::internal {
     /*
@@ -6034,7 +6069,7 @@ namespace sqlite_orm::internal {
 #include <tuple>  //  std::tuple, std::tuple_element
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../functional/mpl.h"
 
@@ -6355,7 +6390,7 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::forward, std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/meta_util.h"
 
@@ -6377,7 +6412,7 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::move
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -6445,7 +6480,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <functional>  //  std::invoke
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/mpl.h"
 
@@ -7140,7 +7175,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move, std::forward
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/gsl.h"
 
@@ -7360,7 +7395,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/meta_util.h"
 
@@ -7464,7 +7499,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::forward
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/tuple_helper/tuple_traits.h"
 
@@ -7479,7 +7514,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -7968,7 +8003,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::forward, std::move
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../functional/field_of.h"
 
@@ -8134,7 +8169,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::forward, std::move
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../functional/addressof.h"
 
@@ -8533,7 +8568,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::forward, std::move
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -8585,7 +8620,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -8623,7 +8658,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -8692,7 +8727,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -8729,7 +8764,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -8766,7 +8801,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../vocabulary/node_traits.h"
 //  orm_table_reference, auto_decay_table_ref_t
@@ -8932,9 +8967,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move, std::forward, std::declval
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
-// #include "../functional/cxx_utility_polyfill.h"
+// #include "../functional/cxx_polyfill/utility.h"
 //  polyfill::forward_like
 // #include "in.h"
 
@@ -8946,7 +8981,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <vector>  //  std::vector
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "operand_tags.h"
 
@@ -9136,7 +9171,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <ostream>  //  std::flush
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/is_base_template_of.h"
 
@@ -9195,7 +9230,7 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::move, std::forward
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -9697,7 +9732,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../builtin/collations.h"
 //  collate_argument
@@ -10437,7 +10472,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/mpl/conditional.h"
 
@@ -10456,7 +10491,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  // std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/type_traits.h"
 
@@ -11151,7 +11186,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "operand_tags.h"
 
@@ -11219,7 +11254,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/is_base_template_of.h"
 
@@ -11229,7 +11264,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/function_traits.h"
 
-// #include "cxx_type_traits_polyfill.h"
+// #include "cxx_polyfill/type_traits.h"
 
 // #include "mpl.h"
 
@@ -11326,7 +11361,7 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::forward, std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -12058,7 +12093,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move, std::pair
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/optional_container.h"
 
@@ -12153,7 +12188,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  // std::move
 #endif  //  SQLITE_ORM_IMPORT_STD_MODULE
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -12205,7 +12240,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::forward, std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/is_base_template_of.h"
 
@@ -12351,7 +12386,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <tuple>  //  std::tuple, std::ignore, std::tuple_size
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/type_traits.h"
 
@@ -12369,7 +12404,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::forward, std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/tuple_helper/tuple_traits.h"
 
@@ -12949,7 +12984,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::forward
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../functional/type_traits.h"
 
@@ -13230,9 +13265,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <functional>  //  std::invoke
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
-// #include "../../functional/cxx_functional_polyfill.h"
+// #include "../../functional/cxx_polyfill/functional.h"
 //  polyfill::identity
 // #include "../../functional/tuple_helper/tuple_traits.h"
 
@@ -13249,7 +13284,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::forward, std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/tuple_helper/tuple_traits.h"
 
@@ -13657,7 +13692,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 /** @file The INTO clause naming the table a raw INSERT or REPLACE targets.
  */
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../vocabulary/node_traits.h"
 //  orm_table_reference, auto_decay_table_ref_t
@@ -13701,9 +13736,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <functional>  //  std::invoke
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
-// #include "../../functional/cxx_functional_polyfill.h"
+// #include "../../functional/cxx_polyfill/functional.h"
 //  polyfill::identity
 // #include "../../functional/tuple_helper/tuple_traits.h"
 
@@ -14025,7 +14060,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <tuple>  //  std::tuple, std::tuple_size
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../functional/tuple_helper/tuple_traits.h"
 
@@ -14130,7 +14165,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <tuple>  //  std::tuple, std::tuple_size
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../functional/type_traits.h"
 //  value_unref_type_t
@@ -14259,7 +14294,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -14332,7 +14367,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -14367,7 +14402,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "operand_tags.h"
 
@@ -14416,7 +14451,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../vocabulary/node_algorithms.h"
 //  record set concepts, auto_decay_table_ref_t
@@ -14501,7 +14536,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::forward, std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -14561,7 +14596,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "operand_tags.h"
 
@@ -14641,7 +14676,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "column_pointer.h"
 
@@ -15230,7 +15265,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/optional_container.h"
 
@@ -15343,7 +15378,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/literal.h"
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../vocabulary/traits/structural_traits_fwd.h"
 // Included to specialize traits
@@ -15380,7 +15415,7 @@ namespace sqlite_orm::internal {
 // is_statement_clause
 // #include "offset.h"
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -15480,7 +15515,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "operand_tags.h"
 
@@ -15558,7 +15593,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move, std::forward
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "operand_tags.h"
 
@@ -15625,7 +15660,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <ostream>  //  std::flush
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/type_traits.h"
 
@@ -15859,7 +15894,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <type_traits>  //  std::is_same, std::disjunction
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -15949,7 +15984,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -16066,7 +16101,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <tuple>
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../vocabulary/node_traits.h"
 //  orm_recordset_alias
@@ -16151,7 +16186,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move, std::forward
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/cstring_literal.h"
 
@@ -16724,7 +16759,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::forward, std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -16771,7 +16806,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <string_view>  //  std::string_view
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
@@ -16854,7 +16889,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <optional>  //  std::optional
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/gsl.h"
 
@@ -17030,9 +17065,9 @@ namespace sqlite_orm::internal {
 #endif
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
-// #include "../functional/cxx_functional_polyfill.h"
+// #include "../functional/cxx_polyfill/functional.h"
 //  polyfill::identity
 // #include "../functional/gsl.h"
 
@@ -17072,7 +17107,7 @@ namespace sqlite_orm::internal {
 #endif
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/type_traits.h"
 
@@ -17657,7 +17692,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/type_traits.h"
 
@@ -18034,7 +18069,7 @@ namespace sqlite_orm::internal {
 #include <optional>  //  std::optional
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/mpl.h"
 
@@ -18078,7 +18113,7 @@ namespace sqlite_orm::internal {
 #include <type_traits>
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/type_traits.h"
 
@@ -18138,7 +18173,7 @@ namespace sqlite_orm::internal {
 #endif
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/type_traits.h"
 
@@ -18270,7 +18305,7 @@ namespace sqlite_orm::internal {
 #include <string>  //  std::string
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../functional/type_traits.h"
 
@@ -18925,7 +18960,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::index_sequence
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 //  polyfill::detected_or_t
 // #include "../../vocabulary/node_traits.h"
 //  object_type_t, table_mapped_type_t
@@ -19418,7 +19453,7 @@ namespace sqlite_orm::internal {
 #endif
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/gsl.h"
 
@@ -19989,7 +20024,7 @@ namespace sqlite_orm::internal {
 #include <functional>  //  std::reference_wrapper
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/type_traits.h"
 
@@ -20010,7 +20045,7 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::move, std::exchange
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/gsl.h"
 
@@ -20028,7 +20063,7 @@ namespace sqlite_orm::internal {
 #include <string>  //  std::string
 #endif
 
-// #include "../functional/cxx_scope_guard.h"
+// #include "../functional/cxx_polyfill/scope_guard.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  // std::forward
@@ -21333,7 +21368,7 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_v
 #endif
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "result_set_iterator.h"
 
@@ -21360,7 +21395,7 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_v
 #include <utility>  //  std::index_sequence_for, std::move
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/gsl.h"
 
@@ -21955,9 +21990,9 @@ namespace sqlite_orm {
 #include <string_view>  //  std::string_view
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 // std::remove_cvref, polyfill::is_detected
-// #include "../functional/cxx_functional_polyfill.h"
+// #include "../functional/cxx_polyfill/functional.h"
 // polyfill::unwrap_reference
 // #include "../functional/gsl.h"
 
@@ -25021,9 +25056,9 @@ namespace sqlite_orm::internal {
 #endif
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 // std::remove_cvref, std::disjunction
-// #include "../functional/cxx_functional_polyfill.h"
+// #include "../functional/cxx_polyfill/functional.h"
 // polyfill::identity
 // #include "../functional/gsl.h"
 
@@ -25281,7 +25316,7 @@ namespace sqlite_orm::internal {
 #endif
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/type_traits.h"
 
@@ -28037,7 +28072,7 @@ namespace sqlite_orm::internal {
 #endif
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "functional/cxx_polyfill/type_traits.h"
 
 // #include "functional/tuple_helper/tuple_fy.h"
 
@@ -28062,7 +28097,7 @@ namespace sqlite_orm::internal {
 #include <functional>  //  std::reference_wrapper
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/mpl.h"
 
@@ -30648,7 +30683,7 @@ namespace sqlite_orm::internal {
 #include <tuple>  //  std::get
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_polyfill/type_traits.h"
 //  polyfill::remove_cvref_t
 // #include "../functional/type_traits.h"
 //  forward_lvalue_ref
@@ -31083,7 +31118,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <string_view>  //  std::string_view
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../functional/tuple_helper/tuple_traits.h"
 //  count_tuple
@@ -35155,7 +35190,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../../functional/cxx_type_traits_polyfill.h"
+// #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../ast/operand_tags.h"
 //  negatable_t

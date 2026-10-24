@@ -12,7 +12,7 @@
 #endif
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/type_traits.h"
 #include "../vocabulary/algorithms/field_predicates_fwd.h"  // Included to define is_printable_v
 #include "../type_mapping/is_std_ptr.h"

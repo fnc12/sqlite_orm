@@ -13,7 +13,7 @@
 #include <ostream>  //  std::flush
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/is_base_template_of.h"
 #include "../builtin/collations.h"  //  collate_argument
 #include "operand_tags.h"

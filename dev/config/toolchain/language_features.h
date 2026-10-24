@@ -1,8 +1,8 @@
 #pragma once
 
 /*
- *  This header detects core C++ language features.
- *  May be updated/overwritten by cxx_compiler_quirks.h
+ *  Detection of the C++ core language features.
+ *  May be amended by compiler_quirks.h.
  */
 
 #ifdef __has_cpp_attribute

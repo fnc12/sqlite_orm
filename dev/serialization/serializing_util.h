@@ -11,8 +11,8 @@
 #include <string_view>  //  std::string_view
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, polyfill::is_detected
-#include "../functional/cxx_functional_polyfill.h"  // polyfill::unwrap_reference
+#include "../functional/cxx_polyfill/type_traits.h"  // std::remove_cvref, polyfill::is_detected
+#include "../functional/cxx_polyfill/functional.h"  // polyfill::unwrap_reference
 #include "../functional/gsl.h"
 #include "../functional/type_traits.h"
 #include "../functional/tuple_helper/tuple_iteration.h"

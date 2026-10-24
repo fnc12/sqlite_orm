@@ -7,7 +7,7 @@
 #include <utility>  //  std::forward, std::move
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause, is_frame_start_bound_v, is_frame_end_bound_v
 

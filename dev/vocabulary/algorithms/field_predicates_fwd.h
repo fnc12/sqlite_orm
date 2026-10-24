@@ -9,7 +9,7 @@
  *  the storage, as the customization points are instantiated for concrete types while the headers are processed.
  */
 
-#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/cxx_polyfill/type_traits.h"
 
 // Derived from the type itself, defined in `field_predicates.h`
 namespace sqlite_orm::internal {

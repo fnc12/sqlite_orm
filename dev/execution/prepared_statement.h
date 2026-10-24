@@ -9,7 +9,7 @@
 #include <utility>  //  std::move, std::exchange
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/gsl.h"
 #include "../sqlite3/sqlite3_deleters.h"  //  sqlite3_memory_deleter
 #include "connection_holder.h"
