@@ -43,9 +43,9 @@ namespace sqlite_orm::internal {
     struct substitute_arguments<argument<I>, ArgsTuple, ResolveQ>
         : mpl::defer<ResolveQ, std::tuple_element_t<I, ArgsTuple>> {};
 
-    template<template<class...> class Tmpl, class... Ts, class ArgsTuple, class ResolveQ>
-    struct substitute_arguments<Tmpl<Ts...>, ArgsTuple, ResolveQ>
-        : polyfill::type_identity<Tmpl<typename substitute_arguments<Ts, ArgsTuple, ResolveQ>::type...>> {};
+    template<template<class...> class Template, class... Ts, class ArgsTuple, class ResolveQ>
+    struct substitute_arguments<Template<Ts...>, ArgsTuple, ResolveQ>
+        : polyfill::type_identity<Template<typename substitute_arguments<Ts, ArgsTuple, ResolveQ>::type...>> {};
 
     template<size_t... I, class ArgsTuple, class ResolveQ>
     struct substitute_arguments<common_argument_type<I...>, ArgsTuple, ResolveQ>
