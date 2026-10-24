@@ -8,7 +8,7 @@
 #endif
 
 #include "../functional/cxx_polyfill/type_traits.h"
-#include "../functional/mpl.h"
+#include "../functional/mpl/convenience.h"
 #include "../functional/type_traits.h"
 #include "../functional/tuple_helper/tuple_filter.h"
 #include "../functional/tuple_helper/tuple_iteration.h"
@@ -80,7 +80,7 @@ namespace sqlite_orm::internal {
          *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
          *  @param lambda Lambda called for each column.
          */
-        template<class OpTraitQ, class L, satisfies<mpl::is_quoted_metafuntion, OpTraitQ> = true>
+        template<class OpTraitQ, class L, satisfies<mpl::is_quoted_metafunction, OpTraitQ> = true>
         void for_each_column_excluding(L&& lambda) const {
             this->template for_each_column_excluding<OpTraitQ::template fn>(lambda);
         }

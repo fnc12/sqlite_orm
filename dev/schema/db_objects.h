@@ -16,9 +16,8 @@
 
 #include "../functional/type_traits.h"
 #include "../functional/index_sequence_util.h"
-#include "../functional/mpl.h"
+#include "../functional/mpl/convenience.h"
 #include "../functional/tuple_helper/tuple_filter.h"  //  tuple_from_index_sequence_t
-#include "../functional/tuple_helper/tuple_traits.h"  //  tuple_has_type
 #include "../functional/tuple_helper/tuple_transformer.h"  //  create_from_tuple
 #include "../vocabulary/traits/grammar_traits_fwd.h"  //  is_with_clause
 

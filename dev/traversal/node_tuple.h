@@ -8,6 +8,7 @@
 #endif
 
 #include "../functional/type_traits.h"
+#include "../functional/mpl/conditional.h"
 #include "../functional/tuple_helper/tuple_filter.h"
 #include "../execution/prepared_statement.h"
 #include "../functional/optional_container.h"

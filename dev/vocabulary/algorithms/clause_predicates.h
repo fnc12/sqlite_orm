@@ -18,8 +18,8 @@
 #endif
 
 #include "../../functional/cxx_polyfill/type_traits.h"
-#include "../../functional/mpl.h"
-#include "../../functional/tuple_helper/tuple_traits.h"
+#include "../../functional/mpl/quoted_metafunctions.h"
+#include "../../functional/mpl/convenience.h"
 #include "../node_traits.h"
 
 // generic statement clause algorithms
