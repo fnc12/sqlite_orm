@@ -1,7 +1,8 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::remove_const, std::declval
+#include <type_traits>  //  std::remove_const
+#include <utility>  //  std::forward, std::declval
 #if __cpp_lib_unwrap_ref >= 201811L
 #include <utility>  //  std::reference_wrapper
 #else

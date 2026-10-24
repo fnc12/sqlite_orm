@@ -11,7 +11,7 @@
 #endif
 
 #include "../../functional/cxx_polyfill/type_traits.h"
-#include "../../functional/type_traits.h"  //  match_if
+#include "../../functional/type_traits.h"  //  match_if, type_t
 #include "../../functional/ref_unwrapping.h"  //  value_unref_type, forward_lvalue_ref
 #include "../node_traits.h"
 

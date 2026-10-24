@@ -2121,7 +2121,7 @@ namespace sqlite_orm::internal {
 // #include "../functional/type_traits.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_same, std::is_empty, std::is_aggregate, std::is_function, std::common_type
+#include <type_traits>  //  std::enable_if, std::is_same, std::disjunction, std::negation, std::is_empty, std::is_aggregate, std::is_function, std::common_type
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>  //  std::same_as
 #endif
@@ -5611,11 +5611,12 @@ namespace sqlite_orm::internal {
 // #include "../../functional/cxx_polyfill/type_traits.h"
 
 // #include "../../functional/type_traits.h"
-//  match_if
+//  match_if, type_t
 // #include "../../functional/ref_unwrapping.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::remove_const, std::declval
+#include <type_traits>  //  std::remove_const
+#include <utility>  //  std::forward, std::declval
 #if __cpp_lib_unwrap_ref >= 201811L
 #include <utility>  //  std::reference_wrapper
 #else

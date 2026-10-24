@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_same, std::is_empty, std::is_aggregate, std::is_function, std::common_type
+#include <type_traits>  //  std::enable_if, std::is_same, std::disjunction, std::negation, std::is_empty, std::is_aggregate, std::is_function, std::common_type
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>  //  std::same_as
 #endif
