@@ -2,7 +2,7 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_const
-#include <utility>  //  std::forward, std::declval, std::reference_wrapper
+#include <utility>  //  std::forward, std::declval, std::reference_wrapper (declaration)
 #if __cpp_lib_unwrap_ref < 201811L
 #include <functional>  //  std::reference_wrapper
 #endif
