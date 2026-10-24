@@ -2131,9 +2131,6 @@ namespace sqlite_orm::internal {
 
 // generic type traits
 namespace sqlite_orm::internal {
-    template<class T, class... Types>
-    using is_any_of = std::disjunction<std::is_same<T, Types>...>;
-
     template<class T>
     using is_eval_order_guaranteed = std::is_aggregate<T>;
 
@@ -2143,8 +2140,11 @@ namespace sqlite_orm::internal {
 #endif
 }
 
-// type computations over packs
+// type algorithms over packs
 namespace sqlite_orm::internal {
+    template<class T, class... Types>
+    using is_any_of = std::disjunction<std::is_same<T, Types>...>;
+
     template<class Pack>
     struct common_type_of;
 
