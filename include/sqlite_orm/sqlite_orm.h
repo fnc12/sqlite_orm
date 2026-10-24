@@ -2211,7 +2211,7 @@ namespace sqlite_orm::internal {
     using satisfies_not = std::enable_if_t<std::negation<Op<Args...>>::value, bool>;
 
     template<class T, template<typename...> class Primary>
-    using satisfies_is_specialization_of = std::enable_if_t<polyfill::is_specialization_of<T, Primary>::value, bool>;
+    using satisfies_specialization_of = std::enable_if_t<polyfill::is_specialization_of<T, Primary>::value, bool>;
 }
 
 // type name projectors
