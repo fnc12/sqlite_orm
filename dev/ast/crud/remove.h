@@ -11,7 +11,7 @@
 #endif
 
 #include "../../functional/cxx_polyfill/type_traits.h"
-#include "../../functional/type_traits.h"  //  value_unref_type_t
+#include "../../functional/ref_unwrapping.h"  //  value_unref_type_t
 #include "../../functional/mpl/convenience.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/node_algorithms.h"  // clause predicates, is_bindable_v
