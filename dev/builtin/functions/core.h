@@ -18,7 +18,7 @@
 #endif
 
 #include "../../functional/cxx_polyfill/type_traits.h"
-#include "../../functional/tuple_helper/tuple_traits.h"  //  count_tuple
+#include "../../functional/mpl/convenience.h"  //  count_tuple
 #include "../../ast/literal.h"  //  literal_holder
 #include "../../vocabulary/node_traits.h"  //  is_into, is_column_pointer
 #include "../../vocabulary/node_algorithms.h"  //  argument, common_argument_type

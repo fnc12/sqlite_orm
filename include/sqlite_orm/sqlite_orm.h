@@ -2127,6 +2127,9 @@ namespace sqlite_orm::internal {
 #else
 #include <functional>  //  std::reference_wrapper
 #endif
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#include <concepts>  //  std::same_as
+#endif
 #endif
 
 // #include "cxx_polyfill/type_traits.h"
@@ -2288,15 +2291,42 @@ namespace sqlite_orm::internal {
      */
     template<class Pack>
     using common_type_of_t = typename common_type_of<Pack>::type;
+
+    /**
+     *  Accepts any number of arguments and evaluates a nested `type` typename as `T` if all arguments are the same, otherwise `void`.
+     */
+    template<class... Args>
+    struct same_or_void {
+        using type = void;
+    };
+
+    template<class... Args>
+    using same_or_void_t = typename same_or_void<Args...>::type;
+
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    template<class A, std::same_as<A>... Rest>
+    struct same_or_void<A, Rest...> {
+        using type = A;
+    };
+#else
+    template<class A>
+    struct same_or_void<A> {
+        using type = A;
+    };
+
+    template<class A>
+    struct same_or_void<A, A> {
+        using type = A;
+    };
+
+    template<class A, class... Args>
+    struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
+#endif
 }
 
 // #include "../sqlite3/sqlite3_types.h"
 //  int64
-// #include "../functional/tuple_helper/tuple_traits.h"
-
-// #include "../cxx_polyfill/type_traits.h"
-
-// #include "../mpl/convenience.h"
+// #include "../functional/mpl/convenience.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same
@@ -2895,83 +2925,88 @@ namespace sqlite_orm::internal::mpl {
 
         template<template<class...> class ProjOp, class T>
         using check_if_projected_is_type = pass_result_of_fn<check_if_is_type<T>, ProjOp>;
+
+        /*
+         *  Higher-order trait metafunction that checks whether a tuple contains a type with given trait (possibly projected).
+         *  
+         *  `ProjOp` is a metafunction
+         */
+        template<class Pack,
+                 template<class...> class TraitFn,
+                 template<class...> class ProjOp = polyfill::type_identity_t>
+        using tuple_has = invoke_t<check_if_has<TraitFn>, Pack, quote_fn<ProjOp>>;
+
+        /*
+         *  Higher-order trait metafunction that checks whether a tuple contains the specified type (possibly projected).
+         *  
+         *  `ProjOp` is a metafunction
+         */
+        template<class Pack, class Type, template<class...> class ProjOp = polyfill::type_identity_t>
+        using tuple_has_type = invoke_t<check_if_has_type<Type>, Pack, quote_fn<ProjOp>>;
+
+        /*
+         *  Higher-order trait metafunction that checks whether a tuple contains the specified class template (possibly projected).
+         *  
+         *  `ProjOp` is a metafunction
+         */
+        template<class Pack,
+                 template<class...> class Template,
+                 template<class...> class ProjOp = polyfill::type_identity_t>
+        using tuple_has_template = invoke_t<check_if_has_template<Template>, Pack, quote_fn<ProjOp>>;
+
+        /*
+         *  Higher-order metafunction returning the first index constant of the desired element having the specified trait in a tuple (possibly projected).
+         *  
+         *  `ProjOp` is a metafunction
+         */
+        template<class Pack,
+                 template<class...> class TraitFn,
+                 template<class...> class ProjOp = polyfill::type_identity_t>
+        using find_tuple_element = invoke_t<finds_if_has<TraitFn>, Pack, quote_fn<ProjOp>>;
+
+        /*
+         *  Higher-order metafunction returning the first index constant of the trait metafunction in a tuple
+         *  that is satisfied by the specified type (possibly projected).
+         *  
+         *  In contrast to `find_tuple_element`, the tuple holds the trait metafunctions and the type to test is fixed,
+         *  which is what allows a single type to be located within an ordered list of traits.
+         *  
+         *  `ProjOp` is a metafunction
+         */
+        template<class Pack, class T, template<class...> class ProjOp = polyfill::type_identity_t>
+        using find_tuple_satisfied_by = invoke_t<finds_satisfied_by<T>, Pack, quote_fn<ProjOp>>;
+
+        /*
+         *  Higher-order metafunction returning the first index constant of the desired type in a tuple (possibly projected).
+         *  
+         *  `ProjOp` is a metafunction
+         */
+        template<class Pack, class Type, template<class...> class ProjOp = polyfill::type_identity_t>
+        using find_tuple_type = invoke_t<finds_if_has_type<Type>, Pack, quote_fn<ProjOp>>;
+
+        /*
+         *  Higher-order metafunction returning the first index constant of the desired class template in a tuple (possibly projected).
+         *  
+         *  `ProjOp` is a metafunction
+         */
+        template<class Pack,
+                 template<class...> class Template,
+                 template<class...> class ProjOp = polyfill::type_identity_t>
+        using find_tuple_template = invoke_t<finds_if_has_template<Template>, Pack, quote_fn<ProjOp>>;
+
+        /*
+         *  Higher-order trait metafunction that counts the types having the specified trait in a tuple (possibly projected).
+         *  
+         *  `Pred` is a predicate metafunction with a nested bool member named `value`
+         *  `ProjOp` is a metafunction
+         */
+        template<class Pack, template<class...> class Pred, template<class...> class ProjOp = polyfill::type_identity_t>
+        using count_tuple = invoke_t<counts_if_has<Pred>, Pack, quote_fn<ProjOp>>;
     }
 }
 
 namespace sqlite_orm::internal {
     using namespace mpl::convenience;
-}
-
-// convenience metafunction algorithms
-namespace sqlite_orm::internal {
-    /*
-     *  Higher-order trait metafunction that checks whether a tuple contains a type with given trait (possibly projected).
-     *  
-     *  `ProjOp` is a metafunction
-     */
-    template<class Pack, template<class...> class TraitFn, template<class...> class ProjOp = polyfill::type_identity_t>
-    using tuple_has = mpl::invoke_t<check_if_has<TraitFn>, Pack, mpl::quote_fn<ProjOp>>;
-
-    /*
-     *  Higher-order trait metafunction that checks whether a tuple contains the specified type (possibly projected).
-     *  
-     *  `ProjOp` is a metafunction
-     */
-    template<class Pack, class Type, template<class...> class ProjOp = polyfill::type_identity_t>
-    using tuple_has_type = mpl::invoke_t<check_if_has_type<Type>, Pack, mpl::quote_fn<ProjOp>>;
-
-    /*
-     *  Higher-order trait metafunction that checks whether a tuple contains the specified class template (possibly projected).
-     *  
-     *  `ProjOp` is a metafunction
-     */
-    template<class Pack, template<class...> class Template, template<class...> class ProjOp = polyfill::type_identity_t>
-    using tuple_has_template = mpl::invoke_t<check_if_has_template<Template>, Pack, mpl::quote_fn<ProjOp>>;
-
-    /*
-     *  Higher-order metafunction returning the first index constant of the desired element having the specified trait in a tuple (possibly projected).
-     *  
-     *  `ProjOp` is a metafunction
-     */
-    template<class Pack, template<class...> class TraitFn, template<class...> class ProjOp = polyfill::type_identity_t>
-    using find_tuple_element = mpl::invoke_t<finds_if_has<TraitFn>, Pack, mpl::quote_fn<ProjOp>>;
-
-    /*
-     *  Higher-order metafunction returning the first index constant of the trait metafunction in a tuple
-     *  that is satisfied by the specified type (possibly projected).
-     *  
-     *  In contrast to `find_tuple_element`, the tuple holds the trait metafunctions and the type to test is fixed,
-     *  which is what allows a single type to be located within an ordered list of traits.
-     *  
-     *  `ProjOp` is a metafunction
-     */
-    template<class Pack, class T, template<class...> class ProjOp = polyfill::type_identity_t>
-    using find_tuple_satisfied_by = mpl::invoke_t<finds_satisfied_by<T>, Pack, mpl::quote_fn<ProjOp>>;
-
-    /*
-     *  Higher-order metafunction returning the first index constant of the desired type in a tuple (possibly projected).
-     *  
-     *  `ProjOp` is a metafunction
-     */
-    template<class Pack, class Type, template<class...> class ProjOp = polyfill::type_identity_t>
-    using find_tuple_type = mpl::invoke_t<finds_if_has_type<Type>, Pack, mpl::quote_fn<ProjOp>>;
-
-    /*
-     *  Higher-order metafunction returning the first index constant of the desired class template in a tuple (possibly projected).
-     *  
-     *  `ProjOp` is a metafunction
-     */
-    template<class Pack, template<class...> class Template, template<class...> class ProjOp = polyfill::type_identity_t>
-    using find_tuple_template = mpl::invoke_t<finds_if_has_template<Template>, Pack, mpl::quote_fn<ProjOp>>;
-
-    /*
-     *  Higher-order trait metafunction that counts the types having the specified trait in a tuple (possibly projected).
-     *  
-     *  `Pred` is a predicate metafunction with a nested bool member named `value`
-     *  `ProjOp` is a metafunction
-     */
-    template<class Pack, template<class...> class Pred, template<class...> class ProjOp = polyfill::type_identity_t>
-    using count_tuple = mpl::invoke_t<counts_if_has<Pred>, Pack, mpl::quote_fn<ProjOp>>;
 }
 
 // #include "../functional/member_traits.h"
@@ -5554,7 +5589,7 @@ namespace sqlite_orm::internal {
 
 // #include "../../functional/mpl/quoted_metafunctions.h"
 
-// #include "../../functional/tuple_helper/tuple_traits.h"
+// #include "../../functional/mpl/convenience.h"
 
 // #include "../node_traits.h"
 
@@ -6876,8 +6911,6 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/tuple_helper/tuple_filter.h"
 
-// #include "../functional/tuple_helper/tuple_traits.h"
-
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
     /**
@@ -7518,7 +7551,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_polyfill/type_traits.h"
 
-// #include "../functional/tuple_helper/tuple_traits.h"
+// #include "../functional/mpl/convenience.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -8208,46 +8241,7 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "../../functional/tuple_helper/same_or_void.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-#include <concepts>  //  std::same_as
-#endif
-#endif
-
-namespace sqlite_orm::internal {
-    /**
-     *  Accepts any number of arguments and evaluates a nested `type` typename as `T` if all arguments are the same, otherwise `void`.
-     */
-    template<class... Args>
-    struct same_or_void {
-        using type = void;
-    };
-
-    template<class... Args>
-    using same_or_void_t = typename same_or_void<Args...>::type;
-
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    template<class A, std::same_as<A>... Rest>
-    struct same_or_void<A, Rest...> {
-        using type = A;
-    };
-#else
-    template<class A>
-    struct same_or_void<A> {
-        using type = A;
-    };
-
-    template<class A>
-    struct same_or_void<A, A> {
-        using type = A;
-    };
-
-    template<class A, class... Args>
-    struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
-#endif
-}
+// #include "../../functional/type_traits.h"
 
 // #include "../../functional/field_of.h"
 
@@ -12425,7 +12419,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_polyfill/type_traits.h"
 
-// #include "../functional/tuple_helper/tuple_traits.h"
+// #include "../functional/mpl/convenience.h"
 
 // #include "../vocabulary/node_algorithms.h"
 // clause predicates
@@ -13288,7 +13282,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/cxx_polyfill/functional.h"
 //  polyfill::identity
-// #include "../../functional/tuple_helper/tuple_traits.h"
+// #include "../../functional/mpl/convenience.h"
 
 // #include "../../vocabulary/node_traits.h"
 
@@ -13305,7 +13299,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_polyfill/type_traits.h"
 
-// #include "../functional/tuple_helper/tuple_traits.h"
+// #include "../functional/mpl/convenience.h"
 
 // #include "../vocabulary/node_algorithms.h"
 // is_select_clause
@@ -13759,7 +13753,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/cxx_polyfill/functional.h"
 //  polyfill::identity
-// #include "../../functional/tuple_helper/tuple_traits.h"
+// #include "../../functional/mpl/convenience.h"
 
 // #include "../../vocabulary/node_traits.h"
 
@@ -13950,7 +13944,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/type_traits.h"
 
-// #include "../../functional/tuple_helper/tuple_traits.h"
+// #include "../../functional/mpl/convenience.h"
 
 // #include "../../serialization/serializer_context.h"
 
@@ -14081,7 +14075,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/cxx_polyfill/type_traits.h"
 
-// #include "../../functional/tuple_helper/tuple_traits.h"
+// #include "../../functional/mpl/convenience.h"
 
 // #include "../../vocabulary/node_traits.h"
 
@@ -14188,7 +14182,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/type_traits.h"
 //  value_unref_type_t
-// #include "../../functional/tuple_helper/tuple_traits.h"
+// #include "../../functional/mpl/convenience.h"
 
 // #include "../../vocabulary/node_traits.h"
 
@@ -17096,8 +17090,6 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 
-// #include "../functional/tuple_helper/tuple_traits.h"
-
 // #include "../functional/tuple_helper/tuple_filter.h"
 
 // #include "../functional/tuple_helper/tuple_transformer.h"
@@ -18098,7 +18090,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 //  common_type_of_t
-// #include "../functional/tuple_helper/tuple_traits.h"
+// #include "../functional/mpl/convenience.h"
 
 // #include "../functional/tuple_helper/tuple_fy.h"
 
@@ -18362,8 +18354,6 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/tuple_helper/tuple_filter.h"
 //  tuple_from_index_sequence_t
-// #include "../functional/tuple_helper/tuple_traits.h"
-//  tuple_has_type
 // #include "../functional/tuple_helper/tuple_transformer.h"
 //  create_from_tuple
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
@@ -19309,7 +19299,7 @@ namespace sqlite_orm::internal {
 
 // #include "../../functional/type_traits.h"
 
-// #include "../../functional/tuple_helper/tuple_traits.h"
+// #include "../../functional/mpl/convenience.h"
 
 // #include "../../functional/tuple_helper/tuple_filter.h"
 
@@ -25222,7 +25212,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/type_traits.h"
 
-// #include "../functional/tuple_helper/tuple_traits.h"
+// #include "../functional/mpl/convenience.h"
 
 // #include "../functional/tuple_helper/tuple_iteration.h"
 
@@ -30307,7 +30297,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <optional>  //  std::optional
 #endif
 
-// #include "../functional/tuple_helper/tuple_traits.h"
+// #include "../functional/mpl/convenience.h"
 
 // #include "../vocabulary/node_traits.h"
 
@@ -31151,7 +31141,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/cxx_polyfill/type_traits.h"
 
-// #include "../../functional/tuple_helper/tuple_traits.h"
+// #include "../../functional/mpl/convenience.h"
 //  count_tuple
 // #include "../../ast/literal.h"
 //  literal_holder

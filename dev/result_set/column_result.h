@@ -10,7 +10,7 @@
 #include "../functional/mpl/conditional.h"
 #include "../functional/mpl/quoted_metafunctions.h"
 #include "../functional/type_traits.h"  //  common_type_of_t
-#include "../functional/tuple_helper/tuple_traits.h"
+#include "../functional/mpl/convenience.h"
 #include "../functional/tuple_helper/tuple_fy.h"
 #include "../functional/tuple_helper/tuple_filter.h"
 #include "../functional/tuple_helper/tuple_transformer.h"

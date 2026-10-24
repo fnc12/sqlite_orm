@@ -11,7 +11,7 @@
 
 #include "../../functional/cxx_polyfill/type_traits.h"
 #include "../../functional/addressof.h"
-#include "../../functional/tuple_helper/same_or_void.h"
+#include "../../functional/type_traits.h"
 #include "../../functional/field_of.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits

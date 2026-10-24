@@ -12,7 +12,7 @@
 
 #include "../../functional/cxx_polyfill/type_traits.h"
 #include "../../functional/type_traits.h"  //  value_unref_type_t
-#include "../../functional/tuple_helper/tuple_traits.h"
+#include "../../functional/mpl/convenience.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/node_algorithms.h"  // clause predicates, is_bindable_v
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
