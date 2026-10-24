@@ -7,6 +7,7 @@
 #endif
 
 #include "../functional/cxx_polyfill/type_traits.h"
+#include "../functional/mpl/conditional.h"
 #include "../functional/mpl/quoted_metafunctions.h"
 #include "../functional/type_traits.h"  //  common_type_of_t
 #include "../functional/mpl/convenience.h"
@@ -112,7 +113,7 @@ namespace sqlite_orm::internal {
      *  for its column result.
      */
     template<class DBOs, class Arg>
-    using argument_result_of_t = typename std::conditional_t<is_bindable_v<Arg> && !is_text_value<Arg>::value,
+    using argument_result_of_t = typename mpl::conditional_t<is_bindable_v<Arg> && !is_text_value<Arg>::value,
                                                              polyfill::type_identity<Arg>,
                                                              column_result_of<DBOs, Arg>>::type;
 

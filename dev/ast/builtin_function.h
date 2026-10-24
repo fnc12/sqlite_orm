@@ -7,7 +7,7 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_same, std::is_void, std::type_identity, std::conditional, std::remove_cvref
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_void, std::type_identity, std::remove_cvref
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
 #include <string_view>  //  std::string_view
 #include <utility>  //  std::move, std::forward
@@ -22,6 +22,7 @@
 #include "../functional/type_traits.h"  //  satisfies, orm_function_sig
 #include "../functional/cstring_literal.h"
 #include "../functional/function_traits.h"  //  function_arguments, function_return_type_t
+#include "../functional/mpl/conditional.h"
 #include "operand_tags.h"  //  arithmetic_t
 #include "../vocabulary/node_traits.h"  //  is_where, expression_type_t
 #include "../vocabulary/node_algorithms.h"  //  argument, common_argument_type
@@ -252,7 +253,7 @@ namespace sqlite_orm::internal {
 
     template<size_t Argc, class KindedSig, class... KindedSigs>
     struct matched_builtin_signature<Argc, KindedSig, KindedSigs...>
-        : std::conditional_t<builtin_signature_accepts<typename KindedSig::signature_type, Argc>(),
+        : mpl::conditional_t<builtin_signature_accepts<typename KindedSig::signature_type, Argc>(),
                              std::type_identity<KindedSig>,
                              matched_builtin_signature<Argc, KindedSigs...>> {};
 
@@ -273,15 +274,15 @@ namespace sqlite_orm::internal {
 
     template<class R, class R0, class... Params>
     struct with_return_type<R, scalar_sig<R0(Params...)>>
-        : std::type_identity<scalar_sig<std::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+        : std::type_identity<scalar_sig<mpl::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
 
     template<class R, class R0, class... Params>
     struct with_return_type<R, aggregate_sig<R0(Params...)>>
-        : std::type_identity<aggregate_sig<std::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+        : std::type_identity<aggregate_sig<mpl::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
 
     template<class R, class R0, class... Params>
     struct with_return_type<R, window_sig<R0(Params...)>>
-        : std::type_identity<window_sig<std::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+        : std::type_identity<window_sig<mpl::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
 
     template<class R, class KindedSig>
     using with_return_type_t = typename with_return_type<R, KindedSig>::type;
