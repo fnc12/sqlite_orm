@@ -14,7 +14,6 @@
 #include "../functional/meta_util.h"
 #include "../functional/mpl/convenience.h"
 #include "../functional/tuple_helper/tuple_filter.h"
-#include "../functional/tuple_helper/tuple_traits.h"
 
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {

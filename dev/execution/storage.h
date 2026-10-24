@@ -26,7 +26,6 @@
 #include "../functional/mpl/conditional.h"
 #include "../functional/mpl/convenience.h"
 #include "../functional/type_traits.h"
-#include "../functional/tuple_helper/tuple_traits.h"
 #include "../functional/tuple_helper/tuple_filter.h"
 #include "../functional/tuple_helper/tuple_transformer.h"
 #include "../functional/tuple_helper/tuple_iteration.h"
