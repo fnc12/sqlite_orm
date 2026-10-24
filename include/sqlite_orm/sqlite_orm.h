@@ -2200,12 +2200,18 @@ namespace sqlite_orm::internal {
     template<template<typename...> class Op, class... Args>
     using match_if_not = std::enable_if_t<std::negation<Op<Args...>>::value>;
 
+    template<class T, template<typename...> class Primary>
+    using match_specialization_of = std::enable_if_t<polyfill::is_specialization_of<T, Primary>::value>;
+
     // enable_if for functions
     template<template<typename...> class Op, class... Args>
     using satisfies = std::enable_if_t<Op<Args...>::value, bool>;
 
     template<template<typename...> class Op, class... Args>
     using satisfies_not = std::enable_if_t<std::negation<Op<Args...>>::value, bool>;
+
+    template<class T, template<typename...> class Primary>
+    using satisfies_is_specialization_of = std::enable_if_t<polyfill::is_specialization_of<T, Primary>::value, bool>;
 }
 
 // type name projectors
@@ -18126,6 +18132,8 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/cxx_polyfill/type_traits.h"
 
+// #include "../functional/type_traits.h"
+//  match_specialization_of
 // #include "../functional/mpl/convenience.h"
 
 // #include "../vocabulary/node_traits.h"
@@ -18164,7 +18172,7 @@ namespace sqlite_orm::internal {
      *  Calculate result of multiple columns.
      */
     template<class Tpl>
-    struct column_result_proxy<Tpl, std::enable_if_t<polyfill::is_specialization_of_v<Tpl, std::tuple>>>
+    struct column_result_proxy<Tpl, match_specialization_of<Tpl, std::tuple>>
         : polyfill::type_identity<transform_tuple<Tpl, column_result_proxy_t>> {};
 }
 

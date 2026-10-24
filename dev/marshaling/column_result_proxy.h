@@ -5,6 +5,7 @@
 #endif
 
 #include "../functional/cxx_polyfill/type_traits.h"
+#include "../functional/type_traits.h"  //  match_specialization_of
 #include "../functional/mpl/convenience.h"
 #include "../vocabulary/node_traits.h"  //  is_table_reference
 
@@ -41,6 +42,6 @@ namespace sqlite_orm::internal {
      *  Calculate result of multiple columns.
      */
     template<class Tpl>
-    struct column_result_proxy<Tpl, std::enable_if_t<polyfill::is_specialization_of_v<Tpl, std::tuple>>>
+    struct column_result_proxy<Tpl, match_specialization_of<Tpl, std::tuple>>
         : polyfill::type_identity<transform_tuple<Tpl, column_result_proxy_t>> {};
 }
