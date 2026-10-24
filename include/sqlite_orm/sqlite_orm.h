@@ -3047,7 +3047,7 @@ namespace sqlite_orm::internal::mpl {
          *  `Op` is a metafunction
          */
         template<class Pack, template<class...> class Op>
-        using transform_tuple_t = invoke_t<transforms_fn<Op>, Pack>;
+        using transform_tuple = invoke_t<transforms_fn<Op>, Pack>;
     }
 }
 
@@ -5265,14 +5265,14 @@ namespace sqlite_orm::internal {
      *  The field types of a table definition's columns, in column order.
      */
     template<class Table>
-    using column_field_types_t = transform_tuple_t<filter_tuple_t<elements_type_t<Table>, is_column>, field_type_t>;
+    using column_field_types_t = transform_tuple<filter_tuple_t<elements_type_t<Table>, is_column>, field_type_t>;
 
     /**
      *  The member pointers a table definition's columns are mapped by, in column order.
      */
     template<class Table>
     using column_field_expressions_t =
-        transform_tuple_t<filter_tuple_t<elements_type_t<Table>, is_column>, member_pointer_type_t>;
+        transform_tuple<filter_tuple_t<elements_type_t<Table>, is_column>, member_pointer_type_t>;
 }
 
 // #include "algorithms/ddl_predicates.h"
@@ -12710,7 +12710,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
         using builder_type = cte_builder<std::remove_const_t<Moniker>,
-                                         transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
+                                         transform_tuple<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 
@@ -12727,7 +12727,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
         using builder_type = cte_builder<std::remove_const_t<decltype(moniker)>,
-                                         transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
+                                         transform_tuple<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 #endif
@@ -18192,7 +18192,7 @@ namespace sqlite_orm::internal {
      */
     template<class Tpl>
     struct column_result_proxy<Tpl, match_specialization_of<Tpl, std::tuple>>
-        : polyfill::type_identity<transform_tuple_t<Tpl, column_result_proxy_t>> {};
+        : polyfill::type_identity<transform_tuple<Tpl, column_result_proxy_t>> {};
 }
 
 // #include "../ast/alias.h"
@@ -18688,7 +18688,7 @@ namespace sqlite_orm::internal {
     using column_result_of_t = typename column_result_of<DBOs, T>::type;
 
     template<class DBOs, class Tpl>
-    using column_result_for_tuple_t = transform_tuple_t<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
+    using column_result_for_tuple_t = transform_tuple<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
 
     template<class DBOs, class T>
     struct column_result_of<DBOs, T, match_if<is_as_optional, T>> {
@@ -28216,8 +28216,8 @@ namespace sqlite_orm::internal {
     template<class DBOs, class T>
     struct column_expression_of<DBOs, T, std::enable_if_t<is_asterisk_v<T> && is_table_alias_v<type_t<T>>>>
         : polyfill::type_identity<
-              transform_tuple_t<typename schema_mapped_column_field_expressions<DBOs, type_t<type_t<T>>>::type,
-                                qualify_by_alias<type_t<T>>::template apply_t>> {};
+              transform_tuple<typename schema_mapped_column_field_expressions<DBOs, type_t<type_t<T>>>::type,
+                              qualify_by_alias<type_t<T>>::template apply_t>> {};
 
     /**
      *  Resolve multiple columns.
@@ -28226,7 +28226,7 @@ namespace sqlite_orm::internal {
     template<class DBOs, class T>
     struct column_expression_of<DBOs, T, match_if<is_columns, T>>
         : polyfill::type_identity<
-              transform_tuple_t<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn>> {};
+              transform_tuple<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn>> {};
 
     /**
      *  Resolve multiple columns.
@@ -28235,7 +28235,7 @@ namespace sqlite_orm::internal {
     template<class DBOs, class T>
     struct column_expression_of<DBOs, T, match_if<is_struct, T>>
         : polyfill::type_identity<
-              transform_tuple_t<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn>> {};
+              transform_tuple<columns_type_t<T>, mpl::bind_front_fn<column_expression_of_t, DBOs>::template fn>> {};
 
     /**
      *  Resolve column(s) of subselect.

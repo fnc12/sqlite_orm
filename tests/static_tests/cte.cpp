@@ -21,7 +21,7 @@ void do_assert() {
 
 template<class E, class ColRef>
 void runDecay(ColRef /*colRef*/) {
-    do_assert<internal::transform_tuple_t<tuple<ColRef>, internal::decay_explicit_column_t>, E>();
+    do_assert<internal::transform_tuple<tuple<ColRef>, internal::decay_explicit_column_t>, E>();
 }
 
 template<class E, class T>

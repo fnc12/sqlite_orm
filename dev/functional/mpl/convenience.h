@@ -205,7 +205,7 @@ namespace sqlite_orm::internal::mpl {
          *  `Op` is a metafunction
          */
         template<class Pack, template<class...> class Op>
-        using transform_tuple_t = invoke_t<transforms_fn<Op>, Pack>;
+        using transform_tuple = invoke_t<transforms_fn<Op>, Pack>;
     }
 }
 

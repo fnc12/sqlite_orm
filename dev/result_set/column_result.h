@@ -50,7 +50,7 @@ namespace sqlite_orm::internal {
     using column_result_of_t = typename column_result_of<DBOs, T>::type;
 
     template<class DBOs, class Tpl>
-    using column_result_for_tuple_t = transform_tuple_t<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
+    using column_result_for_tuple_t = transform_tuple<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
 
     template<class DBOs, class T>
     struct column_result_of<DBOs, T, match_if<is_as_optional, T>> {

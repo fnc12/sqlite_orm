@@ -218,7 +218,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
         using builder_type = cte_builder<std::remove_const_t<Moniker>,
-                                         transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
+                                         transform_tuple<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 
@@ -235,7 +235,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
         using builder_type = cte_builder<std::remove_const_t<decltype(moniker)>,
-                                         transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
+                                         transform_tuple<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 #endif

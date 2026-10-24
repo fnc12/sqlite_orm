@@ -12,12 +12,12 @@ namespace sqlite_orm::internal {
      *  The field types of a table definition's columns, in column order.
      */
     template<class Table>
-    using column_field_types_t = transform_tuple_t<filter_tuple_t<elements_type_t<Table>, is_column>, field_type_t>;
+    using column_field_types_t = transform_tuple<filter_tuple_t<elements_type_t<Table>, is_column>, field_type_t>;
 
     /**
      *  The member pointers a table definition's columns are mapped by, in column order.
      */
     template<class Table>
     using column_field_expressions_t =
-        transform_tuple_t<filter_tuple_t<elements_type_t<Table>, is_column>, member_pointer_type_t>;
+        transform_tuple<filter_tuple_t<elements_type_t<Table>, is_column>, member_pointer_type_t>;
 }

@@ -43,5 +43,5 @@ namespace sqlite_orm::internal {
      */
     template<class Tpl>
     struct column_result_proxy<Tpl, match_specialization_of<Tpl, std::tuple>>
-        : polyfill::type_identity<transform_tuple_t<Tpl, column_result_proxy_t>> {};
+        : polyfill::type_identity<transform_tuple<Tpl, column_result_proxy_t>> {};
 }
