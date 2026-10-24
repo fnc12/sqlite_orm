@@ -22,13 +22,13 @@
 #endif
 
 #ifdef ENABLE_THIS_EXAMPLE
-#include <type_traits>
-#include <tuple>
-#include <system_error>
-#include <future>
-#include <string>
 #include <algorithm>
+#include <future>
 #include <iostream>
+#include <string>
+#include <system_error>
+#include <tuple>
+#include <type_traits>
 
 using namespace sqlite_orm;
 

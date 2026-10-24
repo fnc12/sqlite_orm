@@ -9,18 +9,18 @@
 
 #ifdef ENABLE_THIS_EXAMPLE
 #include <assert.h>
-#include <cstdio>  //  std::remove
-#include <string>
-#include <iostream>
 #include <chrono>
+#include <cstdio>  //  std::remove
 #include <format>
+#include <iostream>
+#include <string>
 
 ///////////////////////////////
 /// sys_days binding as TEXT
 /// ///////////////////////////
 
-#include <sstream>
 #include <regex>
+#include <sstream>
 
 /**
  *  This is the date we want to map to our sqlite db.

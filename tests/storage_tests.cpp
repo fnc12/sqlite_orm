@@ -1,7 +1,7 @@
-#include <memory>  //  std::unique_ptr, std::make_unique
-#include <cstdint>
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <cstdint>
+#include <memory>  //  std::unique_ptr, std::make_unique
+#include <sqlite_orm/sqlite_orm.h>
 
 using namespace sqlite_orm;
 

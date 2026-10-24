@@ -1,18 +1,18 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::add_lvalue_reference
 #include <functional>  //  std::reference_wrapper
+#include <type_traits>  //  std::enable_if, std::add_lvalue_reference
 #endif
 
 #include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/mpl.h"
-#include "../functional/type_traits.h"
 #include "../functional/tuple_helper/tuple_transformer.h"
-#include "../vocabulary/node_traits.h"
-#include "../ast/result_columns.h"
+#include "../functional/type_traits.h"
 #include "../ast/alias.h"
+#include "../ast/result_columns.h"
 #include "../schema/algorithms/table_lookup.h"  //  schema_mapped_column_field_expressions
+#include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
     template<class DBOs, class E, class SFINAE = void>

@@ -1,8 +1,8 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if
 #include <tuple>  //  std::tuple, std::get, std::tuple_cat, std::tuple_size, std::make_tuple
+#include <type_traits>  //  std::enable_if
 #include <utility>  //  std::move, std::pair
 #endif
 

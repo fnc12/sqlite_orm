@@ -1,8 +1,8 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <functional>  //  std::less
+#include <sqlite_orm/sqlite_orm.h>
 #include <type_traits>
 #include <vector>
-#include <functional>  //  std::less
 
 namespace mpl = sqlite_orm::internal::mpl;
 using namespace sqlite_orm;

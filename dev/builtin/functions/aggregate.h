@@ -10,15 +10,15 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <memory>  //  std::unique_ptr
 #include <string>  //  std::string
+#include <string_view>  //  std::string_view
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::move, std::forward
-#include <memory>  //  std::unique_ptr
-#include <string_view>  //  std::string_view
 #endif
 
-#include "../../vocabulary/node_algorithms.h"  //  argument, orm_refers_to_recordset
 #include "../../ast/builtin_function.h"  //  count_asterisk_t, count_asterisk_without_type
+#include "../../vocabulary/node_algorithms.h"  //  argument, orm_refers_to_recordset
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**

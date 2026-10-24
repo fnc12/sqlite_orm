@@ -1,9 +1,9 @@
 /**
  *  Example is implemented from here https://www.w3resource.com/sqlite/exists-operator.php
  */
+#include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
 #include <string>
-#include <iostream>
 
 using std::cout;
 using std::endl;

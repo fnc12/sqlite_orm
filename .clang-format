@@ -63,15 +63,20 @@ ForEachMacros:
   - foreach
   - Q_FOREACH
   - BOOST_FOREACH
+# Header handling: within each block, angle-bracket includes first, then `functional/cxx_*.h`, the rest of
+# `functional/`, and all other quoted includes; each group sorted by path
+SortIncludes:    CaseSensitive
 IncludeBlocks:   Preserve
-IncludeCategories: 
-  - Regex:           '^"(llvm|llvm-c|clang|clang-c)/'
+IncludeCategories:
+  - Regex:           '^<'
+    Priority:        1
+  - Regex:           '^"(\.\./)*functional/cxx_'
     Priority:        2
-  - Regex:           '^(<|"(gtest|gmock|isl|json)/)'
+  - Regex:           '^"(\.\./)*functional/'
     Priority:        3
   - Regex:           '.*'
-    Priority:        1
-IncludeIsMainRegex: '(Test)?$'
+    Priority:        4
+IncludeIsMainRegex: '$^'
 IndentCaseLabels: true
 IndentPPDirectives: None
 IndentWidth:     4
@@ -97,7 +102,6 @@ PenaltyExcessCharacter: 1000000
 PenaltyReturnTypeOnItsOwnLine: 60
 PointerAlignment: Left
 ReflowComments:  false
-SortIncludes:    false
 SortUsingDeclarations: true
 SpaceAfterCStyleCast: false
 SpaceAfterTemplateKeyword: false

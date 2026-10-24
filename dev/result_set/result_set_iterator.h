@@ -2,15 +2,15 @@
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <utility>  //  std::move
-#include <iterator>  //  std::input_iterator_tag, std::default_sentinel_t
 #include <functional>  //  std::reference_wrapper
+#include <iterator>  //  std::input_iterator_tag, std::default_sentinel_t
+#include <utility>  //  std::move
 #endif
 
+#include "../marshaling/column_result_proxy.h"
+#include "../marshaling/struct_extractor.h"  //  make_row_extractor
 #include "../sqlite3/sqlite3_deleters.h"  //  statement_finalizer
 #include "../sqlite3/sqlite3_statements.h"
-#include "../marshaling/struct_extractor.h"  //  make_row_extractor
-#include "../marshaling/column_result_proxy.h"
 
 namespace sqlite_orm::internal {
 
