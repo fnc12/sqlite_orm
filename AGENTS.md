@@ -17,9 +17,11 @@ pointers. License: AGPL for open source, MIT after purchase.
   or renaming a header.**
 - `include/sqlite_orm/sqlite_orm.h` - the **generated** single-header amalgamation of `dev/`.
   Never edit it by hand: change `dev/` and regenerate it (see [Before every commit](#before-every-commit)).
-- `not_single_header_include/sqlite_orm/sqlite_orm.h` - the non-amalgamated variant. Its
-  includes and the `sources` of `third_party/amalgamate/sqlite_orm.json` list the same headers in
-  the same order; change both together (`scripts/check-amalgamation-sources.sh` checks it).
+  `include/sqlite_orm/sqlite_orm_config.h` is generated the same way, from `dev/config/config.h`.
+- `not_single_header_include/sqlite_orm/` - the non-amalgamated variants. The includes of
+  `sqlite_orm.h` and `sqlite_orm_config.h` and the `sources` of `third_party/amalgamate/sqlite_orm.json` and
+  `sqlite_orm_config.json` respectively list the same headers in the same order; change both
+  together (`scripts/check-amalgamation-sources.sh` checks it).
 - `modules/` - the C++20 named module; public symbols are declared in
   `SQLITE_ORM_EXPORT namespace sqlite_orm`.
 - `tests/` - Catch2 unit tests; `examples/` - one program per feature.
@@ -56,8 +58,8 @@ without including it: the C++ feature and compiler macros, the platform macros, 
 version and feature macros (`SQLITE_VERSION_NUMBER`, `SQLITE_ORM_JSON_SUPPORTED`, ...), the
 capability macros (`SQLITE_ORM_WITH_CTE`, ...) and the internal macros
 (`SQLITE_ORM_EXPORT`, ...). Code depending on a compile option of SQLite tests the feature
-macro `dev/sqlite3/sqlite3_config.h` derives from it, never the `SQLITE_ENABLE_*` macro
-itself. This covers configuration only.
+macro `dev/sqlite3/sqlite3_config.h` derives from it, never the `SQLITE_ENABLE_*` macro itself.
+This covers configuration only.
 A header that uses the SQLite C API (functions, types, constants such as
 `SQLITE_OPEN_READONLY`) includes `<sqlite3.h>` itself, and a header that uses a sqlite_orm
 symbol includes the header declaring it.
@@ -92,7 +94,7 @@ from anywhere else.
 ### Before every commit
 
 Run [`scripts/pre-commit.sh`](scripts/pre-commit.sh), on Linux, macOS or WSL. It regenerates
-the amalgamation, formats the sources with clang-format 20 (the version CI lints with), warns
+the amalgamations, formats the sources with clang-format 20 (the version CI lints with), warns
 about changed files containing carriage returns, and checks the order of the amalgamation
 sources and that the paths named in this file and in `docs/internals/` exist. Every commit carries its own regenerated amalgamation, so that each
 one is consistent by itself. Files use LF line endings, enforced by `.gitattributes`. When
