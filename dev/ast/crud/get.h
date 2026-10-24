@@ -22,7 +22,7 @@
 #include "../../functional/type_traits.h"
 #include "../../functional/mpl.h"
 #include "../../functional/index_sequence_util.h"
-#include "../../tuple_helper/tuple_filter.h"
+#include "../../functional/tuple_helper/tuple_filter.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/node_algorithms.h"  //  is_bindable_v, mapped_type_of_t
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits

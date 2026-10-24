@@ -6,10 +6,10 @@
 #include <functional>  //  std::invoke
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
-#include "../functional/cxx_utility_polyfill.h"  //  polyfill::forward_like
-#include "../functional/cxx_functional_polyfill.h"  //  polyfill::identity
-#include "../functional/mpl.h"
+#include "../cxx_type_traits_polyfill.h"
+#include "../cxx_utility_polyfill.h"  //  polyfill::forward_like
+#include "../cxx_functional_polyfill.h"  //  polyfill::identity
+#include "../mpl.h"
 
 namespace sqlite_orm::internal {
     template<class Pack, template<class...> class Op>

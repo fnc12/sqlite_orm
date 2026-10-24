@@ -24,7 +24,7 @@
 #include "../sqlite3/sqlite3_statements.h"
 #include "../sqlite3/sqlite3_errors.h"
 #include "../sqlite3/sqlite3_xdestroy.h"
-#include "../tuple_helper/tuple_iteration.h"
+#include "../functional/tuple_helper/tuple_iteration.h"
 #include "../vocabulary/node_traits.h"  // projections
 #include "pragma.h"
 #include "limit_accessor.h"

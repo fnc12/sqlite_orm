@@ -10,7 +10,7 @@
 #endif
 
 #include "../../functional/gsl.h"
-#include "../../member_traits/member_traits.h"
+#include "../../functional/member_traits.h"
 #include "../../schema/virtual_table.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/node_algorithms.h"

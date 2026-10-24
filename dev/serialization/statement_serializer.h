@@ -26,7 +26,7 @@
 #include "../functional/always_default.h"
 #include "../functional/mpl.h"
 #include "../functional/type_traits.h"
-#include "../tuple_helper/tuple_filter.h"
+#include "../functional/tuple_helper/tuple_filter.h"
 #include "../ast/crud/insert.h"  // conflict_action
 #include "../ast/result_columns.h"
 #include "../ast/crud/set.h"

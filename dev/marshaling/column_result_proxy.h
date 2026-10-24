@@ -6,7 +6,7 @@
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/type_traits.h"
-#include "../tuple_helper/tuple_transformer.h"
+#include "../functional/tuple_helper/tuple_transformer.h"
 #include "../vocabulary/node_traits.h"  //  is_table_reference
 
 namespace sqlite_orm::internal {

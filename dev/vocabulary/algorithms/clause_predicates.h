@@ -19,7 +19,7 @@
 
 #include "../../functional/cxx_type_traits_polyfill.h"
 #include "../../functional/mpl.h"
-#include "../../tuple_helper/tuple_traits.h"
+#include "../../functional/tuple_helper/tuple_traits.h"
 #include "../node_traits.h"
 
 // generic statement clause algorithms
