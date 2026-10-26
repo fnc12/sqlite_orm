@@ -284,8 +284,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using aliased_type = type_t<A>;
         static_assert(is_field_of_v<F O::*, aliased_type>, "Column must be from aliased table");
 
-        using C1 =
-            mpl::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
+        using C1 = mpl::ternary_t<std::is_same<O, aliased_type>, F O::*, column_pointer<aliased_type, F O::*>>;
         return alias_qualified_column_t<A, C1>{C1{field}};
     }
 

@@ -66,9 +66,9 @@ namespace sqlite_orm::internal {
      */
     template<class M, class... Cs>
     struct virtual_table_traits : virtual_table_module_traits<M> {
-        using definition_type = mpl::conditional_t<virtual_table_module_traits<M>::is_eponymous::value,
-                                                   table_definition<Cs...>,
-                                                   insertable_table_definition<Cs...>>;
+        using definition_type = mpl::ternary_t<typename virtual_table_module_traits<M>::is_eponymous,
+                                               table_definition<Cs...>,
+                                               insertable_table_definition<Cs...>>;
         using elements_type = elements_type_t<definition_type>;
     };
 

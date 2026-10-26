@@ -74,6 +74,13 @@ TEST_CASE("mpl") {
             int>::value);
     STATIC_REQUIRE(mpl::invoke_t<mpl::identity, std::true_type>::value);
     STATIC_REQUIRE(mpl::invoke_t<mpl::always<std::true_type>>::value);
+    STATIC_REQUIRE(mpl::is_quoted_metafunction_v<mpl::ternary<true>>);
+    STATIC_REQUIRE(std::is_same<mpl::invoke_t<mpl::ternary<true>, int, long>, int>::value);
+    STATIC_REQUIRE(std::is_same<mpl::invoke_t<mpl::ternary<false>, int, long>, long>::value);
+    STATIC_REQUIRE(std::is_same<mpl::ternary_c<true, int, long>, int>::value);
+    STATIC_REQUIRE(std::is_same<mpl::ternary_c<false, int, long>, long>::value);
+    STATIC_REQUIRE(std::is_same<mpl::ternary_t<std::true_type, int, long>, int>::value);
+    STATIC_REQUIRE(std::is_same<mpl::ternary_t<std::is_void<int>, int, long>, long>::value);
     STATIC_REQUIRE(std::is_same<mpl::invoke_t<mpl::pass_extracted_fn_to<mpl::identity>, std::is_void<int>>,
                                 mpl::quote_fn<std::is_void>>::value);
     STATIC_REQUIRE(mpl::invoke_t<mpl::pass_extracted_fn_to<mpl_is_same>,

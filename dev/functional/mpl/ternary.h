@@ -2,28 +2,32 @@
 
 namespace sqlite_orm::internal::mpl {
     /*
-     *  Binary quoted metafunction equivalent to `std::conditional`,
-     *  using an improved implementation in respect to memoization.
-     *  
-     *  Because `conditional` is only typed on a single bool non-type template parameter,
+     *  Binary quoted metafunction selecting the first or the second type,
+     *  i.e. the ternary operator with its condition fixed.
+     *
+     *  Because `ternary` is only typed on a single bool non-type template parameter,
      *  the compiler only ever needs to memoize 2 instances of this class template.
      *  The type selection is a nested cheap alias template.
      */
     template<bool>
-    struct conditional {
+    struct ternary {
         template<typename A, typename>
         using fn = A;
     };
 
     template<>
-    struct conditional<false> {
+    struct ternary<false> {
         template<typename, typename B>
         using fn = B;
     };
 
-    // directly invoke `conditional`
+    // select A or B by a boolean constant
     template<bool v, typename A, typename B>
-    using conditional_t = typename conditional<v>::template fn<A, B>;
+    using ternary_c = typename ternary<v>::template fn<A, B>;
+
+    // select A or B by the value of a boolean trait
+    template<class C, typename A, typename B>
+    using ternary_t = typename ternary<bool(C::value)>::template fn<A, B>;
 }
 
 namespace sqlite_orm {

@@ -113,9 +113,9 @@ namespace sqlite_orm::internal {
      *  for its column result.
      */
     template<class DBOs, class Arg>
-    using argument_result_of_t = typename mpl::conditional_t<is_bindable_v<Arg> && !is_text_value<Arg>::value,
-                                                             polyfill::type_identity<Arg>,
-                                                             column_result_of<DBOs, Arg>>::type;
+    using argument_result_of_t = typename mpl::ternary_c<is_bindable_v<Arg> && !is_text_value<Arg>::value,
+                                                         polyfill::type_identity<Arg>,
+                                                         column_result_of<DBOs, Arg>>::type;
 
     /**
      *  The declared return type of a built-in function, with the `argument<I>` and `common_argument_type<I...>`

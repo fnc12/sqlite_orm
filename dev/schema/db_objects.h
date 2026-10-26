@@ -71,9 +71,9 @@ namespace sqlite_orm::internal {
     template<size_t K, class Specs, size_t... Idx>
     struct bundled_dbo_index_sequence<K, Specs, std::index_sequence<Idx...>>
         // index `Idx` of the tuple if kept, nothing otherwise
-        : flatten_idxseq<mpl::conditional_t<is_unique_bundled_dbo<K, Idx, Specs>::value,
-                                            std::index_sequence<Idx>,
-                                            std::index_sequence<>>...> {};
+        : flatten_idxseq<mpl::ternary_t<is_unique_bundled_dbo<K, Idx, Specs>,
+                                        std::index_sequence<Idx>,
+                                        std::index_sequence<>>...> {};
 
     /**
      *  Unpack the argument at index `K` of arguments `Specs`: a tuple of database objects into its kept
