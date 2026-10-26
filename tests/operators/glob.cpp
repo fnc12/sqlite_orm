@@ -1,10 +1,10 @@
 /**
  *  Obtained from here https://www.tutlane.com/tutorial/sqlite/sqlite-glob-operator
  */
-#include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch_all.hpp>
-#include <vector>  //  std::vector
 #include <algorithm>  //  std::find_if, std::count
+#include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
+#include <vector>  //  std::vector
 
 using namespace sqlite_orm;
 

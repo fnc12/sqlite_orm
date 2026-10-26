@@ -1,11 +1,11 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 #include "catch_matchers.h"
 
-#include <vector>  //  std::vector
-#include <string>  //  std::string
 #include <cstdio>  //  std::remove
 #include <cstring>  //  std::strncmp
+#include <string>  //  std::string
+#include <vector>  //  std::vector
 
 using namespace sqlite_orm;
 

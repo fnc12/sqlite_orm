@@ -2,17 +2,17 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <type_traits>  //  std::is_member_pointer_v
-#include <tuple>  //  std::tuple, std::make_tuple, std::get, std::tuple_element_t
 #include <string>  //  std::string
+#include <tuple>  //  std::tuple, std::make_tuple, std::get, std::tuple_element_t
+#include <type_traits>  //  std::is_member_pointer_v
 #include <utility>  //  std::index_sequence, std::forward, std::move
 #include <vector>  //  std::vector
 #endif
 #endif
 
 #include "../functional/cxx_polyfill/type_traits.h"
-#include "../functional/type_traits.h"
 #include "../functional/tuple_helper/tuple_fy.h"
+#include "../functional/type_traits.h"
 #include "../vocabulary/node_traits.h"
 #include "column.h"
 #include "table_base.h"

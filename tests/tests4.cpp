@@ -1,7 +1,7 @@
-#include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch_all.hpp>
 #include <algorithm>  //  std::count_if
+#include <catch2/catch_all.hpp>
 #include <optional>  // std::optional
+#include <sqlite_orm/sqlite_orm.h>
 
 using namespace sqlite_orm;
 

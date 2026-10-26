@@ -7,8 +7,8 @@
 #ifdef ENABLE_THIS_UT
 #include <catch2/catch_all.hpp>
 #include <memory>  //  std::unique_ptr, std::shared_ptr
-#include <string>  //  std::string
 #include <optional>  //  std::optional
+#include <string>  //  std::string
 #include <string_view>
 
 using namespace sqlite_orm;

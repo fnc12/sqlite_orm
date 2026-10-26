@@ -1,20 +1,20 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
-#include <type_traits>  //  std::is_same_v, std::is_invocable_v
+#include <memory>  //  std::unique_ptr
+#include <optional>  //  std::optional
+#include <sqlite_orm/sqlite_orm.h>
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
 #include <tuple>  //  std::tuple
-#include <memory>  //  std::unique_ptr
-#include <optional>  //  std::optional
-#include <vector>  //  std::vector
+#include <type_traits>  //  std::is_same_v, std::is_invocable_v
 #include <utility>  //  std::move
+#include <vector>  //  std::vector
 //  The C headers rather than their `<c...>` wrappers, deliberately: only the C headers guarantee the declarations
 //  in the global namespace, which is what the "names shared with the C library" section needs in scope.
 //  The wrappers guarantee them in `std` alone (with modules, the global names take `import std.compat;`).
-#include <stdlib.h>  //  abs
 #include <math.h>  //  round
-#include <time.h>  //  time, strftime
 #include <stdio.h>  //  printf
+#include <stdlib.h>  //  abs
+#include <time.h>  //  time, strftime
 
 using namespace sqlite_orm;
 

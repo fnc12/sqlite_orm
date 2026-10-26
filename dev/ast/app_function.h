@@ -11,9 +11,9 @@
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>  //  std::copy_constructible
 #endif
-#include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
-#include <functional>  // std::bind_front
 #include <algorithm>  //  std::min, std::copy_n
+#include <functional>  // std::bind_front
+#include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
 #include <utility>  //  std::move, std::forward
 #endif
 
@@ -21,9 +21,9 @@
 #include "../functional/cstring_literal.h"
 #include "../functional/function_traits.h"
 #include "../functional/type_traits.h"
+#include "../vocabulary/node_algorithms.h"  //  is_pointer_arg_v, is_pointer_binding_v
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
-#include "../vocabulary/node_algorithms.h"  //  is_pointer_arg_v, is_pointer_binding_v
 
 // export forward-declarations
 SQLITE_ORM_EXPORT namespace sqlite_orm { struct arg_values; }

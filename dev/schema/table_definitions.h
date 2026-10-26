@@ -5,15 +5,15 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <algorithm>  //  std::find_if, std::ranges::find
 #include <type_traits>  //  std::remove_reference
 #include <utility>  //  std::move
-#include <algorithm>  //  std::find_if, std::ranges::find
 #endif
 
-#include "../vocabulary/node_traits.h"
-#include "../vocabulary/node_algorithms.h"
-#include "../type_mapping/type_printer.h"
 #include "../builtin/dbos/pragma_table_info.h"  //  table_xinfo
+#include "../type_mapping/type_printer.h"
+#include "../vocabulary/node_algorithms.h"
+#include "../vocabulary/node_traits.h"
 #include "table.h"
 
 namespace sqlite_orm::internal {

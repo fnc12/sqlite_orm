@@ -1,9 +1,9 @@
-#include <type_traits>
-#include <array>
-#include <tuple>
 #include <algorithm>  //  std::fill_n
-#include <sqlite_orm/sqlite_orm.h>
+#include <array>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
+#include <tuple>
+#include <type_traits>
 
 using std::array;
 using std::index_sequence;

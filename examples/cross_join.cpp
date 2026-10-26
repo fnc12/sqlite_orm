@@ -2,9 +2,9 @@
  *  The example is implemented from here http://www.sqlitetutorial.net/sqlite-cross-join/
  */
 
+#include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
 #include <string>
-#include <iostream>
 
 using std::cout;
 using std::endl;

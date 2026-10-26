@@ -1,6 +1,6 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 #include <cstring>  //  std::strcmp
+#include <sqlite_orm/sqlite_orm.h>
 
 #include "prepared_common.h"
 

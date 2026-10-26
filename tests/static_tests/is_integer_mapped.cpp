@@ -1,8 +1,8 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 #include <memory>  //  std::unique_ptr, std::shared_ptr
-#include <string>  //  std::string
 #include <optional>  //  std::optional
+#include <sqlite_orm/sqlite_orm.h>
+#include <string>  //  std::string
 #include <vector>  //  std::vector
 
 using namespace sqlite_orm;
