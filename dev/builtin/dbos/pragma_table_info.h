@@ -7,13 +7,13 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
-#include <utility>  //  std::move
 #include <tuple>  //  std::tuple
+#include <utility>  //  std::move
 #endif
 
 #include "../../functional/gsl.h"
-#include "../../schema/virtual_table.h"
 #include "../../ast/table_reference.h"
+#include "../../schema/virtual_table.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 

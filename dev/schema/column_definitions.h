@@ -9,8 +9,8 @@
 #endif
 
 #include "../functional/mpl/convenience.h"
-#include "../vocabulary/node_traits.h"
 #include "../serialization/default_value_extractor.h"
+#include "../vocabulary/node_traits.h"
 #include "column.h"
 
 namespace sqlite_orm::internal {

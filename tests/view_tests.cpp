@@ -1,6 +1,6 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 #include <cstdio>  //  std::remove
+#include <sqlite_orm/sqlite_orm.h>
 
 #ifdef SQLITE_ORM_WITH_VIEW
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED

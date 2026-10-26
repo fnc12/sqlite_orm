@@ -1,5 +1,5 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 
 using namespace sqlite_orm;
 using internal::col_index_sequence_of, internal::col_index_sequence_excluding, internal::col_index_sequence_with,

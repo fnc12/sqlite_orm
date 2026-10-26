@@ -12,8 +12,8 @@
  *  access with sqlite client.
  */
 
-#include <sqlite_orm/sqlite_orm.h>
 #include <iostream>
+#include <sqlite_orm/sqlite_orm.h>
 
 using std::cout;
 using std::endl;

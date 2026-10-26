@@ -4,10 +4,10 @@
 #include <utility>  //  std::move
 #endif  //  SQLITE_ORM_IMPORT_STD_MODULE
 
-#include "../functional/type_traits.h"
 #include "../functional/optional_container.h"
-#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "../functional/type_traits.h"
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "offset.h"
 
 namespace sqlite_orm::internal {

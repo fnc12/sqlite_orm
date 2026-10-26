@@ -5,8 +5,8 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::disjunction
 #include <tuple>  //  std::tuple
+#include <type_traits>  //  std::disjunction
 #include <utility>  //  std::move
 #endif
 

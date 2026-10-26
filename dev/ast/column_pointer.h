@@ -6,11 +6,11 @@
 #endif
 
 #include "../functional/cxx_polyfill/type_traits.h"
-#include "../functional/type_traits.h"
 #include "../functional/field_of.h"  // Included to specialize is_field_of_v
+#include "../functional/type_traits.h"
 #include "../vocabulary/node_traits.h"  //  node projections, is_alias_holder
-#include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
+#include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     /**

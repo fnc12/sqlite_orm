@@ -2,8 +2,8 @@
  *  This example was grabbed from here https://www.sqlitetutorial.net/sqlite-trigger/
  */
 
-#include <sqlite_orm/sqlite_orm.h>
 #include <iostream>
+#include <sqlite_orm/sqlite_orm.h>
 #include <string>
 
 using namespace sqlite_orm;

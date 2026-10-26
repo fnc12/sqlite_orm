@@ -5,8 +5,8 @@
 #endif
 
 #include "../functional/cxx_polyfill/type_traits.h"
-#include "../functional/type_traits.h"
 #include "../functional/mpl/convenience.h"
+#include "../functional/type_traits.h"
 #include "../vocabulary/node_traits.h"  //  is_table_reference
 
 namespace sqlite_orm::internal {

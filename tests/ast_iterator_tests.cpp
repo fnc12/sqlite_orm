@@ -1,5 +1,5 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 
 #include <typeindex>  //  std::type_index
 

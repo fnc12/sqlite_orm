@@ -1,6 +1,6 @@
-#include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch_all.hpp>
 #include <algorithm>
+#include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 #include "../catch_matchers.h"
 
 #include "prepared_common.h"
