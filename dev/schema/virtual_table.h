@@ -12,7 +12,7 @@
 
 #include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/gsl.h"
-#include "../functional/mpl/conditional.h"
+#include "../functional/mpl/ternary.h"
 #include "../functional/type_traits.h"
 #include "../vocabulary/node_traits.h"  //  orm_table_reference, auto_decay_table_ref_t
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits

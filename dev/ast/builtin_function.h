@@ -21,7 +21,7 @@
 #include "../functional/cstring_literal.h"
 #include "../functional/function_traits.h"  //  function_arguments, function_return_type_t
 #include "../functional/is_base_template_of.h"
-#include "../functional/mpl/conditional.h"
+#include "../functional/mpl/ternary.h"
 #include "../functional/type_traits.h"  //  satisfies, orm_function_sig
 #include "../vocabulary/node_algorithms.h"  //  argument, common_argument_type
 #include "../vocabulary/node_traits.h"  //  is_where, expression_type_t

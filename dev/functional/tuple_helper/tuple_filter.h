@@ -6,7 +6,7 @@
 #endif
 
 #include "../index_sequence_util.h"
-#include "../mpl/conditional.h"
+#include "../mpl/ternary.h"
 
 namespace sqlite_orm::internal {
     template<typename... input_t>

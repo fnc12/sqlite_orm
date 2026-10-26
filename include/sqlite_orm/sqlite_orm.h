@@ -2268,7 +2268,7 @@ namespace sqlite_orm::internal {
 
 // #include "../cxx_polyfill/type_traits.h"
 
-// #include "conditional.h"
+// #include "ternary.h"
 
 namespace sqlite_orm::internal::mpl {
     /*
@@ -5401,7 +5401,7 @@ namespace sqlite_orm::internal {
     using flatten_idxseq_t = typename flatten_idxseq<Seq...>::type;
 }
 
-// #include "../mpl/conditional.h"
+// #include "../mpl/ternary.h"
 
 namespace sqlite_orm::internal {
     template<typename... input_t>
@@ -8792,7 +8792,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/gsl.h"
 
-// #include "../functional/mpl/conditional.h"
+// #include "../functional/mpl/ternary.h"
 
 // #include "../functional/type_traits.h"
 
@@ -9017,7 +9017,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/field_of.h"
 
-// #include "../functional/mpl/conditional.h"
+// #include "../functional/mpl/ternary.h"
 
 // #include "../functional/type_traits.h"
 
@@ -11686,7 +11686,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 //  function_arguments, function_return_type_t
 // #include "../functional/is_base_template_of.h"
 
-// #include "../functional/mpl/conditional.h"
+// #include "../functional/mpl/ternary.h"
 
 // #include "../functional/type_traits.h"
 //  satisfies, orm_function_sig
@@ -17101,9 +17101,9 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/gsl.h"
 
-// #include "../functional/mpl/conditional.h"
-
 // #include "../functional/mpl/convenience.h"
+
+// #include "../functional/mpl/ternary.h"
 
 // #include "../functional/tuple_helper/tuple_filter.h"
 
@@ -17808,9 +17808,9 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/index_sequence_util.h"
 
-// #include "../functional/mpl/conditional.h"
-
 // #include "../functional/mpl/convenience.h"
+
+// #include "../functional/mpl/ternary.h"
 
 // #include "../functional/tuple_helper/tuple_filter.h"
 //  tuple_from_index_sequence_t
@@ -18571,11 +18571,11 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/member_traits.h"
 
-// #include "../functional/mpl/conditional.h"
-
 // #include "../functional/mpl/convenience.h"
 
 // #include "../functional/mpl/quoted_metafunctions.h"
+
+// #include "../functional/mpl/ternary.h"
 
 // #include "../functional/tuple_helper/tuple_filter.h"
 
@@ -19414,7 +19414,7 @@ namespace sqlite_orm {
 #include <type_traits>  // std::is_integral
 #endif
 
-// #include "../functional/mpl/conditional.h"
+// #include "../functional/mpl/ternary.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -30733,7 +30733,7 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::pair
 #endif
 
-// #include "../functional/mpl/conditional.h"
+// #include "../functional/mpl/ternary.h"
 
 // #include "../functional/optional_container.h"
 
