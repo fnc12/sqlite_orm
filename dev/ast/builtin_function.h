@@ -21,7 +21,7 @@
 #include "../functional/cstring_literal.h"
 #include "../functional/function_traits.h"  //  function_arguments, function_return_type_t
 #include "../functional/is_base_template_of.h"
-#include "../functional/mpl/conditional.h"
+#include "../functional/mpl/ternary.h"
 #include "../functional/type_traits.h"  //  satisfies, orm_function_sig
 #include "../vocabulary/node_algorithms.h"  //  argument, common_argument_type
 #include "../vocabulary/node_traits.h"  //  is_where, expression_type_t
@@ -253,9 +253,9 @@ namespace sqlite_orm::internal {
 
     template<size_t Argc, class KindedSig, class... KindedSigs>
     struct matched_builtin_signature<Argc, KindedSig, KindedSigs...>
-        : mpl::conditional_t<builtin_signature_accepts<typename KindedSig::signature_type, Argc>(),
-                             std::type_identity<KindedSig>,
-                             matched_builtin_signature<Argc, KindedSigs...>> {};
+        : mpl::ternary_c<builtin_signature_accepts<typename KindedSig::signature_type, Argc>(),
+                         std::type_identity<KindedSig>,
+                         matched_builtin_signature<Argc, KindedSigs...>> {};
 
     template<size_t Argc, class... KindedSigs>
     using matched_builtin_signature_t = typename matched_builtin_signature<Argc, KindedSigs...>::type;
@@ -274,15 +274,15 @@ namespace sqlite_orm::internal {
 
     template<class R, class R0, class... Params>
     struct with_return_type<R, scalar_sig<R0(Params...)>>
-        : std::type_identity<scalar_sig<mpl::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+        : std::type_identity<scalar_sig<mpl::ternary_t<std::is_void<R>, R0, R>(Params...)>> {};
 
     template<class R, class R0, class... Params>
     struct with_return_type<R, aggregate_sig<R0(Params...)>>
-        : std::type_identity<aggregate_sig<mpl::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+        : std::type_identity<aggregate_sig<mpl::ternary_t<std::is_void<R>, R0, R>(Params...)>> {};
 
     template<class R, class R0, class... Params>
     struct with_return_type<R, window_sig<R0(Params...)>>
-        : std::type_identity<window_sig<mpl::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+        : std::type_identity<window_sig<mpl::ternary_t<std::is_void<R>, R0, R>(Params...)>> {};
 
     template<class R, class KindedSig>
     using with_return_type_t = typename with_return_type<R, KindedSig>::type;

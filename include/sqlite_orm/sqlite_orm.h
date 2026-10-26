@@ -2268,32 +2268,36 @@ namespace sqlite_orm::internal {
 
 // #include "../cxx_polyfill/type_traits.h"
 
-// #include "conditional.h"
+// #include "ternary.h"
 
 namespace sqlite_orm::internal::mpl {
     /*
-     *  Binary quoted metafunction equivalent to `std::conditional`,
-     *  using an improved implementation in respect to memoization.
-     *  
-     *  Because `conditional` is only typed on a single bool non-type template parameter,
+     *  Binary quoted metafunction selecting the first or the second type,
+     *  i.e. the ternary operator with its condition fixed.
+     *
+     *  Because `ternary` is only typed on a single bool non-type template parameter,
      *  the compiler only ever needs to memoize 2 instances of this class template.
      *  The type selection is a nested cheap alias template.
      */
     template<bool>
-    struct conditional {
+    struct ternary {
         template<typename A, typename>
         using fn = A;
     };
 
     template<>
-    struct conditional<false> {
+    struct ternary<false> {
         template<typename, typename B>
         using fn = B;
     };
 
-    // directly invoke `conditional`
+    // select A or B by a boolean constant
     template<bool v, typename A, typename B>
-    using conditional_t = typename conditional<v>::template fn<A, B>;
+    using ternary_c = typename ternary<v>::template fn<A, B>;
+
+    // select A or B by the value of a boolean trait
+    template<class C, typename A, typename B>
+    using ternary_t = typename ternary<bool(C::value)>::template fn<A, B>;
 }
 
 namespace sqlite_orm {
@@ -2755,7 +2759,7 @@ namespace sqlite_orm::internal::mpl {
          *  Quoted trait metafunction that checks if a type has the specified trait.
          */
         template<template<class...> class TraitFn, class... Bound>
-        using check_if = conditional_t<sizeof...(Bound) == 0, quote_fn<TraitFn>, bind_front_fn<TraitFn, Bound...>>;
+        using check_if = ternary_c<sizeof...(Bound) == 0, quote_fn<TraitFn>, bind_front_fn<TraitFn, Bound...>>;
 
         /*
          *  Quoted trait metafunction that checks if a type doesn't have the specified trait.
@@ -5373,7 +5377,7 @@ namespace sqlite_orm::internal {
     using flatten_idxseq_t = typename flatten_idxseq<Seq...>::type;
 }
 
-// #include "../mpl/conditional.h"
+// #include "../mpl/ternary.h"
 
 namespace sqlite_orm::internal {
     template<typename... input_t>
@@ -5401,9 +5405,9 @@ namespace sqlite_orm::internal {
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
     template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
     struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
-        : flatten_idxseq<mpl::conditional_t<Pred<mpl::invoke_fn_t<Proj, std::tuple_element_t<Idx, Tpl>>>::value,
-                                            std::index_sequence<Idx>,
-                                            std::index_sequence<>>...> {};
+        : flatten_idxseq<mpl::ternary_t<Pred<mpl::invoke_fn_t<Proj, std::tuple_element_t<Idx, Tpl>>>,
+                                        std::index_sequence<Idx>,
+                                        std::index_sequence<>>...> {};
 #else
     template<size_t Idx, class T, template<class...> class Pred, class SFINAE = void>
     struct tuple_seq_single {
@@ -8764,7 +8768,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/gsl.h"
 
-// #include "../functional/mpl/conditional.h"
+// #include "../functional/mpl/ternary.h"
 
 // #include "../functional/type_traits.h"
 
@@ -8824,9 +8828,9 @@ namespace sqlite_orm::internal {
      */
     template<class M, class... Cs>
     struct virtual_table_traits : virtual_table_module_traits<M> {
-        using definition_type = mpl::conditional_t<virtual_table_module_traits<M>::is_eponymous::value,
-                                                   table_definition<Cs...>,
-                                                   insertable_table_definition<Cs...>>;
+        using definition_type = mpl::ternary_t<typename virtual_table_module_traits<M>::is_eponymous,
+                                               table_definition<Cs...>,
+                                               insertable_table_definition<Cs...>>;
         using elements_type = elements_type_t<definition_type>;
     };
 
@@ -8989,7 +8993,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/field_of.h"
 
-// #include "../functional/mpl/conditional.h"
+// #include "../functional/mpl/ternary.h"
 
 // #include "../functional/type_traits.h"
 
@@ -9428,8 +9432,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using aliased_type = type_t<A>;
         static_assert(is_field_of_v<F O::*, aliased_type>, "Column must be from aliased table");
 
-        using C1 =
-            mpl::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
+        using C1 = mpl::ternary_t<std::is_same<O, aliased_type>, F O::*, column_pointer<aliased_type, F O::*>>;
         return alias_qualified_column_t<A, C1>{C1{field}};
     }
 
@@ -11658,7 +11661,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 //  function_arguments, function_return_type_t
 // #include "../functional/is_base_template_of.h"
 
-// #include "../functional/mpl/conditional.h"
+// #include "../functional/mpl/ternary.h"
 
 // #include "../functional/type_traits.h"
 //  satisfies, orm_function_sig
@@ -12161,9 +12164,9 @@ namespace sqlite_orm::internal {
 
     template<size_t Argc, class KindedSig, class... KindedSigs>
     struct matched_builtin_signature<Argc, KindedSig, KindedSigs...>
-        : mpl::conditional_t<builtin_signature_accepts<typename KindedSig::signature_type, Argc>(),
-                             std::type_identity<KindedSig>,
-                             matched_builtin_signature<Argc, KindedSigs...>> {};
+        : mpl::ternary_c<builtin_signature_accepts<typename KindedSig::signature_type, Argc>(),
+                         std::type_identity<KindedSig>,
+                         matched_builtin_signature<Argc, KindedSigs...>> {};
 
     template<size_t Argc, class... KindedSigs>
     using matched_builtin_signature_t = typename matched_builtin_signature<Argc, KindedSigs...>::type;
@@ -12182,15 +12185,15 @@ namespace sqlite_orm::internal {
 
     template<class R, class R0, class... Params>
     struct with_return_type<R, scalar_sig<R0(Params...)>>
-        : std::type_identity<scalar_sig<mpl::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+        : std::type_identity<scalar_sig<mpl::ternary_t<std::is_void<R>, R0, R>(Params...)>> {};
 
     template<class R, class R0, class... Params>
     struct with_return_type<R, aggregate_sig<R0(Params...)>>
-        : std::type_identity<aggregate_sig<mpl::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+        : std::type_identity<aggregate_sig<mpl::ternary_t<std::is_void<R>, R0, R>(Params...)>> {};
 
     template<class R, class R0, class... Params>
     struct with_return_type<R, window_sig<R0(Params...)>>
-        : std::type_identity<window_sig<mpl::conditional_t<std::is_void_v<R>, R0, R>(Params...)>> {};
+        : std::type_identity<window_sig<mpl::ternary_t<std::is_void<R>, R0, R>(Params...)>> {};
 
     template<class R, class KindedSig>
     using with_return_type_t = typename with_return_type<R, KindedSig>::type;
@@ -17075,9 +17078,9 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/gsl.h"
 
-// #include "../functional/mpl/conditional.h"
-
 // #include "../functional/mpl/convenience.h"
+
+// #include "../functional/mpl/ternary.h"
 
 // #include "../functional/tuple_helper/tuple_filter.h"
 
@@ -17782,9 +17785,9 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/index_sequence_util.h"
 
-// #include "../functional/mpl/conditional.h"
-
 // #include "../functional/mpl/convenience.h"
+
+// #include "../functional/mpl/ternary.h"
 
 // #include "../functional/tuple_helper/tuple_filter.h"
 //  tuple_from_index_sequence_t
@@ -17844,9 +17847,9 @@ namespace sqlite_orm::internal {
     template<size_t K, class Specs, size_t... Idx>
     struct bundled_dbo_index_sequence<K, Specs, std::index_sequence<Idx...>>
         // index `Idx` of the tuple if kept, nothing otherwise
-        : flatten_idxseq<mpl::conditional_t<is_unique_bundled_dbo<K, Idx, Specs>::value,
-                                            std::index_sequence<Idx>,
-                                            std::index_sequence<>>...> {};
+        : flatten_idxseq<mpl::ternary_t<is_unique_bundled_dbo<K, Idx, Specs>,
+                                        std::index_sequence<Idx>,
+                                        std::index_sequence<>>...> {};
 
     /**
      *  Unpack the argument at index `K` of arguments `Specs`: a tuple of database objects into its kept
@@ -18545,11 +18548,11 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/member_traits.h"
 
-// #include "../functional/mpl/conditional.h"
-
 // #include "../functional/mpl/convenience.h"
 
 // #include "../functional/mpl/quoted_metafunctions.h"
+
+// #include "../functional/mpl/ternary.h"
 
 // #include "../functional/tuple_helper/tuple_filter.h"
 
@@ -18713,9 +18716,9 @@ namespace sqlite_orm::internal {
      *  for its column result.
      */
     template<class DBOs, class Arg>
-    using argument_result_of_t = typename mpl::conditional_t<is_bindable_v<Arg> && !is_text_value<Arg>::value,
-                                                             polyfill::type_identity<Arg>,
-                                                             column_result_of<DBOs, Arg>>::type;
+    using argument_result_of_t = typename mpl::ternary_c<is_bindable_v<Arg> && !is_text_value<Arg>::value,
+                                                         polyfill::type_identity<Arg>,
+                                                         column_result_of<DBOs, Arg>>::type;
 
     /**
      *  The declared return type of a built-in function, with the `argument<I>` and `common_argument_type<I...>`
@@ -19388,7 +19391,7 @@ namespace sqlite_orm {
 #include <type_traits>  // std::is_integral
 #endif
 
-// #include "../functional/mpl/conditional.h"
+// #include "../functional/mpl/ternary.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -19400,12 +19403,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     struct real_tag {};
 
     template<class V>
-    using arithmetic_tag_t =
-        mpl::conditional_t<std::is_integral<V>::value,
-                           // Integer class
-                           mpl::conditional_t<sizeof(V) <= sizeof(int), int_or_smaller_tag, bigint_tag>,
-                           // Floating-point class
-                           real_tag>;
+    using arithmetic_tag_t = mpl::ternary_t<std::is_integral<V>,
+                                            // Integer class
+                                            mpl::ternary_c<sizeof(V) <= sizeof(int), int_or_smaller_tag, bigint_tag>,
+                                            // Floating-point class
+                                            real_tag>;
 }
 
 // #include "../type_mapping/is_std_ptr.h"
@@ -30139,7 +30141,7 @@ namespace sqlite_orm::internal {
             using object_type = held_object_t<result_type>;
             constexpr bool returnsObject = std::is_same<result_type, object_type>::value;
             //  an object handed out as is is read into an optional, which tells whether it was found
-            using holder_type = mpl::conditional_t<returnsObject, std::optional<object_type>, result_type>;
+            using holder_type = mpl::ternary_c<returnsObject, std::optional<object_type>, result_type>;
 
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
@@ -30709,7 +30711,7 @@ namespace sqlite_orm::internal {
 #include <utility>  //  std::pair
 #endif
 
-// #include "../functional/mpl/conditional.h"
+// #include "../functional/mpl/ternary.h"
 
 // #include "../functional/optional_container.h"
 
@@ -30918,9 +30920,9 @@ namespace sqlite_orm::internal {
      */
     template<class T>
     struct node_tuple<T, match_if<is_limit, T>>
-        : mpl::conditional_t<T::offset_is_implicit_v,
-                             node_tuple_for<offset_expression_type_t<T>, expression_type_t<T>>,
-                             node_tuple_for<expression_type_t<T>, offset_expression_type_t<T>>> {};
+        : mpl::ternary_c<T::offset_is_implicit_v,
+                         node_tuple_for<offset_expression_type_t<T>, expression_type_t<T>>,
+                         node_tuple_for<expression_type_t<T>, offset_expression_type_t<T>>> {};
 
     template<class T>
     struct node_tuple<T, match_if<is_from2, T>> : node_tuple<tuple_type_t<T>> {};
