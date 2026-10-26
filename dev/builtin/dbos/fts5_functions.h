@@ -13,15 +13,15 @@
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
 #include <tuple>  //  std::make_tuple
-#include <utility>  //  std::move
 #include <type_traits>  //  std::enable_if
+#include <utility>  //  std::move
 #endif
 
 #include <sqlite3.h>
 
+#include "../../ast/builtin_function.h"
 #include "../../ast/column_pointer.h"  //  column
 #include "../../vocabulary/node_algorithms.h"  //  hidden_column_of_vtab, hidden_field_of_vtab
-#include "../../ast/builtin_function.h"
 #include "fts5.h"
 
 namespace sqlite_orm::internal {

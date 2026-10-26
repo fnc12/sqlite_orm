@@ -7,12 +7,12 @@
 
 #include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/cxx_polyfill/utility.h"  //  polyfill::forward_like
-#include "in.h"
-#include "binary_condition.h"  //  and_condition_t, or_condition_t
 #include "../vocabulary/node_algorithms.h"  // unwrap_expression_t
-#include "operators.h"
-#include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
+#include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
+#include "binary_condition.h"  //  and_condition_t, or_condition_t
+#include "in.h"
+#include "operators.h"
 
 namespace sqlite_orm::internal {
     /**

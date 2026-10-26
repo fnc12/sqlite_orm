@@ -6,8 +6,8 @@
 #include <utility>  //  std::move
 #endif
 
-#include "../functional/type_traits.h"
 #include "../functional/member_traits.h"
+#include "../functional/type_traits.h"
 #include "../vocabulary/node_fwd.h"  // column_field
 #include "row_extractor.h"
 

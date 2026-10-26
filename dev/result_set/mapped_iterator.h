@@ -2,18 +2,18 @@
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <memory>  //  std::shared_ptr, std::make_shared
-#include <utility>  //  std::move
-#include <iterator>  //  std::input_iterator_tag
-#include <system_error>  //  std::system_error
 #include <functional>  //  std::bind, std::ref
+#include <iterator>  //  std::input_iterator_tag
+#include <memory>  //  std::shared_ptr, std::make_shared
+#include <system_error>  //  std::system_error
+#include <utility>  //  std::move
 #endif
 
-#include "../sqlite3/sqlite3_deleters.h"  //  statement_finalizer
-#include "../sqlite3/sqlite3_statements.h"
 #include "../error_code.h"
 #include "../marshaling/object_from_column_builder.h"
 #include "../schema/algorithms/table_lookup.h"
+#include "../sqlite3/sqlite3_deleters.h"  //  statement_finalizer
+#include "../sqlite3/sqlite3_statements.h"
 
 namespace sqlite_orm::internal {
     /*  

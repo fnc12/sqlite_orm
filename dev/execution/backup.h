@@ -2,9 +2,9 @@
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <system_error>  //  std::system_error
-#include <string>  //  std::string
 #include <memory>
+#include <string>  //  std::string
+#include <system_error>  //  std::system_error
 #include <utility>  //  std::move, std::exchange
 #endif
 

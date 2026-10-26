@@ -4,21 +4,21 @@
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>  // std::convertible_to
 #endif
-#include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 #include <string>  //  std::string
 #include <tuple>  //  std::make_tuple, std::tuple_cat, std::apply
+#include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 #include <utility>  //  std::move, std::forward
 #endif
 
 #include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/gsl.h"
-#include "../functional/type_traits.h"
 #include "../functional/mpl/conditional.h"
+#include "../functional/type_traits.h"
 #include "../vocabulary/node_traits.h"  //  orm_table_reference, auto_decay_table_ref_t
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
-#include "table_base.h"
 #include "column.h"  //  make_reflected_columns, make_reflected_hidden_columns
 #include "dbo_name.h"
+#include "table_base.h"
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED

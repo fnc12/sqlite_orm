@@ -2,19 +2,19 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_DBSTAT_SUPPORTED
-#include <type_traits>  //  std::is_convertible
-#include <tuple>  //  std::tuple_size, std::tuple
-#include <utility>  //  std::move, std::index_sequence_for
 #include <string>  //  std::string
+#include <tuple>  //  std::tuple_size, std::tuple
+#include <type_traits>  //  std::is_convertible
+#include <utility>  //  std::move, std::index_sequence_for
 #endif
 #endif
 
 #include "../../functional/gsl.h"
-#include "../../functional/tuple_helper/tuple_filter.h"
 #include "../../functional/member_traits.h"
-#include "../../schema/virtual_table.h"
+#include "../../functional/tuple_helper/tuple_filter.h"
 #include "../../ast/literal.h"
 #include "../../ast/table_reference.h"
+#include "../../schema/virtual_table.h"
 
 #ifdef SQLITE_ORM_DBSTAT_SUPPORTED
 namespace sqlite_orm::internal {
