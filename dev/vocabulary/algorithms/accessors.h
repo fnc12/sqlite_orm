@@ -5,14 +5,14 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::remove_reference, std::remove_const, std::void_t
 #include <tuple>  //  std::get
+#include <type_traits>  //  std::enable_if, std::remove_reference, std::remove_const, std::void_t
 #include <utility>  //  std::declval, std::move
 #endif
 
 #include "../../functional/cxx_polyfill/type_traits.h"
-#include "../../functional/type_traits.h"  //  match_if, type_t
 #include "../../functional/ref_unwrapping.h"  //  value_unref_type, forward_lvalue_ref
+#include "../../functional/type_traits.h"  //  match_if, type_t
 #include "../node_traits.h"
 
 // DML accessors

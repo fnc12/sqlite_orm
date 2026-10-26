@@ -10,8 +10,8 @@
 #endif
 #endif
 
-#include "../../functional/member_traits.h"
 #include "../../functional/field_of.h"
+#include "../../functional/member_traits.h"
 #include "../node_traits.h"
 
 namespace sqlite_orm::internal {

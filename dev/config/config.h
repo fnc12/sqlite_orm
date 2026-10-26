@@ -6,9 +6,9 @@
  *  Macros only, no declarations.
  */
 
+#include "capabilities.h"
 #include "toolchain/check_prerequisites.h"
-#include "toolchain/language_features.h"
 #include "toolchain/compiler_quirks.h"
+#include "toolchain/language_features.h"
 #include "toolchain/platform.h"
 #include "toolchain/stdlib_features.h"
-#include "capabilities.h"

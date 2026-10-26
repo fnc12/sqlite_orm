@@ -1,5 +1,5 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 
 #ifdef SQLITE_ORM_FTS5_SUPPORTED
 using namespace sqlite_orm;

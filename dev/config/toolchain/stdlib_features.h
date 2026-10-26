@@ -5,8 +5,8 @@
  */
 
 #include "check_prerequisites.h"
-#include "language_features.h"
 #include "compiler_quirks.h"
+#include "language_features.h"
 
 #if __cpp_lib_is_constant_evaluated >= 201811L
 #define SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED

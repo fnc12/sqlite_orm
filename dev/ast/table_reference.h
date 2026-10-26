@@ -1,9 +1,9 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>
 #include <type_traits>  //  std::enable_if, std::remove_const, std::type_identity
 #include <utility>  // std::move
-#include <tuple>
 #endif
 
 #include "../functional/cxx_polyfill/type_traits.h"

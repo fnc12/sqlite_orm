@@ -12,13 +12,13 @@
 
 #include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/gsl.h"
-#include "../functional/type_traits.h"
 #include "../functional/tuple_helper/tuple_transformer.h"
-#include "../vocabulary/node_traits.h"  //  table_reference, is_table_reference_v
+#include "../functional/type_traits.h"
 #include "../schema/algorithms/table_lookup.h"
+#include "../vocabulary/node_traits.h"  //  table_reference, is_table_reference_v
 #include "column_result_proxy.h"
-#include "row_extractor.h"
 #include "object_from_column_builder.h"
+#include "row_extractor.h"
 
 // GCC misdiagnoses the increments in the brace-init-lists below, whose initializer clauses are sequenced left to right.
 #if defined(__GNUC__) && !defined(__clang__)

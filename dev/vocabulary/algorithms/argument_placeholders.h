@@ -5,8 +5,8 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::common_type
 #include <tuple>  //  std::tuple, std::tuple_element
+#include <type_traits>  //  std::common_type
 #endif
 
 #include "../../functional/cxx_polyfill/type_traits.h"

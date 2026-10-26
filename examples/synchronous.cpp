@@ -1,5 +1,5 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <cstdint>
+#include <sqlite_orm/sqlite_orm.h>
 #include <string>
 
 struct Query {

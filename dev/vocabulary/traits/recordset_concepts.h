@@ -11,8 +11,8 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-#include <type_traits>  //  std::remove_const_t
 #include <concepts>  //  std::derived_from, std::same_as
+#include <type_traits>  //  std::remove_const_t
 #endif
 #endif
 
