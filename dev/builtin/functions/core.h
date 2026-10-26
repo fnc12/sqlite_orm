@@ -18,7 +18,7 @@
 #endif
 
 #include "../../functional/cxx_polyfill/type_traits.h"
-#include "../../functional/tuple_helper/tuple_traits.h"  //  count_tuple
+#include "../../functional/mpl/convenience.h"  //  count_tuple
 #include "../../ast/builtin_function.h"
 #include "../../ast/literal.h"  //  literal_holder
 #include "../../sqlite3/sqlite3_types.h"  //  int64

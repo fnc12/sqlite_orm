@@ -7,6 +7,7 @@
 #include <utility>  //  std::pair
 #endif
 
+#include "../functional/mpl/conditional.h"
 #include "../functional/optional_container.h"
 #include "../functional/tuple_helper/tuple_filter.h"
 #include "../functional/type_traits.h"

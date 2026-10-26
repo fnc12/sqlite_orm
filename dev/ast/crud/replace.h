@@ -13,7 +13,7 @@
 
 #include "../../functional/cxx_polyfill/functional.h"  //  polyfill::identity
 #include "../../functional/cxx_polyfill/type_traits.h"
-#include "../../functional/tuple_helper/tuple_traits.h"
+#include "../../functional/mpl/convenience.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../../vocabulary/traits/semantic_traits_fwd.h"  // Included to specialize traits

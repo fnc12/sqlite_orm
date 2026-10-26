@@ -10,7 +10,7 @@
 #endif
 
 #include "../../functional/gsl.h"
-#include "../../functional/mpl.h"
+#include "../../functional/mpl/convenience.h"
 #include "../../functional/tuple_helper/tuple_filter.h"
 #include "../../schema/virtual_table.h"
 #include "../../sqlite3/sqlite3_types.h"  //  int64

@@ -27,8 +27,8 @@ TEST_CASE("mpl") {
     using check_if_names_value_type = mpl::bind_front_higherorder_fn<polyfill::is_detected, value_type_t>;
     using predicate_type = std::less<void>;
 
-    STATIC_REQUIRE_FALSE(mpl::is_quoted_metafuntion_v<std::true_type>);
-    STATIC_REQUIRE(mpl::is_quoted_metafuntion_v<mpl_is_same>);
+    STATIC_REQUIRE_FALSE(mpl::is_quoted_metafunction_v<std::true_type>);
+    STATIC_REQUIRE(mpl::is_quoted_metafunction_v<mpl_is_same>);
     STATIC_REQUIRE(std::is_same<mpl::invoke_fn_t<std::common_type_t, int>, int>::value);
     STATIC_REQUIRE(std::is_same<mpl::invoke_fn_t<make_literal_holder, int>, literal_holder<int>>::value);
     STATIC_REQUIRE(

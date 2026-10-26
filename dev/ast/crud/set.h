@@ -12,7 +12,7 @@
 #include <vector>  //  std::vector
 #endif
 
-#include "../../functional/tuple_helper/tuple_traits.h"
+#include "../../functional/mpl/convenience.h"
 #include "../../functional/type_traits.h"
 #include "../../serialization/serializer_context.h"
 #include "../../vocabulary/node_traits.h"

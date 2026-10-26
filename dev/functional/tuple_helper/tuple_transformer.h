@@ -9,25 +9,8 @@
 #include "../cxx_polyfill/functional.h"  //  polyfill::identity
 #include "../cxx_polyfill/type_traits.h"
 #include "../cxx_polyfill/utility.h"  //  polyfill::forward_like
-#include "../mpl.h"
 
 namespace sqlite_orm::internal {
-    template<class Pack, template<class...> class Op>
-    struct tuple_transformer;
-
-    template<template<class...> class Pack, class... Types, template<class...> class Op>
-    struct tuple_transformer<Pack<Types...>, Op> {
-        using type = Pack<mpl::invoke_fn_t<Op, Types>...>;
-    };
-
-    /*
-     *  Transform specified tuple.
-     *  
-     *  `Op` is a metafunction.
-     */
-    template<class Pack, template<class...> class Op>
-    using transform_tuple_t = typename tuple_transformer<Pack, Op>::type;
-
     /*
      *  Apply a projection to a tuple's elements filtered by the specified indexes, and combine the results.
      *  

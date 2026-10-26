@@ -9,8 +9,8 @@
 #include <vector>  //  std::vector
 #endif
 
+#include "../functional/mpl/convenience.h"
 #include "../functional/tuple_helper/tuple_iteration.h"
-#include "../functional/tuple_helper/tuple_traits.h"
 #include "../functional/type_traits.h"
 #include "../error_code.h"
 #include "../schema/algorithms/table_lookup.h"  //  pick_table

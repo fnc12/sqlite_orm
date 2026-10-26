@@ -14,7 +14,7 @@
 #include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/member_traits.h"
 #include "../functional/meta_util.h"
-#include "../functional/tuple_helper/tuple_traits.h"
+#include "../functional/mpl/convenience.h"
 #include "../functional/type_traits.h"
 #include "../sqlite3/sqlite3_types.h"  //  int64
 #include "../type_mapping/type_is_nullable.h"

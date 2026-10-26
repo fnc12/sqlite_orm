@@ -24,7 +24,7 @@
 #include "../functional/cxx_polyfill/type_traits.h"  // std::remove_cvref, std::disjunction
 #include "../functional/always_default.h"
 #include "../functional/gsl.h"
-#include "../functional/mpl.h"
+#include "../functional/mpl/convenience.h"
 #include "../functional/tuple_helper/tuple_filter.h"
 #include "../functional/type_traits.h"
 #include "../ast/crud/insert.h"  // conflict_action

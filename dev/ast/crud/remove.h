@@ -11,7 +11,7 @@
 #endif
 
 #include "../../functional/cxx_polyfill/type_traits.h"
-#include "../../functional/tuple_helper/tuple_traits.h"
+#include "../../functional/mpl/convenience.h"
 #include "../../functional/type_traits.h"  //  value_unref_type_t
 #include "../../vocabulary/node_algorithms.h"  // clause predicates, is_bindable_v
 #include "../../vocabulary/node_traits.h"

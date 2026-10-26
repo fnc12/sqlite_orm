@@ -13,9 +13,9 @@
 #endif
 
 #include "../../functional/index_sequence_util.h"
+#include "../../functional/mpl/convenience.h"
 #include "../../functional/tuple_helper/tuple_filter.h"
 #include "../../functional/tuple_helper/tuple_iteration.h"
-#include "../../functional/tuple_helper/tuple_traits.h"
 #include "../../functional/type_traits.h"
 #include "../../vocabulary/node_algorithms.h"  //  col_index_sequence_of, col_index_sequence_with, mapped_type_of_t
 #include "../../vocabulary/node_traits.h"
