@@ -6,17 +6,17 @@
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::make_index_sequence, std::index_sequence
-#include <tuple>  //  std::tuple_size, std::get
-#include <utility>  //  std::forward
 #include <functional>  //  std::invoke
 #include <system_error>  //  std::system_error
+#include <tuple>  //  std::tuple_size, std::get
+#include <type_traits>  //  std::make_index_sequence, std::index_sequence
+#include <utility>  //  std::forward
 #endif
 
 #include "../functional/type_traits.h"
-#include "../vocabulary/node_algorithms.h"  //  is_bindable
 #include "../error_code.h"
 #include "../sqlite3/sqlite3_errors.h"
+#include "../vocabulary/node_algorithms.h"  //  is_bindable
 #include "statement_binder.h"
 
 namespace sqlite_orm::internal {

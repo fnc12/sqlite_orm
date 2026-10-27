@@ -3,22 +3,22 @@
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <cstdlib>  //  ::atoi
+#include <functional>  //  std::function
+#include <sstream>  //  std::ostringstream
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
-#include <functional>  //  std::function
 #include <utility>  //  std::move
 #include <vector>  //  std::vector
-#include <sstream>  //  std::ostringstream
 #endif
 
 #include "../functional/gsl.h"
 #include "../builtin/dbos/pragma_table_info.h"
 #include "../marshaling/row_extractor.h"
+#include "../serialization/serializing_util.h"
+#include "../sqlite3/sqlite3_statements.h"
+#include "connection_holder.h"
 #include "journal_mode.h"
 #include "locking_mode.h"
-#include "connection_holder.h"
-#include "../sqlite3/sqlite3_statements.h"
-#include "../serialization/serializing_util.h"
 
 namespace sqlite_orm::internal {
     struct storage_base;

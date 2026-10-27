@@ -8,9 +8,9 @@
 #include <optional>  //  std::optional
 #endif
 
-#include "../functional/tuple_helper/tuple_traits.h"
-#include "../vocabulary/node_traits.h"
+#include "../functional/mpl/convenience.h"
 #include "../serialization/default_value_extractor.h"
+#include "../vocabulary/node_traits.h"
 #include "column.h"
 
 namespace sqlite_orm::internal {

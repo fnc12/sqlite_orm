@@ -10,10 +10,10 @@
  *  table-level constraints will continue to be passed to the `make_table()` function.
  */
 
-#include <sqlite_orm/sqlite_orm.h>
-#include <iostream>
-#include <string>
 #include <cstdio>  // std::remove
+#include <iostream>
+#include <sqlite_orm/sqlite_orm.h>
+#include <string>
 
 #ifdef SQLITE_ORM_WITH_VIEW
 #define ENABLE_THIS_EXAMPLE

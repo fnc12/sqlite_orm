@@ -4,23 +4,23 @@
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
 #endif
-#include <type_traits>  //  std::enable_if, std::remove_cvref, std::remove_const, std::is_convertible, std::is_same, std::is_member_pointer
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
-#include <utility>  //  std::forward, std::move
 #include <tuple>  //  std::tuple, std::ignore, std::tuple_size
+#include <type_traits>  //  std::enable_if, std::remove_cvref, std::remove_const, std::is_convertible, std::is_same, std::is_member_pointer
+#include <utility>  //  std::forward, std::move
 #endif
 
 #include "../functional/cxx_polyfill/type_traits.h"
-#include "../functional/type_traits.h"
 #include "../functional/cstring_literal.h"
-#include "../functional/tuple_helper/tuple_transformer.h"
-#include "alias.h"
-#include "select.h"
-#include "compound_operator.h"
+#include "../functional/mpl/convenience.h"
+#include "../functional/type_traits.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/semantic_traits_fwd.h"  // Included to specialize traits
+#include "alias.h"
+#include "compound_operator.h"
+#include "select.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm::internal {
@@ -218,7 +218,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
         using builder_type = cte_builder<std::remove_const_t<Moniker>,
-                                         transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
+                                         transform_tuple<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 
@@ -235,7 +235,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
         using builder_type = cte_builder<std::remove_const_t<decltype(moniker)>,
-                                         transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
+                                         transform_tuple<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 #endif

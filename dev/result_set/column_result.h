@@ -1,27 +1,27 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_same, std::is_arithmetic, std::is_base_of
 #include <functional>  //  std::reference_wrapper
 #include <optional>  //  std::optional
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_arithmetic, std::is_base_of
 #endif
 
 #include "../functional/cxx_polyfill/type_traits.h"
-#include "../functional/mpl.h"
-#include "../functional/type_traits.h"  //  common_type_of_t
-#include "../functional/tuple_helper/tuple_traits.h"
-#include "../functional/tuple_helper/tuple_fy.h"
-#include "../functional/tuple_helper/tuple_filter.h"
-#include "../functional/tuple_helper/tuple_transformer.h"
 #include "../functional/member_traits.h"
-#include "../vocabulary/node_traits.h"
-#include "../vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value, mapped_type_of_t
-#include "../marshaling/column_result_proxy.h"
+#include "../functional/mpl/convenience.h"
+#include "../functional/mpl/quoted_metafunctions.h"
+#include "../functional/mpl/ternary.h"
+#include "../functional/tuple_helper/tuple_filter.h"
+#include "../functional/tuple_helper/tuple_fy.h"
+#include "../functional/type_traits.h"  //  common_type_of_t
 #include "../ast/alias.h"
-#include "../schema/cte_mapping.h"
-#include "../schema/algorithms/table_lookup.h"  // schema_pick_table_t, schema_mapped_column_field_types
 #include "../ast/app_function.h"
+#include "../marshaling/column_result_proxy.h"
+#include "../schema/algorithms/table_lookup.h"  // schema_pick_table_t, schema_mapped_column_field_types
+#include "../schema/cte_mapping.h"
 #include "../sqlite3/sqlite3_types.h"  //  int64
+#include "../vocabulary/node_algorithms.h"  //  substitute_arguments, is_bindable_v, is_text_value, mapped_type_of_t
+#include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -51,7 +51,7 @@ namespace sqlite_orm::internal {
     using column_result_of_t = typename column_result_of<DBOs, T>::type;
 
     template<class DBOs, class Tpl>
-    using column_result_for_tuple_t = transform_tuple_t<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
+    using column_result_for_tuple_t = transform_tuple<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
 
     template<class DBOs, class T>
     struct column_result_of<DBOs, T, match_if<is_as_optional, T>> {
@@ -113,9 +113,9 @@ namespace sqlite_orm::internal {
      *  for its column result.
      */
     template<class DBOs, class Arg>
-    using argument_result_of_t = typename std::conditional_t<is_bindable_v<Arg> && !is_text_value<Arg>::value,
-                                                             polyfill::type_identity<Arg>,
-                                                             column_result_of<DBOs, Arg>>::type;
+    using argument_result_of_t = typename mpl::ternary_c<is_bindable_v<Arg> && !is_text_value<Arg>::value,
+                                                         polyfill::type_identity<Arg>,
+                                                         column_result_of<DBOs, Arg>>::type;
 
     /**
      *  The declared return type of a built-in function, with the `argument<I>` and `common_argument_type<I...>`

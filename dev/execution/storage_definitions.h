@@ -6,22 +6,22 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_same
-#include <sstream>  //  std::ostringstream
-#include <ostream>  //  std::flush
-#include <functional>  //  std::reference_wrapper, std::cref
 #include <algorithm>  //  std::find_if, std::ranges::find
+#include <functional>  //  std::reference_wrapper, std::cref
+#include <ostream>  //  std::flush
+#include <sstream>  //  std::ostringstream
 #include <system_error>  //  std::system_error
+#include <type_traits>  //  std::is_same
 #endif
 
 #include "../functional/type_traits.h"
-#include "../sqlite3/sqlite3_statements.h"
-#include "../sqlite3/sqlite3_errors.h"
-#include "../serialization/serializing_util.h"
-#include "storage.h"
-#include "../vocabulary/node_traits.h"
-#include "../schema/column_identifier.h"
 #include "../builtin/dbos/sqlite_schema.h"
+#include "../schema/column_identifier.h"
+#include "../serialization/serializing_util.h"
+#include "../sqlite3/sqlite3_errors.h"
+#include "../sqlite3/sqlite3_statements.h"
+#include "../vocabulary/node_traits.h"
+#include "storage.h"
 
 namespace sqlite_orm::internal {
     template<class... DBO>

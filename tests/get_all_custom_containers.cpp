@@ -1,8 +1,8 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 
-#include <list>
 #include <deque>
+#include <list>
 
 using namespace sqlite_orm;
 

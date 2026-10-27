@@ -1,7 +1,7 @@
-#include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch_all.hpp>
-#include <type_traits>  //  std::is_same
 #include <array>
+#include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
+#include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
 using internal::create_from_tuple;
@@ -9,7 +9,7 @@ using internal::field_type_t;
 using internal::literal_holder;
 using internal::nested_tuple_size_for_t;
 using internal::recombine_tuple;
-using internal::transform_tuple_t;
+using internal::transform_tuple;
 
 template<class T>
 using make_literal_holder = literal_holder<T>;
@@ -24,7 +24,7 @@ struct tuple_maker {
 #endif
 
 TEST_CASE("tuple_helper static") {
-    SECTION("tuple_transformer") {
+    SECTION("transform_tuple") {
         struct Table {
             int64_t id;
             std::string a;
@@ -37,11 +37,11 @@ TEST_CASE("tuple_helper static") {
                                             make_column("b", &Table::b),
                                             make_column("c", &Table::c));
         using ColumnsTuple = decltype(columnsTuple);
-        using ColumnsMappedTypes = transform_tuple_t<ColumnsTuple, field_type_t>;
+        using ColumnsMappedTypes = transform_tuple<ColumnsTuple, field_type_t>;
         using Expected = std::tuple<int64_t, std::string, std::string, std::string>;
         STATIC_REQUIRE(std::is_same<ColumnsMappedTypes, Expected>::value);
 
-        STATIC_REQUIRE(std::is_same<transform_tuple_t<std::tuple<bool, int>, make_literal_holder>,
+        STATIC_REQUIRE(std::is_same<transform_tuple<std::tuple<bool, int>, make_literal_holder>,
                                     std::tuple<literal_holder<bool>, literal_holder<int>>>::value);
 
 #if __cpp_lib_constexpr_algorithms >= 201806L

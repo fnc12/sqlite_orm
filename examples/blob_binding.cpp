@@ -1,6 +1,6 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <cstdint>
 #include <iostream>
+#include <sqlite_orm/sqlite_orm.h>
 
 using namespace sqlite_orm;
 using std::cout;

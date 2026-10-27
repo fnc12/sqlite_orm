@@ -8,10 +8,10 @@
 #endif
 
 #ifdef ENABLE_THIS_EXAMPLE
+#include <iomanip>  // std::hex, std::setw, std::setfill
+#include <iostream>
 #include <optional>
 #include <tuple>
-#include <iostream>
-#include <iomanip>  // std::hex, std::setw, std::setfill
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <ctime>
 #endif

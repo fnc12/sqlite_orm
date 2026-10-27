@@ -1,6 +1,6 @@
-#include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch_all.hpp>
 #include <algorithm>  //  std::sort
+#include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple
 #include <vector>  //  std::vector

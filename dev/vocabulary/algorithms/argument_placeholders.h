@@ -6,11 +6,11 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::tuple_element
+#include <type_traits>  //  std::common_type
 #endif
 
 #include "../../functional/cxx_polyfill/type_traits.h"
-#include "../../functional/mpl.h"
-#include "../../functional/type_traits.h"  //  common_type_of
+#include "../../functional/mpl/quoted_metafunctions.h"
 
 namespace sqlite_orm::internal {
     /*
@@ -43,17 +43,17 @@ namespace sqlite_orm::internal {
     struct substitute_arguments<argument<I>, ArgsTuple, ResolveQ>
         : mpl::defer<ResolveQ, std::tuple_element_t<I, ArgsTuple>> {};
 
-    template<template<class...> class Tmpl, class... Ts, class ArgsTuple, class ResolveQ>
-    struct substitute_arguments<Tmpl<Ts...>, ArgsTuple, ResolveQ>
-        : polyfill::type_identity<Tmpl<typename substitute_arguments<Ts, ArgsTuple, ResolveQ>::type...>> {};
+    template<template<class...> class Template, class... Ts, class ArgsTuple, class ResolveQ>
+    struct substitute_arguments<Template<Ts...>, ArgsTuple, ResolveQ>
+        : polyfill::type_identity<Template<typename substitute_arguments<Ts, ArgsTuple, ResolveQ>::type...>> {};
 
     template<size_t... I, class ArgsTuple, class ResolveQ>
     struct substitute_arguments<common_argument_type<I...>, ArgsTuple, ResolveQ>
-        : common_type_of<std::tuple<mpl::invoke_t<ResolveQ, std::tuple_element_t<I, ArgsTuple>>...>> {};
+        : std::common_type<mpl::invoke_t<ResolveQ, std::tuple_element_t<I, ArgsTuple>>...> {};
 
     template<class... Args, class ResolveQ>
     struct substitute_arguments<common_argument_type<>, std::tuple<Args...>, ResolveQ>
-        : common_type_of<std::tuple<mpl::invoke_t<ResolveQ, Args>...>> {};
+        : std::common_type<mpl::invoke_t<ResolveQ, Args>...> {};
 
     template<class R, class ArgsTuple, class ResolveQ>
     using substitute_arguments_t = typename substitute_arguments<R, ArgsTuple, ResolveQ>::type;

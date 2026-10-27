@@ -82,6 +82,6 @@ which takes precedence where both apply.
 - `dev/functional/` - General-purpose C++ utilities with no SQL or DSL meaning: the prelude
   `cxx_universal.h` that the umbrella header includes after the configuration,
   stand-ins in `cxx_polyfill/` for standard library facilities the C++ version in use lacks,
-  metaprogramming (`mpl.h`), reflection helpers (`meta_util.h`), pointer-to-member mechanics
-  (`member_traits.h`, `field_of.h`), and in `tuple_helper/` generic algorithms over tuples and
-  type lists.
+  metaprogramming in `mpl/`, reflection helpers (`meta_util.h`), pointer-to-member mechanics
+  (`member_traits.h`, `field_of.h`), and in `tuple_helper/` type- and value-level operations on
+  `std::tuple`.

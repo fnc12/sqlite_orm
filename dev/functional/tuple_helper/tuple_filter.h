@@ -1,12 +1,12 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::integral_constant, std::index_sequence, std::conditional, std::declval
 #include <tuple>  //  std::tuple, std::tuple_cat, std::tuple_element
+#include <type_traits>  //  std::integral_constant, std::index_sequence, std::declval
 #endif
 
-#include "../mpl/conditional.h"
 #include "../index_sequence_util.h"
+#include "../mpl/ternary.h"
 
 namespace sqlite_orm::internal {
     template<typename... input_t>
@@ -34,9 +34,9 @@ namespace sqlite_orm::internal {
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
     template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
     struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
-        : flatten_idxseq<mpl::conditional_t<Pred<mpl::invoke_fn_t<Proj, std::tuple_element_t<Idx, Tpl>>>::value,
-                                            std::index_sequence<Idx>,
-                                            std::index_sequence<>>...> {};
+        : flatten_idxseq<mpl::ternary_t<Pred<mpl::invoke_fn_t<Proj, std::tuple_element_t<Idx, Tpl>>>,
+                                        std::index_sequence<Idx>,
+                                        std::index_sequence<>>...> {};
 #else
     template<size_t Idx, class T, template<class...> class Pred, class SFINAE = void>
     struct tuple_seq_single {

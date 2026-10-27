@@ -29,12 +29,12 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::negation, std::conjunction, std::disjunction
 #include <initializer_list>
+#include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::negation, std::conjunction, std::disjunction
 #endif
 
-#include "cxx_polyfill/type_traits.h"
-#include "mpl/conditional.h"
+#include "../cxx_polyfill/type_traits.h"
+#include "ternary.h"
 
 namespace sqlite_orm::internal::mpl {
     template<template<class...> class Fn>
@@ -47,12 +47,12 @@ namespace sqlite_orm::internal::mpl {
      *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
      */
     template<class T, class SFINAE = void>
-    constexpr bool is_quoted_metafuntion_v = false;
+    constexpr bool is_quoted_metafunction_v = false;
     template<class Q>
-    constexpr bool is_quoted_metafuntion_v<Q, std::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
+    constexpr bool is_quoted_metafunction_v<Q, std::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
 
     template<class T>
-    struct is_quoted_metafuntion : std::bool_constant<is_quoted_metafuntion_v<T>> {};
+    struct is_quoted_metafunction : std::bool_constant<is_quoted_metafunction_v<T>> {};
 
     /*  
      *  Type pack.
@@ -387,7 +387,7 @@ namespace sqlite_orm::internal::mpl {
 
     /*
      *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list (possibly projected),
-     *  and returns the index constant of the first element for which the predicate returns true.
+     *  and returns an index constant holding the number of elements for which the predicate returns true.
      */
     template<class PredicateQ>
     struct counts {
@@ -413,8 +413,8 @@ namespace sqlite_orm::internal::mpl {
     using counts_fn = counts<quote_fn<PredicateFn>>;
 
     /*
-     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list (possibly projected),
-     *  and returns the index constant of the first element for which the predicate returns true.
+     *  Quoted metafunction that invokes the specified quoted trait metafunction on each element of a type list (possibly projected),
+     *  and returns a bool constant telling whether the trait holds for any element.
      */
     template<class TraitQ>
     struct contains {
@@ -438,122 +438,46 @@ namespace sqlite_orm::internal::mpl {
 
     template<template<class...> class TraitFn>
     using contains_fn = contains<quote_fn<TraitFn>>;
+
+    /*
+     *  Quoted metafunction that invokes the specified quoted metafunction on each element of a type list,
+     *  and returns the type list of the results.
+     */
+    template<class Q>
+    struct transforms {
+        template<class Pack>
+        struct invoke_this_fn;
+
+        template<template<class...> class Pack, class... T>
+        struct invoke_this_fn<Pack<T...>> {
+            using type = Pack<typename Q::template fn<T>...>;
+        };
+
+        template<class Pack>
+        using fn = typename invoke_this_fn<Pack>::type;
+    };
+
+    /*
+     *  Quoted metafunction that invokes the specified metafunction on each element of a type list,
+     *  and returns the type list of the results.
+     *  
+     *  `Fn` is invoked directly, so that errors in `Fn` surface unaltered.
+     */
+    template<template<class...> class Fn>
+    struct transforms_fn {
+        template<class Pack>
+        struct invoke_this_fn;
+
+        template<template<class...> class Pack, class... T>
+        struct invoke_this_fn<Pack<T...>> {
+            using type = Pack<invoke_fn_t<Fn, T>...>;
+        };
+
+        template<class Pack>
+        using fn = typename invoke_this_fn<Pack>::type;
+    };
 }
 
 namespace sqlite_orm {
     namespace mpl = internal::mpl;
-}
-
-// convenience quoted metafunctions
-namespace sqlite_orm::internal {
-    /*
-     *  Quoted trait metafunction that checks if a type has the specified trait.
-     */
-    template<template<class...> class TraitFn, class... Bound>
-    using check_if =
-        mpl::conditional_t<sizeof...(Bound) == 0, mpl::quote_fn<TraitFn>, mpl::bind_front_fn<TraitFn, Bound...>>;
-
-    /*
-     *  Quoted trait metafunction that checks if a type doesn't have the specified trait.
-     */
-    template<template<class...> class TraitFn>
-    using check_if_not = mpl::not_fn<TraitFn>;
-
-    /*
-     *  Quoted trait metafunction that checks if a type is the same as the specified type.
-     *  Commonly used named abbreviation for `check_if<std::is_same, Type>`.
-     */
-    template<class Type>
-    using check_if_is_type = check_if<std::is_same, Type>;
-
-    /*
-     *  Quoted trait metafunction that checks if a type's template matches the specified template
-     *  (similar to `is_specialization_of`).
-     */
-    template<template<class...> class Template>
-    using check_if_is_template = mpl::pass_extracted_fn_to<mpl::bind_front_fn<std::is_same, mpl::quote_fn<Template>>>;
-
-    /*
-     *  Quoted trait metafunction that checks if a type names a nested type determined by `Op`.
-     */
-    template<template<typename...> class Op>
-    using check_if_names = mpl::bind_front_higherorder_fn<polyfill::is_detected, Op>;
-
-    /*
-     *  Quoted trait metafunction that checks if a type does not name a nested type determined by `Op`.
-     */
-    template<template<typename...> class Op>
-    using check_if_lacks = mpl::not_<check_if_names<Op>>;
-
-    /*
-     *  Quoted metafunction that finds the index of the element having the specified trait in a tuple.
-     */
-    template<template<class...> class TraitFn>
-    using finds_if_has = mpl::finds<check_if<TraitFn>>;
-
-    /*
-     *  Quoted metafunction that finds the index of the trait metafunction in a tuple that is satisfied by the given type.
-     */
-    template<class T>
-    using finds_satisfied_by = mpl::finds<mpl::satisfied_by<T>>;
-
-    /*
-     *  Quoted metafunction that finds the index of the given type in a tuple.
-     */
-    template<class Type>
-    using finds_if_has_type = mpl::finds<check_if_is_type<Type>>;
-
-    /*
-     *  Quoted metafunction that finds the index of the given class template in a tuple.
-     */
-    template<template<class...> class Template>
-    using finds_if_has_template = mpl::finds<check_if_is_template<Template>>;
-
-    /*
-     *  Quoted trait metafunction that counts tuple elements having a given trait.
-     */
-    template<template<class...> class TraitFn>
-    using counts_if_has = mpl::counts_fn<TraitFn>;
-
-    /*
-     *  Quoted trait metafunction that checks whether a tuple contains a type with given trait.
-     */
-    template<template<class...> class TraitFn>
-    using check_if_has = mpl::contains_fn<TraitFn>;
-
-    /*
-     *  Quoted trait metafunction that checks whether a tuple doesn't contain a type with given trait.
-     */
-    template<template<class...> class TraitFn>
-    using check_if_has_not = mpl::not_<mpl::contains_fn<TraitFn>>;
-
-    /*
-     *  Quoted trait metafunction that checks whether a tuple contains only types with given trait.
-     */
-    template<template<class...> class TraitFn>
-    using check_if_has_only = mpl::not_<mpl::contains<check_if_not<TraitFn>>>;
-
-    /*
-     *  Quoted metafunction that checks whether a tuple contains given type.
-     */
-    template<class T>
-    using check_if_has_type = mpl::contains<check_if_is_type<T>>;
-
-    /*
-     *  Quoted metafunction that checks whether a tuple contains a given template.
-     *
-     *  Note: we are using 2 small tricks:
-     *  1. A template template parameter can be treated like a metafunction, so we can just "quote" a 'primary'
-     *     template into the MPL system (e.g. `std::vector`).
-     *  2. This quoted metafunction does the opposite of the trait metafunction `is_specialization`:
-     *     `is_specialization` tries to instantiate the primary template template parameter using the
-     *     template parameters of a template type, then compares both instantiated types.
-     *     Here instead, `pass_extracted_fn_to` extracts the template template parameter from a template type,
-     *     then compares the resulting template template parameters.
-     */
-    template<template<class...> class Template>
-    using check_if_has_template = mpl::contains<check_if_is_template<Template>>;
-
-    template<template<class...> class ProjOp, class T>
-    using check_if_projected_is_type = mpl::pass_result_of_fn<check_if_is_type<T>, ProjOp>;
 }

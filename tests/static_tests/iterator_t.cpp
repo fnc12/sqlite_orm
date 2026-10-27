@@ -1,5 +1,5 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 #include <type_traits>
 #include <utility>
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED

@@ -1,16 +1,17 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if
-#include <tuple>  //  std::tuple
-#include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
+#include <tuple>  //  std::tuple
+#include <type_traits>  //  std::enable_if
+#include <utility>  //  std::pair
 #endif
 
-#include "../functional/type_traits.h"
-#include "../functional/tuple_helper/tuple_filter.h"
-#include "../execution/prepared_statement.h"
+#include "../functional/mpl/ternary.h"
 #include "../functional/optional_container.h"
+#include "../functional/tuple_helper/tuple_filter.h"
+#include "../functional/type_traits.h"
+#include "../execution/prepared_statement.h"
 #include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
@@ -210,9 +211,9 @@ namespace sqlite_orm::internal {
      */
     template<class T>
     struct node_tuple<T, match_if<is_limit, T>>
-        : mpl::conditional_t<T::offset_is_implicit_v,
-                             node_tuple_for<offset_expression_type_t<T>, expression_type_t<T>>,
-                             node_tuple_for<expression_type_t<T>, offset_expression_type_t<T>>> {};
+        : mpl::ternary_c<T::offset_is_implicit_v,
+                         node_tuple_for<offset_expression_type_t<T>, expression_type_t<T>>,
+                         node_tuple_for<expression_type_t<T>, offset_expression_type_t<T>>> {};
 
     template<class T>
     struct node_tuple<T, match_if<is_from2, T>> : node_tuple<tuple_type_t<T>> {};

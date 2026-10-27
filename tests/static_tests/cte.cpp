@@ -1,9 +1,9 @@
 #include <sqlite_orm/sqlite_orm.h>
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <type_traits>  //  std::is_same, std::is_constructible
-#include <tuple>  //  std::ignore
-#include <string>  //  std::string
 #include <catch2/catch_all.hpp>
+#include <string>  //  std::string
+#include <tuple>  //  std::ignore
+#include <type_traits>  //  std::is_same, std::is_constructible
 
 using namespace sqlite_orm;
 using internal::alias_holder, internal::column_alias;
@@ -21,7 +21,7 @@ void do_assert() {
 
 template<class E, class ColRef>
 void runDecay(ColRef /*colRef*/) {
-    do_assert<internal::transform_tuple_t<tuple<ColRef>, internal::decay_explicit_column_t>, E>();
+    do_assert<internal::transform_tuple<tuple<ColRef>, internal::decay_explicit_column_t>, E>();
 }
 
 template<class E, class T>

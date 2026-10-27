@@ -1,9 +1,9 @@
-#include <type_traits>
-#include <array>
-#include <tuple>
 #include <algorithm>  //  std::fill_n
-#include <sqlite_orm/sqlite_orm.h>
+#include <array>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
+#include <tuple>
+#include <type_traits>
 
 using std::array;
 using std::index_sequence;
@@ -184,7 +184,7 @@ TEST_CASE("bindables") {
         }
         SECTION("non-bindable literals") {
             context.replace_bindable_with_question = true;
-            constexpr auto t = make_default_tuple<internal::transform_tuple_t<Tuple, make_literal_holder>>();
+            constexpr auto t = make_default_tuple<internal::transform_tuple<Tuple, make_literal_holder>>();
             test_tuple(t, context, e);
         }
     }
@@ -238,7 +238,7 @@ TEST_CASE("bindables") {
         }
         SECTION("non-bindable literals") {
             context.replace_bindable_with_question = true;
-            auto t = make_default_tuple<internal::transform_tuple_t<Tuple, make_literal_holder>>();
+            auto t = make_default_tuple<internal::transform_tuple<Tuple, make_literal_holder>>();
             test_tuple(t, context, e);
         }
     }

@@ -1,8 +1,8 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <functional>  //  std::less
+#include <sqlite_orm/sqlite_orm.h>
 #include <type_traits>
 #include <vector>
-#include <functional>  //  std::less
 
 namespace mpl = sqlite_orm::internal::mpl;
 using namespace sqlite_orm;
@@ -27,12 +27,12 @@ TEST_CASE("mpl") {
     using check_if_names_value_type = mpl::bind_front_higherorder_fn<polyfill::is_detected, value_type_t>;
     using predicate_type = std::less<void>;
 
-    STATIC_REQUIRE_FALSE(mpl::is_quoted_metafuntion_v<std::true_type>);
-    STATIC_REQUIRE(mpl::is_quoted_metafuntion_v<mpl_is_same>);
-    STATIC_REQUIRE(std::is_same<mpl::invoke_fn_t<std::common_type_t, int>, int>::value);
-    STATIC_REQUIRE(std::is_same<mpl::invoke_fn_t<make_literal_holder, int>, literal_holder<int>>::value);
+    STATIC_REQUIRE_FALSE(mpl::is_quoted_metafunction_v<std::true_type>);
+    STATIC_REQUIRE(mpl::is_quoted_metafunction_v<mpl_is_same>);
+    STATIC_REQUIRE(std::is_same_v<mpl::invoke_fn_t<std::common_type_t, int>, int>);
+    STATIC_REQUIRE(std::is_same_v<mpl::invoke_fn_t<make_literal_holder, int>, literal_holder<int>>);
     STATIC_REQUIRE(
-        std::is_same<mpl::invoke_fn_t<mpl::bind_front_fn<make_literal_holder, int>::fn>, literal_holder<int>>::value);
+        std::is_same_v<mpl::invoke_fn_t<mpl::bind_front_fn<make_literal_holder, int>::fn>, literal_holder<int>>);
     STATIC_REQUIRE(mpl::invoke_t<mpl_is_same, int, int>::value);
     STATIC_REQUIRE_FALSE(mpl::invoke_t<mpl::not_<mpl_is_same>, int, int>::value);
     STATIC_REQUIRE_FALSE(mpl::invoke_t<mpl::not_fn<std::is_same>, int, int>::value);
@@ -74,8 +74,15 @@ TEST_CASE("mpl") {
             int>::value);
     STATIC_REQUIRE(mpl::invoke_t<mpl::identity, std::true_type>::value);
     STATIC_REQUIRE(mpl::invoke_t<mpl::always<std::true_type>>::value);
-    STATIC_REQUIRE(std::is_same<mpl::invoke_t<mpl::pass_extracted_fn_to<mpl::identity>, std::is_void<int>>,
-                                mpl::quote_fn<std::is_void>>::value);
+    STATIC_REQUIRE(mpl::is_quoted_metafunction_v<mpl::ternary<true>>);
+    STATIC_REQUIRE(std::is_same_v<mpl::invoke_t<mpl::ternary<true>, int, long>, int>);
+    STATIC_REQUIRE(std::is_same_v<mpl::invoke_t<mpl::ternary<false>, int, long>, long>);
+    STATIC_REQUIRE(std::is_same_v<mpl::ternary_c<true, int, long>, int>);
+    STATIC_REQUIRE(std::is_same_v<mpl::ternary_c<false, int, long>, long>);
+    STATIC_REQUIRE(std::is_same_v<mpl::ternary_t<std::true_type, int, long>, int>);
+    STATIC_REQUIRE(std::is_same_v<mpl::ternary_t<std::is_void<int>, int, long>, long>);
+    STATIC_REQUIRE(std::is_same_v<mpl::invoke_t<mpl::pass_extracted_fn_to<mpl::identity>, std::is_void<int>>,
+                                  mpl::quote_fn<std::is_void>>);
     STATIC_REQUIRE(mpl::invoke_t<mpl::pass_extracted_fn_to<mpl_is_same>,
                                  mpl::quote_fn<std::is_void>,
                                  mpl::quote_fn<std::is_void>>::value);
@@ -83,8 +90,9 @@ TEST_CASE("mpl") {
     STATIC_REQUIRE(mpl::invoke_t<check_if_same_template, std::vector<int>>::value);
     STATIC_REQUIRE_FALSE(mpl::invoke_t<check_if_names_value_type, int>::value);
     STATIC_REQUIRE(mpl::invoke_t<check_if_names_value_type, std::true_type>::value);
-    STATIC_REQUIRE(std::is_same<mpl::invoke_t<mpl::pass_result_of_fn<mpl::identity, transparent_of_t>, predicate_type>,
-                                predicate_type::is_transparent>::value);
+    STATIC_REQUIRE(
+        std::is_same_v<mpl::invoke_t<mpl::pass_result_of_fn<mpl::identity, transparent_of_t>, predicate_type>,
+                       predicate_type::is_transparent>);
 
     STATIC_REQUIRE(mpl::invoke_t<internal::check_if<std::is_same>, int, int>::value);
     STATIC_REQUIRE_FALSE(mpl::invoke_t<internal::check_if_not<std::is_same>, int, int>::value);

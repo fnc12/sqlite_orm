@@ -1,23 +1,23 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_member_pointer, std::remove_cvref
+#include <functional>  //  std::invoke
 #include <string>  //  std::string
 #include <tuple>  // std::tuple, std::tuple_size
-#include <functional>  //  std::invoke
+#include <type_traits>  //  std::is_member_pointer, std::remove_cvref
 #endif
 
 #include "../functional/cxx_polyfill/type_traits.h"
-#include "../functional/mpl.h"
-#include "../functional/type_traits.h"
+#include "../functional/field_of.h"
+#include "../functional/member_traits.h"
+#include "../functional/mpl/convenience.h"
 #include "../functional/tuple_helper/tuple_filter.h"
 #include "../functional/tuple_helper/tuple_iteration.h"
 #include "../functional/tuple_helper/tuple_transformer.h"
-#include "../functional/member_traits.h"
-#include "../functional/field_of.h"
-#include "../vocabulary/node_traits.h"
+#include "../functional/type_traits.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_fwd.h"  // primary_key_t, column_field
+#include "../vocabulary/node_traits.h"
 #include "column_identifier.h"
 #include "table_identifier.h"
 
@@ -80,7 +80,7 @@ namespace sqlite_orm::internal {
          *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
          *  @param lambda Lambda called for each column.
          */
-        template<class OpTraitQ, class L, satisfies<mpl::is_quoted_metafuntion, OpTraitQ> = true>
+        template<class OpTraitQ, class L, satisfies<mpl::is_quoted_metafunction, OpTraitQ> = true>
         void for_each_column_excluding(L&& lambda) const {
             this->template for_each_column_excluding<OpTraitQ::template fn>(lambda);
         }

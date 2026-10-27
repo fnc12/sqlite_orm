@@ -5,8 +5,8 @@
 #endif
 
 #include "../functional/cxx_polyfill/type_traits.h"
-#include "../functional/type_traits.h"
-#include "../functional/tuple_helper/tuple_transformer.h"
+#include "../functional/mpl/convenience.h"
+#include "../functional/type_traits.h"  //  match_specialization_of
 #include "../vocabulary/node_traits.h"  //  is_table_reference
 
 namespace sqlite_orm::internal {
@@ -43,5 +43,5 @@ namespace sqlite_orm::internal {
      */
     template<class Tpl>
     struct column_result_proxy<Tpl, match_specialization_of<Tpl, std::tuple>>
-        : tuple_transformer<Tpl, column_result_proxy_t> {};
+        : polyfill::type_identity<transform_tuple<Tpl, column_result_proxy_t>> {};
 }

@@ -2,12 +2,12 @@
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::index_sequence, std::make_index_sequence
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
+#include <type_traits>  //  std::index_sequence, std::make_index_sequence
 #endif
 
-#include "row_extractor.h"
 #include "arg_values.h"
+#include "row_extractor.h"
 
 namespace sqlite_orm::internal {
 

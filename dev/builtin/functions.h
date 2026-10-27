@@ -12,9 +12,9 @@
  *        and a function of the same name are an ambiguous lookup, whereas two functions are an overload set.
  */
 
+#include "functions/aggregate.h"
 #include "functions/core.h"
 #include "functions/datetime.h"
-#include "functions/aggregate.h"
-#include "functions/math.h"
 #include "functions/json.h"
+#include "functions/math.h"
 #include "functions/window.h"

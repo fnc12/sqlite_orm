@@ -1,25 +1,25 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <sstream>  //  std::ostringstream
+#include <string>  //  std::string
 #include <type_traits>  //  std::enable_if, std::is_same
 #include <utility>  //  std::make_index_sequence, std::move
-#include <string>  //  std::string
-#include <sstream>  //  std::ostringstream
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <array>
 #endif
 #endif
 
 #include "../functional/cxx_polyfill/type_traits.h"
-#include "../functional/mpl/conditional.h"
 #include "../functional/cstring_literal.h"
-#include "../functional/type_traits.h"
 #include "../functional/field_of.h"
-#include "../vocabulary/node_traits.h"
-#include "column_pointer.h"
+#include "../functional/mpl/ternary.h"
+#include "../functional/type_traits.h"
 #include "../vocabulary/node_fwd.h"  // table_identifier
+#include "../vocabulary/node_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
+#include "column_pointer.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -284,8 +284,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using aliased_type = type_t<A>;
         static_assert(is_field_of_v<F O::*, aliased_type>, "Column must be from aliased table");
 
-        using C1 =
-            mpl::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
+        using C1 = mpl::ternary_t<std::is_same<O, aliased_type>, F O::*, column_pointer<aliased_type, F O::*>>;
         return alias_qualified_column_t<A, C1>{C1{field}};
     }
 
