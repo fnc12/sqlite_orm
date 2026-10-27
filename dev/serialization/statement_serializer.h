@@ -25,6 +25,7 @@
 #include "../functional/always_default.h"
 #include "../functional/gsl.h"
 #include "../functional/mpl/convenience.h"
+#include "../functional/ref_unwrapping.h"  //  forward_lvalue_ref
 #include "../functional/tuple_helper/tuple_filter.h"
 #include "../functional/type_traits.h"
 #include "../ast/crud/insert.h"  // conflict_action

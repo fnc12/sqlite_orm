@@ -11,7 +11,8 @@
 #endif
 
 #include "../../functional/cxx_polyfill/type_traits.h"
-#include "../../functional/type_traits.h"  //  match_if, value_unref_type, forward_lvalue_ref
+#include "../../functional/ref_unwrapping.h"  //  value_unref_type, forward_lvalue_ref
+#include "../../functional/type_traits.h"  //  match_if, type_t
 #include "../node_traits.h"
 
 // DML accessors

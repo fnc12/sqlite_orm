@@ -7,7 +7,7 @@
 
 #include "../functional/cxx_polyfill/type_traits.h"  //  polyfill::remove_cvref_t
 #include "../functional/index_sequence_util.h"  //  index_sequence_value_at
-#include "../functional/type_traits.h"  //  forward_lvalue_ref
+#include "../functional/ref_unwrapping.h"  //  forward_lvalue_ref
 #include "../traversal/ast_iterator.h"  //  iterate_ast
 #include "../traversal/node_tuple.h"  //  node_tuple_t
 #include "../vocabulary/node_algorithms.h"  //  is_bindable, bindable_index_sequence_of, access_dml_object
