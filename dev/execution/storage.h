@@ -23,8 +23,8 @@
 #include "../functional/cxx_polyfill/functional.h"  //  polyfill::identity
 #include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/gsl.h"
-#include "../functional/mpl/conditional.h"
 #include "../functional/mpl/convenience.h"
+#include "../functional/mpl/ternary.h"
 #include "../functional/tuple_helper/tuple_filter.h"
 #include "../functional/tuple_helper/tuple_iteration.h"
 #include "../functional/tuple_helper/tuple_transformer.h"
@@ -1736,7 +1736,7 @@ namespace sqlite_orm::internal {
             using object_type = held_object_t<result_type>;
             constexpr bool returnsObject = std::is_same<result_type, object_type>::value;
             //  an object handed out as is is read into an optional, which tells whether it was found
-            using holder_type = mpl::conditional_t<returnsObject, std::optional<object_type>, result_type>;
+            using holder_type = mpl::ternary_c<returnsObject, std::optional<object_type>, result_type>;
 
             sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 

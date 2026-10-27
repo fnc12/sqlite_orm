@@ -6,12 +6,13 @@
 #endif
 #include <string>  //  std::string
 #include <tuple>  //  std::make_tuple, std::tuple_cat, std::apply
-#include <type_traits>  //  std::is_base_of, std::conditional_t, std::false_type, std::true_type
+#include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 #include <utility>  //  std::move, std::forward
 #endif
 
 #include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/gsl.h"
+#include "../functional/mpl/ternary.h"
 #include "../functional/type_traits.h"
 #include "../vocabulary/node_traits.h"  //  orm_table_reference, auto_decay_table_ref_t
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
@@ -65,9 +66,9 @@ namespace sqlite_orm::internal {
      */
     template<class M, class... Cs>
     struct virtual_table_traits : virtual_table_module_traits<M> {
-        using definition_type = std::conditional_t<virtual_table_module_traits<M>::is_eponymous::value,
-                                                   table_definition<Cs...>,
-                                                   insertable_table_definition<Cs...>>;
+        using definition_type = mpl::ternary_t<typename virtual_table_module_traits<M>::is_eponymous,
+                                               table_definition<Cs...>,
+                                               insertable_table_definition<Cs...>>;
         using elements_type = elements_type_t<definition_type>;
     };
 

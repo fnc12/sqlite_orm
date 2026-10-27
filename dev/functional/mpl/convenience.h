@@ -16,7 +16,7 @@ namespace sqlite_orm::internal::mpl {
          *  Quoted trait metafunction that checks if a type has the specified trait.
          */
         template<template<class...> class TraitFn, class... Bound>
-        using check_if = conditional_t<sizeof...(Bound) == 0, quote_fn<TraitFn>, bind_front_fn<TraitFn, Bound...>>;
+        using check_if = ternary_c<sizeof...(Bound) == 0, quote_fn<TraitFn>, bind_front_fn<TraitFn, Bound...>>;
 
         /*
          *  Quoted trait metafunction that checks if a type doesn't have the specified trait.
