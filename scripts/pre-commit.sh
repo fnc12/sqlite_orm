@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepares the working tree for a commit: regenerates the amalgamation, formats the sources with
+# Prepares the working tree for a commit: regenerates the amalgamations, formats the sources with
 # clang-format 20 (the version CI lints with), warns about changed files containing carriage returns, and checks
 # the order of the amalgamation sources (scripts/check-amalgamation-sources.sh) and the paths named in the
 # documentation (scripts/check-doc-paths.sh).
@@ -23,6 +23,7 @@ fi
 
 echo "Regenerating the amalgamation"
 "$python" third_party/amalgamate/amalgamate.py -c third_party/amalgamate/sqlite_orm.json -s .
+"$python" third_party/amalgamate/amalgamate.py -c third_party/amalgamate/sqlite_orm_config.json -s .
 
 echo "Formatting the sources"
 # all C++ sources of the source folders; .clang-format-ignore excludes some of them

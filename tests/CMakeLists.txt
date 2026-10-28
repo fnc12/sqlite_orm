@@ -56,11 +56,6 @@ if(NOT APPLE)
         SQLITE_ORM_SERIES_EXTENSION_FILE="$<TARGET_FILE_NAME:series_extension>")
 endif()
 
-if(SQLITE_ORM_OMITS_CODECVT)
-    message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
-    target_compile_definitions(unit_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
-endif()
-
 if(MSVC)
     target_compile_options(unit_tests PUBLIC
         # multi-processor compilation

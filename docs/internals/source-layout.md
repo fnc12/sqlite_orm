@@ -74,7 +74,8 @@ which takes precedence where both apply.
   C API does not qualify: `prepared_statement.h` owns a `sqlite3_stmt`, but is a storage concept
   carrying a DSL expression.
 - `dev/config/` - The configuration, macros only: the public set in `config.h` (the toolchain
-  detection and sqlite_orm's capability macros `SQLITE_ORM_WITH_*`), the macros sqlite_orm's
+  detection and sqlite_orm's capability macros `SQLITE_ORM_WITH_*`), also published as
+  `<sqlite_orm/sqlite_orm_config.h>` for consumers of the named module, the macros sqlite_orm's
   own code is spelled with in `internal_macros.h`, and the `prologue.h`/`epilogue.h` pair around
   the library. `toolchain/` holds the detection of the C++ language, standard library, compiler
   and platform sqlite_orm is built with, and the check of its prerequisites.
