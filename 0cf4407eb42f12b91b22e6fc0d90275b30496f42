@@ -1,10 +1,9 @@
 # Scene
 trueqbit with Claude (Opus 5.5), 2026-10-27 to 2026-10-31: Path 2, step 0 of the
 Purpose/Intention sweep of sqlite_orm (hand-over 20-sweep-purpose-intention.md),
-grounding the campaign before the first slice. Worktree
-C:\projects\wt-purpose-intention-sweep, branch docs/purpose-intention-sweep at
-0cf4407e. The binding rulings are in C:\projects\sqlite_orm-campaign\campaign.md;
-the frictions still pending are in ledger.md beside it.
+grounding the campaign before the first slice, on branch
+docs/purpose-intention-sweep at 0cf4407e. The binding rulings are in the
+campaign's campaign.md; the frictions still pending are in its ledger.md.
 
 # Pivot
 - From: Purpose and Intention added while every code line and every existing
