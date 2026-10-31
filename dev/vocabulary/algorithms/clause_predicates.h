@@ -1,16 +1,11 @@
 #pragma once
 
-/** @file Closed predicates classifying the statement-level clauses of a statement by type and order.
+/** @file
+ *  Purpose: decide which types are the statement-level clauses of a statement kind, and whether a statement
+ *  holds them in their canonical order.
  *
- *  A statement-level clause may only appear in the conditions pack of a statement, and only in the
- *  canonical clause order - the serializer streams clauses positionally, so any other arrangement
- *  would generate invalid SQL. That a clause holds an expression rather than another clause is
- *  enforced by the clause factories, on the argument each is handed.
- *
- *  The generic algorithms take the clauses of a statement as an ordered list of clause traits,
- *  or as the rank metafunction derived from it, so that a statement kind is expressed by declaring
- *  its own list. The select statement (FROM, JOIN, WHERE, GROUP BY, WINDOW, ORDER BY, LIMIT)
- *  is the first such list.
+ *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds;
+ *  composes the grammar traits into the clause checks of `ast/` and `schema/`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -63,6 +58,10 @@ namespace sqlite_orm::internal {
      *  Checks that the clauses in a pack appear in the canonical order of the statement they belong to.
      *
      *  `RankOp` is a metafunction yielding the rank of a clause, e.g. `select_clause_rank`.
+     *
+     *  A statement-level clause may only appear in the conditions pack of a statement, and only in the
+     *  canonical clause order - the serializer streams clauses positionally, so any other arrangement
+     *  would generate invalid SQL.
      */
     template<class Pack, template<class...> class RankOp>
     constexpr bool clauses_are_correctly_ordered_v = false;

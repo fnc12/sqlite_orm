@@ -1,8 +1,12 @@
 # The DSL vocabulary layer
 
-How sqlite_orm's internal headers are layered, and **where new traits, predicates and
-algorithms belong**. Normative: the placement test in
-[Deciding where something goes](#deciding-where-something-goes) is the rule to apply.
+> **Purpose:** lay down where the traits, projections and algorithms of the DSL vocabulary belong, and
+> how a node specializes them and a consumer reads them.
+>
+> **Intention:** the normative reference for `dev/vocabulary/`, its manifests and
+> `dev/schema/algorithms/`, whose rule to apply is the placement test in
+> [Deciding where something goes](#deciding-where-something-goes); read before a trait, predicate or
+> algorithm is added, as `AGENTS.md` asks; `source-layout.md` defers to it where both apply.
 
 ## Why this layer exists
 

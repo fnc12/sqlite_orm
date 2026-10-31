@@ -3214,12 +3214,12 @@ namespace sqlite_orm::internal {
 //  match_if, type_t
 // #include "../node_traits.h"
 
-/**	@file Umbrella header for the single-node vocabulary: the open classification traits,
- *        and the projections they are read with.
+/** @file
+ *  Purpose: gather what a node is and what it carries into one include.
  *
- *  It deliberately spans two folders, because both answer a question about a node already in
- *  hand - what it is, and what it carries - whereas `node_algorithms.h` covers the composed
- *  judgments that follow from them.
+ *  Intention: the umbrella of `traits/` and `projections/` in the vocabulary layer, whose rules
+ *  `docs/internals/vocabulary-layer.md` holds; the consumers in `dev/` include it in place of the files behind
+ *  it, and the algorithms behind `node_algorithms.h` build on it.
  */
 
 // #include "projections/mapped_types.h"
@@ -4723,13 +4723,11 @@ namespace sqlite_orm::internal {
 
 // #include "structural_traits_fwd.h"
 
-/** @file Closed classifier traits of DSL-only nodes with no SQL grammar counterpart.
- *        E.g. ad-hoc column-selection structs, mapped result objects, quoting nodes.
+/** @file
+ *  Purpose: declare the traits classifying the DSL nodes that have no SQL grammar counterpart.
  *
- *        Quoting nodes - literals, pointer-to-member wrappers, anything lifting a foreign C++ value
- *        into the DSL - are structural traits and belong here.
- *        Should their volume or coupling ever justify it, they may be split out into a dedicated
- *        `quoting_traits_fwd.h`; that would be a subdivision of the structural axis, not a new axis.
+ *  Intention: the structural axis of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md`
+ *  holds; the traits are defined in the corresponding header files of the nodes.
  */
 
 // #include "../../functional/cxx_polyfill/type_traits.h"
@@ -5136,17 +5134,12 @@ namespace sqlite_orm::internal {
 
 // #include "algorithms/clause_predicates.h"
 
-/** @file Closed predicates classifying the statement-level clauses of a statement by type and order.
+/** @file
+ *  Purpose: decide which types are the statement-level clauses of a statement kind, and whether a statement
+ *  holds them in their canonical order.
  *
- *  A statement-level clause may only appear in the conditions pack of a statement, and only in the
- *  canonical clause order - the serializer streams clauses positionally, so any other arrangement
- *  would generate invalid SQL. That a clause holds an expression rather than another clause is
- *  enforced by the clause factories, on the argument each is handed.
- *
- *  The generic algorithms take the clauses of a statement as an ordered list of clause traits,
- *  or as the rank metafunction derived from it, so that a statement kind is expressed by declaring
- *  its own list. The select statement (FROM, JOIN, WHERE, GROUP BY, WINDOW, ORDER BY, LIMIT)
- *  is the first such list.
+ *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds;
+ *  composes the grammar traits into the clause checks of `ast/` and `schema/`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -5202,6 +5195,10 @@ namespace sqlite_orm::internal {
      *  Checks that the clauses in a pack appear in the canonical order of the statement they belong to.
      *
      *  `RankOp` is a metafunction yielding the rank of a clause, e.g. `select_clause_rank`.
+     *
+     *  A statement-level clause may only appear in the conditions pack of a statement, and only in the
+     *  canonical clause order - the serializer streams clauses positionally, so any other arrangement
+     *  would generate invalid SQL.
      */
     template<class Pack, template<class...> class RankOp>
     constexpr bool clauses_are_correctly_ordered_v = false;
@@ -5707,7 +5704,12 @@ namespace sqlite_orm::internal {
 
 // #include "algorithms/field_predicates_concepts.h"
 
-/** @file Concept definitions of closed predicates for checking the validity of fields of column nodes.
+/** @file
+ *  Purpose: define the field predicates whose condition is a concept, beside their C++17 fallback.
+ *
+ *  Intention: the concepts of the field predicates in the vocabulary layer, whose rules
+ *  `docs/internals/vocabulary-layer.md` holds; `node_algorithms.h` includes it, and consumers read the
+ *  predicates through that umbrella.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -5773,13 +5775,22 @@ namespace sqlite_orm::internal {
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    /**
+     *  Whether the field `F Hidden::*` names a hidden column of the virtual table `VTabStruct`.
+     */
     template<class Hidden, class F, class VTabStruct>
     concept hidden_field_of_vtab =
         is_field_of_v<F Hidden::*, typename VTabStruct::hidden::template _of<typename Hidden::enclosing_type>>;
 
+    /**
+     *  Whether the column pointer `CP` names a hidden column of the virtual table `VTabStruct`.
+     */
     template<class CP, class VTabStruct>
     concept hidden_column_of_vtab = std::same_as<member_object_type_t<field_type_t<CP>>, typename VTabStruct::hidden>;
 #else
+    /**
+     *  Whether the column pointer `CP` names a hidden column of the virtual table `VTabStruct`.
+     */
     template<class CP, class VTabStruct, class SFINAE = void>
     constexpr bool is_hidden_column_of_vtab_v = false;
 
@@ -5790,6 +5801,9 @@ namespace sqlite_orm::internal {
         std::enable_if_t<std::is_same<member_object_type_t<field_type_t<CP>>, typename VTabStruct::hidden>::value>> =
         true;
 
+    /**
+     *  Whether the field `F Hidden::*` names a hidden column of the virtual table `VTabStruct`.
+     */
     template<class Hidden, class F, class VTabStruct>
     constexpr bool is_hidden_field_of_vtab_v =
         is_field_of_v<F Hidden::*, typename VTabStruct::hidden::template _of<typename Hidden::enclosing_type>>;
@@ -5855,14 +5869,12 @@ namespace sqlite_orm::internal {
 
 // #include "algorithms/operand_predicates.h"
 
-/** @file Combined operand predicates gating the named expression factories.
+/** @file
+ *  Purpose: decide which types a named expression factory takes as an operand.
  *
- *  The named factories (`eq()`, `and_()`, `add()`, `assign()`, ...) accept everything their
- *  operator counterparts accept, plus a raw member pointer (which the named factories
- *  reference without the `c()` wrapper), plus a bindable value - the named factories are
- *  also the only spelling for literal-only SQL expressions such as `SELECT 60 | 13`.
- *  Everything else - arbitrary structs, containers, statement clauses - cannot be
- *  serialized into SQL and is rejected at the factory.
+ *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds;
+ *  composes the operand, grammar and field traits into the checks the named expression factories of `ast/`
+ *  apply to their arguments.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -5888,6 +5900,13 @@ namespace sqlite_orm::internal {
 
     /**
      *  Whether a type may appear as an operand of a named expression factory.
+     *
+     *  The named factories (`eq()`, `and_()`, `add()`, `assign()`, ...) accept everything their
+     *  operator counterparts accept, plus a raw member pointer (which the named factories
+     *  reference without the `c()` wrapper), plus a bindable value - the named factories are
+     *  also the only spelling for literal-only SQL expressions such as `SELECT 60 | 13`.
+     *  Everything else - arbitrary structs, containers, statement clauses - cannot be
+     *  serialized into SQL and is rejected at the factory.
      */
     template<class T>
     using is_operand_or_bindable = std::disjunction<is_operator_argument<T>,
