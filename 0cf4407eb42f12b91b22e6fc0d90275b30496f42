@@ -1,5 +1,5 @@
 # Scene
-Klaus with Claude (Opus 5.5), 2026-10-27 to 2026-10-31: Path 2, step 0 of the
+trueqbit with Claude (Opus 5.5), 2026-10-27 to 2026-10-31: Path 2, step 0 of the
 Purpose/Intention sweep of sqlite_orm (hand-over 20-sweep-purpose-intention.md),
 grounding the campaign before the first slice. Worktree
 C:\projects\wt-purpose-intention-sweep, branch docs/purpose-intention-sweep at
@@ -12,72 +12,72 @@ the frictions still pending are in ledger.md beside it.
 - To: an existing `/** @file */` block (83 files under dev/) becomes the
   Purpose/Intention block, and the block replaces the first line of each
   module unit.
-- Why: Klaus: the @file block already states the purpose, and a second block
+- Why: trueqbit: the @file block already states the purpose, and a second block
   beside it would be a copy; the module line restates the standard.
 - Invalidates: no work done. It amends Path 2's Purpose, its "Do not: rewrite
   or delete a comment", and K6's check, which now admits deletions inside
   converted blocks and in the first line of a module unit.
 
 # Decided
-- Klaus: the sweep runs in a worktree on a branch of its own, started from
+- trueqbit: the sweep runs in a worktree on a branch of its own, started from
   feature/public-config-header at 0cf4407e. #1598 is merged, upstream dev
   (3aab284c) holds the same tree, so the branch continues as it is and its PR
   goes to dev.
-- Klaus: D15 (a): notes stay on this machine; the notes-travel hooks and the
+- trueqbit: D15 (a): notes stay on this machine; the notes-travel hooks and the
   notes fetch refspec are removed and notes-travel.auto is false; backups go
   through git bundle or a personal remote other than origin.
-- Klaus: D5: continuity.stops is false (crossings with it), keeper stays on;
+- trueqbit: D5: continuity.stops is false (crossings with it), keeper stays on;
   sessions start in the worktree with copies of .claude/settings.local.json
   and .claude/rules/.
-- Klaus: D3: one `/** @file */` block per file: below #pragma once in a
+- trueqbit: D3: one `/** @file */` block per file: below #pragma once in a
   header, at line 1 in a module unit, after the includes and usings in a
   test, below the /**** block in an example. The tree and CI hold no Doxygen
   configuration and no -Wdocumentation, so `/**` is safe.
-- Klaus: modules/ and the Markdown documents (docs/, AGENTS.md,
+- trueqbit: modules/ and the Markdown documents (docs/, AGENTS.md,
   CONTRIBUTING.md, TODO.md, .claude/agents/, .claude/skills/) are in scope.
   Markdown carries `> **Purpose:**` / `> **Intention:**` under the H1, or
-  after the frontmatter where the file has no H1. README.md goes to Klaus
+  after the frontmatter where the file has no H1. README.md goes to trueqbit
   and fnc12 as a proposal; third_party/ stays as it is.
-- Klaus: the rest of a converted @file block leaves it. What the
+- trueqbit: the rest of a converted @file block leaves it. What the
   declarations encode, such as factory overloads, is cut. What the code
   cannot say moves to the one factory function or declaration it concerns.
   Placement guidance is cut where vocabulary-layer.md or source-layout.md
   already says it, and moves there where it is missing, with the Intention
   naming the document. A plan moves to TODO.md. The rest stays and goes into
   the ledger.
-- Klaus: architecture, reasoning, concepts and the overview stay side by side
+- trueqbit: architecture, reasoning, concepts and the overview stay side by side
   in one or two documents, and folder READMEs stay out; the overlap with the
   headers' Purposes is worth that price.
-- Klaus: "Open work" and "Open questions" move from vocabulary-layer.md to
+- trueqbit: "Open work" and "Open questions" move from vocabulary-layer.md to
   TODO.md, in a change of their own.
-- Klaus: D4: what cannot be verified is flagged and kept; the diff carries no
+- trueqbit: D4: what cannot be verified is flagged and kept; the diff carries no
   `on purpose:` mark.
-- Klaus: D7: step 1 takes fresh-reader.mjs on 3 to 5 files (Haiku) and one
+- trueqbit: D7: step 1 takes fresh-reader.mjs on 3 to 5 files (Haiku) and one
   report-only reviewer dispatch; step 2 starts on a new go-ahead with a file
   count.
-- Klaus: D16: the labels Purpose: and Intention: are the plugin's only trace
+- trueqbit: D16: the labels Purpose: and Intention: are the plugin's only trace
   in public; the proposal to fnc12 comes before anything goes public.
-- Klaus: the amalgamation carries the blocks for the calibration slice;
+- trueqbit: the amalgamation carries the blocks for the calibration slice;
   whether they stay is fnc12's call (D6).
-- Klaus: calibration on dev/vocabulary/ in two passes: 5 files plus
+- trueqbit: calibration on dev/vocabulary/ in two passes: 5 files plus
   vocabulary-layer.md, then the other 18 in the same PR.
-- Klaus: each commit's note carries the measure.mjs table against its parent;
+- trueqbit: each commit's note carries the measure.mjs table against its parent;
   baseline at 0cf4407e: 477 files, 81110 lines, 25114 copies, hops 10.3 mean
   / 221 max, 685492 gzip bytes.
-- Klaus: the end goal is a better structured tree whose context costs a
+- trueqbit: the end goal is a better structured tree whose context costs a
   reader fewer tokens for a better outcome.
-- Klaus: the plugin pin moves to metatrom-ag/claude-code-plugins 2a1028e
+- trueqbit: the plugin pin moves to metatrom-ag/claude-code-plugins 2a1028e
   (ontocratic-engineering 0.51.0, continuity 0.1.3, rules-sync 0.1.2, local
   scope) before step 1, so the calibration runs under the version the slices
   use.
-- Claude, at Klaus's request: commit subjects are `docs(<dir>): <state it
+- Claude, at trueqbit's request: commit subjects are `docs(<dir>): <state it
   leaves>`, with the Intention in the body; sqlite_orm writes down English as
   its only demand on a commit message.
-- Claude, at Klaus's request: green means scripts/pre-commit.sh exits 0 in
+- Claude, at trueqbit's request: green means scripts/pre-commit.sh exits 0 in
   WSL, deletions only where the pivot admits them, the comment-stripped token
   stream identical under `gcc -fpreprocessed -dD -E -P`, clang-format
   leaving the tree as pre-commit left it, and a diff free of `on purpose:`;
-  Klaus builds before any push.
+  trueqbit builds before any push.
 - Claude, asked to weigh and pick: agent and skill files carry the blockquote
   in their body, because the model is their reader; it describes, and adds
   what the frontmatter description leaves out.
@@ -89,10 +89,10 @@ the frictions still pending are in ledger.md beside it.
   copy-before-write refuses an Edit that leaves the block twice (ledger 15).
 
 # Words given
-- Claude: commits on Klaus's yes; Klaus pushes; notes stay on this machine.
+- Claude: commits on trueqbit's yes; trueqbit pushes; notes stay on this machine.
 
 # Discussed
-- For the rest of a converted block, Klaus rejected @details and @note as a
+- For the rest of a converted block, trueqbit rejected @details and @note as a
   plaster; @note already means a caveat in dev/ (24 uses). @description lies
   outside Doxygen's commands and would take an `on purpose:` mark. Namespace
   groups would take new namespaces, since sqlite_orm::internal is reopened
@@ -104,10 +104,10 @@ the frictions still pending are in ledger.md beside it.
   (C6); CI lints with the jidicula action (O3); rules-sync honors
   settings.local.json (U4); notes-travel.auto leaves hooks already installed
   in place (K17). See ledger 5 to 8.
-- A local safety hook kept the deletes under .git/ for Klaus, who removed the
+- A local safety hook kept the deletes under .git/ for trueqbit, who removed the
   notes-travel hooks.
-- Step 0.3 missed the @file convention; it surfaced when Klaus named
-  file-level comments. campaign.md once recorded a question of Klaus's as his
+- Step 0.3 missed the @file convention; it surfaced when trueqbit named
+  file-level comments. campaign.md once recorded a question of trueqbit's as his
   ruling; corrected.
 - The recheck against 0.51.0 found the header, comment and commit rules
   reworded with their substance kept; the new rule wording, reviewer check
@@ -116,13 +116,13 @@ the frictions still pending are in ledger.md beside it.
   fresh-reader.mjs, measure.mjs and continuity.mjs are unchanged.
 
 # Dissent
-- Commit subjects: Klaus leaned to upstream's imperative style; Claude ruled
+- Commit subjects: trueqbit leaned to upstream's imperative style; Claude ruled
   the plugin form. Open until fnc12 answers the proposal.
 
 # Later
 - Ledger entries pending: 1 and 2 (fnc12), 3, 12 (which PR), 13 (keeping
   the overview and the headers in step), 14 and 15 (Path 1), 16 (Path 3 or 5).
 - refs/remotes/origin/HEAD in the main clone holds 32 null bytes and stops
-  every fetch; Klaus leaves it as it is for now.
+  every fetch; trueqbit leaves it as it is for now.
 - CMake, YAML and scripts wait for a ruling on their form; tests and module
   units are calibrated in a later round; the README.md proposal is step 3.
