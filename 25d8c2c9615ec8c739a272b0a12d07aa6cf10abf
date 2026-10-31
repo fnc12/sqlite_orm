@@ -1,0 +1,113 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-10-31: Path 2, step 1 of the
+Purpose/Intention sweep, first pass over dev/vocabulary/ (5 headers and
+vocabulary-layer.md), on branch docs/purpose-intention-sweep. It builds on
+the note on 0cf4407e, which holds step 0.
+
+# Pivot
+- From: every comment outside a converted @file block stays as it is, and
+  lines are deleted only inside those blocks.
+- To: a comment line or a line of Markdown prose is deleted where the
+  findings show it encoded, wrong or a copy; the code stays untouched.
+- Why: trueqbit: the restriction came from wanting only to add Purpose and
+  Intention; once they allow simplifying, deleting follows.
+- Invalidates: no work done. Check 2 of "Green" now reads "deleted lines
+  are comment lines and Markdown prose; check 3 shows the code untouched".
+
+# Decided
+- trueqbit: the header text starts in the column of `@file`
+  (` *  Purpose:`), replacing the 8-space indent of step 0.
+- trueqbit: the header is as wide as the file's name - the name is the
+  Action, the Purpose the reason it stands for; the Intention names
+  relations at the level of the layer, and what one declaration checks,
+  whom it serves or which mechanics it uses goes to its doc-comment.
+- trueqbit (Q1): the reviewer's fixes as proposed - no universal over files
+  a relation does not hold for; the doc drops its back-reference to the
+  headers.
+- trueqbit (Q2): a correction to the plugin's output goes through
+  ontocratic-feedback in the turn; issue and PR follow at once, without
+  waiting for Path 3. Opened in metatrom-ag/claude-code-plugins: F1,
+  the promise-word check reaches the files a relation names (#241, draft
+  PR #243, 0.51.1); F2, a header is read from the file's name down, and a
+  shape a trait or concept file declares is said on its members (#242,
+  draft PR #244 stacked on #243, 0.51.2).
+- trueqbit (Q3): the leftover paragraph of clause_predicates.h moved word
+  for word to the doc-comment of clauses_are_correctly_ordered_v.
+- trueqbit (Q4): the opening paragraph of vocabulary-layer.md became its
+  blockquote; the link to the placement test lives on in the Intention.
+- trueqbit (Q5): text naming declarations or their arguments is encoded; a
+  why or a consequence outside the file - the serializer, SQL validity, a
+  call-site spelling, how the SQLite grammar reads - is what the code
+  cannot say, since comments are written for their human reader.
+- trueqbit (Q6): the paragraph moved to is_operand_or_bindable keeps its
+  words under the campaign's rule; Path 5 takes it first.
+- trueqbit (Q7): pre-commit.sh runs from the worktree with GIT_DIR and
+  GIT_WORK_TREE exported for WSL.
+- trueqbit: D15 (a) is reversed - notes travel with origin once fnc12 has
+  answered; notes.rewriteRef is refs/notes/continuity; trueqbit is the
+  name in every record.
+- trueqbit: structural_traits_fwd.h says where its traits are defined as
+  grammar_traits_fwd.h and operand_traits_fwd.h do: "the traits are defined
+  in the corresponding header files of the nodes". "Consumers read them
+  through node_traits.h" was cut: node_traits.h and vocabulary-layer.md
+  already say it.
+
+# Discussed
+- Cut, as encoded or wrong:
+  - clause_predicates.h: "Closed predicates classifying the
+    statement-level clauses of a statement by type and order."; "The
+    generic algorithms take the clauses of a statement as an ordered list
+    of clause traits, or as the rank metafunction derived from it, so that
+    a statement kind is expressed by declaring its own list. The select
+    statement (FROM, JOIN, WHERE, GROUP BY, WINDOW, ORDER BY, LIMIT) is the
+    first such list." ("first" was stale: delete and update have lists).
+  - operand_predicates.h: "Combined operand predicates gating the named
+    expression factories."
+  - structural_traits_fwd.h: "Closed classifier traits of DSL-only nodes
+    with no SQL grammar counterpart." ("Closed" was wrong: the axis is
+    open); "E.g. ad-hoc column-selection structs, mapped result objects,
+    quoting nodes."
+  - field_predicates_concepts.h: "Concept definitions of closed predicates
+    for checking the validity of fields of column nodes."
+  - node_traits.h: "Umbrella header for the single-node vocabulary: the
+    open classification traits, and the projections they are read with."
+- Cut, as vocabulary-layer.md already says it:
+  - clause_predicates.h: "That a clause holds an expression rather than
+    another clause is enforced by the clause factories, on the argument
+    each is handed." (vocabulary-layer.md, the clause factories).
+  - structural_traits_fwd.h: the quoting-nodes paragraph and the
+    `quoting_traits_fwd.h` split ("The trait axes", Structural).
+  - node_traits.h: "It deliberately spans two folders, because both answer
+    a question about a node already in hand - what it is, and what it
+    carries - whereas `node_algorithms.h` covers the composed judgments
+    that follow from them." (the vocabulary/ listing).
+  - vocabulary-layer.md: "How sqlite_orm's internal headers are layered,
+    and **where new traits, predicates and algorithms belong**. Normative:
+    the placement test in [Deciding where something goes] is the rule to
+    apply." (now the blockquote).
+- Written new: a one-sentence doc-comment on each of the four hidden-column
+  predicates of field_predicates_concepts.h, taking the detail the header
+  left; the C++17 fallbacks repeat their concept's sentence, which the
+  copies count shows.
+- fresh-reader.mjs (Haiku) before the refinements: clause_predicates.h and
+  node_traits.h agreed; operand_predicates.h, structural_traits_fwd.h and
+  field_predicates_concepts.h did not. The ontocratic-reviewer, report-only,
+  found three universals in the agent's own Intentions (ledger 22).
+- measure.mjs against 0cf4407e (.vs/ excluded for the run, ledger 28):
+
+  | measure | before | after | change |
+  |---|---:|---:|---:|
+  | files | 477 | 477 | 0 |
+  | lines | 81110 | 81128 | +18 |
+  | copies | 25114 | 25123 | +9 |
+  | hopsMean | 10.3 | 10.3 | 0 |
+  | hopsMax | 221 | 221 | 0 |
+  | gzipBytes | 685492 | 685518 | +26 |
+
+# Later
+- The other 18 files of dev/vocabulary/, in this pull request.
+- Ledger 23: Path 5 rewords the paragraph moved to is_operand_or_bindable.
+- Ledger 24: a plan in clause_predicates.h (is_statement_clause, "Extend
+  this should a statement kind ever admit ...") belongs to TODO.md.
+- Ledger 25 and 28: copy-before-write on pages outside the tree, and
+  measure.mjs on unreadable untracked files, go to ontocratic-feedback.
