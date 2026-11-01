@@ -1,10 +1,10 @@
 #pragma once
 
-/** @file Closed accessors of the object a field-level holder type holds.
+/** @file
+ *  Purpose: reach the object a field's holder type holds.
  *
- *  A holder hands out an object as is, owned by a `std::unique_ptr` or held by a `std::optional`;
- *  a get statement's result type is one. These are keyed on a raw C++ type, not on a DSL node,
- *  which is what separates them from the node accessors in `accessors.h`.
+ *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds, keyed on a
+ *  raw C++ type as the field predicates are.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

@@ -1,9 +1,11 @@
 #pragma once
 
-/** @file Declarations of closed classifier/leaf traits + structural grouping traits.
- *        E.g. compound-statement, DML-statement, CTE-binding, ...
- *  
- *        Definitions of these traits are in the corresponding header files of the grammar nodes.
+/** @file
+ *  Purpose: declare the traits classifying the DSL nodes by the SQL grammar production they belong to, whether a leaf
+ *  production of one node or a production grouping several.
+ *
+ *  Intention: the grammar axis of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; the
+ *  traits are defined in the corresponding header files of the grammar nodes.
  */
 
 #include "../../functional/cxx_polyfill/type_traits.h"

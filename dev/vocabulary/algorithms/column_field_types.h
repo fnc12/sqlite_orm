@@ -1,6 +1,10 @@
 #pragma once
 
-/** @file Closed alias templates computing per-column type tuples of a single table definition.
+/** @file
+ *  Purpose: compute the per-column types of a single table definition.
+ *
+ *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
+ *  the grammar traits and the projections over the elements of a table definition.
  */
 
 #include "../../functional/mpl/convenience.h"

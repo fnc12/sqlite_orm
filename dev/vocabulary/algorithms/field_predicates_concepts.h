@@ -4,8 +4,7 @@
  *  Purpose: define the field predicates whose condition is a concept, beside their C++17 fallback.
  *
  *  Intention: the concepts of the field predicates in the vocabulary layer, whose rules
- *  `docs/internals/vocabulary-layer.md` holds; `node_algorithms.h` includes it, and consumers read the
- *  predicates through that umbrella.
+ *  `docs/internals/vocabulary-layer.md` holds.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

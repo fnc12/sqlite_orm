@@ -1,10 +1,10 @@
 #pragma once
 
-/** @file Closed predicates for checking the validity of the elements of a DDL statement.
+/** @file
+ *  Purpose: decide which nodes are admissible elements of a schema definition - a column, a table or an index.
  *
- *  These answer whether a node is an admissible member of a column, table or index definition -
- *  the classification questions specific to a single DDL node, as opposed to the
- *  type-and-order questions about statement clauses in `clause_predicates.h`.
+ *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
+ *  the grammar and field traits into the element checks of the schema definitions of `schema/`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

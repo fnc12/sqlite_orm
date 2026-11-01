@@ -1,7 +1,10 @@
 #pragma once
 
-/** @file Closed alias templates for filtering a tuple of nodes by their traits,
- *        yielding an index sequence of the matching positions.
+/** @file
+ *  Purpose: find the positions of the nodes in a tuple that match a trait.
+ *
+ *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
+ *  the grammar and field traits into index sequences over the elements of a table or a flattened expression.
  */
 
 #include "../../functional/mpl/convenience.h"
