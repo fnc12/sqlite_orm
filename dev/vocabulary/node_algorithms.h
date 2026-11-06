@@ -13,7 +13,6 @@
 #include "algorithms/column_field_types.h"
 #include "algorithms/ddl_predicates.h"
 #include "algorithms/expression_element_predicates.h"
-#include "algorithms/field_accessors.h"
 #include "algorithms/field_predicates_concepts.h"
 #include "algorithms/field_predicates_fwd.h"
 #include "algorithms/index_filters.h"

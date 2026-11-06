@@ -63,6 +63,7 @@
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_fwd.h"  // column_field
 #include "../vocabulary/node_traits.h"
+#include "held_object.h"
 #include "prepared_statement.h"
 #include "storage_base.h"
 #include "sync_schema_result.h"

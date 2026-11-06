@@ -258,6 +258,8 @@ jobs:
   # macOS builds
   # ===================
   macos:
+    # GitHub cancels jobs on the macos-14 runner: "The configuration 'macos-14-arm64-us-default' is not supported".
+    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -297,6 +299,8 @@ jobs:
   # iOS builds (compile only)
   # ===================
   ios:
+    # off for the same reason as the macOS builds
+    if: false
     runs-on: macos-14
     name: iOS - Clang, C++17
 
