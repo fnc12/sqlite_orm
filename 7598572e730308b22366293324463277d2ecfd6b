@@ -8,3 +8,37 @@ its merge of dev (92cdc425), which brought #1606.
 - Records owed by this branch, written with its next commit: the dropped
   irreducible-code amendment (ledger entry 32) and D16 replaced by naming
   the plugins, unlinked, in a pull request (campaign.md).
+
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-06: the records this branch owed,
+after #1605 went to fnc12 for review.
+
+# Decided
+- trueqbit: the measure leaves the generated include/ out. The
+  amalgamation is a copy of dev/ by construction: it held about 21000 of the
+  tree's 25000 copies and doubled every delta. Each side is measured as a
+  tree without include/, written through a temporary index (campaign.md
+  "Commits and publication"). Baseline at 0cf4407e: 475 files, 57670 lines,
+  3884 copies, hops 10.3 / 221, 469811 gzip bytes.
+- trueqbit: no amendment of irreducible-code for plural file names: its
+  section "The header" (0.51.2 and later) reads the header from the name
+  down, "as wide as the name". The miss came from the pin at 0.51.0, which
+  moved to 0.52.2 (9eacee0). This supersedes the plan in the note on
+  0afdc69b (ledger entry 32).
+- trueqbit: a pull request names where its changes come from - the plugins
+  ontocratic-engineering and continuity by Metatrom, each in a sentence of
+  its own description - and leaves the marketplace unlinked while it is
+  private. This replaces D16's "the labels alone".
+
+# Discussed
+- A correction to the note on 03f24a8b and to #1605's first Size section:
+  its +26 copies were the amalgamation repeating the new header blocks, not
+  the clause "whose rules docs/internals/vocabulary-layer.md holds"; in
+  dev/ alone the copies stay at 3884.
+- #1605 against dev without include/: lines 57666 to 57699 (+33), copies
+  3884 (0), hops 10.1 / 221, gzip bytes 469722 to 469380 (-342).
+
+# Later
+- Plugin feedback, not yet raised: measure.mjs skipping files marked
+  linguist-generated, and sqlite_orm marking its amalgamation so, which
+  also folds it in GitHub's diffs.
