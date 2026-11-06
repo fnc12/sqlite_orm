@@ -1,12 +1,11 @@
 #pragma once
 
-/** @file Concepts classifying a single node referring to a record set or one of its columns:
- *        aliases, table references and table-valued function calls - the public face of
- *        the corresponding grammar and structural traits.
+/** @file
+ *  Purpose: classify a single node referring to a record set or one of its columns, as concepts.
  *
- *        Concepts cannot be forward-declared, so this is a definition file within `traits/`.
- *        The alias concepts spell out their requirements rather than forwarding to the traits,
- *        so that a failed constraint tells which requirement is not met.
+ *  Intention: the face of the grammar and structural traits in the vocabulary layer, whose rules
+ *  `docs/internals/vocabulary-layer.md` holds; the alias concepts spell out their requirements rather than forwarding
+ *  to the traits, so that a failed constraint tells which requirement is not met.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

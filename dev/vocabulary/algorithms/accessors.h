@@ -1,7 +1,10 @@
 #pragma once
 
-/** @file Accessor functions for uniformly obtaining a node's relevant sub-expression or itself,
-          independent of which concrete grammar family it belongs to.
+/** @file
+ *  Purpose: obtain a node's relevant sub-expression, or the node itself, whichever grammar family the node belongs to.
+ *
+ *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
+ *  the node traits and the projections into uniform access to the parts of a node.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

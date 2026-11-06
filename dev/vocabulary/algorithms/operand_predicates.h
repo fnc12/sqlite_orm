@@ -1,13 +1,11 @@
 #pragma once
 
-/** @file Combined operand predicates gating the named expression factories.
+/** @file
+ *  Purpose: decide which types a named expression factory takes as an operand.
  *
- *  The named factories (`eq()`, `and_()`, `add()`, `assign()`, ...) accept everything their
- *  operator counterparts accept, plus a raw member pointer (which the named factories
- *  reference without the `c()` wrapper), plus a bindable value - the named factories are
- *  also the only spelling for literal-only SQL expressions such as `SELECT 60 | 13`.
- *  Everything else - arbitrary structs, containers, statement clauses - cannot be
- *  serialized into SQL and is rejected at the factory.
+ *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds;
+ *  composes the operand, grammar and field traits into the checks the named expression factories of `ast/`
+ *  apply to their arguments.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -30,6 +28,13 @@ namespace sqlite_orm::internal {
 
     /**
      *  Whether a type may appear as an operand of a named expression factory.
+     *
+     *  The named factories (`eq()`, `and_()`, `add()`, `assign()`, ...) accept everything their
+     *  operator counterparts accept, plus a raw member pointer (which the named factories
+     *  reference without the `c()` wrapper), plus a bindable value - the named factories are
+     *  also the only spelling for literal-only SQL expressions such as `SELECT 60 | 13`.
+     *  Everything else - arbitrary structs, containers, statement clauses - cannot be
+     *  serialized into SQL and is rejected at the factory.
      */
     template<class T>
     using is_operand_or_bindable = std::disjunction<is_operator_argument<T>,

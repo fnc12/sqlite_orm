@@ -1,13 +1,10 @@
 #pragma once
 
-/** @file Closed predicates for checking the membership of the elements of a compound expression construct.
+/** @file
+ *  Purpose: decide which nodes are admissible elements of a compound expression construct.
  *
- *  These answer whether a node may occupy a given slot of an expression-level construct - a window
- *  definition and its frame, and the like - as opposed to the elements of a schema definition
- *  (`ddl_predicates.h`) or the clauses of a statement (`clause_predicates.h`).
- *
- *  That an element holds an expression rather than a statement clause is not checked here -
- *  the element factories enforce that on the argument each is handed.
+ *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
+ *  the grammar traits into the element checks of the expression constructs of `ast/`.
  */
 
 #include "../../functional/cxx_polyfill/type_traits.h"

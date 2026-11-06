@@ -1,10 +1,11 @@
 #pragma once
 
-/** @file Closed predicates for checking whether a node refers to a table or a record set,
- *        i.e. whether it may occupy the record set slot of a factory - FROM, JOIN, `get<>()`, `count<>()`, ...
+/** @file
+ *  Purpose: decide whether a node refers to a table or a record set, and so may occupy the record set slot of a
+ *  factory.
  *
- *        They compose the structural table reference with the grammar alias traits; as concepts,
- *        with their C++17 fallback under the same guard.
+ *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
+ *  the single-node concepts of `traits/recordset_concepts.h` across the grammar and structural axes.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

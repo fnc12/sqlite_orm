@@ -1,7 +1,11 @@
 #pragma once
 
-/** @file Substitution of the `argument<I>` and `common_argument_type<I...>` placeholders
- *        in a built-in function's declared return type.
+/** @file
+ *  Purpose: let a built-in function declare its return type in terms of the types of its arguments.
+ *
+ *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; a built-in
+ *  function whose return type follows its arguments declares it with these placeholders, and the result type of a call
+ *  substitutes them.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

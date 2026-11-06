@@ -1,6 +1,10 @@
 #pragma once
 
-/**	@file Umbrella header for all node algorithms.
+/** @file
+ *  Purpose: gather the judgments that follow from what a node is and carries into one include.
+ *
+ *  Intention: the umbrella of `algorithms/` in the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md`
+ *  holds; the consumers in `dev/` include it in place of the files behind it.
  */
 
 #include "algorithms/accessors.h"
