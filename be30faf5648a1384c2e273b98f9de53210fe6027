@@ -1,0 +1,54 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-05 to 2026-11-06: Path 2, the
+Purpose/Intention sweep, on docs/purpose-intention-pass2, stacked on #1605
+(docs/purpose-intention-sweep at 03f24a8b), which stays a draft.
+
+# Pivot
+- From: one folder of dev/ per pull request (K7), after the calibration.
+- To: logically sound sweeps: pass 1, the calibration on dev/vocabulary/
+  (#1605); pass 2, a sweep through all headers and files, which carries
+  the AGENTS.md rule; pass 3 for what pass 2 leaves, sized by its workload.
+  A pass is cut by logic, never by file type.
+- Why: trueqbit: one folder per pull request was never the intention, and
+  a pull request giving nearly every file a header needs AGENTS.md to
+  keep them.
+- Invalidates: campaign.md "Commits and publication" (K7); the "Left out
+  on purpose" of #1605; proposal-fnc12.md "Status". This commit and the
+  two after it moved off #1605 onto this branch, with their notes.
+
+# Decided
+- trueqbit: AGENTS.md "Code style" takes its sentence from the plugin's
+  header rule: every file opens with Purpose and Intention, as the
+  doc-comment of what the file declares - the @file block where the file
+  groups related symbols, otherwise the doc-comment of its main symbol or
+  facility; the comment rules apply below them. trueqbit's ruling, fnc12
+  left unasked (ledger entry 1). The first wording ("a file opens with
+  ...", every file in its @file block) was amended before any push.
+- trueqbit: the header opens with `Purpose:`; the file's path and name
+  carry its brief description, and what the name leaves unsaid goes into
+  the Purpose's first clause. A summary line before the labels, as the
+  Cashbook repository has, is left out: there the header is the JSDoc of
+  the exported class and an editor shows its first line on hover, while an
+  `@file` block attaches to no declaration. The amalgamation keeps the name
+  beside each block through its `// #include "..."` line.
+
+# Discussed
+- A Purpose may lean on the name as its subject, as BaseKernel's
+  `habitats/bun/BunKernel.ts` does ("make loading work in Bun"); a text
+  quoting a Purpose without its path names the file beside it.
+- measure.mjs against 03f24a8b (Markdown only, so no change):
+
+  | measure | before | after | change |
+  |---|---:|---:|---:|
+  | files | 477 | 477 | 0 |
+  | lines | 81176 | 81176 | 0 |
+  | copies | 25140 | 25140 | 0 |
+  | hopsMean | 10.3 | 10.3 | 0 |
+  | hopsMax | 221 | 221 | 0 |
+  | gzipBytes | 684730 | 684730 | 0 |
+
+  Run with `.vs/` excluded for that one run (ledger entry 28).
+
+# Later
+- The proposal to fnc12 keeps three questions: the amalgamation (asked in
+  #1605), commit subjects, merge commits.
