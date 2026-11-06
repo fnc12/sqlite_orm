@@ -1,0 +1,38 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-06: Path 2, on
+docs/purpose-intention-sweep after 403d9661, with #1605 open as a draft.
+
+# Decided
+- trueqbit: "Open work" and "Open questions" leave
+  docs/internals/vocabulary-layer.md, which keeps to the layer's
+  architecture. The decided retirement of the legacy built-in function
+  nodes opens TODO.md "Internals", its words kept, in TODO.md's list style;
+  the two open questions are dropped. AGENTS.md "References" and the skill
+  move-header point to TODO.md. trueqbit's ruling, fnc12 left unasked
+  (ledger entry 12).
+
+# Discussed
+- The removed text, as it stood:
+
+  ## Open work
+
+  Decided, not yet done.
+
+  - **Retire the legacy built-in function nodes with the C++17 baseline:** delete the
+    `#ifndef SQLITE_ORM_WITH_CPP20_ALIASES` branches — `builtin_function_t` and its kin in
+    `ast/builtin_function.h`, and the `*_string` tags and factories in `builtin/functions/*.h`.
+
+  ## Open questions
+
+  Deliberately unresolved; revisit when there is a concrete reason to.
+
+  - **Struct→table / expression→table mapping.** A possible tier above `functional/` and
+    `vocabulary/`: schema-wide resolution, consuming vocabulary. Naming and folder undecided.
+    `table_type_of` is not this tier: it extracts a type a node captured, without a schema.
+  - **Names of the built-in function definitions in `internal`** (`max`, `min`, `count`, ...).
+    Class members shadow them, but a namespace-scope internal helper of the same name would
+    clash. A nested `internal::builtins` namespace is the escape hatch, once a clash occurs.
+
+- measure.mjs against 403d9661 (Markdown only, so no change): files 477,
+  lines 81176, copies 25140, hops mean 10.3 / max 221, gzip bytes 684730,
+  each unchanged. Run with `.vs/` excluded for that one run (ledger entry 28).
