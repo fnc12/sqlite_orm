@@ -5346,7 +5346,7 @@ namespace sqlite_orm::internal {
 // #include "algorithms/column_field_types.h"
 
 /** @file
- *  Purpose: compute the per-column types of a single table definition.
+ *  Purpose: compute the types that go with the fields of columns.
  *
  *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
  *  the grammar traits and the projections over the elements of a table definition.
