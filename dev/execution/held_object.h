@@ -1,22 +1,15 @@
 #pragma once
 
-/** @file
- *  Purpose: reach the object a field's holder type holds.
- *
- *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds, keyed on a
- *  raw C++ type as the field predicates are.
- */
-
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::unique_ptr, std::make_unique
 #include <optional>  //  std::optional
 #endif
 
-#include "../../functional/cxx_polyfill/type_traits.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 
 namespace sqlite_orm::internal {
-    /*
-     *  The object held by a holder type:
+    /**
+     *  The object a get statement's result holds:
      *  the object owned by a `std::unique_ptr` or held by a `std::optional`, or the object itself.
      */
     template<class Holder>
@@ -31,7 +24,7 @@ namespace sqlite_orm::internal {
     template<class Holder>
     using held_object_t = typename held_object<Holder>::type;
 
-    /*
+    /**
      *  Put a default-constructed object into the given holder - owned by a `std::unique_ptr`,
      *  held by a `std::optional`, or the holder itself -, and return a reference to it.
      */
