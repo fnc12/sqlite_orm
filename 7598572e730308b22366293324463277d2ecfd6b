@@ -1,0 +1,10 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-06: pass 2 takes in #1605 after
+its merge of dev (92cdc425), which brought #1606.
+
+# Discussed
+- The merge went through without conflicts; pre-commit.sh exit 0, and the
+  23 headers this branch changes keep dev's comment-free token stream.
+- Records owed by this branch, written with its next commit: the dropped
+  irreducible-code amendment (ledger entry 32) and D16 replaced by naming
+  the plugins, unlinked, in a pull request (campaign.md).
