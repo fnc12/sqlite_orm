@@ -1,0 +1,12 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-06: CI of #1605 and #1606 ended
+cancelled; the macOS and iOS jobs never started.
+
+# Decided
+- trueqbit: the two jobs are switched off with `if: false`, on a branch of
+  their own from dev, so neither pull request carries a second purpose.
+
+# Discussed
+- The annotation on both cancelled jobs: "The configuration
+  'macos-14-arm64-us-default' is not supported".
+- Left for later: moving them to a supported macOS image instead.
