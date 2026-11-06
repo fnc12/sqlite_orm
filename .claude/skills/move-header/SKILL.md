@@ -10,8 +10,7 @@ description: Use when moving, renaming, splitting or dissolving a header under s
 - The folder follows `docs/internals/source-layout.md`; traits and algorithms follow the placement
   test of `docs/internals/vocabulary-layer.md`. If the move changes what a folder holds, update its
   entry in the source layout in the same change.
-- Check the open work in `docs/internals/vocabulary-layer.md` and `TODO.md` for a move that is
-  already planned or decided differently.
+- Check the open work in `TODO.md` for a move that is already planned or decided differently.
 
 ## 2. Move it
 

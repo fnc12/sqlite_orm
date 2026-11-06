@@ -143,9 +143,8 @@ ctest --test-dir build                         # all tests
 
 ## References
 
-- [`docs/internals/vocabulary-layer.md`](docs/internals/vocabulary-layer.md) also records
-  open work and open questions, `TODO.md` missing features, and `docs/plans/` designs in
-  progress: check them before starting a refactor.
+- `TODO.md` records missing features and open work, and `docs/plans/` designs in progress:
+  check them before starting a refactor.
 - [`docs/internals/review-checklist.md`](docs/internals/review-checklist.md) - what a change
   is reviewed against.
 - [`docs/thread-safety.md`](docs/thread-safety.md) - the threading guarantees of a storage.
