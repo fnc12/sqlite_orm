@@ -1,0 +1,50 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-06: a refactor out of Path 2's
+calibration (#1605), on refactor/held-object-execution from dev 3aab284c.
+Questioning field_accessors.h's Purpose led to questioning its tier.
+
+# Decided
+- trueqbit: held_object_t and emplace_held_object leave the vocabulary for
+  execution/held_object.h; field_accessors.h dissolves. The vocabulary
+  classifies and computes over a single node or type, and its field axis
+  asks whether a C++ type qualifies for an SQL-level role. emplace_held_object
+  is a runtime action, and held_object_t unwraps the result of get,
+  get_pointer and get_optional - the get API's shape, with the get
+  executions of storage.h as the only users.
+- trueqbit: the file's comment gives way to the doc-comment of held_object,
+  the facility the file holds; the header goes to what mainly bears the
+  file's purpose. Both comments are `/**` now.
+- trueqbit: source-layout.md stays as it is: its execution entry names one
+  file per responsibility, and the storage already stands for handing a get
+  result over.
+- trueqbit: the refactor merges before #1605, which then drops
+  field_accessors.h from its scope.
+
+# Discussed
+- Nullable holder and held object share a shape, a holder of T, and are
+  different concepts: a nullable holder is a field type's role (the column
+  may be NULL, binds and prints NULL), living in type_mapping/ today
+  (type_is_nullable.h, is_std_ptr.h) with a predicate planned on the field
+  axis; a held object is how execution hands a fetched row over. Their sets
+  differ: std::shared_ptr is a nullable field holder and no get result.
+- The one argument for the vocabulary: a facility making get results any
+  nullable holder would turn held_object_t into a projection of that trait.
+  It rests on an undecided design ("shared_ptr as get result" is open), and
+  emplace_held_object would still be the facility's operation, not
+  vocabulary.
+- History: 7d436dfe renamed result_object to held_object, "the object a get
+  statement's result type holds - one level down"; f3fc6f6d moved them to
+  the field axis for the planned nullable-holder facility, in a regrouping
+  before execution/ existed.
+- Rejected: holder_accessors.h under vocabulary/algorithms/ (keeps a home
+  the code does not use); an @file header with Purpose/Intention labels
+  (dev has none yet; pass 2 brings them).
+- The design doc on refactor/nullable-holder-facility names
+  vocabulary/algorithms/field_accessors.h in five places; it follows when
+  that work resumes.
+- Checks: pre-commit.sh exit 0; the amalgamation's comment-free token lines
+  identical, only reordered (21520); the sqlite-orm-reviewer found nothing
+  blocking.
+- measure.mjs against 3aab284c: files 477, lines 81110 to 81102 (-8),
+  copies 25114 to 25110 (-4), hops mean 10.3 to 10.1, max 221, gzip bytes
+  685492 to 685390 (-102).
