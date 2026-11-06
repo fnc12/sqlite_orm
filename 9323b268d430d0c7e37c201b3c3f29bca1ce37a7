@@ -10,3 +10,13 @@ cancelled; the macOS and iOS jobs never started.
 - The annotation on both cancelled jobs: "The configuration
   'macos-14-arm64-us-default' is not supported".
 - Left for later: moving them to a supported macOS image instead.
+
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-06: the CI change moves into
+#1606 after a word from fnc12.
+
+# Decided
+- fnc12, asked by trueqbit about the cut runners: "Could you remove it in
+  your PR?". The commit moves into #1606 (refactor/held-object-execution)
+  as 9323b268, a cherry-pick of 1e7510c9; ci/apple-jobs-off is no longer
+  needed.
