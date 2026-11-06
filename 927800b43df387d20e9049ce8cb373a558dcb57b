@@ -1,0 +1,19 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-06: Path 2, pass 2 branch
+(docs/purpose-intention-pass2), right after the held_object move
+(e48458a7 on refactor/held-object-execution) raised the question.
+
+# Decided
+- trueqbit: the move-header skill edits source-layout.md and
+  vocabulary-layer.md where a move changes a criterion; why a file moved
+  goes into the commit body and its continuity note. A file-by-file entry
+  for each move is ballast once the notes carry the road.
+- trueqbit: the skill alone changes now. The documents keep the bigger
+  picture of the tiers, which agents read anyway and the files refer to;
+  this is no pivot from ledger entry 13.
+
+# Discussed
+- Raised by the held_object move: source-layout.md's execution entry was
+  first given held_object.h, then left as it was, since the entry names one
+  file per responsibility and the storage already stands for it.
+- measure.mjs: Markdown only; the tree's measure is unchanged.
