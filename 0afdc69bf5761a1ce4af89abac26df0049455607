@@ -1,0 +1,28 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-06: Path 2, pass 1 (#1605), on
+docs/purpose-intention-sweep after 03f24a8b.
+
+# Decided
+- trueqbit: a plural file name names a kind the file is open to, so the
+  Purpose states that kind. column_field_types.h: "compute the types that
+  go with the fields of columns", replacing "compute the per-column types
+  of a single table definition". The single table definition stays with
+  the declarations, whose doc-comments say "a table definition's columns".
+- trueqbit: the matching amendment of the plugin's irreducible-code
+  ("a plural name names a kind the file is open to; the Purpose states the
+  kind, whatever the file holds today") goes through ontocratic-feedback
+  after #1605, as do its issue and eval case.
+
+# Discussed
+- field_accessors.h has the same flaw, and more: trueqbit holds its name
+  and Purpose wrong for what held_object and emplace_held_object do. They
+  came from storage.h: 7d436dfe renamed result_object to held_object, "the
+  object a get statement's result type holds - one level down"; f3fc6f6d
+  moved them to vocabulary/algorithms/field_accessors.h as "the field-level
+  counterpart of accessors.h", for the planned nullable holder facility to
+  build on. Their only users today are storage.h's get executions
+  (execution/storage.h:1736-1788). Its Purpose waits for trueqbit's call on
+  the file.
+- measure.mjs against 03f24a8b: files 477, lines 81176, copies 25140, hops
+  10.3 / 221, each unchanged; gzip bytes 684730 to 684716 (-14). Run with
+  `.vs/` excluded (ledger entry 28).
