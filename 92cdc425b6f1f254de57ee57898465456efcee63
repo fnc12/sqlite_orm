@@ -1,0 +1,18 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-06: #1606 merged into dev
+(267aef6e); #1605 takes dev in by a merge, as a pushed branch does.
+
+# Decided
+- Conflicts resolved toward dev: execution/held_object.h as dev has it, the
+  @file Purpose block this pass gave field_accessors.h dropped; the
+  vocabulary-layer.md row of field_accessors.h dropped, with the meaning
+  pass 1 had moved into it ("a get statement's result type is one"), now
+  carried by held_object's doc-comment.
+
+# Discussed
+- The dropped header: "Purpose: reach the object a field's holder type
+  holds." / "Intention: an algorithm of the vocabulary layer, whose rules
+  docs/internals/vocabulary-layer.md holds, keyed on a raw C++ type as the
+  field predicates are."
+- Checks: pre-commit.sh exit 0; the comment-free token streams of all 23
+  headers the branch changes are identical to dev's.
