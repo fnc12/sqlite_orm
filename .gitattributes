@@ -1,3 +1,7 @@
 # Text files are stored and checked out with LF line endings.
 * text=auto eol=lf
 *.png binary
+
+# The amalgamation is generated from dev/ by scripts/pre-commit.sh.
+include/sqlite_orm/sqlite_orm.h linguist-generated=true
+include/sqlite_orm/sqlite_orm_config.h linguist-generated=true
