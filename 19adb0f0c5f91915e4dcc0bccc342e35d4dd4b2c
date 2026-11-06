@@ -1,0 +1,16 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-06: Path 2, on
+docs/purpose-intention-sweep after 0cf8b266, with #1605 open as a draft.
+
+# Decided
+- trueqbit: README.md carries the blockquote under `# SQLite ORM`, worded
+  without asking fnc12 first; the proposal drops its README question.
+- trueqbit: the Purpose names the domain-specific language, which the
+  first draft circled ("read and write SQLite through its own types");
+  "the compiler checks" keeps what sets it apart from SQL strings. The
+  Intention leaves out the docs link, which the README's next lines give.
+
+# Discussed
+- measure.mjs: Markdown only, so files 477, lines 81176, copies 25140,
+  hops mean 10.3 / max 221, gzip bytes 684730, each unchanged against
+  0cf8b266.
