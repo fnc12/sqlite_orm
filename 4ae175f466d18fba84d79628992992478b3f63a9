@@ -1,0 +1,22 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-06: out of the Purpose/Intention
+sweep, whose size measure counted the amalgamation as a second copy of dev/.
+
+# Decided
+- trueqbit: .gitattributes marks include/sqlite_orm/sqlite_orm.h and
+  sqlite_orm_config.h linguist-generated, on a branch and pull request of
+  their own from dev. Each file is named; the glob sqlite_orm*.h would
+  cover both today and any later header in the folder that is written by
+  hand.
+
+# Discussed
+- The measure: with the amalgamation, #1605 showed +66 lines and +26 copies
+  against dev; without it +33 lines and 0 copies. The amalgamation holds
+  about 21000 of the tree's 25000 copies. The plugin feedback, measure.mjs
+  honouring linguist-generated, is handed over to a session in the plugin
+  repository (handover-measure-generated.md in the campaign folder).
+- CI holds no check that the amalgamation matches dev/; folded in diffs,
+  it rests on pre-commit.sh. A CI job that regenerates and compares would
+  close that, a change of its own.
+- git check-attr: both files answer linguist-generated: true, a dev/ header
+  unspecified. pre-commit.sh exit 0.
