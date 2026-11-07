@@ -247,7 +247,10 @@ Clang silently accept.
 
 ## Adding a new DSL node
 
-1. Define the node struct in `dev/schema/` or `dev/ast/`.
+1. Define the node struct in `dev/schema/` or `dev/ast/`. A node header holds a node family -
+   its structs, their factories and their trait definitions - under one `@file` block with
+   Purpose and Intention, and each node struct carries a brief doc-comment where its name
+   leaves its meaning open.
 2. In **that same header**, specialize the axes that apply, including the relevant
    `traits/*_fwd.h`, as described in [How a node specializes a trait](#how-a-node-specializes-a-trait).
 3. Register the header in `dev/node_definitions.h`.
