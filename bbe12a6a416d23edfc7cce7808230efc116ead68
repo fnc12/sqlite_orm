@@ -1,0 +1,25 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-07: pass 2 of the Purpose/Intention
+sweep (metatrom-ag/claude-code-plugins#293), dev/ast/, on branch
+docs/purpose-intention-pass2. Follows 8f124f0c.
+
+# Decided
+- trueqbit (35.a): the node structs get a brief doc-comment unless their
+  name says it (rule: a comment says only what the code cannot); `_string`
+  tags are left out. ast/ now, while its context is fresh; schema/ nodes in
+  the schema/ pass; vocabulary/ maybe taken up by the other session.
+- trueqbit: doc-comments keep the tree's three-line `/** ... */` form, also
+  for a single sentence.
+- Claude: 15 of 57 undocumented node structs get one - raw spellings,
+  modifiers, runtime variants, abbreviations (window_defn_t), a misleading
+  name (simple_case_t also holds the searched CASE). Left out as said by
+  the name: SQL keywords (from_t, exists_t, rowid_t, current_time_t, over_t,
+  partition_by_t, ...) and spellings (get_pointer_t, insert_range_t, ...);
+  builtin_function already had one.
+
+# Discussed
+- in_t first read "spelled out at compile time"; it is built from an
+  argument pack by quoted_expression.h's in()/not_in(), so it now reads
+  "given one by one".
+- Green: pre-commit.sh exit 0; comment-free tokens identical in the 11
+  files; clang-format 20 unchanged.
