@@ -1,0 +1,77 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-07: pass 2 of the Purpose/Intention
+sweep (metatrom-ag/claude-code-plugins#293), dev/ast/, a follow-up on draft
+fnc12/sqlite_orm#1608, on branch docs/purpose-intention-pass2. Follows
+d98274ff.
+
+# Decided
+- trueqbit: the Purposes written in 8580143e still named details of their
+  files, which later rounds found self-explaining (rowid.h, operators.h);
+  a follow-up review checks every Purpose of the round again.
+- A second ontocratic-reviewer pass, briefed with the rule alone and no list
+  of suspects, flagged 38 of 47: 33 naming content (variants, spellings,
+  operand forms, members), 5 borderline. Clean: exists.h,
+  negated_condition.h, compound_operator.h, result_columns.h, rowid.h,
+  literal.h, quoted_expression.h, operand_tags.h, excluded.h.
+- trueqbit took the reviewer's wording with Claude's four differences:
+  builtin_function.h "represent built-in SQL functions as the DSL calls
+  them" (the reviewer's "the built-in SQL functions" is untrue: they live in
+  builtin/functions/); offset.h "the OFFSET of a LIMIT clause" (no clause of
+  its own); crud/set_definitions.h kept (its dependency is the reason the
+  file exists apart from set.h); excluded.h kept (it says what `excluded.`
+  means).
+- After the cuts most node Purposes read "represent the <SQL construct>":
+  the irreducible point. The reason a node family exists is the same across
+  the folder; the relations stay in the shared Intention, the members in
+  their doc-comments.
+
+# Discussed
+- Why the first wording named details: the Purposes were derived from the
+  old @file blocks, which list contents, and kept their clauses after the
+  lists were cut; "the first clause carries what the name leaves unsaid"
+  was read as the members it leaves unsaid; the first reviewer brief asked
+  whether each Purpose was "true, as wide as the name", and reviewer check
+  3 names relation, action and history but not content; the reworded
+  Purposes went without a second review. Plugin feedback is drafted for a
+  session in the plugins checkout; the onboarding lesson goes to
+  campaign.md "Later".
+- The Purposes before this commit:
+  - alias.h: "represent the aliases a statement gives a table, a subquery or a column, and the references made through them."
+  - app_function.h: "represent an application-defined function: the definition that generates its calls, and the calls."
+  - between.h: "represent the BETWEEN condition, testing an expression against a lower and an upper bound."
+  - binary_condition.h: "represent the binary conditions: the logical connectives and the comparisons."
+  - builtin_function.h: "represent the call of a built-in SQL function, and, in C++20 builds, the definition by name and overload set that generates it."
+  - case_expression.h: "represent the CASE expression, with or without a base expression its WHEN values are compared to."
+  - cast.h: "represent the CAST expression, converting an expression to the SQLite type of a C++ type."
+  - collate.h: "represent the COLLATE operator applied to an expression - with one of the built-in collating functions, or with a named, application-defined one."
+  - column_pointer.h: "represent a column referred to explicitly - a member bound to the mapped type it is read from, or a column of a CTE or subquery - where deducing it from a member pointer falls short."
+  - crud/default_values.h: "represent the DEFAULT VALUES modifier a raw INSERT or REPLACE takes in place of a row list."
+  - crud/get.h: "represent the SELECT reading mapped objects - one by its primary key, or all of a table that satisfy conditions - once for each way an object is handed out: as is, owned by a `std::unique_ptr`, or held by a `std::optional`."
+  - crud/insert.h: "represent the INSERT statement in each spelling the DSL offers for it, and the conflict resolution a raw INSERT takes."
+  - crud/into.h: "represent the INTO clause naming the table a raw INSERT or REPLACE targets."
+  - crud/remove.h: "represent the DELETE statement in each spelling the DSL offers for it."
+  - crud/replace.h: "represent the REPLACE statement in each spelling the DSL offers for it."
+  - crud/set.h: "represent the SET clause of an UPDATE, spelled out statically or assembled at runtime."
+  - crud/update.h: "represent the UPDATE statement in each spelling the DSL offers for it."
+  - crud/upsert_clause.h: "represent the ON CONFLICT clause of an INSERT: the conflict target and the action that resolves the conflict."
+  - cte.h: "represent common table expressions, and the WITH clause that puts them in front of a statement."
+  - from.h: "represent the FROM clause in each spelling the DSL offers for it."
+  - group_by.h: "represent the GROUP BY clause of a select, with or without its HAVING condition."
+  - in.h: "represent the IN condition and its negation, testing an expression against a set of values."
+  - is_null.h: "represent the conditions testing an expression for NULL, IS NULL and IS NOT NULL."
+  - join.h: "represent the joins of a FROM clause, with their ON and USING constraints."
+  - like.h: "represent the pattern matching operators LIKE, with an optional ESCAPE, and GLOB."
+  - limit.h: "represent the LIMIT clause and the offset it may carry, in each spelling SQLite accepts."
+  - match.h: "represent the MATCH condition of a full-text search, against a whole table or one of its columns."
+  - offset.h: "represent the OFFSET a LIMIT clause takes as its second argument."
+  - operators.h: "represent the unary and binary operators on expressions."
+  - order_by.h: "represent the ORDER BY clause in each spelling the DSL offers for it."
+  - rowset_deduplicators.h: "represent DISTINCT and ALL, which decide whether a rowset keeps its duplicate rows."
+  - select.h: "represent the SELECT statement, and check that its clauses form one."
+  - special_keywords.h: "represent the keywords SQL evaluates to a value of their own, such as the current date and time."
+  - table_reference.h: "represent a struct mapped as a table or view as a value of the DSL, and the table-valued function call made through it."
+  - values.h: "represent the VALUES row list, spelled out statically or assembled at runtime."
+  - where.h: "represent the WHERE clause filtering the rows a statement reads or changes."
+  - window.h: "represent the window a window function is evaluated over - its OVER clause, partition and frame - and the named windows a select defines."
+- Green: pre-commit.sh exit 0; comment-free tokens identical in the 37
+  files; clang-format 20 unchanged.
