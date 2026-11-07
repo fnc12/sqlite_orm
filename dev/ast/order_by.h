@@ -1,7 +1,10 @@
 #pragma once
 
-/** @file The ORDER BY clause, in each of the DSL spellings sqlite_orm offers for it - a single ordering term,
- *        a static list of ordering terms, or a list assembled at runtime.
+/** @file
+ *  Purpose: represent the ORDER BY clause in each spelling the DSL offers for it.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

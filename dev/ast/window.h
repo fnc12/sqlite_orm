@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the window a window function is evaluated over - its OVER clause, partition and frame - and
+ *  the named windows a select defines.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple

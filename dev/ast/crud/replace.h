@@ -1,7 +1,10 @@
 #pragma once
 
-/** @file The REPLACE statement, in each of the DSL spellings sqlite_orm offers for it - against a
- *        mapped object, against a range of them, or raw.
+/** @file
+ *  Purpose: represent the REPLACE statement in each spelling the DSL offers for it.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

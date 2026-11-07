@@ -1,6 +1,10 @@
 #pragma once
 
-/** @file The DEFAULT VALUES modifier a raw INSERT or REPLACE takes in place of a row list.
+/** @file
+ *  Purpose: represent the DEFAULT VALUES modifier a raw INSERT or REPLACE takes in place of a row list.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the implicit rowid column of a table.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <type_traits>  //  std::is_same, std::disjunction
@@ -8,11 +15,6 @@
 #include "../functional/cxx_polyfill/type_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
-/*
- *  The rowid of a table, in each of its spellings ROWID, OID and _ROWID_, and each of them unqualified or qualified
- *  by the table - which is the only thing telling the qualified nodes apart, through their `type`.
- *  Each node carries its own spelling.
- */
 namespace sqlite_orm::internal {
     struct rowid_t {
         operator std::string() const {
@@ -32,6 +34,7 @@ namespace sqlite_orm::internal {
         }
     };
 
+    //  qualified by the table - which is the only thing telling the qualified nodes apart, through their `type`
     template<class T>
     struct table_rowid_t : public rowid_t {
         using type = T;

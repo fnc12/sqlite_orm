@@ -1,7 +1,11 @@
 #pragma once
 
-/** @file The COLLATE operator applied to an expression - with one of the built-in collating functions,
- *        or with a named, application-defined one.
+/** @file
+ *  Purpose: represent the COLLATE operator applied to an expression - with one of the built-in collating functions,
+ *  or with a named, application-defined one.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

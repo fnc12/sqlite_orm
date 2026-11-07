@@ -1,7 +1,10 @@
 #pragma once
 
-/** @file The DELETE statement, in both of the DSL spellings sqlite_orm offers for it - `remove`
- *        against the primary key of a mapped object, or `remove_all` raw against conditions.
+/** @file
+ *  Purpose: represent the DELETE statement in each spelling the DSL offers for it.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

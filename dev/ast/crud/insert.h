@@ -1,8 +1,11 @@
 #pragma once
 
-/** @file The INSERT statement, in each of the DSL spellings sqlite_orm offers for it - against a
- *        mapped object, against a range of them, against an explicit column list, or raw -, plus
- *        the OR conflict-resolution modifier only a raw INSERT takes.
+/** @file
+ *  Purpose: represent the INSERT statement in each spelling the DSL offers for it, and the conflict resolution a raw
+ *  INSERT takes.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

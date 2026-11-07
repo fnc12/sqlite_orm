@@ -1,7 +1,10 @@
 #pragma once
 
-/** @file The binary conditions: the logical AND and OR, and the comparisons =, !=, IS, IS NOT,
- *        IS [NOT] DISTINCT FROM, >, >=, <, <= - with their factory functions and operator overloads.
+/** @file
+ *  Purpose: represent the binary conditions: the logical connectives and the comparisons.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

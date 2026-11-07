@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the CASE expression, with or without a base expression its WHEN values are compared to.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::get, std::tuple_cat, std::tuple_size, std::make_tuple
 #include <type_traits>  //  std::enable_if

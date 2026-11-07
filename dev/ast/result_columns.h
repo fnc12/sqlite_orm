@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the forms in which a select names its result columns, beyond a bare expression.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::tuple_size
 #include <utility>  //  std::forward, std::move

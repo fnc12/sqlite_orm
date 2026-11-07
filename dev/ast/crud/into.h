@@ -1,6 +1,10 @@
 #pragma once
 
-/** @file The INTO clause naming the table a raw INSERT or REPLACE targets.
+/** @file
+ *  Purpose: represent the INTO clause naming the table a raw INSERT or REPLACE targets.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #include "../../functional/cxx_polyfill/type_traits.h"

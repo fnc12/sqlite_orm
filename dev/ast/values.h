@@ -1,11 +1,14 @@
 #pragma once
 
-/** @file The VALUES row list, in both of the DSL spellings sqlite_orm offers for it - spelled out
- *        statically, or assembled at runtime.
+/** @file
+ *  Purpose: represent the VALUES row list, spelled out statically or assembled at runtime.
  *
- *        Note: this header sits outside `ast/crud/`, unlike the other clause nodes a raw INSERT or
- *        REPLACE takes, because a VALUES row list is written both as an INSERT's rows and as the
- *        operand of an IN - in either spelling.
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ *
+ *  Note: this header sits outside `ast/crud/`, unlike the other clause nodes a raw INSERT or
+ *  REPLACE takes, because a VALUES row list is written both as an INSERT's rows and as the
+ *  operand of an IN - in either spelling.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

@@ -8985,6 +8985,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/alias.h"
 
+/** @file
+ *  Purpose: represent the aliases a statement gives a table, a subquery or a column, and the references made through
+ *  them.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <sstream>  //  std::ostringstream
 #include <string>  //  std::string
@@ -9014,6 +9022,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../vocabulary/traits/operand_traits_fwd.h"
 // Included to specialize traits
 // #include "column_pointer.h"
+
+/** @file
+ *  Purpose: represent a column referred to explicitly - a member bound to the mapped type it is read from, or a column
+ *  of a CTE or subquery - where deducing it from a member pointer falls short.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_convertible
@@ -9704,10 +9720,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/app_function.h"
 
-/** @file The node of a call of an application-defined function, and the definition of an application-defined
- *        function by its UDF type (`func<UDF>`) or by a quoted callable (`"name"_scalar`), which generates the
- *        call nodes. Also the UDF classification traits and the argument/return type deduction the storage
- *        uses to register the function with SQLite.
+/** @file
+ *  Purpose: represent an application-defined function: the definition that generates its calls, and the calls.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ *  The storage registers a function with SQLite through the traits this header declares.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -10358,6 +10376,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/between.h"
 
+/** @file
+ *  Purpose: represent the BETWEEN condition, testing an expression against a lower and an upper bound.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif
@@ -10369,6 +10394,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 // #include "operand_tags.h"
+
+/** @file
+ *  Purpose: tag a node with what it can be an operand of, so that the operators and conditions of the DSL take it.
+ *
+ *  Intention: a helper of the node headers in `ast/`, placed by `docs/internals/source-layout.md`; its tags specialize
+ *  the operand traits of the vocabulary layer, as `docs/internals/vocabulary-layer.md` holds, for the nodes deriving
+ *  from them.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_base_of, std::enable_if_t
@@ -10440,8 +10473,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 // #include "ast/binary_condition.h"
 
-/** @file The binary conditions: the logical AND and OR, and the comparisons =, !=, IS, IS NOT,
- *        IS [NOT] DISTINCT FROM, >, >=, <, <= - with their factory functions and operator overloads.
+/** @file
+ *  Purpose: represent the binary conditions: the logical connectives and the comparisons.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -10500,8 +10536,12 @@ namespace sqlite_orm::internal {
 // Included to specialize traits
 // #include "collate.h"
 
-/** @file The COLLATE operator applied to an expression - with one of the built-in collating functions,
- *        or with a named, application-defined one.
+/** @file
+ *  Purpose: represent the COLLATE operator applied to an expression - with one of the built-in collating functions,
+ *  or with a named, application-defined one.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -10560,11 +10600,11 @@ namespace sqlite_orm::internal {
 
 // #include "operators.h"
 
-/** @file The unary and binary operators on expressions: -, ~, and ||, +, -, *, /, %, <<, >>, &, |,
- *        and the assignment of a SET clause - with their factory functions and operator overloads.
+/** @file
+ *  Purpose: represent the unary and binary operators on expressions.
  *
- *        Each operator's tag carries its SQL spelling and the C++ type the operator yields, as `result_type`,
- *        which the operator nodes inherit.
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -11644,10 +11684,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/builtin_function.h"
 
-/** @file The nodes of a call of a built-in SQL function: scalar and aggregate function calls,
- *        an aggregate call with a FILTER clause, and COUNT(*).
- *        In C++20 builds, also the definition of a built-in function by its name and its overload set,
- *        which generates the call nodes. The functions themselves are in `builtin/functions/`.
+/** @file
+ *  Purpose: represent the call of a built-in SQL function, and, in C++20 builds, the definition by name and overload
+ *  set that generates it.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ *  The functions themselves are in `builtin/functions/`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -11684,6 +11727,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "operand_tags.h"
 //  arithmetic_t
 // #include "window.h"
+
+/** @file
+ *  Purpose: represent the window a window function is evaluated over - its OVER clause, partition and frame - and
+ *  the named windows a select defines.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -12418,6 +12469,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/case_expression.h"
 
+/** @file
+ *  Purpose: represent the CASE expression, with or without a base expression its WHEN values are compared to.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::get, std::tuple_cat, std::tuple_size, std::make_tuple
 #include <type_traits>  //  std::enable_if
@@ -12514,6 +12572,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/cast.h"
 
+/** @file
+ *  Purpose: represent the CAST expression, converting an expression to the SQLite type of a C++ type.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if
 #include <utility>  // std::move
@@ -12564,6 +12629,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/column_pointer.h"
 
 // #include "ast/compound_operator.h"
+
+/** @file
+ *  Purpose: represent the compound operators that combine the result rows of several selects.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -12706,7 +12778,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/crud/default_values.h"
 
-/** @file The DEFAULT VALUES modifier a raw INSERT or REPLACE takes in place of a row list.
+/** @file
+ *  Purpose: represent the DEFAULT VALUES modifier a raw INSERT or REPLACE takes in place of a row list.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -12739,13 +12815,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/crud/get.h"
 
-/** @file The statements reading mapped objects: by primary key (get, get_pointer, get_optional),
- *        and all objects of a table satisfying the given conditions (get_all, get_all_pointer, get_all_optional).
+/** @file
+ *  Purpose: represent the SELECT reading mapped objects - one by its primary key, or all of a table that satisfy
+ *  conditions - once for each way an object is handed out: as is, owned by a `std::unique_ptr`, or held by a
+ *  `std::optional`.
  *
- *        The three statements of either group are DSL spellings of one and the same SELECT; they differ only in
- *        how an object is handed out - as is, owned by a `std::unique_ptr`, or held by a `std::optional`. Each of
- *        them declares that as its `result_type`: the type of the object read by primary key, or of the elements
- *        of the container the objects are read into.
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -12776,6 +12852,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 // #include "../select.h"
+
+/** @file
+ *  Purpose: represent the SELECT statement, and check that its clauses form one.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::tuple_size
@@ -13097,9 +13180,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/crud/insert.h"
 
-/** @file The INSERT statement, in each of the DSL spellings sqlite_orm offers for it - against a
- *        mapped object, against a range of them, against an explicit column list, or raw -, plus
- *        the OR conflict-resolution modifier only a raw INSERT takes.
+/** @file
+ *  Purpose: represent the INSERT statement in each spelling the DSL offers for it, and the conflict resolution a raw
+ *  INSERT takes.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -13122,6 +13208,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../../vocabulary/traits/semantic_traits_fwd.h"
 // Included to specialize traits
 // #include "../result_columns.h"
+
+/** @file
+ *  Purpose: represent the forms in which a select names its result columns, beyond a bare expression.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::tuple_size
@@ -13533,7 +13626,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/crud/into.h"
 
-/** @file The INTO clause naming the table a raw INSERT or REPLACE targets.
+/** @file
+ *  Purpose: represent the INTO clause naming the table a raw INSERT or REPLACE targets.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 // #include "../../functional/cxx_polyfill/type_traits.h"
@@ -13569,8 +13666,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/crud/remove.h"
 
-/** @file The DELETE statement, in both of the DSL spellings sqlite_orm offers for it - `remove`
- *        against the primary key of a mapped object, or `remove_all` raw against conditions.
+/** @file
+ *  Purpose: represent the DELETE statement in each spelling the DSL offers for it.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -13697,8 +13797,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/crud/replace.h"
 
-/** @file The REPLACE statement, in each of the DSL spellings sqlite_orm offers for it - against a
- *        mapped object, against a range of them, or raw.
+/** @file
+ *  Purpose: represent the REPLACE statement in each spelling the DSL offers for it.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -13889,8 +13992,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/crud/set.h"
 
-/** @file The SET clause of an UPDATE, in both of the DSL spellings sqlite_orm offers for it -
- *        spelled out statically, or assembled at runtime.
+/** @file
+ *  Purpose: represent the SET clause of an UPDATE, spelled out statically or assembled at runtime.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -14022,8 +14128,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/crud/update.h"
 
-/** @file The UPDATE statement, in both of the DSL spellings sqlite_orm offers for it - against a
- *        mapped object, or raw against a SET clause and conditions.
+/** @file
+ *  Purpose: represent the UPDATE statement in each spelling the DSL offers for it.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -14127,8 +14236,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/crud/upsert_clause.h"
 
-/** @file The ON CONFLICT upsert clause of an INSERT: its conflict target, and the DO NOTHING /
- *        DO UPDATE SET action it resolves the conflict with.
+/** @file
+ *  Purpose: represent the ON CONFLICT clause of an INSERT: the conflict target and the action that resolves the
+ *  conflict.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -14206,6 +14319,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "ast/cte.h"
+
+/** @file
+ *  Purpose: represent common table expressions, and the WITH clause that puts them in front of a statement.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -14695,6 +14815,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/excluded.h"
 
+/** @file
+ *  Purpose: represent the `excluded.` qualifier through which the DO UPDATE action of an upsert reads the row that
+ *  failed to insert.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif
@@ -14730,6 +14858,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/exists.h"
 
+/** @file
+ *  Purpose: represent the EXISTS condition over a subquery.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif
@@ -14738,6 +14873,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../vocabulary/node_traits.h"
 
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
 // #include "operand_tags.h"
 
 namespace sqlite_orm::internal {
@@ -14773,8 +14910,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/from.h"
 
-/** @file The FROM clause, in both of the DSL spellings sqlite_orm offers for it - naming mapped tables by type,
- *        or listing table expressions, such as a table-valued function.
+/** @file
+ *  Purpose: represent the FROM clause in each spelling the DSL offers for it.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -14862,6 +15002,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/group_by.h"
 
+/** @file
+ *  Purpose: represent the GROUP BY clause of a select, with or without its HAVING condition.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::make_tuple
 #include <type_traits>  //  std::true_type, std::false_type
@@ -14921,6 +15068,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "ast/in.h"
+
+/** @file
+ *  Purpose: represent the IN condition and its negation, testing an expression against a set of values.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <initializer_list>  //  std::initializer_list
@@ -15076,6 +15230,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 // #include "ast/is_null.h"
 
+/** @file
+ *  Purpose: represent the conditions testing an expression for NULL, IS NULL and IS NOT NULL.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif
@@ -15146,11 +15307,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/join.h"
 
-/** @file The joins of a FROM clause, with their ON and USING constraints.
+/** @file
+ *  Purpose: represent the joins of a FROM clause, with their ON and USING constraints.
  *
- *        All joins are DSL spellings of the one join-operator production, classified by `is_any_join`: each carries
- *        its keyword, the joined table as its `type`, and its constraint as its `on_type` - ON or USING spelled out,
- *        or the implicit constraint of CROSS JOIN and NATURAL JOIN.
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -15739,7 +15900,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/like.h"
 
-/** @file The pattern matching operators LIKE (with an optional ESCAPE) and GLOB.
+/** @file
+ *  Purpose: represent the pattern matching operators LIKE, with an optional ESCAPE, and GLOB.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -15859,6 +16024,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/limit.h"
 
+/** @file
+ *  Purpose: represent the LIMIT clause and the offset it may carry, in each spelling SQLite accepts.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif  //  SQLITE_ORM_IMPORT_STD_MODULE
@@ -15872,6 +16044,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 // #include "offset.h"
+
+/** @file
+ *  Purpose: represent the OFFSET a LIMIT clause takes as its second argument.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 // #include "../functional/cxx_polyfill/type_traits.h"
 
@@ -15969,16 +16148,19 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/literal.h"
 
+/** @file
+ *  Purpose: protect an otherwise bindable element so that it is always serialized as a literal value.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 // #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../vocabulary/traits/structural_traits_fwd.h"
 // Included to specialize traits
 
 namespace sqlite_orm::internal {
-
-    /*
-     *  Protect an otherwise bindable element so that it is always serialized as a literal value.
-     */
     template<class T>
     struct literal_holder {
         using type = T;
@@ -15991,6 +16173,13 @@ namespace sqlite_orm::internal {
 }
 
 // #include "ast/match.h"
+
+/** @file
+ *  Purpose: represent the MATCH condition of a full-text search, against a whole table or one of its columns.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
@@ -16067,6 +16256,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/negated_condition.h"
 
+/** @file
+ *  Purpose: represent the NOT operator applied to a condition.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <type_traits>  //  std::enable_if, std::disjunction
@@ -16125,8 +16321,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/order_by.h"
 
-/** @file The ORDER BY clause, in each of the DSL spellings sqlite_orm offers for it - a single ordering term,
- *        a static list of ordering terms, or a list assembled at runtime.
+/** @file
+ *  Purpose: represent the ORDER BY clause in each spelling the DSL offers for it.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -16365,6 +16564,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/quoted_expression.h"
 
+/** @file
+ *  Purpose: lift an expression into the DSL, so that its overloaded operators and member notation apply to it.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if
 #include <utility>  //  std::move, std::forward, std::declval
@@ -16481,6 +16687,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/rowid.h"
 
+/** @file
+ *  Purpose: represent the implicit rowid column of a table.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <type_traits>  //  std::is_same, std::disjunction
@@ -16491,11 +16704,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 
-/*
- *  The rowid of a table, in each of its spellings ROWID, OID and _ROWID_, and each of them unqualified or qualified
- *  by the table - which is the only thing telling the qualified nodes apart, through their `type`.
- *  Each node carries its own spelling.
- */
 namespace sqlite_orm::internal {
     struct rowid_t {
         operator std::string() const {
@@ -16515,6 +16723,7 @@ namespace sqlite_orm::internal {
         }
     };
 
+    //  qualified by the table - which is the only thing telling the qualified nodes apart, through their `type`
     template<class T>
     struct table_rowid_t : public rowid_t {
         using type = T;
@@ -16570,6 +16779,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "ast/rowset_deduplicators.h"
+
+/** @file
+ *  Purpose: represent DISTINCT and ALL, which decide whether a rowset keeps its duplicate rows.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -16648,6 +16864,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/special_keywords.h"
 
+/** @file
+ *  Purpose: represent the keywords SQL evaluates to a value of their own, such as the current date and time.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same
 #endif
@@ -16686,6 +16909,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 // #include "ast/table_reference.h"
+
+/** @file
+ *  Purpose: represent a struct mapped as a table or view as a value of the DSL, and the table-valued function call
+ *  made through it.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>
@@ -16761,12 +16992,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/values.h"
 
-/** @file The VALUES row list, in both of the DSL spellings sqlite_orm offers for it - spelled out
- *        statically, or assembled at runtime.
+/** @file
+ *  Purpose: represent the VALUES row list, spelled out statically or assembled at runtime.
  *
- *        Note: this header sits outside `ast/crud/`, unlike the other clause nodes a raw INSERT or
- *        REPLACE takes, because a VALUES row list is written both as an INSERT's rows and as the
- *        operand of an IN - in either spelling.
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ *
+ *  Note: this header sits outside `ast/crud/`, unlike the other clause nodes a raw INSERT or
+ *  REPLACE takes, because a VALUES row list is written both as an INSERT's rows and as the
+ *  operand of an IN - in either spelling.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -16816,6 +17050,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "ast/where.h"
+
+/** @file
+ *  Purpose: represent the WHERE clause filtering the rows a statement reads or changes.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string_view>  //  std::string_view
@@ -30336,8 +30577,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/crud/set_definitions.h"
 
-/** @file Out-of-class definitions of `dynamic_set_t` members, which need the statement serializer and the AST
- *  traversal machinery that `ast/crud/set.h` stays free of.
+/** @file
+ *  Purpose: define the members of the runtime SET clause that need the statement serializer and the AST traversal.
+ *
+ *  Intention: keeps `ast/crud/set.h` free of them; gathered by `interface_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

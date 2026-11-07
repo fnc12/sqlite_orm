@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent a struct mapped as a table or view as a value of the DSL, and the table-valued function call
+ *  made through it.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>
 #include <type_traits>  //  std::enable_if, std::remove_const, std::type_identity

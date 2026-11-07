@@ -1,10 +1,10 @@
 #pragma once
 
-/** @file The unary and binary operators on expressions: -, ~, and ||, +, -, *, /, %, <<, >>, &, |,
- *        and the assignment of a SET clause - with their factory functions and operator overloads.
+/** @file
+ *  Purpose: represent the unary and binary operators on expressions.
  *
- *        Each operator's tag carries its SQL spelling and the C++ type the operator yields, as `result_type`,
- *        which the operator nodes inherit.
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
