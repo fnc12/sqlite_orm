@@ -1,8 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent the call of a built-in SQL function, and, in C++20 builds, the definition by name and overload
- *  set that generates it.
+ *  Purpose: represent built-in SQL functions as the DSL calls them.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.

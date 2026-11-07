@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent the DEFAULT VALUES modifier a raw INSERT or REPLACE takes in place of a row list.
+ *  Purpose: represent the DEFAULT VALUES modifier.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.

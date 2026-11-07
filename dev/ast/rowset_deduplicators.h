@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent DISTINCT and ALL, which decide whether a rowset keeps its duplicate rows.
+ *  Purpose: represent the modifiers that decide whether a rowset keeps its duplicate rows.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.

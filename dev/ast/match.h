@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent the MATCH condition of a full-text search, against a whole table or one of its columns.
+ *  Purpose: represent the MATCH condition of a full-text search.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.

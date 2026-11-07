@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent the keywords SQL evaluates to a value of their own, such as the current date and time.
+ *  Purpose: represent the keywords SQL evaluates to a value of their own.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.

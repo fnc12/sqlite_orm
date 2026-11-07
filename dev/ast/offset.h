@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent the OFFSET a LIMIT clause takes as its second argument.
+ *  Purpose: represent the OFFSET of a LIMIT clause.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.

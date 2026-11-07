@@ -8986,8 +8986,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/alias.h"
 
 /** @file
- *  Purpose: represent the aliases a statement gives a table, a subquery or a column, and the references made through
- *  them.
+ *  Purpose: represent the aliases by which a statement refers to what it reads.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -9024,8 +9023,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "column_pointer.h"
 
 /** @file
- *  Purpose: represent a column referred to explicitly - a member bound to the mapped type it is read from, or a column
- *  of a CTE or subquery - where deducing it from a member pointer falls short.
+ *  Purpose: represent a column referred to explicitly, where deducing it from a member pointer falls short.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -9724,7 +9722,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/app_function.h"
 
 /** @file
- *  Purpose: represent an application-defined function: the definition that generates its calls, and the calls.
+ *  Purpose: represent an application-defined function.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -10380,7 +10378,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/between.h"
 
 /** @file
- *  Purpose: represent the BETWEEN condition, testing an expression against a lower and an upper bound.
+ *  Purpose: represent the BETWEEN condition.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -10477,7 +10475,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/binary_condition.h"
 
 /** @file
- *  Purpose: represent the binary conditions: the logical connectives and the comparisons.
+ *  Purpose: represent the binary conditions.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -10540,8 +10538,7 @@ namespace sqlite_orm::internal {
 // #include "collate.h"
 
 /** @file
- *  Purpose: represent the COLLATE operator applied to an expression - with one of the built-in collating functions,
- *  or with a named, application-defined one.
+ *  Purpose: represent the COLLATE operator applied to an expression.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -10604,7 +10601,7 @@ namespace sqlite_orm::internal {
 // #include "operators.h"
 
 /** @file
- *  Purpose: represent the unary and binary operators on expressions.
+ *  Purpose: represent the operators on expressions.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -11688,8 +11685,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/builtin_function.h"
 
 /** @file
- *  Purpose: represent the call of a built-in SQL function, and, in C++20 builds, the definition by name and overload
- *  set that generates it.
+ *  Purpose: represent built-in SQL functions as the DSL calls them.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -11732,8 +11728,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "window.h"
 
 /** @file
- *  Purpose: represent the window a window function is evaluated over - its OVER clause, partition and frame - and
- *  the named windows a select defines.
+ *  Purpose: represent the window a window function is evaluated over.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -12479,7 +12474,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/case_expression.h"
 
 /** @file
- *  Purpose: represent the CASE expression, with or without a base expression its WHEN values are compared to.
+ *  Purpose: represent the CASE expression.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -12588,7 +12583,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/cast.h"
 
 /** @file
- *  Purpose: represent the CAST expression, converting an expression to the SQLite type of a C++ type.
+ *  Purpose: represent the CAST expression.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -12794,7 +12789,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/crud/default_values.h"
 
 /** @file
- *  Purpose: represent the DEFAULT VALUES modifier a raw INSERT or REPLACE takes in place of a row list.
+ *  Purpose: represent the DEFAULT VALUES modifier.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -12831,9 +12826,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/crud/get.h"
 
 /** @file
- *  Purpose: represent the SELECT reading mapped objects - one by its primary key, or all of a table that satisfy
- *  conditions - once for each way an object is handed out: as is, owned by a `std::unique_ptr`, or held by a
- *  `std::optional`.
+ *  Purpose: represent the SELECT reading mapped objects.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -12869,7 +12862,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../select.h"
 
 /** @file
- *  Purpose: represent the SELECT statement, and check that its clauses form one.
+ *  Purpose: represent the SELECT statement.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -13196,8 +13189,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/crud/insert.h"
 
 /** @file
- *  Purpose: represent the INSERT statement in each spelling the DSL offers for it, and the conflict resolution a raw
- *  INSERT takes.
+ *  Purpose: represent the INSERT statement.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -13657,7 +13649,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/crud/into.h"
 
 /** @file
- *  Purpose: represent the INTO clause naming the table a raw INSERT or REPLACE targets.
+ *  Purpose: represent the INTO clause.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -13697,7 +13689,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/crud/remove.h"
 
 /** @file
- *  Purpose: represent the DELETE statement in each spelling the DSL offers for it.
+ *  Purpose: represent the DELETE statement.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -13831,7 +13823,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/crud/replace.h"
 
 /** @file
- *  Purpose: represent the REPLACE statement in each spelling the DSL offers for it.
+ *  Purpose: represent the REPLACE statement.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -14029,7 +14021,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/crud/set.h"
 
 /** @file
- *  Purpose: represent the SET clause of an UPDATE, spelled out statically or assembled at runtime.
+ *  Purpose: represent the SET clause of an UPDATE.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -14165,7 +14157,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/crud/update.h"
 
 /** @file
- *  Purpose: represent the UPDATE statement in each spelling the DSL offers for it.
+ *  Purpose: represent the UPDATE statement.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -14276,8 +14268,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/crud/upsert_clause.h"
 
 /** @file
- *  Purpose: represent the ON CONFLICT clause of an INSERT: the conflict target and the action that resolves the
- *  conflict.
+ *  Purpose: represent the ON CONFLICT clause of an INSERT.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -14360,7 +14351,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/cte.h"
 
 /** @file
- *  Purpose: represent common table expressions, and the WITH clause that puts them in front of a statement.
+ *  Purpose: represent common table expressions.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -14950,7 +14941,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/from.h"
 
 /** @file
- *  Purpose: represent the FROM clause in each spelling the DSL offers for it.
+ *  Purpose: represent the FROM clause.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -15042,7 +15033,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/group_by.h"
 
 /** @file
- *  Purpose: represent the GROUP BY clause of a select, with or without its HAVING condition.
+ *  Purpose: represent the GROUP BY clause of a select.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -15109,7 +15100,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/in.h"
 
 /** @file
- *  Purpose: represent the IN condition and its negation, testing an expression against a set of values.
+ *  Purpose: represent the IN condition.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -15273,7 +15264,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/is_null.h"
 
 /** @file
- *  Purpose: represent the conditions testing an expression for NULL, IS NULL and IS NOT NULL.
+ *  Purpose: represent the conditions testing an expression for NULL.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -15350,7 +15341,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/join.h"
 
 /** @file
- *  Purpose: represent the joins of a FROM clause, with their ON and USING constraints.
+ *  Purpose: represent the joins of a FROM clause.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -15943,7 +15934,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/like.h"
 
 /** @file
- *  Purpose: represent the pattern matching operators LIKE, with an optional ESCAPE, and GLOB.
+ *  Purpose: represent the pattern matching conditions.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -16067,7 +16058,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/limit.h"
 
 /** @file
- *  Purpose: represent the LIMIT clause and the offset it may carry, in each spelling SQLite accepts.
+ *  Purpose: represent the LIMIT clause.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -16088,7 +16079,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "offset.h"
 
 /** @file
- *  Purpose: represent the OFFSET a LIMIT clause takes as its second argument.
+ *  Purpose: represent the OFFSET of a LIMIT clause.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -16217,7 +16208,7 @@ namespace sqlite_orm::internal {
 // #include "ast/match.h"
 
 /** @file
- *  Purpose: represent the MATCH condition of a full-text search, against a whole table or one of its columns.
+ *  Purpose: represent the MATCH condition of a full-text search.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -16364,7 +16355,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/order_by.h"
 
 /** @file
- *  Purpose: represent the ORDER BY clause in each spelling the DSL offers for it.
+ *  Purpose: represent the ORDER BY clause.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -16823,7 +16814,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/rowset_deduplicators.h"
 
 /** @file
- *  Purpose: represent DISTINCT and ALL, which decide whether a rowset keeps its duplicate rows.
+ *  Purpose: represent the modifiers that decide whether a rowset keeps its duplicate rows.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -16907,7 +16898,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/special_keywords.h"
 
 /** @file
- *  Purpose: represent the keywords SQL evaluates to a value of their own, such as the current date and time.
+ *  Purpose: represent the keywords SQL evaluates to a value of their own.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -16953,8 +16944,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/table_reference.h"
 
 /** @file
- *  Purpose: represent a struct mapped as a table or view as a value of the DSL, and the table-valued function call
- *  made through it.
+ *  Purpose: represent a struct mapped as a table or view as a value of the DSL.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -17035,7 +17025,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/values.h"
 
 /** @file
- *  Purpose: represent the VALUES row list, spelled out statically or assembled at runtime.
+ *  Purpose: represent the VALUES row list.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -17097,7 +17087,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/where.h"
 
 /** @file
- *  Purpose: represent the WHERE clause filtering the rows a statement reads or changes.
+ *  Purpose: represent the WHERE clause.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.

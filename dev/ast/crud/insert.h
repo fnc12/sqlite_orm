@@ -1,8 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent the INSERT statement in each spelling the DSL offers for it, and the conflict resolution a raw
- *  INSERT takes.
+ *  Purpose: represent the INSERT statement.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.

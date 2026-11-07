@@ -1,9 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent the SELECT reading mapped objects - one by its primary key, or all of a table that satisfy
- *  conditions - once for each way an object is handed out: as is, owned by a `std::unique_ptr`, or held by a
- *  `std::optional`.
+ *  Purpose: represent the SELECT reading mapped objects.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.

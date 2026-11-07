@@ -1,8 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent the ON CONFLICT clause of an INSERT: the conflict target and the action that resolves the
- *  conflict.
+ *  Purpose: represent the ON CONFLICT clause of an INSERT.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.

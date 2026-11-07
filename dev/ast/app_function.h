@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent an application-defined function: the definition that generates its calls, and the calls.
+ *  Purpose: represent an application-defined function.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.

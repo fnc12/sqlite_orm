@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent the SET clause of an UPDATE, spelled out statically or assembled at runtime.
+ *  Purpose: represent the SET clause of an UPDATE.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.

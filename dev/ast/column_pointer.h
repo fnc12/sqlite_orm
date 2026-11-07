@@ -1,8 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent a column referred to explicitly - a member bound to the mapped type it is read from, or a column
- *  of a CTE or subquery - where deducing it from a member pointer falls short.
+ *  Purpose: represent a column referred to explicitly, where deducing it from a member pointer falls short.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.

@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent the BETWEEN condition, testing an expression against a lower and an upper bound.
+ *  Purpose: represent the BETWEEN condition.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
