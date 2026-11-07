@@ -1,0 +1,17 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-07: pass 2 of the Purpose/Intention
+sweep (metatrom-ag/claude-code-plugins#293), after dev/ast/, on branch
+docs/purpose-intention-pass2. Follows bbe12a6a.
+
+# Decided
+- trueqbit (35.b): the node-header rule goes into vocabulary-layer.md
+  "Adding a new DSL node", step 1, in a commit of its own, worded as Claude
+  proposed and wrapped to the document's width.
+- trueqbit: a node header groups a node family; more, smaller headers were
+  weighed and rejected for their number. Where a Purpose fits a family
+  poorly, the Purpose widens or the file (or its folder) is renamed to
+  match.
+
+# Discussed
+- AGENTS.md "Code style" was the other home weighed; the step that adds a
+  node is where a contributor meets the rule.
