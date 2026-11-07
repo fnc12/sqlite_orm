@@ -1,0 +1,106 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-07: pass 2 of the Purpose/Intention
+sweep (metatrom-ag/claude-code-plugins#293), first folder dev/ast/ (47
+headers, 20 of them with an @file block), on branch
+docs/purpose-intention-pass2, stacked on #1605. Follows 5ce89bce.
+
+# Decided
+- trueqbit (35): every node header carries Purpose and Intention in its
+  @file block, also one defining a single node: a node header groups a node
+  family - the node structs, their factories, the trait definitions - and
+  the Purpose is as wide as the family; more headers were weighed and
+  rejected. A brief doc-comment goes on the nodes themselves where the
+  name leaves them open (a commit of its own; schema/ nodes in the schema/
+  pass); the rule goes into vocabulary-layer.md "Adding a new DSL node" in
+  a commit of its own.
+- The node headers share one Intention: "a node header of `ast/`, placed by
+  source-layout.md; specializes the vocabulary axes in place, as
+  vocabulary-layer.md holds, and is gathered by node_definitions.h". The
+  reviewer checked each claim against the tree. operand_tags.h and
+  crud/set_definitions.h, which are no node headers, carry their own.
+- trueqbit (2): assign_t is a binary operator with a grammar trait and stays
+  in operators.h; the grammar trait exists to decouple it from crud/. The
+  Purpose names no member: "represent the unary and binary operators on
+  expressions."
+- trueqbit (1): rowid.h's Purpose drops "under each of its three names,
+  unqualified or qualified by a table" - the struct names say it. Its file
+  comment is cut down to its one why, placed above the qualified nodes.
+- trueqbit (34): app_function.h is no split candidate - the UDF traits and
+  callable_arguments are what a definition is made of. Purpose: "represent
+  an application-defined function: the definition that generates its calls,
+  and the calls."
+- trueqbit (33): VALUES as an operand of IN is SQLite grammar (a VALUES
+  clause is a select-core); values.h's Note stands. sqlite_orm lacks the
+  spelling, which goes to TODO.md in its own commit; TODO items go to
+  TODO.md alone, not the ledger.
+- Claude, from the reviewer: result_columns.h "beyond a bare expression"
+  (as_optional wraps a single expression); app_function.h "the traits this
+  header declares"; set_definitions.h names set.h in the Intention only.
+  get_all_t's result_type versus return_type is left to the two aliases.
+
+# Discussed
+- Cut, because the declarations say it: the spelling, overload and operator
+  lists of insert.h ("against a mapped object, against a range of them,
+  against an explicit column list, or raw -, plus the OR conflict-resolution
+  modifier only a raw INSERT takes" - the modifier kept in the Purpose),
+  remove.h ("`remove` against the primary key of a mapped object, or
+  `remove_all` raw against conditions"), replace.h ("against a mapped
+  object, against a range of them, or raw"), update.h ("against a mapped
+  object, or raw against a SET clause and conditions"), from.h ("naming
+  mapped tables by type, or listing table expressions, such as a
+  table-valued function"), order_by.h ("a single ordering term, a static
+  list of ordering terms, or a list assembled at runtime"),
+  binary_condition.h ("=, !=, IS, IS NOT, IS [NOT] DISTINCT FROM, >, >=, <,
+  <= - with their factory functions and operator overloads"), operators.h
+  ("-, ~, and ||, +, -, *, /, %, <<, >>, &, | ... with their factory
+  functions and operator overloads"; "Each operator's tag carries its SQL
+  spelling and the C++ type the operator yields, as `result_type`, which the
+  operator nodes inherit."), builtin_function.h ("scalar and aggregate
+  function calls, an aggregate call with a FILTER clause, and COUNT(*)"),
+  app_function.h ("by its UDF type (`func<UDF>`) or by a quoted callable
+  (`"name"_scalar`)"), upsert_clause.h ("DO NOTHING / DO UPDATE SET"),
+  get.h ("(get, get_pointer, get_optional)", "(get_all, get_all_pointer,
+  get_all_optional)", "Each of them declares that as its `result_type`: the
+  type of the object read by primary key, or of the elements of the
+  container the objects are read into.").
+- Cut, because join_clause's doc-comment says it: join.h "All joins are DSL
+  spellings of the one join-operator production, classified by
+  `is_any_join`: each carries its keyword, the joined table as its `type`,
+  and its constraint as its `on_type` - ON or USING spelled out, or the
+  implicit constraint of CROSS JOIN and NATURAL JOIN."
+- Moved into a label: get.h "how an object is handed out - as is, owned by
+  a `std::unique_ptr`, or held by a `std::optional`" (Purpose);
+  builtin_function.h "The functions themselves are in
+  `builtin/functions/`." and app_function.h's registration with SQLite
+  (Intention, the latter checked against execution/storage_base.h);
+  literal.h's struct comment "Protect an otherwise bindable element so that
+  it is always serialized as a literal value." (Purpose, the struct comment
+  deleted).
+- rowid.h, cut from its file comment: "The rowid of a table, in each of its
+  spellings ROWID, OID and _ROWID_, and each of them unqualified or
+  qualified by the table" and "Each node carries its own spelling."; kept
+  above the qualified nodes: "qualified by the table - which is the only
+  thing telling the qualified nodes apart, through their `type`".
+- Fresh reader (Haiku) on crud/get.h, operand_tags.h, quoted_expression.h,
+  column_pointer.h, window.h: 0 files opened, all five agree with the header.
+- Reviewer (report-only): 1 blocking (exists.h, fixed in 5ce89bce and the
+  Intention), 5 polish, 1 for trueqbit (operators.h, ruled above).
+- Green: pre-commit.sh exit 0; comment-free token stream identical in all
+  47 files; clang-format 20 unchanged; no `on purpose:`; LF, ASCII.
+- measure.mjs, 5ce89bce against 8580143e, include/ stripped:
+
+  | measure | before | after | change |
+  |---|---:|---:|---:|
+  | files | 475 | 475 | 0 |
+  | lines | 57700 | 57848 | +148 |
+  | copies | 3884 | 3903 | +19 |
+  | hopsMean | 10.1 | 10.1 | 0 |
+  | hopsMax | 221 | 221 | 0 |
+  | gzipBytes | 469380 | 469837 | +457 |
+
+  The copies come from the shared Intention sentence.
+
+# Later
+- Doc-comments on the ast/ node structs whose name leaves them open, then
+  the vocabulary-layer.md rule; schema/ and the following folders in a fresh
+  session through handover-step2b.md.
