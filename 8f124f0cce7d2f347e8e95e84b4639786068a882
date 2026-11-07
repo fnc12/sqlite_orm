@@ -1,0 +1,15 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-07: pass 2 of the Purpose/Intention
+sweep (metatrom-ag/claude-code-plugins#293), dev/ast/, on branch
+docs/purpose-intention-pass2. Follows 8580143e.
+
+# Decided
+- trueqbit (33): values.h's Note - a VALUES row list is written as an
+  INSERT's rows and as the operand of an IN - holds by SQLite's grammar,
+  where a VALUES clause is a select-core and IN takes a select. No use of
+  it is in the tree or the tests, so its support goes to TODO.md "SQL
+  language". TODO items go to TODO.md alone; the ledger keeps frictions
+  waiting for a ruling.
+- Claude's first reading, withdrawn: values.h misplaced beside into.h and
+  default_values.h in crud/. Raw INSERT and REPLACE are CRUD operations,
+  so the comparison did not hold.
