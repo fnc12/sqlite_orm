@@ -1,0 +1,12 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-07: pass 2 of the Purpose/Intention
+sweep (metatrom-ag/claude-code-plugins#293), folder dev/ast/, on branch
+docs/purpose-intention-pass2, stacked on #1605.
+
+# Decided
+- trueqbit: exists.h includes grammar_traits_fwd.h, as vocabulary-layer.md
+  "Adding a new DSL node" step 2 asks; a finding with a fix that came along
+  with the sweep, in its own commit on this branch (ledger draft entry 36,
+  ruled, so it leaves the ledger for this note).
+- The reviewer found it: exists.h defines is_exists_v, whose primary sits in
+  grammar_traits_fwd.h, which reached the file only through node_traits.h.
