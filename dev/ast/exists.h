@@ -6,6 +6,7 @@
 
 #include "../functional/cxx_polyfill/type_traits.h"
 #include "../vocabulary/node_traits.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "operand_tags.h"
 
 namespace sqlite_orm::internal {
