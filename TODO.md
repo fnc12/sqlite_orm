@@ -19,6 +19,7 @@
 * `RAISE` with an arbitrary expression as the error message (3.47) — the `raise_*` factories take only strings
 * `VACUUM INTO` (3.27), `ANALYZE` (with an optional index argument), `REINDEX` / `REINDEX EXPRESSIONS` (3.53), `EXPLAIN` / `EXPLAIN QUERY PLAN`
 * `ATTACH`
+* `VALUES` as a select of its own, e.g. the operand of IN in `x IN (VALUES (1), (2))` - `values()` builds the rows of a raw INSERT or REPLACE so far
 
 ## Functions
 
