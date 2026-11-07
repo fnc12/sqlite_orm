@@ -19,6 +19,9 @@
 #include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
+    /**
+     *  A result column whose value is read into a `std::optional`.
+     */
     template<class T>
     struct as_optional_t {
         using expression_type = T;
@@ -69,6 +72,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_asterisk_v = polyfill::is_specialization_of<T, asterisk_t>::value;
 
+    /**
+     *  All columns of the mapped type `T`, read back as one object.
+     */
     template<class T>
     struct object_t {
         using type = T;

@@ -196,6 +196,9 @@ namespace sqlite_orm::internal {
         }
     };
 
+    /**
+     *  A reference to a column alias.
+     */
     template<class T>
     struct alias_holder {
         using type = T;

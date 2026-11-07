@@ -48,6 +48,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_replace_range_v = polyfill::is_specialization_of<T, replace_range_t>::value;
 
+    /**
+     *  The REPLACE with its clauses spelled out.
+     */
     template<class... Args>
     struct replace_raw_t {
         using args_tuple = std::tuple<Args...>;

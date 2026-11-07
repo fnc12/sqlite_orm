@@ -125,6 +125,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_over_v = polyfill::is_specialization_of_v<T, over_t>;
 
+    /**
+     *  A named window definition of the WINDOW clause of a select.
+     */
     template<class... Args>
     struct window_defn_t {
         using args_type = std::tuple<Args...>;

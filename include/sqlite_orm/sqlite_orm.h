@@ -9360,6 +9360,9 @@ namespace sqlite_orm::internal {
         }
     };
 
+    /**
+     *  A reference to a column alias.
+     */
     template<class T>
     struct alias_holder {
         using type = T;
@@ -11856,6 +11859,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_over_v = polyfill::is_specialization_of_v<T, over_t>;
 
+    /**
+     *  A named window definition of the WINDOW clause of a select.
+     */
     template<class... Args>
     struct window_defn_t {
         using args_type = std::tuple<Args...>;
@@ -12111,6 +12117,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_builtin_function_call_v = is_base_template_of<builtin_function_t, T>::value;
 
+    /**
+     *  The call of a built-in aggregate function, which a FILTER clause can narrow.
+     */
     template<class R, class S, class... Args>
     struct builtin_aggregate_function_t : builtin_function_t<R, S, Args...> {
         using super = builtin_function_t<R, S, Args...>;
@@ -12492,6 +12501,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // Included to specialize traits
 
 namespace sqlite_orm::internal {
+    /**
+     *  The result expression of a WHEN branch of a CASE expression.
+     */
     template<class T>
     struct then_t {
         using expression_type = T;
@@ -12499,6 +12511,9 @@ namespace sqlite_orm::internal {
         expression_type expression;
     };
 
+    /**
+     *  A CASE expression, with or without a base expression.
+     */
     template<class R, class T, class E, class... Args>
     struct simple_case_t {
         using return_type = R;
@@ -13233,6 +13248,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // Included to specialize traits
 
 namespace sqlite_orm::internal {
+    /**
+     *  A result column whose value is read into a `std::optional`.
+     */
     template<class T>
     struct as_optional_t {
         using expression_type = T;
@@ -13283,6 +13301,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_asterisk_v = polyfill::is_specialization_of<T, asterisk_t>::value;
 
+    /**
+     *  All columns of the mapped type `T`, read back as one object.
+     */
     template<class T>
     struct object_t {
         using type = T;
@@ -13397,6 +13418,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_object_dml_expression_v<T, std::enable_if_t<is_insert_v<T>>> = true;
 
+    /**
+     *  The INSERT of a mapped object into an explicit list of its columns.
+     */
     template<class T, class... Cols>
     struct insert_explicit {
         using object_type = T;
@@ -13425,6 +13449,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_insert_range_v = polyfill::is_specialization_of<T, insert_range_t>::value;
 
+    /**
+     *  The INSERT with its clauses spelled out.
+     */
     template<class... Args>
     struct insert_raw_t {
         using args_tuple = std::tuple<Args...>;
@@ -13451,6 +13478,9 @@ namespace sqlite_orm::internal {
         rollback,
     };
 
+    /**
+     *  The OR conflict-resolution modifier of a raw INSERT.
+     */
     struct insert_constraint {
         conflict_action action = conflict_action::abort;
     };
@@ -13709,6 +13739,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_object_dml_expression_v<T, std::enable_if_t<is_remove_v<T>>> = true;
 
+    /**
+     *  The DELETE of the rows of a table that satisfy conditions.
+     */
     template<class T, class... Args>
     struct remove_all_t {
         using object_type = T;
@@ -13851,6 +13884,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_replace_range_v = polyfill::is_specialization_of<T, replace_range_t>::value;
 
+    /**
+     *  The REPLACE with its clauses spelled out.
+     */
     template<class... Args>
     struct replace_raw_t {
         using args_tuple = std::tuple<Args...>;
@@ -14168,6 +14204,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_object_dml_expression_v<T, std::enable_if_t<is_update_v<T>>> = true;
 
+    /**
+     *  The UPDATE of the rows that satisfy conditions, through a SET clause.
+     */
     template<class S, class... Wargs>
     struct update_all_t {
         using set_type = S;
@@ -15116,6 +15155,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_dynamic_in_v = polyfill::is_specialization_of_v<T, dynamic_in_t>;
 
+    /**
+     *  The IN condition against a list of operands given one by one.
+     */
     template<class L, class... Args>
     struct in_t : condition_t, in_base, negatable_t {
         using left_type = L;
@@ -17025,6 +17067,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
 
+    /**
+     *  A VALUES row list assembled at runtime.
+     */
     template<class T>
     struct dynamic_values_t {
         std::vector<T> vector;

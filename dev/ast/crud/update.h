@@ -34,6 +34,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_object_dml_expression_v<T, std::enable_if_t<is_update_v<T>>> = true;
 
+    /**
+     *  The UPDATE of the rows that satisfy conditions, through a SET clause.
+     */
     template<class S, class... Wargs>
     struct update_all_t {
         using set_type = S;

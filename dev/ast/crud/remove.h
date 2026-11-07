@@ -36,6 +36,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_object_dml_expression_v<T, std::enable_if_t<is_remove_v<T>>> = true;
 
+    /**
+     *  The DELETE of the rows of a table that satisfy conditions.
+     */
     template<class T, class... Args>
     struct remove_all_t {
         using object_type = T;

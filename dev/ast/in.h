@@ -44,6 +44,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_dynamic_in_v = polyfill::is_specialization_of_v<T, dynamic_in_t>;
 
+    /**
+     *  The IN condition against a list of operands given one by one.
+     */
     template<class L, class... Args>
     struct in_t : condition_t, in_base, negatable_t {
         using left_type = L;

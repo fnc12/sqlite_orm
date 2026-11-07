@@ -31,6 +31,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
 
+    /**
+     *  A VALUES row list assembled at runtime.
+     */
     template<class T>
     struct dynamic_values_t {
         std::vector<T> vector;

@@ -144,6 +144,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_builtin_function_call_v = is_base_template_of<builtin_function_t, T>::value;
 
+    /**
+     *  The call of a built-in aggregate function, which a FILTER clause can narrow.
+     */
     template<class R, class S, class... Args>
     struct builtin_aggregate_function_t : builtin_function_t<R, S, Args...> {
         using super = builtin_function_t<R, S, Args...>;

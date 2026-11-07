@@ -19,6 +19,9 @@
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
+    /**
+     *  The result expression of a WHEN branch of a CASE expression.
+     */
     template<class T>
     struct then_t {
         using expression_type = T;
@@ -26,6 +29,9 @@ namespace sqlite_orm::internal {
         expression_type expression;
     };
 
+    /**
+     *  A CASE expression, with or without a base expression.
+     */
     template<class R, class T, class E, class... Args>
     struct simple_case_t {
         using return_type = R;
