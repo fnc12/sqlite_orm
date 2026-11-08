@@ -1,0 +1,12 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-08: #1605's new head carried into
+pass 2 by a merge, never a rebase, so #1608 shows only its own diff again.
+
+# Decided
+- Merged f326e144: dev's #1607, mapped_type_of's doc-comment (60ca6ceb) and
+  the Purposes of dev/vocabulary/ (fcf089c8); no conflict, the amalgamation
+  auto-merged.
+
+# Discussed
+- Checks: pre-commit.sh exit 0, the regenerated amalgamation identical to
+  the merged one.
