@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: obtain a node's relevant sub-expression, or the node itself, whichever grammar family the node belongs to.
+ *  Purpose: reach a node's driving expression or what it carries, the node itself where nothing else drives it.
  *
  *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
  *  the node traits and the projections into uniform access to the parts of a node.
@@ -159,7 +159,7 @@ namespace sqlite_orm::internal {
 // record set accessors
 namespace sqlite_orm::internal {
     /** 
-     *  Defines the `type` typename to be:
+     *  The mapped type an expression carries, unchecked against the schema:
      *  - The unqualified unwrapped table reference type if T is a table reference.
      *  - The unqualified unwrapped table-valued expression type if T is a table-valued expression.
      *  - The unqualified aliased type if T is a recordset alias.

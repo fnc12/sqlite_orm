@@ -1,11 +1,12 @@
 #pragma once
 
 /** @file
- *  Purpose: decide whether a node refers to a table or a record set, and so may occupy the record set slot of a
- *  factory.
+ *  Purpose: decide which nodes stand for a record set.
  *
  *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
- *  the single-node concepts of `traits/recordset_concepts.h` across the grammar and structural axes.
+ *  the single-node concepts of `traits/recordset_concepts.h` across the grammar and structural axes; the factories of
+ *  `ast/` and `builtin/` and the operations of `execution/storage.h` constrain their record set parameter with them,
+ *  and they are exported for users to do the same.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

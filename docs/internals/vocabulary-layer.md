@@ -1,7 +1,6 @@
 # The DSL vocabulary layer
 
-> **Purpose:** lay down where the traits, projections and algorithms of the DSL vocabulary belong, and
-> how a node specializes them and a consumer reads them.
+> **Purpose:** lay down what belongs to the DSL vocabulary and where, and how it is specialized and read.
 >
 > **Intention:** the normative reference for `dev/vocabulary/`, its manifests and
 > `dev/schema/algorithms/`, whose rule to apply is the placement test in

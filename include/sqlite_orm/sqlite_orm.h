@@ -3131,7 +3131,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../vocabulary/node_algorithms.h"
 
 /** @file
- *  Purpose: gather the judgments that follow from what a node is and carries into one include.
+ *  Purpose: gather what follows from what a node or a field type is and carries.
  *
  *  Intention: the umbrella of `algorithms/` in the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md`
  *  holds; the consumers in `dev/` include it in place of the files behind it.
@@ -3140,7 +3140,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "algorithms/accessors.h"
 
 /** @file
- *  Purpose: obtain a node's relevant sub-expression, or the node itself, whichever grammar family the node belongs to.
+ *  Purpose: reach a node's driving expression or what it carries, the node itself where nothing else drives it.
  *
  *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
  *  the node traits and the projections into uniform access to the parts of a node.
@@ -3220,7 +3220,7 @@ namespace sqlite_orm::internal {
 // #include "../node_traits.h"
 
 /** @file
- *  Purpose: gather what a node is and what it carries into one include.
+ *  Purpose: gather what a node is and what it carries.
  *
  *  Intention: the umbrella of `traits/` and `projections/` in the vocabulary layer, whose rules
  *  `docs/internals/vocabulary-layer.md` holds; the consumers in `dev/` include it in place of the files behind
@@ -3245,8 +3245,7 @@ namespace sqlite_orm::internal {
 // #include "../node_fwd.h"
 
 /** @file
- *  Purpose: declare the concrete nodes that vocabulary files use directly without their definitions - in base-class
- *  overloads, partial specializations or metafunctions.
+ *  Purpose: declare the nodes that are named before their definitions are in scope.
  *
  *  Intention: part of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; the definitions
  *  arrive through `node_definitions.h`.
@@ -3342,7 +3341,7 @@ namespace sqlite_orm::internal {
 // #include "projections/nested_types.h"
 
 /** @file
- *  Purpose: read the type names a node declares, through alias templates as syntactic sugar.
+ *  Purpose: read the nested types a node declares.
  *
  *  Intention: a projection of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds.
  */
@@ -3593,8 +3592,8 @@ namespace sqlite_orm::internal {
 // #include "traits/grammar_traits_fwd.h"
 
 /** @file
- *  Purpose: declare the traits classifying the DSL nodes by the SQL grammar production they belong to, whether a leaf
- *  production of one node or a production grouping several.
+ *  Purpose: declare the traits classifying the types a DSL expression is built from by the SQL grammar production each
+ *  belongs to.
  *
  *  Intention: the grammar axis of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; the
  *  traits are defined in the corresponding header files of the grammar nodes.
@@ -5062,7 +5061,7 @@ namespace sqlite_orm::internal {
 // record set accessors
 namespace sqlite_orm::internal {
     /** 
-     *  Defines the `type` typename to be:
+     *  The mapped type an expression carries, unchecked against the schema:
      *  - The unqualified unwrapped table reference type if T is a table reference.
      *  - The unqualified unwrapped table-valued expression type if T is a table-valued expression.
      *  - The unqualified aliased type if T is a recordset alias.
@@ -5518,7 +5517,7 @@ namespace sqlite_orm::internal {
 // #include "algorithms/ddl_predicates.h"
 
 /** @file
- *  Purpose: decide which nodes are admissible elements of a schema definition - a column, a table or an index.
+ *  Purpose: decide what holds of the nodes of a schema definition.
  *
  *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
  *  the grammar and field traits into the element checks of the schema definitions of `schema/`.
@@ -5680,10 +5679,11 @@ namespace sqlite_orm::internal {
 // #include "algorithms/field_predicates_concepts.h"
 
 /** @file
- *  Purpose: define the field predicates whose condition is a concept, beside their C++17 fallback.
+ *  Purpose: define the field predicates written as concepts.
  *
  *  Intention: the concepts of the field predicates in the vocabulary layer, whose rules
- *  `docs/internals/vocabulary-layer.md` holds.
+ *  `docs/internals/vocabulary-layer.md` holds; before C++20, each falls back to a variable template of the same
+ *  meaning.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -5907,11 +5907,12 @@ namespace sqlite_orm::internal {
 // #include "algorithms/recordset_predicates.h"
 
 /** @file
- *  Purpose: decide whether a node refers to a table or a record set, and so may occupy the record set slot of a
- *  factory.
+ *  Purpose: decide which nodes stand for a record set.
  *
  *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
- *  the single-node concepts of `traits/recordset_concepts.h` across the grammar and structural axes.
+ *  the single-node concepts of `traits/recordset_concepts.h` across the grammar and structural axes; the factories of
+ *  `ast/` and `builtin/` and the operations of `execution/storage.h` constrain their record set parameter with them,
+ *  and they are exported for users to do the same.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -17158,7 +17159,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "vocabulary/algorithms/field_predicates.h"
 
 /** @file
- *  Purpose: define the predicates on a column's field type that the type decides by itself.
+ *  Purpose: define the field predicates read off the C++ type itself.
  *
  *  Intention: realizes the declarations of `field_predicates_fwd.h` derived from the type itself;
  *  `node_algorithm_definitions.h` includes it.

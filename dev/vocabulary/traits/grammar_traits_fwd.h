@@ -1,8 +1,8 @@
 #pragma once
 
 /** @file
- *  Purpose: declare the traits classifying the DSL nodes by the SQL grammar production they belong to, whether a leaf
- *  production of one node or a production grouping several.
+ *  Purpose: declare the traits classifying the types a DSL expression is built from by the SQL grammar production each
+ *  belongs to.
  *
  *  Intention: the grammar axis of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; the
  *  traits are defined in the corresponding header files of the grammar nodes.

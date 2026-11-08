@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: decide which nodes are admissible elements of a schema definition - a column, a table or an index.
+ *  Purpose: decide what holds of the nodes of a schema definition.
  *
  *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
  *  the grammar and field traits into the element checks of the schema definitions of `schema/`.

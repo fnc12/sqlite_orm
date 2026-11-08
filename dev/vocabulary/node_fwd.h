@@ -1,8 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: declare the concrete nodes that vocabulary files use directly without their definitions - in base-class
- *  overloads, partial specializations or metafunctions.
+ *  Purpose: declare the nodes that are named before their definitions are in scope.
  *
  *  Intention: part of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; the definitions
  *  arrive through `node_definitions.h`.

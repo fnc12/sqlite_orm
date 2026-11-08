@@ -1,10 +1,11 @@
 #pragma once
 
 /** @file
- *  Purpose: define the field predicates whose condition is a concept, beside their C++17 fallback.
+ *  Purpose: define the field predicates written as concepts.
  *
  *  Intention: the concepts of the field predicates in the vocabulary layer, whose rules
- *  `docs/internals/vocabulary-layer.md` holds.
+ *  `docs/internals/vocabulary-layer.md` holds; before C++20, each falls back to a variable template of the same
+ *  meaning.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
