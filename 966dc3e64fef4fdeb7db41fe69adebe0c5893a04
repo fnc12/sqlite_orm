@@ -1,0 +1,18 @@
+# Scene
+trueqbit, reviewing #1608: like.h groups LIKE and GLOB, the Purpose fine,
+the name the wrong Action - does it warrant a rename?
+
+# Decided
+- Claude, trueqbit: "Your lean is my lean": pattern_matching.h, the term
+  SQL manuals file LIKE, GLOB and regular expressions under (PostgreSQL
+  "Pattern Matching"); a REGEXP node would join it. Weighed: C++ readers
+  may hear structural pattern matching first; the file's place among the
+  condition nodes of ast/ settles the sense.
+- Rejected: glob.h beside like.h (assembling is preferred), keeping like.h
+  (the name narrower than what it holds).
+- Every other ast/ header checked for the same mismatch, none found: in.h,
+  is_null.h hold variants of one construct; rowid.h the column and its
+  aliases; group_by.h's HAVING is reached through group_by().having();
+  crud/remove.h follows the API's remove().
+- Pure move: the amalgamation differs only in position and the include
+  marker.
