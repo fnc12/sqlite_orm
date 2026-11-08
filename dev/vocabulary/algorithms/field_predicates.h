@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: define the predicates on a column's field type that the type decides by itself.
+ *  Purpose: define the field predicates read off the C++ type itself.
  *
  *  Intention: realizes the declarations of `field_predicates_fwd.h` derived from the type itself;
  *  `node_algorithm_definitions.h` includes it.

@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: obtain a node's relevant sub-expression, or the node itself, whichever grammar family the node belongs to.
+ *  Purpose: reach a node's driving expression or what it carries, the node itself where nothing else drives it.
  *
  *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
  *  the node traits and the projections into uniform access to the parts of a node.

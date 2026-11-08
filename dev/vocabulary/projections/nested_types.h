@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: read the type names a node declares, through alias templates as syntactic sugar.
+ *  Purpose: read the nested types a node declares.
  *
  *  Intention: a projection of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds.
  */

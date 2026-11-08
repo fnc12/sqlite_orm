@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: gather the judgments that follow from what a node is and carries into one include.
+ *  Purpose: gather what follows from what a node or a field type is and carries.
  *
  *  Intention: the umbrella of `algorithms/` in the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md`
  *  holds; the consumers in `dev/` include it in place of the files behind it.
