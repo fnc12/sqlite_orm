@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent a struct mapped as a table or view as a value of the DSL.
+ *  Purpose: lift a struct mapped as a table or view into the DSL.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
