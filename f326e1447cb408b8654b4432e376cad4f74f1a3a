@@ -1,0 +1,12 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-08: after the Purpose check pass,
+trueqbit asked to merge origin/dev -> #1605 -> #1608.
+
+# Decided
+- dev at fcf5a790 brings #1607 alone (.gitattributes marks the amalgamated
+  headers linguist-generated); no conflict. From here plain measure.mjs
+  leaves include/ out, and campaign.md's strip recipe is no longer needed
+  on these branches.
+
+# Discussed
+- Checks: pre-commit.sh exit 0, tree unchanged.
