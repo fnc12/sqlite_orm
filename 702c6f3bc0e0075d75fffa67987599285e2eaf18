@@ -1,0 +1,19 @@
+# Scene
+trueqbit asked to align the Purposes of dev/ast/table_reference.h and
+dev/ast/quoted_expression.h on the "lifting into the DSL" wording, leaving
+the judgement of what reads clearer to Claude.
+
+# Decided
+- Claude: both read "lift … into the DSL": table_reference.h "lift a struct
+  mapped as a table or view into the DSL", quoted_expression.h "lift an
+  expression into the DSL". Both give something that is no DSL value of its
+  own a place in the DSL; "represent" stays with the node Purposes of SQL
+  constructs. trueqbit's yes: "yes, commit it".
+- quoted_expression.h drops "so that its overloaded operators and member
+  notation apply to it": "member notation" points at the members =, in,
+  not_in, a detail of the kind da22013e cut; "lift into the DSL" already
+  says the DSL's notation applies.
+- Re-checked against reviewer checks 3 and 4 after the rewording, as the
+  round's Purpose check pass asks: no member or variant named; true of every
+  declaration, table_valued_expression included (a mapped virtual table
+  lifted with its bound arguments); the shared node Intention holds for both.
