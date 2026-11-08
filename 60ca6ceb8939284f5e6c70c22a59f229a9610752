@@ -1,0 +1,41 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-08: the Purpose check pass over
+dev/vocabulary/ on #1605's branch (handover-vocabulary-purpose-check.md).
+A first report-only reviewer pass, briefed with the rule alone, found 11
+Purposes; trueqbit's answers moved the pass to reading the Action against
+the Purpose as well as the wording.
+
+# Decided
+- trueqbit: mapped_type_of stays in accessors.h. projections/mapped_types.h
+  answers the schema side: the table a member pointer or column belongs to,
+  and the object a table reference stands for, where a mapped type is
+  expected. accessors.h answers the expression side: mapped_type_of yields
+  whatever type an expression carries, unchecked against the schema.
+  Moving it to mapped_types.h was weighed and rejected; "mapped" in both
+  names asks two different questions. trueqbit recalled settling this
+  earlier with another agent; no note recorded it.
+- trueqbit: the distinction goes into mapped_type_of's doc-comment, the
+  smallest home for what the code cannot say; an Intention holds a file's
+  relations, not a property of one member.
+- trueqbit: field_predicates_concepts.h stays in the vocabulary, against
+  Claude's lean to move it beside the virtual table in schema/: it answers
+  a relation of schema nodes generically, so a consumer depends on nothing
+  until it is in scope.
+
+# Discussed
+- measure.mjs, include/ stripped, against the parent: files 475 -> 475,
+  lines 57699 -> 57699, copies 3884 -> 3884, hops mean 10.1 -> 10.1 /
+  max 221 -> 221, gzip bytes 469380 -> 469394 (+14).
+- Checks: pre-commit.sh exit 0; comment-free token streams of accessors.h
+  and the amalgamation identical to the parent's; clang-format 20 clean;
+  no "on purpose:".
+
+# Later
+- docs/internals/vocabulary-layer.md:126 calls mapped_type_of_t "the mapped
+  object a record set stands for", which the doc-comment now contradicts
+  (the second reviewer pass).
+- ontocratic-feedback on both corrections of this pass - field_predicates.h
+  narrowed to a column's field type, accessors.h's Purpose missing the type
+  a node carries - so the Action-against-Purpose check reaches the reviewer
+  and irreducible-code; deferred by trueqbit for bandwidth, recorded in
+  campaign.md "Later".
