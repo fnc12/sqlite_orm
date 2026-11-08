@@ -1,0 +1,95 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-08: the Purpose check pass over
+the 23 Purposes #1605 adds, on its own branch (#1605 is approved; a new
+review is the accepted price of a complete pull request). A first
+report-only reviewer pass, briefed with the rule alone, found 11; two
+re-checks followed, the second and third reading the Action against the
+Purpose as well as the wording.
+
+# Decided
+- Purposes, old -> new:
+  - accessors.h: "obtain a node's relevant sub-expression, or the node
+    itself, whichever grammar family the node belongs to." -> "reach a
+    node's driving expression or what it carries, the node itself where
+    nothing else drives it." trueqbit: "driving expression" (from the CTE
+    work) encodes the caller's usage; the default to the node is the
+    purpose, not a branch to cut. Option A of three.
+  - field_predicates.h: "define the predicates on a column's field type
+    that the type decides by itself." -> "define the field predicates read
+    off the C++ type itself." trueqbit: the field axis asks whether a C++
+    type qualifies for an SQL-level role (field_predicates_fwd.h); pass 1
+    had revived "a column's field type" from the old @file line
+    ("validity of fields of column nodes", 03f24a8b), a narrowing.
+  - ddl_predicates.h: "... - a column, a table or an index." -> "decide
+    what holds of the nodes of a schema definition." trueqbit: a column
+    definition belongs to the schema definition, so
+    is_pkcol_implicitly_insertable stays; the verb widens past
+    "admissible elements".
+  - recordset_predicates.h: "decide whether a node refers to a table or a
+    record set, and so may occupy the record set slot of a factory." ->
+    "decide which nodes stand for a record set."; the relation goes to the
+    Intention, checked against the tree (ast/, builtin/, storage.h,
+    exported).
+  - field_predicates_concepts.h: "... whose condition is a concept, beside
+    their C++17 fallback." -> "define the field predicates written as
+    concepts."; the fallback goes to the Intention as the language's limit
+    (trueqbit: they ought to be concepts; C++ concepts arrived with C++20).
+  - node_fwd.h: "declare the concrete nodes that vocabulary files use
+    directly without their definitions - in base-class overloads, partial
+    specializations or metafunctions." -> "declare the nodes that are
+    named before their definitions are in scope." The old reason was false
+    for 5 of 9 (named only outside vocabulary/); trueqbit dropped
+    "concrete".
+  - node_traits.h / node_algorithms.h: "into one include" cut as shape;
+    node_algorithms.h "the judgments that follow from what a node is" ->
+    "what follows from what a node or a field type is and carries".
+  - grammar_traits_fwd.h: leaf versus grouping production cut as variant;
+    "the DSL nodes" -> "the types a DSL expression is built from", so the
+    alias and UDF traits are covered.
+  - nested_types.h: "through alias templates as syntactic sugar" cut.
+  - vocabulary-layer.md: -> "lay down what belongs to the DSL vocabulary
+    and where, and how it is specialized and read."
+- trueqbit's rulings, not to be reopened:
+  - A header's placement follows what it is, not who consumes it.
+  - A vocabulary/ header groups a family of symbols by its file name, as
+    in ast/, also where the family has one member today.
+  - Parts and bases of nodes belong in node_fwd.h with the nodes; its
+    namespace blocks keep the groups apart; splitting would scatter them
+    for no gain. "The nodes" in its Purpose covers them; no widening.
+  - field_predicates_concepts.h stays in the vocabulary: it answers a
+    relation of schema nodes generically, so a consumer depends on nothing
+    until it is in scope.
+- Rejected: moving the hidden-column concepts to schema/ (Claude's lean);
+  renaming them hidden_column_predicates.h (the reviewer's); renaming the
+  field axis or splitting field_predicates*.h - "field" names where the
+  axis began, and is_text_value belongs to it.
+- Held as they were: argument_placeholders.h, clause_predicates.h,
+  column_field_types.h, expression_element_predicates.h,
+  field_predicates_fwd.h, index_filters.h, operand_predicates.h,
+  mapped_types.h, operand_traits_fwd.h, recordset_concepts.h,
+  semantic_traits_fwd.h, structural_traits_fwd.h.
+
+# Discussed
+- measure.mjs, include/ stripped, against the parent: files 475 -> 475,
+  lines 57699 -> 57700 (+1), copies 3884 -> 3884, hops mean 10.1 / max 221
+  unchanged, gzip bytes 469394 -> 469342 (-52).
+- Checks: pre-commit.sh exit 0; comment-free token streams of the ten
+  headers and the amalgamation identical to the parent's; clang-format 20
+  clean; no "on purpose:".
+
+# Later
+- Intentions this pass left as they were (scope: only where a Purpose
+  moved a clause), found by the third reviewer pass:
+  - field_predicates_concepts.h names no consumer (fts5_functions.h).
+  - field_predicates.h uses is_integer_mapped_v of type_printer.h,
+    unnamed.
+  - node_algorithms.h "consumers include it in place of the files behind
+    it": marshaling/row_extractor.h includes field_predicates_fwd.h
+    directly.
+  - ddl_predicates.h "the element checks of the schema definitions of
+    schema/": builtin/dbos/ and storage.h use them too.
+  - grammar_traits_fwd.h "defined in the corresponding header files":
+    is_limit_v, is_scalar_udf_v, is_aggregate_udf_v have their primaries
+    here.
+  - accessors.h:130 holds a plan ("the rest is listed in TODO.md").
+- ontocratic-feedback, deferred (see 60ca6ceb's note and campaign.md).
