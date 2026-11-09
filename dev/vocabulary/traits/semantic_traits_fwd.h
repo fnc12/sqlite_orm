@@ -1,6 +1,11 @@
 #pragma once
 
-/** @file Cross-cutting role/capability traits in purview of the sqlite_orm EDSL.
+/** @file
+ *  Purpose: declare the traits classifying the DSL nodes by a role or capability they share across dissimilar grammar
+ *  families.
+ *
+ *  Intention: the semantic axis of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; the
+ *  traits are specialized in the corresponding header files of the nodes.
  */
 
 #include "../../functional/cxx_polyfill/type_traits.h"

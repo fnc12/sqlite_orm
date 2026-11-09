@@ -1,7 +1,10 @@
 #pragma once
 
-/** @file Accessor functions for uniformly obtaining a node's relevant sub-expression or itself,
-          independent of which concrete grammar family it belongs to.
+/** @file
+ *  Purpose: reach a node's driving expression or what it carries, the node itself where nothing else drives it.
+ *
+ *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
+ *  the node traits and the projections into uniform access to the parts of a node.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -156,7 +159,7 @@ namespace sqlite_orm::internal {
 // record set accessors
 namespace sqlite_orm::internal {
     /** 
-     *  Defines the `type` typename to be:
+     *  The mapped type an expression carries, unchecked against the schema:
      *  - The unqualified unwrapped table reference type if T is a table reference.
      *  - The unqualified unwrapped table-valued expression type if T is a table-valued expression.
      *  - The unqualified aliased type if T is a recordset alias.

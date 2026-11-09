@@ -1,8 +1,11 @@
 #pragma once
 
-/** @file Operand/arithmetic-participation traits used to constrain operator overloads.
- *  
- *        Definitions and specializations of these traits are in the corresponding header files of the grammar nodes.
+/** @file
+ *  Purpose: declare the traits deciding which nodes take part as operands in an expression.
+ *
+ *  Intention: the operand axis of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds;
+ *  operator overloads constrain their arguments by them, and the traits are defined and specialized in the
+ *  corresponding header files of the grammar nodes.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

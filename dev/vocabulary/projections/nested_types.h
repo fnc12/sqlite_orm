@@ -1,6 +1,9 @@
 #pragma once
 
-/** @file Projections reading the type names a node declares, as alias templates for syntactic sugar.
+/** @file
+ *  Purpose: read the nested types a node declares.
+ *
+ *  Intention: a projection of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
