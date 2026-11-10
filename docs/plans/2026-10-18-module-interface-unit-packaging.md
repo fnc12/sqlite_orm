@@ -36,11 +36,23 @@ interface unit as part of its own build.
   so the installed package would carry the unit for the installer's compiler only. The units differ only in their
   warning suppressions and comments.
 - The consumer's toolchain has to provide the standard library modules: the interface units import `std.compat`.
-- The Visual Studio generators don't support exporting or installing module information.
+- The Visual Studio generators don't support exporting or installing module information. MSBuild itself compiles an
+  interface unit added to a project, so an MSBuild consumer can add the installed unit by hand.
+- Whether a Common Package Specification file carries the module information. CPS 0.15 references a module manifest
+  in the format of P3286 by the attribute `cpp_module_metadata`; CMake 4.3 appears to read it when importing a CPS
+  package (unverified). `install(PACKAGE_INFO)` (CMake 4.3) accepts `CXX_MODULES_DIRECTORY`, but the documentation
+  describes the option only for `install(EXPORT)`, and no release note up to 4.5 mentions modules in CPS. If an
+  installed CPS package lets a consumer import the interface unit, export it alongside `SqliteOrmTargets`.
 
 ## Out of scope
 
-There is no tool-agnostic install location for module interface units as of CMake 4.5: only the standard libraries
-are located via their `modules.json` manifests. The Common Package Specification, exported by CMake 4.3's
-`install(PACKAGE_INFO)` (experimental), doesn't cover C++ modules in a release yet; CMake's development branch adds
-`CXX_MODULES_DIRECTORY` to it. Revisit once it is released.
+There is no build-system-agnostic install location for module interface units as of CMake 4.5: only the standard
+libraries are located via their `modules.json` manifests. Other build systems describe installed modules in their own
+way, if at all (as of 2026-11):
+
+- Meson 1.10 supports `import std` only, experimentally.
+- Bazel builds dependencies from source; `cc_library` declares interface units by `module_interfaces`
+  (experimental).
+- build2 lists the modules of an installed library in its pkg-config file, by the variable `cxx.modules`.
+- xmake distributes module packages in its own format.
+- vcpkg and Conan rely on the package's CMake configuration files.
