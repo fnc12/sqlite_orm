@@ -1,9 +1,11 @@
 #pragma once
 
-/** @file The node of a call of an application-defined function, and the definition of an application-defined
- *        function by its UDF type (`func<UDF>`) or by a quoted callable (`"name"_scalar`), which generates the
- *        call nodes. Also the UDF classification traits and the argument/return type deduction the storage
- *        uses to register the function with SQLite.
+/** @file
+ *  Purpose: represent an application-defined function.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ *  The storage registers a function with SQLite through the traits this header declares.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

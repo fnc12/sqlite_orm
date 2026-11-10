@@ -1,8 +1,10 @@
 #pragma once
 
-/** @file The INSERT statement, in each of the DSL spellings sqlite_orm offers for it - against a
- *        mapped object, against a range of them, against an explicit column list, or raw -, plus
- *        the OR conflict-resolution modifier only a raw INSERT takes.
+/** @file
+ *  Purpose: represent the INSERT statement.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -34,6 +36,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_object_dml_expression_v<T, std::enable_if_t<is_insert_v<T>>> = true;
 
+    /**
+     *  The INSERT of a mapped object into an explicit list of its columns.
+     */
     template<class T, class... Cols>
     struct insert_explicit {
         using object_type = T;
@@ -62,6 +67,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_insert_range_v = polyfill::is_specialization_of<T, insert_range_t>::value;
 
+    /**
+     *  The INSERT with its clauses spelled out.
+     */
     template<class... Args>
     struct insert_raw_t {
         using args_tuple = std::tuple<Args...>;
@@ -88,6 +96,9 @@ namespace sqlite_orm::internal {
         rollback,
     };
 
+    /**
+     *  The OR conflict-resolution modifier of a raw INSERT.
+     */
     struct insert_constraint {
         conflict_action action = conflict_action::abort;
     };

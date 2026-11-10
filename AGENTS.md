@@ -81,6 +81,12 @@ from anywhere else.
 - Comments state what an entity is or checks, in one accurate sentence. No comparisons with
   neighbours, justifications or restated context. Facts shared by a group of entities go once
   in the group's heading.
+- Every file opens with `Purpose:`, the one reason it exists, and `Intention:`, what it
+  realizes, what it uses and whom it speaks to, written before its first line of code. It
+  stands below only what the language must put first, as the doc-comment of what the file
+  declares: the `/** @file */` block where the file groups related symbols, otherwise the
+  doc-comment of its main symbol or facility. A Markdown document carries them as a blockquote
+  under its title. The comment rules above apply below them.
 - Type metafunctions: `_of` names a type computed from a node (`column_result_of_t`,
   `table_type_of_t`); `_for` names a selection or construction for given parameters
   (`node_tuple_for`). No names like "proxy" for plain type computations.
@@ -137,9 +143,8 @@ ctest --test-dir build                         # all tests
 
 ## References
 
-- [`docs/internals/vocabulary-layer.md`](docs/internals/vocabulary-layer.md) also records
-  open work and open questions, `TODO.md` missing features, and `docs/plans/` designs in
-  progress: check them before starting a refactor.
+- `TODO.md` records missing features and open work, and `docs/plans/` designs in progress:
+  check them before starting a refactor.
 - [`docs/internals/review-checklist.md`](docs/internals/review-checklist.md) - what a change
   is reviewed against.
 - [`docs/thread-safety.md`](docs/thread-safety.md) - the threading guarantees of a storage.

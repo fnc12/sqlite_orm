@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: tag a node with what it can be an operand of, so that the operators and conditions of the DSL take it.
+ *
+ *  Intention: a helper of the node headers in `ast/`, placed by `docs/internals/source-layout.md`; its tags specialize
+ *  the operand traits of the vocabulary layer, as `docs/internals/vocabulary-layer.md` holds, for the nodes deriving
+ *  from them.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_base_of, std::enable_if_t
 #endif

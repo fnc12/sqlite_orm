@@ -1,7 +1,9 @@
 #pragma once
 
-/** @file Out-of-class definitions of `dynamic_set_t` members, which need the statement serializer and the AST
- *  traversal machinery that `ast/crud/set.h` stays free of.
+/** @file
+ *  Purpose: define the members of the runtime SET clause that need the statement serializer and the AST traversal.
+ *
+ *  Intention: keeps `ast/crud/set.h` free of them; gathered by `interface_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

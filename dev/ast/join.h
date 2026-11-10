@@ -1,10 +1,10 @@
 #pragma once
 
-/** @file The joins of a FROM clause, with their ON and USING constraints.
+/** @file
+ *  Purpose: represent the joins of a FROM clause.
  *
- *        All joins are DSL spellings of the one join-operator production, classified by `is_any_join`: each carries
- *        its keyword, the joined table as its `type`, and its constraint as its `on_type` - ON or USING spelled out,
- *        or the implicit constraint of CROSS JOIN and NATURAL JOIN.
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

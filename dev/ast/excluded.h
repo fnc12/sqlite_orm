@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the `excluded.` qualifier through which the DO UPDATE action of an upsert reads the row that
+ *  failed to insert.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif

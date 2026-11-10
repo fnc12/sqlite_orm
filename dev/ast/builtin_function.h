@@ -1,9 +1,11 @@
 #pragma once
 
-/** @file The nodes of a call of a built-in SQL function: scalar and aggregate function calls,
- *        an aggregate call with a FILTER clause, and COUNT(*).
- *        In C++20 builds, also the definition of a built-in function by its name and its overload set,
- *        which generates the call nodes. The functions themselves are in `builtin/functions/`.
+/** @file
+ *  Purpose: represent built-in SQL functions as the DSL calls them.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ *  The functions themselves are in `builtin/functions/`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -141,6 +143,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_builtin_function_call_v = is_base_template_of<builtin_function_t, T>::value;
 
+    /**
+     *  The call of a built-in aggregate function, which a FILTER clause can narrow.
+     */
     template<class R, class S, class... Args>
     struct builtin_aggregate_function_t : builtin_function_t<R, S, Args...> {
         using super = builtin_function_t<R, S, Args...>;

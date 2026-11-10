@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the IN condition.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <initializer_list>  //  std::initializer_list
 #include <tuple>  //  std::tuple
@@ -37,6 +44,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_dynamic_in_v = polyfill::is_specialization_of_v<T, dynamic_in_t>;
 
+    /**
+     *  The IN condition against a list of operands given one by one.
+     */
     template<class L, class... Args>
     struct in_t : condition_t, in_base, negatable_t {
         using left_type = L;

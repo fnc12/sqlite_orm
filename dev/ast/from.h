@@ -1,7 +1,10 @@
 #pragma once
 
-/** @file The FROM clause, in both of the DSL spellings sqlite_orm offers for it - naming mapped tables by type,
- *        or listing table expressions, such as a table-valued function.
+/** @file
+ *  Purpose: represent the FROM clause.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

@@ -7,11 +7,11 @@ description: Use when moving, renaming, splitting or dissolving a header under s
 
 ## 1. Decide the destination
 
-- The folder follows `docs/internals/source-layout.md`; traits and algorithms follow the placement
-  test of `docs/internals/vocabulary-layer.md`. If the move changes what a folder holds, update its
-  entry in the source layout in the same change.
-- Check the open work in `docs/internals/vocabulary-layer.md` and `TODO.md` for a move that is
-  already planned or decided differently.
+- The folder follows the criteria of `docs/internals/source-layout.md`; traits and algorithms
+  follow the placement test of `docs/internals/vocabulary-layer.md`. A move edits these documents
+  where it changes a criterion; why the file moved goes into the commit body and its continuity
+  note.
+- Check the open work in `TODO.md` for a move that is already planned or decided differently.
 
 ## 2. Move it
 

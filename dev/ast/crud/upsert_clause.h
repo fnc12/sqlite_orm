@@ -1,7 +1,10 @@
 #pragma once
 
-/** @file The ON CONFLICT upsert clause of an INSERT: its conflict target, and the DO NOTHING /
- *        DO UPDATE SET action it resolves the conflict with.
+/** @file
+ *  Purpose: represent the ON CONFLICT clause of an INSERT.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

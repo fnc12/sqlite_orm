@@ -1,7 +1,10 @@
 #pragma once
 
-/** @file The SET clause of an UPDATE, in both of the DSL spellings sqlite_orm offers for it -
- *        spelled out statically, or assembled at runtime.
+/** @file
+ *  Purpose: represent the SET clause of an UPDATE.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

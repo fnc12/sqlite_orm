@@ -1,7 +1,10 @@
 #pragma once
 
-/** @file The DELETE statement, in both of the DSL spellings sqlite_orm offers for it - `remove`
- *        against the primary key of a mapped object, or `remove_all` raw against conditions.
+/** @file
+ *  Purpose: represent the DELETE statement.
+ *
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -33,6 +36,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_object_dml_expression_v<T, std::enable_if_t<is_remove_v<T>>> = true;
 
+    /**
+     *  The DELETE of the rows of a table that satisfy conditions.
+     */
     template<class T, class... Args>
     struct remove_all_t {
         using object_type = T;

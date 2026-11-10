@@ -246,7 +246,10 @@ Clang silently accept.
 
 ## Adding a new DSL node
 
-1. Define the node struct in `dev/schema/` or `dev/ast/`.
+1. Define the node struct in `dev/schema/` or `dev/ast/`. A node header holds a node family -
+   its structs, their factories and their trait definitions - under one `@file` block with
+   Purpose and Intention, and each node struct carries a brief doc-comment where its name
+   leaves its meaning open.
 2. In **that same header**, specialize the axes that apply, including the relevant
    `traits/*_fwd.h`, as described in [How a node specializes a trait](#how-a-node-specializes-a-trait).
 3. Register the header in `dev/node_definitions.h`.
@@ -318,22 +321,3 @@ struct node_tuple<app_function_call<F, Args...>, void> : node_tuple_for<Args...>
 
 If a consumer needs something the projections do not expose, add the projection to
 `vocabulary/projections/` rather than reaching into the node.
-
-## Open work
-
-Decided, not yet done.
-
-- **Retire the legacy built-in function nodes with the C++17 baseline:** delete the
-  `#ifndef SQLITE_ORM_WITH_CPP20_ALIASES` branches — `builtin_function_t` and its kin in
-  `ast/builtin_function.h`, and the `*_string` tags and factories in `builtin/functions/*.h`.
-
-## Open questions
-
-Deliberately unresolved; revisit when there is a concrete reason to.
-
-- **Struct→table / expression→table mapping.** A possible tier above `functional/` and
-  `vocabulary/`: schema-wide resolution, consuming vocabulary. Naming and folder undecided.
-  `table_type_of` is not this tier: it extracts a type a node captured, without a schema.
-- **Names of the built-in function definitions in `internal`** (`max`, `min`, `count`, ...).
-  Class members shadow them, but a namespace-scope internal helper of the same name would
-  clash. A nested `internal::builtins` namespace is the escape hatch, once a clash occurs.

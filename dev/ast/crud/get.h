@@ -1,12 +1,10 @@
 #pragma once
 
-/** @file The statements reading mapped objects: by primary key (get, get_pointer, get_optional),
- *        and all objects of a table satisfying the given conditions (get_all, get_all_pointer, get_all_optional).
+/** @file
+ *  Purpose: represent the SELECT reading mapped objects.
  *
- *        The three statements of either group are DSL spellings of one and the same SELECT; they differ only in
- *        how an object is handed out - as is, owned by a `std::unique_ptr`, or held by a `std::optional`. Each of
- *        them declares that as its `result_type`: the type of the object read by primary key, or of the elements
- *        of the container the objects are read into.
+ *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
+ *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
