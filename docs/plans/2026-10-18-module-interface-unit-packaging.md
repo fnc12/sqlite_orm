@@ -47,8 +47,13 @@ only). A consumer that finds only the CPS file builds and runs `import`.
 - The consumer's toolchain has to provide the standard library modules: the interface units import `std.compat`.
 - The Visual Studio generators don't support exporting or installing module information. MSBuild itself compiles an
   interface unit added to a project, so an MSBuild consumer can add the installed unit by hand.
-- CMake can't export targets that depend on generator expressions as CPS; whether `SqliteOrmTargets` qualifies is
-  untested.
+- The CPS file requires the package `SQLite3`. CMake resolves the requirements of a CPS package by a nested
+  `find_package` that accepts only a CPS or a CMake configuration package, not a find module like `FindSQLite3`, so a
+  consumer that finds sqlite_orm by the CPS file only fails to configure. A configuration package in
+  `CMAKE_FIND_PACKAGE_REDIRECTS_DIR` that includes CMake's `FindSQLite3.cmake` resolves it: with it, a consumer builds
+  and runs `import sqlite_orm;` from the CPS file (g++-16, CMake 4.5.0-rc3, 2026-11-10). The CMake configuration
+  package resolves `SQLite3` by `find_dependency`, which uses the find module. Which of the two packages
+  `find_package(SqliteOrm)` picks when both are installed is untested.
 
 ## Out of scope
 
