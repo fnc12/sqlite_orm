@@ -28,6 +28,15 @@ interface unit as part of its own build.
   `sqlite_orm::`. The interface unit keeps going to `${SQLITE_ORM_INSTALL_CMAKEDIR}/src`.
 - The interface unit includes `<sqlite_orm/sqlite_orm.h>`, which resolves against the installed include directory.
 - Importers include `<sqlite_orm/sqlite_orm_config.h>` before `import sqlite_orm;` to test the configuration.
+- With CMake 4.3 or newer, additionally install a Common Package Specification (CPS) file from the same export, by
+  `install(PACKAGE_INFO ... EXPORT SqliteOrmTargets CXX_MODULES_DIRECTORY ...)`. Its per-configuration part references
+  a module manifest in the format of P3286 (the format of the standard libraries' `modules.json`) by the attribute
+  `cpp_module_metadata`; the manifest names the interface unit relative to itself. `find_package` imports the module
+  from it, and the consumer's build provides `import std` as for any other module.
+
+Verified on 2026-11-10 with a static library of one module interface unit, with and without `import std`, with Ninja:
+by g++-16 with CMake 4.3.6, 4.4.1 and 4.5.0-rc3, and by MSVC 19.51 with CMake 4.3.3 and 4.5.0-rc3 (`import std` by 4.5
+only). A consumer that finds only the CPS file builds and runs `import`.
 
 ## Open questions
 
@@ -38,17 +47,13 @@ interface unit as part of its own build.
 - The consumer's toolchain has to provide the standard library modules: the interface units import `std.compat`.
 - The Visual Studio generators don't support exporting or installing module information. MSBuild itself compiles an
   interface unit added to a project, so an MSBuild consumer can add the installed unit by hand.
-- Whether a Common Package Specification file carries the module information. CPS 0.15 references a module manifest
-  in the format of P3286 by the attribute `cpp_module_metadata`; CMake 4.3 appears to read it when importing a CPS
-  package (unverified). `install(PACKAGE_INFO)` (CMake 4.3) accepts `CXX_MODULES_DIRECTORY`, but the documentation
-  describes the option only for `install(EXPORT)`, and no release note up to 4.5 mentions modules in CPS. If an
-  installed CPS package lets a consumer import the interface unit, export it alongside `SqliteOrmTargets`.
+- CMake can't export targets that depend on generator expressions as CPS; whether `SqliteOrmTargets` qualifies is
+  untested.
 
 ## Out of scope
 
-There is no build-system-agnostic install location for module interface units as of CMake 4.5: only the standard
-libraries are located via their `modules.json` manifests. Other build systems describe installed modules in their own
-way, if at all (as of 2026-11):
+There is no build-system-agnostic install location for module interface units as of CMake 4.5. Apart from the CPS
+module manifest, other build systems describe installed modules in their own way, if at all (as of 2026-11):
 
 - Meson 1.10 supports `import std` only, experimentally.
 - Bazel builds dependencies from source; `cc_library` declares interface units by `module_interfaces`
