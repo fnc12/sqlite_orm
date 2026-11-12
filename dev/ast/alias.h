@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent the aliases by which a statement refers to what it reads.
+ *  Purpose: represent the aliases a statement gives to what it reads and what it returns.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.

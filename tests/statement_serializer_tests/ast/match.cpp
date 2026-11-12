@@ -86,3 +86,40 @@ TEST_CASE("statement_serializer match") {
     }
 }
 #endif
+
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
+using namespace sqlite_orm;
+
+TEST_CASE("statement_serializer match rtree") {
+    struct DemoIndex {
+        int64 id;
+        float minX, maxX;
+        float minY, maxY;
+    };
+    // stands in for a geometry callback, which SQLite registers through sqlite3_rtree_geometry_callback()
+    struct Circle {
+        int operator()(int x, int y, int radius) const {
+            return x + y + radius;
+        }
+
+        static const char* name() {
+            return "circle";
+        }
+    };
+
+    auto table = make_virtual_table("demo_index",
+                                    using_rtree(make_column("id", &DemoIndex::id, primary_key()),
+                                                make_column("minX", &DemoIndex::minX),
+                                                make_column("maxX", &DemoIndex::maxX),
+                                                make_column("minY", &DemoIndex::minY),
+                                                make_column("maxY", &DemoIndex::maxY)));
+    using db_objects_t = internal::db_objects_tuple<decltype(table)>;
+    auto dbObjects = db_objects_t{table};
+    using context_t = internal::serializer_context<db_objects_t>;
+    context_t context{dbObjects};
+
+    auto node = match(&DemoIndex::id, func<Circle>(45, 22, 5));
+    auto value = serialize(node, context);
+    REQUIRE(value == R"("id" MATCH "circle"(45, 22, 5))");
+}
+#endif

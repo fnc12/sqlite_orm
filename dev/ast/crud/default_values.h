@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent the DEFAULT VALUES modifier.
+ *  Purpose: represent the DEFAULT VALUES form of an INSERT.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -22,7 +22,7 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
-     *  Use this function to add `DEFAULT VALUES` modifier to raw `INSERT`.
+     *  Use this function to write a raw `INSERT` or `REPLACE` in its `DEFAULT VALUES` form.
      *
      *  @example
      *  ```
