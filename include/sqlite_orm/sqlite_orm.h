@@ -6225,7 +6225,7 @@ namespace sqlite_orm::internal {
 }
 #endif
 
-// #include "schema/table.h"
+// #include "schema/ordinary_table.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -30683,7 +30683,7 @@ namespace sqlite_orm::internal {
 
 // #include "../../schema/column.h"
 
-// #include "../../schema/table.h"
+// #include "../../schema/ordinary_table.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
@@ -30951,10 +30951,10 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "schema/table_definitions.h"
+// #include "schema/ordinary_table_definitions.h"
 
 /** @file Out-of-class definitions of table members, which need the column type printer (`type_printer.h`)
- *  that `schema/table.h` stays free of.
+ *  that `schema/ordinary_table.h` stays free of.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -30973,7 +30973,7 @@ namespace sqlite_orm::internal {
 
 // #include "../vocabulary/node_traits.h"
 
-// #include "table.h"
+// #include "ordinary_table.h"
 
 namespace sqlite_orm::internal {
     template<class T, class WithoutRowId, class... Cs>

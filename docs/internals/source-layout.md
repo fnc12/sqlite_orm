@@ -8,7 +8,7 @@ which takes precedence where both apply.
 ## Schema and DSL
 
 - `dev/schema/` - The definitions of database objects: tables, columns, views, virtual tables,
-  indexes, triggers (`table.h`, `column.h`, `virtual_table.h`, ...); one header per constraint
+  indexes, triggers (`ordinary_table.h`, `column.h`, `virtual_table.h`, ...); one header per constraint
   in `constraints/`; algorithms across the whole schema in `algorithms/` (`sync_order.h`,
   `table_lookup.h`).
 - `dev/ast/` - The nodes of queries, DML and other statements and their clauses and

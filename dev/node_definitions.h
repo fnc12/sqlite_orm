@@ -4,7 +4,7 @@
  */
 
 #include "schema/column.h"
-#include "schema/table.h"
+#include "schema/ordinary_table.h"
 // note: though the top-level sqlite_orm.h umbrella header will include all concrete virtual tables provided by sqlite_orm
 // we include it here to be independent and consistent with the other schema nodes
 #include "schema/constraints/auxiliary.h"

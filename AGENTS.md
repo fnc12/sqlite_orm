@@ -29,7 +29,7 @@ pointers. License: AGPL for open source, MIT after purchase.
   `docs/plans/` - designs of work in progress, deleted once done ([policy](docs/plans/README.md)).
 
 The main entry points: the storage (`dev/execution/storage.h`, `make_storage()`), the table
-definitions (`dev/schema/table.h`, `make_table()`) and the statement serializer
+definitions (`dev/schema/ordinary_table.h`, `make_table()`) and the statement serializer
 (`dev/serialization/statement_serializer.h`).
 
 ## Header rules
