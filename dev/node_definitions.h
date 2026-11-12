@@ -28,6 +28,7 @@
 
 #include "ast/alias.h"
 #include "ast/app_function.h"
+#include "ast/assignment.h"
 #include "ast/between.h"
 #include "ast/binary_condition.h"
 #include "ast/builtin_function.h"
