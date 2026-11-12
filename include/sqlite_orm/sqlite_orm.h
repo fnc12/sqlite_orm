@@ -15935,7 +15935,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/keyword_literals.h"
 
 /** @file
- *  Purpose: represent the keywords SQL evaluates to a value of their own.
+ *  Purpose: represent the keywords SQL reads as literal values.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
