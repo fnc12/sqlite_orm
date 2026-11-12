@@ -17,9 +17,8 @@
 
 #include "../functional/type_traits.h"
 #include "../ast/alias.h"
-#include "../schema/algorithms/column_lookup.h"
 #include "../schema/algorithms/table_lookup.h"
-#include "../vocabulary/node_algorithms.h"  //  mapped_type_of_t
+#include "../vocabulary/node_algorithms.h"  //  mapped_type_of_t, get_table_column_fields
 #include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {

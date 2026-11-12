@@ -10,7 +10,7 @@
 #include "algorithms/accessors.h"
 #include "algorithms/argument_placeholders.h"
 #include "algorithms/clause_predicates.h"
-#include "algorithms/column_field_types.h"
+#include "algorithms/column_fields.h"
 #include "algorithms/ddl_predicates.h"
 #include "algorithms/expression_element_predicates.h"
 #include "algorithms/field_predicates_concepts.h"
