@@ -1,0 +1,24 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: R1 of the domain re-check
+(#1612, ruling 9 in the note on 2f6f02af), on refactor/keyword-literals
+from dev at 3cd98276.
+
+# Decided
+- trueqbit: special_keywords.h is renamed keyword_literals.h, in a pull
+  request of its own. The Purpose "represent the keywords SQL reads as
+  literal values" takes SQLite's term literal-value
+  (https://www.sqlite.org/lang_expr.html); the plural names the kind:
+  NULL, TRUE and FALSE fall under it as members the file is open to.
+- Weighed: current_datetime.h (names today's members, narrowing the
+  kind); keeping the name with the new Purpose (Claude's first lean, the
+  rename costing a pull request).
+- The name: "keyword" and "literal" carry no history to weigh beyond
+  SQL's own use; the tree's literal.h uses "literal value" in SQLite's
+  sense too, so the two agree.
+- The include in node_definitions.h moves to its alphabetical place after
+  join.h.
+
+# Discussed
+- Checks: pre-commit.sh exit 0; the rename 100% similar; the amalgamation's
+  comment-free code lines identical as a sorted set (only the block's
+  position and its include marker move); clang-format 20 unchanged.
