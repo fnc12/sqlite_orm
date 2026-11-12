@@ -1,0 +1,11 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: the domain re-check on
+docs/purpose-domain-recheck. Follows 5112ca0d.
+
+# Decided
+- trueqbit: custom R*Tree queries go to TODO.md "C API / runtime", in a
+  commit of their own (TODO items go to TODO.md alone).
+  https://www.sqlite.org/rtree.html#customquery
+
+# Discussed
+- measure.mjs against the parent: unchanged (Markdown is not measured).
