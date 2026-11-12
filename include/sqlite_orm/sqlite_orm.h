@@ -18510,7 +18510,7 @@ namespace sqlite_orm::internal {
 //  col_index_sequence_of, col_index_sequence_with, mapped_type_of_t
 // #include "../../vocabulary/node_traits.h"
 
-// #include "../cte_mapping.h"
+// #include "../cte.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
@@ -18907,7 +18907,7 @@ namespace sqlite_orm::internal {
 
 // #include "../schema/algorithms/table_lookup.h"
 // schema_pick_table_t, schema_mapped_column_field_types
-// #include "../schema/cte_mapping.h"
+// #include "../schema/cte.h"
 
 // #include "../sqlite3/sqlite3_types.h"
 //  int64
@@ -19148,7 +19148,7 @@ namespace sqlite_orm::internal {
     struct column_result_of<DBOs, std::reference_wrapper<T>, void> : column_result_of<DBOs, T> {};
 }
 
-// #include "schema/cte_mapping.h"
+// #include "schema/cte.h"
 
 // #include "schema/db_objects.h"
 

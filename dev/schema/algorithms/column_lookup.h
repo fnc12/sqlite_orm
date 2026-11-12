@@ -19,7 +19,7 @@
 #include "../../functional/type_traits.h"
 #include "../../vocabulary/node_algorithms.h"  //  col_index_sequence_of, col_index_sequence_with, mapped_type_of_t
 #include "../../vocabulary/node_traits.h"
-#include "../cte_mapping.h"
+#include "../cte.h"
 #include "../db_objects.h"
 #include "table_lookup.h"
 
