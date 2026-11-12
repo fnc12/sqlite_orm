@@ -1,0 +1,40 @@
+# Scene
+Pass 2 of the Purpose/Intention sweep, round schema/ (branch
+docs/purpose-intention-schema, uncommitted). trueqbit corrected
+auxiliary.h's Purpose; the rule that prevents it lands first, as a
+pull request of its own.
+
+# Decided
+- trueqbit (22 a): the AGENTS.md rule is a pull request of its own from
+  dev, per the rule pull-requests (a refactor, a rule change and the code
+  applying it are separate); the schema refactor
+  (refactor/schema-sqlite-terms) stacks on this branch, and the schema/
+  docs round merges it in.
+- The sentence governs the meaning a Purpose or doc-comment gives an SQL
+  construct; naming is left out of it - the refactor's renames follow
+  SQLite's terms by trueqbit's decisions 11, 14, 16.
+- trueqbit (13): a Purpose names the construct; its definition goes to
+  the struct's doc-comment with its sqlite.org link. (15): a Purpose names
+  SQL, SQLite or the DSL where the file stands between two of them or a
+  word reads otherwise in C++. Both recorded in campaign.md "Form".
+
+# Discussed
+- The two failures: auxiliary.h's Purpose ("represent the auxiliary
+  column of an R*Tree table") taken from in-tree usage (builtin/dbos/
+  rtree.h, tests); then, checked against sqlite.org - rtree.html 4.1
+  documents auxiliary columns for R*Tree, vtab.html has none - the
+  page's silence read as their absence. trueqbit: the column list of
+  CREATE VIRTUAL TABLE goes to the module; sqlite-vec's vec0 takes `+`
+  columns (asg017/sqlite-vec#121). Purpose now: "represent the
+  constraint that makes a column of a virtual table auxiliary".
+- Rejected: the bullet as a docs(agents) commit in the schema/ docs
+  round, after #1608's precedent - it would need a ruling of its own;
+  in the refactor - the refactor does not apply it.
+- Measure: none; the commit touches no .h or .cpp.
+
+# Later
+- The plugin amendment (irreducible-code "The header") and its eval:
+  handover-feedback-domain-sources.md in the calibration folder,
+  awaiting trueqbit's yes (decision 7).
+- Decision 6: the ontocratic-reviewer reaches no domain source (tools
+  Read, Grep, Glob); lean (b), the dispatcher fetches the pages.
