@@ -1,0 +1,38 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: PR B of step 2c
+(refactor/schema-vocabulary-placement, from PR A #1613's head 3fdde80b),
+step 1 of 4, per handover-step2c-1-refactors.md.
+
+# Decided
+- trueqbit (decision 24): tables_index_sequence and views_index_sequence
+  move from schema/algorithms/table_filters.h into
+  vocabulary/algorithms/index_filters.h, a section "over the database
+  objects of a schema"; its Intention and its row in vocabulary-layer.md
+  widen to match.
+- Moved by script, unchanged with their doc-comments and the
+  SQLITE_ORM_WITH_VIEW guard, in a namespace block of their own.
+- Claude: table_filters.h's @file line is reduced to what the file still
+  holds, "Computations over the ordinary tables within a tuple of database
+  objects.", so no commit leaves it untrue; it includes node_algorithms.h
+  for tables_index_sequence (consumers include the umbrella) and drops
+  tuple_filter.h, which only the moved aliases used.
+- vocabulary-layer.md:219 "table_filters.h selects tables or views"
+  becomes "counts the foreign keys of its tables".
+- trueqbit: tables_index_sequence is renamed ordinary_tables_index_sequence
+  in the next commit, a step of its own after the move.
+
+# Discussed
+Green: pre-commit.sh 0; clang-format 20 unchanged; no "on purpose:".
+Tokens differ by design in the two headers; lines removed from
+table_filters.h against lines added to index_filters.h: only the old
+@file line and the tuple_filter.h include left, only the section comment,
+the namespace braces and the rewrapped Intention arrived.
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 472 | 472 | 0 |
+| lines | 57827 | 57830 | +3 |
+| copies | 3887 | 3887 | 0 |
+| hopsMean | 10.2 | 10.2 | 0 |
+| hopsMax | 218 | 218 | 0 |
+| gzipBytes | 469591 | 469618 | +27 |
