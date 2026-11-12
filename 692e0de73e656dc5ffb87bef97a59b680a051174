@@ -1,0 +1,39 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: PR A of step 2c
+(refactor/schema-sqlite-terms), step 3 of 5.
+
+# Decided
+- trueqbit (decision 11 a): base_table -> ordinary_table, is_base_table ->
+  is_ordinary_table, base_table_definition -> ordinary_table_definition,
+  "base table" -> "ordinary table" in comments.
+- trueqbit, this session: the five derived identifiers too
+  (is_base_table_v, is_base_table_constraint,
+  is_base_table_element_or_constraint, validate_base_table_definition,
+  sync_regular_base_table -> sync_ordinary_table, "regular" dropped as a
+  synonym); examples/view.cpp's two comments; table_base.h:110 and :227.
+- Claude: the static_assert messages and the Catch2 test case name take
+  the term too - prose in string literals; the test file keeps its name.
+- The hand-over's counts (is_base_table dev 8) were lines of a different
+  pattern; the word count at 269e69ad is in the list below.
+- virtual_table.h:89's comment, renamed here, is removed by the docs round
+  (ledger entry 33, decision 28).
+- trueqbit committed without a reviewer dispatch; the word diff below
+  stands for the hand-over's "reviewer reading the identifier renames".
+
+# Discussed
+Green: pre-commit.sh 0; clang-format 20 unchanged; no "on purpose:".
+Tokens differ by design; replaced by a word diff over the 15 touched
+dev/, tests/ and examples/ files, whose only changed words are:
+base_table 18, is_base_table 8, validate_base_table_definition 6,
+base_table_definition 4, is_base_table_v 4, is_base_table_constraint 4,
+sync_regular_base_table 3, is_base_table_element_or_constraint 2, and
+"base"/"Base"/"a base"/"A base" in prose 8/1/9/1.
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 475 | 475 | 0 |
+| lines | 57854 | 57854 | 0 |
+| copies | 3902 | 3902 | 0 |
+| hopsMean | 10.1 | 10.1 | 0 |
+| hopsMax | 221 | 221 | 0 |
+| gzipBytes | 469489 | 469515 | +26 |
