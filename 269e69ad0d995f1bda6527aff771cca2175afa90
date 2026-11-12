@@ -1,0 +1,37 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: PR A of step 2c
+(refactor/schema-sqlite-terms), step 2 of 5.
+
+# Decided
+- trueqbit (decision 14): table.h -> ordinary_table.h,
+  table_definitions.h -> ordinary_table_definitions.h; table_identifier.h
+  and table_base.h keep "table" in the wide sense; make_table() stays.
+- Referrers beyond the includes, found by the check against 04e81419:
+  AGENTS.md:32 (the entry points) and docs/internals/source-layout.md:11.
+- ordinary_table_definitions.h's own include and its @file line naming
+  table.h change with the move (97% similarity); its header is otherwise
+  the docs round's.
+- Source checked before the commit (decision 4 a):
+  https://www.sqlite.org/schematab.html - "The 'table' string is used for
+  both ordinary and virtual tables." That is the contrast the rename draws,
+  and the commit cites it. The hand-over's source for decision 11 a,
+  https://www.sqlite.org/lang_createtable.html, uses the term once, against
+  WITHOUT ROWID tables ("The PRIMARY KEY is optional for ordinary tables
+  but is required for WITHOUT ROWID tables."), and defines it nowhere;
+  neither page says "base table". https://www.sqlite.org/vtab.html calls a
+  non-virtual table a "real table". The decision stands; its source is
+  schematab.html.
+
+# Discussed
+Green: pre-commit.sh 0; tokens differ in the include lines alone;
+amalgamation: include comments and the @file line; clang-format 20
+unchanged; no "on purpose:".
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 475 | 475 | 0 |
+| lines | 57854 | 57854 | 0 |
+| copies | 3902 | 3902 | 0 |
+| hopsMean | 10.1 | 10.1 | 0 |
+| hopsMax | 221 | 221 | 0 |
+| gzipBytes | 469441 | 469489 | +48 |
