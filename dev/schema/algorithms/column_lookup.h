@@ -90,7 +90,7 @@ namespace sqlite_orm::internal {
 
             // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `cte_table<>::find_column_name()` mechanism;
             //       however we have the column index already.
-            // lookup column in base_table<>'s elements
+            // lookup column in ordinary_table<>'s elements
             constexpr size_t ColIdx = index_sequence_value_at<colalias_index::value>(column_index_sequence{});
             auto& table = pick_table<type_t<CP>>(dbObjects);
             return &std::get<ColIdx>(table.elements).name;

@@ -1,6 +1,6 @@
 #pragma once
 
-/** @file Selection of the base tables or views within a tuple of database objects, and computations over them.
+/** @file Selection of the ordinary tables or views within a tuple of database objects, and computations over them.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -15,10 +15,10 @@
 
 namespace sqlite_orm::internal {
     /**
-     *  The positions of the base tables in a tuple of database objects.
+     *  The positions of the ordinary tables in a tuple of database objects.
      */
     template<class DBOs>
-    using tables_index_sequence = filter_tuple_sequence_t<DBOs, is_base_table>;
+    using tables_index_sequence = filter_tuple_sequence_t<DBOs, is_ordinary_table>;
 
 #ifdef SQLITE_ORM_WITH_VIEW
     /**
@@ -29,7 +29,7 @@ namespace sqlite_orm::internal {
 #endif
 
     /**
-     *  The number of foreign keys over all base tables of a tuple of database objects.
+     *  The number of foreign keys over all ordinary tables of a tuple of database objects.
      */
     template<class DBOs, satisfies<is_db_objects, DBOs> = true>
     constexpr int foreign_keys_count() {

@@ -19,7 +19,7 @@
 
 namespace sqlite_orm::internal {
     template<class T, class WithoutRowId, class... Cs>
-    std::vector<table_xinfo> base_table<T, WithoutRowId, Cs...>::get_table_info() const {
+    std::vector<table_xinfo> ordinary_table<T, WithoutRowId, Cs...>::get_table_info() const {
         std::vector<table_xinfo> res;
         res.reserve(col_index_sequence_of<elements_type>::size());
         this->for_each_column([&res](auto& column) {

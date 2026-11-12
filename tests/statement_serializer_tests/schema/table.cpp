@@ -3,7 +3,7 @@
 
 using namespace sqlite_orm;
 
-TEST_CASE("statement_serializer base_table") {
+TEST_CASE("statement_serializer ordinary_table") {
     struct User {
         int id = 0;
         std::string name;
