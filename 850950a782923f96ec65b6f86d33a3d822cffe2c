@@ -1,0 +1,37 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: R2 of the domain re-check
+(#1612, ruling 5 in the note on 2f6f02af), on
+refactor/binary-operator-assignment from dev at 3cd98276.
+
+# Decided
+- trueqbit: split out binary_operator, so assign_t can leave operators.h
+  while it stays a binary_operator. Claude had leaned to keeping assign_t
+  in operators.h, since a header of its own would still include
+  operators.h for binary_operator.
+- ast/binary_operator.h: binary_operator and is_binary_operator_v. Purpose
+  "give the binary operator nodes their shared shape"; a helper of the
+  node headers like operand_tags.h, its own Intention, not gathered by
+  node_definitions.h (operators.h and assignment.h include it).
+- ast/assignment.h: assign_string, assign_t, is_assign_v, assign().
+  Purpose "represent the assignment of a SET clause"
+  (https://www.sqlite.org/lang_update.html, "the list of assignments
+  following the SET keyword"; the same SET serves an upsert's DO UPDATE).
+  The shared node Intention; gathered by node_definitions.h after
+  app_function.h. "assignment" is SQLite's word; in C++ it reads as
+  operator=, which c(...) = ... is.
+- quoted_expression.h includes assignment.h in place of operators.h: assign_t
+  was all it used from there; operators.h still arrives through
+  binary_condition.h.
+- Moved comment reworded where it lands (ledger entry 16): "//  note: see
+  `is_conc_v`" -> "//  note: see `is_conc_v` of `operators.h`".
+
+# Discussed
+- The code moved by script, byte for byte (operators.h lines 24-41,
+  235-249, 374-380 at 3cd98276).
+- Checks: pre-commit.sh exit 0; the amalgamation's comment-free code lines,
+  as a sorted set, differ only by the two new headers' namespace blocks and
+  standard includes; clang-format 20 unchanged; no "on purpose:". Not
+  compiled by Claude; trueqbit builds.
+- measure.mjs against dev: files 475 -> 477, lines 57854 -> 57882 (+28),
+  copies 3902 -> 3906 (+4, the shared Intention), hops mean 10.1 -> 10.2,
+  max 221 -> 223, gzip bytes 469447 -> 469639 (+192).
