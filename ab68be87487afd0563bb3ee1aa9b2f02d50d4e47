@@ -1,0 +1,24 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: hand-over step 2c-4, the
+first small fix - decision 29 a, ledger 34. Branched from origin/dev at
+3cd98276, worktree C:\projects\wt-auxiliary-guard.
+
+# Decided
+- The hand-over's cause does not hold: it said #1597 (f8c9daa1), turning
+  `SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)`
+  into `#ifdef SQLITE_ORM_FTS5_SUPPORTED`, left an R*Tree build without
+  FTS5 without auxiliary(). dev/sqlite3/sqlite3_config.h defines
+  SQLITE_ORM_FTS5_SUPPORTED where `defined(SQLITE_ENABLE_FTS5) ||
+  SQLITE_VERSION_NUMBER >= 3009000`, so the inner `>= 3024000` check
+  implies it, as it implied the old guard. Nothing was lost.
+- trueqbit chose (a): the change goes in as a refactor, the guard saying
+  what the factory needs, against (b) closing ledger 34 without a pull
+  request.
+- green.sh: pre-commit.sh exit 0, clang-format-20 unchanged, no on-purpose
+  marks; the token streams differ in auxiliary.h by the two removed
+  directives alone (the change itself). No test configuration builds
+  R*Tree without FTS5; none is needed, the behaviour is unchanged.
+
+# Later
+- auxiliary.h carries no Purpose/Intention header; the schema/ docs round
+  (docs/purpose-intention-schema, f1961f5c) writes it.
