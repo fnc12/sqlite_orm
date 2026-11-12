@@ -4,7 +4,8 @@
  *  Purpose: find the positions of the nodes in a tuple that match a trait.
  *
  *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
- *  the grammar and field traits into index sequences over the elements of a table or a flattened expression.
+ *  the grammar and field traits into index sequences over the elements of a table, the database objects of a schema
+ *  or a flattened expression.
  */
 
 #include "../../functional/mpl/convenience.h"
@@ -44,6 +45,23 @@ namespace sqlite_orm::internal {
         check_if_is_type<F>::template fn,
         field_type_t,
         filter_tuple_sequence_t<Elements, mpl::disjunction_fn<is_column, is_hidden_column>::template fn>>;
+}
+
+// Filters over the database objects of a schema
+namespace sqlite_orm::internal {
+    /**
+     *  The positions of the ordinary tables in a tuple of database objects.
+     */
+    template<class DBOs>
+    using tables_index_sequence = filter_tuple_sequence_t<DBOs, is_ordinary_table>;
+
+#ifdef SQLITE_ORM_WITH_VIEW
+    /**
+     *  The positions of the views in a tuple of database objects.
+     */
+    template<class DBOs>
+    using views_index_sequence = filter_tuple_sequence_t<DBOs, is_view>;
+#endif
 }
 
 // Filters over the nodes of an expression, as flattened by `node_tuple`

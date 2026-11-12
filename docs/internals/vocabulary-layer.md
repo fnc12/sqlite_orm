@@ -121,7 +121,7 @@ The other algorithms files are chosen by what they compute:
 | File | Holds |
 |---|---|
 | `operand_predicates.h` | Whether a type may be an operand of a named expression factory (`are_valid_operands`). |
-| `index_filters.h` | Index sequences of the matching positions in a tuple of nodes — table elements or a flattened expression — not filtered tuples. |
+| `index_filters.h` | Index sequences of the matching positions in a tuple of nodes — table elements, the database objects of a schema or a flattened expression — not filtered tuples. |
 | `accessors.h` | Uniform access to a node's relevant sub-part across dissimilar grammar families (`access_main_select`); the payoff of the semantic traits. Also `mapped_type_of_t`, the mapped object a record set stands for. |
 | `column_field_types.h` | Type tuples over the columns of a single table definition. |
 | `argument_placeholders.h` | The return type placeholders of the built-in functions and their structural substitution. |
@@ -216,7 +216,7 @@ example is `sync_order.h`: a topological sort of the `db_objects_tuple`, relatin
 rather than classifying a node in hand. `table_lookup.h` finds the database object mapping a
 lookup type ("table" in the wide sense: ordinary tables, views and virtual tables) and feeds it
 into the vocabulary algorithms of `column_field_types.h`,
-`column_lookup.h` a column across the schema, and `table_filters.h` selects tables or views.
+`column_lookup.h` a column across the schema, and `table_filters.h` counts the foreign keys of its tables.
 
 They operate on the **schema**, not on `storage_t`, so they are named `schema_*`, never
 `storage_*`. The facilities for the tuple itself (`db_objects_tuple`, `db_objects_cat`,

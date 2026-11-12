@@ -1,33 +1,19 @@
 #pragma once
 
-/** @file Selection of the ordinary tables or views within a tuple of database objects, and computations over them.
+/** @file Computations over the ordinary tables within a tuple of database objects.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_pointer
 #endif
 
-#include "../../functional/tuple_helper/tuple_filter.h"
 #include "../../functional/tuple_helper/tuple_iteration.h"
 #include "../../functional/type_traits.h"
+#include "../../vocabulary/node_algorithms.h"
 #include "../../vocabulary/node_traits.h"
 #include "../db_objects.h"
 
 namespace sqlite_orm::internal {
-    /**
-     *  The positions of the ordinary tables in a tuple of database objects.
-     */
-    template<class DBOs>
-    using tables_index_sequence = filter_tuple_sequence_t<DBOs, is_ordinary_table>;
-
-#ifdef SQLITE_ORM_WITH_VIEW
-    /**
-     *  The positions of the views in a tuple of database objects.
-     */
-    template<class DBOs>
-    using views_index_sequence = filter_tuple_sequence_t<DBOs, is_view>;
-#endif
-
     /**
      *  The number of foreign keys over all ordinary tables of a tuple of database objects.
      */
