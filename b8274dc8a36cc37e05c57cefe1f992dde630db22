@@ -1,0 +1,29 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: PR A of step 2c
+(refactor/schema-sqlite-terms, from #1609's head 04e81419), step 1 of 5,
+per handover-step2c-1-refactors.md.
+
+# Decided
+- trueqbit (decision 8): cte_mapping.h -> cte.h; the shared basename with
+  dev/ast/cte.h is accepted, as for collate.h and window.h.
+- Referrers: cte_db_objects.h, result_set/column_result.h,
+  schema/algorithms/column_lookup.h. The hand-over also named the
+  amalgamation manifest; third_party/amalgamate/sqlite_orm.json lists only
+  top-level headers, and cte_mapping.h was never in it.
+- trueqbit, for step 3 of this PR: all 8 *base_table* identifiers are
+  renamed (sync_regular_base_table -> sync_ordinary_table), and "base
+  table" is reworded in table_base.h and examples/view.cpp too.
+
+# Discussed
+Green: pre-commit.sh 0; tokens differ in the three include lines alone
+(rename 100%); the amalgamation differs in the three include comments;
+clang-format 20 unchanged; no "on purpose:".
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 475 | 475 | 0 |
+| lines | 57854 | 57854 | 0 |
+| copies | 3902 | 3902 | 0 |
+| hopsMean | 10.1 | 10.1 | 0 |
+| hopsMax | 221 | 221 | 0 |
+| gzipBytes | 469447 | 469441 | -6 |
