@@ -1,0 +1,107 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: step 2c-3 of pass 2 of the
+Purpose/Intention sweep (metatrom-ag/claude-code-plugins#293), the domain
+re-check of the ast/ and vocabulary/ rounds against SQLite's documentation,
+applying #1609's rule (decision 5 b, rule 4 a). Branch
+docs/purpose-domain-recheck, stacked on #1609 (04e81419).
+
+# Decided
+- Scope: the 47 Purposes of dev/ast/, plus vocabulary/algorithms/
+  ddl_predicates.h and field_predicates.h. The hand-over's examples
+  (limit.h "each spelling SQLite accepts", cast.h "the SQLite type of a C++
+  type") were cut earlier, in da22013e.
+- trueqbit's rulings, numbered as put:
+  1. match.h: "represent the MATCH condition of a full-text search." ->
+     "represent the MATCH operator." https://www.sqlite.org/lang_expr.html#like
+     ("The MATCH operator is a special syntax for the match()
+     application-defined function"); https://www.sqlite.org/rtree.html#customquery
+     (`WHERE id MATCH circle(45.3, 22.9, 5.0)`). A serializer test pins
+     R*Tree (5112ca0d); the missing geometry callback API goes to TODO.md
+     (46065925).
+  2. negated_condition.h kept: "represent the NOT operator applied to a
+     condition." trueqbit: NOT flips a condition; an operand that is no
+     condition is read as one. https://www.sqlite.org/lang_expr.html#booleanexpr
+     converts to a truth value by a NUMERIC cast, and names WHERE, ON/USING,
+     HAVING and WHEN as its contexts; on NOT's own conversion the page is
+     silent. "Applied to a condition" says how NOT reads its operand.
+  3. rowset_deduplicators.h kept. trueqbit: the elements an aggregate reads
+     form a rowset logically - SQLite calls the aggregate for each element of
+     the set X yields. https://www.sqlite.org/lang_aggfunc.html says
+     "duplicate elements are filtered"; "rowset" is sqlite_orm's reading,
+     kept as decision 13 keeps a deliberate qualifier.
+  4. crud/set.h: "represent the SET clause of an UPDATE." -> "represent the
+     SET clause." https://www.sqlite.org/lang_upsert.html (DO UPDATE SET);
+     sqlite_orm spells it as on_conflict(...).do_update(set(...)).
+  5. operators.h: assign_t is the `=` of SET, which
+     https://www.sqlite.org/lang_update.html calls an assignment, no
+     expression operator. trueqbit: split out binary_operator; assign_t goes
+     to ast/assignment.h ("represent the assignment of a SET clause"),
+     binary_operator to ast/binary_operator.h ("give the binary operator
+     nodes their shared shape"), in a refactor pull request of its own from
+     dev (R2). operators.h's Purpose then holds unchanged. Weighed: moving
+     assign_t to crud/set.h (quoted_expression.h would include crud/,
+     against ruling 2); its own node struct (its serializer, traversal and
+     result type duplicated); keeping it.
+  6. crud/default_values.h: "the DEFAULT VALUES modifier." -> "the DEFAULT
+     VALUES form of an INSERT." https://www.sqlite.org/lang_insert.html
+     ("the third form of an INSERT statement is with DEFAULT VALUES"); REPLACE
+     is an alias of INSERT OR REPLACE (https://www.sqlite.org/lang_replace.html).
+     The factory's doc-comment follows.
+  7. values.h: "the VALUES row list." -> "the VALUES clause."
+     https://www.sqlite.org/lang_select.html#values ("The VALUES clause").
+     Ruling 33 stands; the Note and dynamic_values_t's doc-comment follow.
+  8. crud/into.h: "the INTO clause." -> "the table an INSERT or REPLACE
+     writes into." lang_insert and lang_replace name no INTO clause; INTO is
+     a keyword of the INSERT syntax.
+  9. special_keywords.h: "the keywords SQL evaluates to a value of their
+     own" widens past the file (NULL, TRUE, FALSE fit too). Claude's first
+     lean narrowed the Purpose to the current date and time, below the
+     plural name - withdrawn against campaign.md "Form" (a plural name names
+     a kind the file is open to). trueqbit: rename to keyword_literals.h in
+     a pull request of its own from dev (R1), Purpose "represent the
+     keywords SQL reads as literal values" (https://www.sqlite.org/lang_expr.html,
+     literal-value).
+  10. "condition" stays in between.h, in.h, exists.h, is_null.h,
+     pattern_matching.h, binary_condition.h: the meaning holds; lang_expr
+     says "operator", the DSL "condition" (condition_t), and in C++
+     "operator" reads as `operator`.
+  11. alias.h: "the aliases by which a statement refers to what it reads."
+     -> "the aliases a statement gives to what it reads and what it
+     returns." as_t and column_alias name result columns
+     (https://www.sqlite.org/lang_select.html, `expr AS column-alias`).
+- Held against their pages: app_function, between, builtin_function,
+  case_expression, cast, collate, compound_operator, cte, excluded, exists,
+  from, group_by, in, is_null, join, limit, offset, literal, order_by,
+  pattern_matching, result_columns, rowid, select, insert, replace, remove,
+  update, upsert_clause ("of an INSERT" keeps it apart from lang_conflict's
+  ON CONFLICT), where, window. Naming no SQL construct: operand_tags,
+  quoted_expression, column_pointer, table_reference, crud/get,
+  crud/set_definitions, ddl_predicates, field_predicates.
+
+# Discussed
+- Method: the sqlite.org pages fetched and stripped to text, syntax diagram
+  words kept; one report-only ontocratic-reviewer dispatch with #1609's rule
+  alone and the pages' paths; Claude checked each finding against the
+  pages and the code before putting it to trueqbit.
+- Old doc-comment words: values.h Note "a VALUES row list is written";
+  dynamic_values_t "A VALUES row list assembled at runtime."; default_values()
+  "Use this function to add `DEFAULT VALUES` modifier to raw `INSERT`."
+- Green: pre-commit.sh exit 0; comment-free token streams identical; clang-format
+  20 unchanged; no "on purpose:".
+- measure.mjs against the parent:
+
+  | measure | before | after | change |
+  |---|---:|---:|---:|
+  | files | 475 | 475 | 0 |
+  | lines | 57854 | 57854 | 0 |
+  | copies | 3902 | 3902 | 0 |
+  | hopsMean | 10.1 | 10.1 | 0 |
+  | hopsMax | 221 | 221 | 0 |
+  | gzipBytes | 469447 | 469466 | +19 |
+
+# Later
+- R1: special_keywords.h -> keyword_literals.h, from dev, with its Purpose.
+- R2: ast/binary_operator.h and ast/assignment.h split out of operators.h,
+  from dev, with their Purposes.
+- Left open, no Purpose rests on it: whether all() may stand inside an
+  aggregate call; lang_aggfunc's diagram shows DISTINCT only.
