@@ -1,0 +1,42 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: PR B of step 2c
+(refactor/schema-vocabulary-placement), step 4 of 4, the move.
+
+# Decided
+- trueqbit (decision 26 a, ledger entry 36): get_table_column_fields
+  moves from schema/algorithms/column_lookup.h into
+  vocabulary/algorithms/column_field_types.h; it takes one table
+  definition. column_lookup.h's Purpose stays.
+- Moved by script, both overloads with the doc-comment unchanged.
+- The Purpose of column_field_types.h, "compute the types that go with
+  the fields of columns." (0afdc69's plural-name ruling), becomes
+  "compute the fields of columns and the types that go with them.", the
+  hand-over's wording for column_fields.h, so the header holds in this
+  commit already; the Intention stays.
+- vocabulary-layer.md row: "Type tuples over the columns of a single
+  table definition." becomes "The fields of the columns of a single table
+  definition, and the type tuples that go with them."
+- Includes: column_field_types.h takes <tuple>, <utility> and its sibling
+  index_filters.h (col_index_sequence_of), as index_filters.h takes
+  field_predicates_fwd.h; column_lookup.h drops <utility> and
+  std::make_tuple from a comment; column_reference.h drops
+  column_lookup.h - it used nothing else from it (checked: no CTE, db
+  objects or tuple helper names) - and names get_table_column_fields on
+  its node_algorithms.h include. Not compiled; trueqbit builds.
+- The file rename to column_fields.h follows as a commit of its own.
+
+# Discussed
+Green: pre-commit.sh 0; clang-format 20 unchanged; no "on purpose:".
+Lines removed from column_lookup.h against lines added to
+column_field_types.h: only the old <tuple> comment left; only the
+Purpose, the module guard, <tuple> with its new comment and the
+index_filters.h include arrived.
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 472 | 472 | 0 |
+| lines | 57830 | 57833 | +3 |
+| copies | 3887 | 3887 | 0 |
+| hopsMean | 10.2 | 10.2 | 0 |
+| hopsMax | 218 | 218 | 0 |
+| gzipBytes | 469618 | 469728 | +110 |
