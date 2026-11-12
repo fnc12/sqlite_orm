@@ -1,0 +1,24 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: PR B of step 2c
+(refactor/schema-vocabulary-placement), the rename after step 1.
+
+# Decided
+- trueqbit: tables_index_sequence -> ordinary_tables_index_sequence, a
+  commit of its own after the move (f8977fcb), following PR A's
+  ordinary-table names.
+- Users: index_filters.h (the definition), table_filters.h
+  (foreign_keys_count), tests/static_tests/static_tests_storage_traits.h.
+
+# Discussed
+Green: pre-commit.sh 0; clang-format 20 unchanged; no "on purpose:".
+Word diff: tables_index_sequence -> ordinary_tables_index_sequence, 5
+times (3 in the sources, 2 in the amalgamation), nothing else.
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 472 | 472 | 0 |
+| lines | 57830 | 57830 | 0 |
+| copies | 3887 | 3887 | 0 |
+| hopsMean | 10.2 | 10.2 | 0 |
+| hopsMax | 218 | 218 | 0 |
+| gzipBytes | 469618 | 469626 | +8 |
