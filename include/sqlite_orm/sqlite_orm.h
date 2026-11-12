@@ -5342,7 +5342,7 @@ namespace sqlite_orm::internal {
     using is_statement_clause = is_select_clause<T>;
 }
 
-// #include "algorithms/column_field_types.h"
+// #include "algorithms/column_fields.h"
 
 /** @file
  *  Purpose: compute the fields of columns and the types that go with them.
