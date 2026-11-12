@@ -1,0 +1,13 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: R1, after cd1494c7.
+
+# Decided
+- Purpose: "represent the keywords SQL evaluates to a value of their own."
+  -> "represent the keywords SQL reads as literal values."
+  https://www.sqlite.org/lang_expr.html (literal-value).
+
+# Discussed
+- measure.mjs, dev to e2bd16d8: unchanged in files, lines, copies and hops;
+  gzip bytes within a few bytes.
+- Green: pre-commit.sh exit 0; token streams identical; clang-format 20
+  unchanged; no "on purpose:".
