@@ -1,0 +1,21 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: pass 2 of the
+Purpose/Intention sweep (metatrom-ag/claude-code-plugins#293), round
+dev/schema/, session 2 of step 2c (handover-step2c-2-docs-round.md).
+docs/purpose-intention-schema is rewritten: reset from f1961f5c (the
+backup of the round's headers, still on the remote until the force-push)
+to 3cd98276, then PR B (#1616, 5bf091cc) merged in.
+
+# Decided
+- trueqbit (27): the docs round merges PR B rather than rebasing onto it;
+  f1961f5c is rewritten, a force-push is fine.
+- Merged clean: no conflicts. The renames reach this branch here -
+  cte.h, ordinary_table.h, ordinary_table_definitions.h,
+  constraints/fts5_options.h, algorithms/foreign_keys.h,
+  vocabulary/algorithms/column_fields.h.
+- Claude: git reset --keep instead of --hard (the damage-control hook
+  refuses --hard); the tree was clean but for the untracked .vs/.
+
+# Later
+- headers.mjs (schema-round/) updated to the merged tree's names; the
+  round's headers follow as commit 2, carrying f1961f5c's decisions.
