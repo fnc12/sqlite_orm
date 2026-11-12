@@ -1,0 +1,17 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: round dev/schema/ of pass 2,
+commit 1 of handover-step2c-2-docs-round.md, found while writing the
+round's Intentions (index.h is a node header that "specializes the
+vocabulary axes in place").
+
+# Decided
+- trueqbit: the commit as drafted - one include, as 5ce89bce for exists.h.
+- Claude: every constexpr is_*_v specialization in dev/schema/ matched to
+  the _fwd header holding its primary (grammar_traits_fwd.h, and
+  structural_traits_fwd.h for is_indexed_column_v); index.h alone lacked
+  its include.
+
+# Discussed
+- Green: pre-commit.sh exit 0; clang-format-20 unchanged; no "on
+  purpose:". The token stream of index.h differs by the include, on
+  purpose; the amalgamation gains the include's comment lines only.
