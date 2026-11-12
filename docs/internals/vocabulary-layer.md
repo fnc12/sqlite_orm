@@ -23,7 +23,7 @@ From the bottom up:
 | Language mechanics | `dev/functional/` | General-purpose C++ utilities, among them pointer-to-member mechanics. Not SQL, not DSL. |
 | DSL vocabulary | `dev/vocabulary/` | Classification of, and computation over, a **single** node or type. |
 | Node definitions | `dev/schema/`, `dev/ast/` | The concrete node structs, each specializing the vocabulary axes in place. |
-| Schema-level algorithms | `dev/schema/algorithms/` | Search/traversal **across a collection** of nodes. Consumes vocabulary; is not vocabulary. |
+| Schema-level algorithms | `dev/schema/algorithms/` | Search and relation **across a collection** of nodes. Consumes vocabulary; is not vocabulary. |
 
 ### Pointer-to-member mechanics — one tier below the DSL
 
@@ -69,8 +69,11 @@ accessors extracting a type from a single node.
 composing several traits and projections into a compound answer — a bool, an index sequence,
 a sub-object, a type tuple. One complete definition, never specialized.
 
-Algorithms that search or relate nodes *across a collection* are **not vocabulary**; see
-[Schema-level algorithms](#schema-level-algorithms).
+Algorithms that search or relate nodes *across a collection* are **schema-level
+algorithms**: searching finds a node by a lookup type (`table_lookup.h`), relating sets one node
+against another (`sync_order.h`); see [Schema-level algorithms](#schema-level-algorithms).
+Filtering a collection by a trait each element answers alone is classification, and stays
+vocabulary: `index_filters.h` keeps the positions of the matching elements.
 
 ## Deciding where something goes
 
@@ -81,7 +84,7 @@ Algorithms that search or relate nodes *across a collection* are **not vocabular
 > have a node, tell me something about it"?
 > → `vocabulary/algorithms/`
 >
-> **Does it search or traverse across a collection** to locate or relate nodes?
+> **Does it search across a collection by a lookup type, or relate its nodes to one another?**
 > → **not vocabulary.** `dev/schema/algorithms/`, possibly feeding a vocabulary algorithm.
 
 - **Complexity never determines the tier.** `is_raw_dml_expression_v` composes grammar
