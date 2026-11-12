@@ -1,0 +1,30 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: PR B of step 2c
+(refactor/schema-vocabulary-placement), step 3 of 4.
+
+# Decided
+- trueqbit (decision 25): table_filters.h, holding foreign_keys_count
+  alone after f8977fcb, becomes schema/algorithms/foreign_keys.h; it
+  aggregates across the tables of the schema, its only consumer
+  execution/storage.h.
+- Claude found, trueqbit took: step 2's sharpened text (55999e7a) named
+  search and relation only, and foreign_keys_count does neither; this
+  commit adds aggregation ("aggregating combines an answer over all of
+  them") in the four places step 2 touched.
+- storage.h's include moves to its alphabetical place; the amalgamation
+  carries foreign_keys.h ahead of sync_order.h, otherwise unchanged. The
+  @file line stays as f8977fcb left it; the docs round writes the header.
+
+# Discussed
+Green: pre-commit.sh 0 (run again after the wording); rename 100%;
+tokens differ in storage.h's include line alone; clang-format 20
+unchanged; no "on purpose:".
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 472 | 472 | 0 |
+| lines | 57830 | 57830 | 0 |
+| copies | 3887 | 3887 | 0 |
+| hopsMean | 10.2 | 10.2 | 0 |
+| hopsMax | 218 | 218 | 0 |
+| gzipBytes | 469626 | 469618 | -8 |
