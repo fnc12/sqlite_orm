@@ -1,0 +1,24 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: hand-over step 2c-4, the
+second small fix - decision 31 b, ledger 37, found by the schema/ round
+beyond the sweep. Branched from origin/dev at 3cd98276, worktree
+C:\projects\wt-ascii-sources.
+
+# Decided
+- The reason was confirmed before the change, as the hand-over asked:
+  https://learn.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-1-c4819
+  - C4819 (level 1) fires when an ANSI source holds a character the
+  system code page cannot represent; the page names removing the
+  character from a comment as one remedy. It names no code page; on
+  cp1252 these UTF-8 bytes happen to map, on 932/936/949 they do not.
+- U+2026 -> "...", U+2014 -> "-": 9 lines in dev/schema/dbo_name.h,
+  table.h, view.h, virtual_table.h, and the same 9 in
+  include/sqlite_orm/sqlite_orm.h. A scan found no other non-ASCII byte
+  under dev/ or include/.
+- green.sh: pre-commit.sh exit 0, token streams identical,
+  clang-format-20 unchanged, no on-purpose marks.
+- trueqbit: commit, note, push, open as a draft PR.
+
+# Later
+- PR A (refactor/schema-sqlite-terms) renames table.h: whichever of the
+  two merges second takes the other in by a merge.
