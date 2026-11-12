@@ -49,13 +49,13 @@ namespace sqlite_orm::internal {
                                                T>;
 
     template<class T>
-    using is_base_table_constraint = mpl::invoke_t<
+    using is_ordinary_table_constraint = mpl::invoke_t<
         mpl::disjunction<check_if<is_primary_key>, check_if<is_foreign_key>, check_if<is_unique>, check_if<is_check>>,
         T>;
 
     template<class T>
-    using is_base_table_element_or_constraint =
-        mpl::invoke_t<mpl::disjunction<check_if<is_column>, check_if<is_base_table_constraint>>, T>;
+    using is_ordinary_table_element_or_constraint =
+        mpl::invoke_t<mpl::disjunction<check_if<is_column>, check_if<is_ordinary_table_constraint>>, T>;
 
 #ifdef SQLITE_ORM_FTS5_SUPPORTED
     template<class T>
@@ -88,7 +88,7 @@ namespace sqlite_orm::internal {
      *  Whether a node is a database object definition - an admissible schema element of a storage definition.
      */
     template<class T>
-    using is_database_object = mpl::invoke_t<mpl::disjunction<check_if<is_base_table>,
+    using is_database_object = mpl::invoke_t<mpl::disjunction<check_if<is_ordinary_table>,
                                                               check_if<is_view>,
                                                               check_if<is_virtual_table>,
                                                               check_if<is_index>,

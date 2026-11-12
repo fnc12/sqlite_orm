@@ -4,21 +4,18 @@
  */
 
 #include "schema/column.h"
-#include "schema/table.h"
+#include "schema/ordinary_table.h"
 // note: though the top-level sqlite_orm.h umbrella header will include all concrete virtual tables provided by sqlite_orm
 // we include it here to be independent and consistent with the other schema nodes
 #include "schema/constraints/auxiliary.h"
 #include "schema/constraints/check.h"
 #include "schema/constraints/collate.h"
-#include "schema/constraints/content.h"
 #include "schema/constraints/default.h"
 #include "schema/constraints/foreign_key.h"
+#include "schema/constraints/fts5_options.h"
 #include "schema/constraints/generated_always.h"
 #include "schema/constraints/null.h"
-#include "schema/constraints/prefix.h"
 #include "schema/constraints/primary_key.h"
-#include "schema/constraints/tokenize.h"
-#include "schema/constraints/unindexed.h"
 #include "schema/constraints/unique.h"
 #include "schema/index.h"
 #include "schema/indexed_column.h"

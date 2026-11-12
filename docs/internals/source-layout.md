@@ -8,9 +8,10 @@ which takes precedence where both apply.
 ## Schema and DSL
 
 - `dev/schema/` - The definitions of database objects: tables, columns, views, virtual tables,
-  indexes, triggers (`table.h`, `column.h`, `virtual_table.h`, ...); one header per constraint
-  in `constraints/`; algorithms across the whole schema in `algorithms/` (`sync_order.h`,
-  `table_lookup.h`).
+  indexes, triggers (`ordinary_table.h`, `column.h`, `virtual_table.h`, ...); one header per constraint
+  in `constraints/`, and beside them one header per virtual table module for that module's options
+  (`fts5_options.h`), which move into a folder of their own once a second module's options arrive;
+  algorithms across the whole schema in `algorithms/` (`sync_order.h`, `table_lookup.h`).
 - `dev/ast/` - The nodes of queries, DML and other statements and their clauses and
   expressions (`select_t`, `where`, `binary_condition.h`, `join.h`, ...), including the call
   nodes of functions (`builtin_function.h`, `app_function.h` for application-defined ones);
