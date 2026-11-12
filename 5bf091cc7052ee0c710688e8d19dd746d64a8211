@@ -1,0 +1,31 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: PR B of step 2c
+(refactor/schema-vocabulary-placement), after step 4.
+
+# Decided
+- trueqbit asked whether the schema-level operations need listing;
+  Claude: no - the enumeration (search, relate; then aggregate) already
+  missed foreign_keys_count once, and every missing kind would read as a
+  misfiling. trueqbit: rewrite around the single test, its own commit.
+- The test: does the answer about an element depend on that element
+  alone (classification, vocabulary: a trait, or a filter by one -
+  index_filters.h), or on other elements of a collection, or the
+  collection as a whole (schema-level: table_lookup.h, sync_order.h,
+  foreign_keys.h as examples)?
+- The placement test's arrow "not vocabulary." becomes "a schema-level
+  algorithm, in dev/schema/algorithms/" (rule wording).
+
+# Discussed
+- Search by lookup type sits close to a filter followed by "pick the one
+  match"; it is schema-level because the pick depends on the rest of the
+  collection (exactly one match). Raised to trueqbit as a fine line; the
+  test covers it.
+- Replaced wording, 55999e7a and 67289968: "Algorithms that search,
+  relate or aggregate nodes across a collection are schema-level
+  algorithms: searching finds a node by a lookup type (table_lookup.h),
+  relating sets one node against another (sync_order.h), aggregating
+  combines an answer over all of them (foreign_keys.h) ... Filtering a
+  collection by a trait each element answers alone is classification, and
+  stays vocabulary: index_filters.h keeps the positions of the matching
+  elements."
+Green: pre-commit.sh 0, documented paths included; Markdown only.
