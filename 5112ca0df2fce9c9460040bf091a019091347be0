@@ -1,0 +1,22 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: the domain re-check on
+docs/purpose-domain-recheck. Follows 2f6f02af, whose ruling 1 widened
+match.h's Purpose to the MATCH operator; trueqbit asked for a test of the
+R*Tree case.
+
+# Decided
+- A serializer TEST_CASE beside the FTS5 ones in
+  tests/statement_serializer_tests/ast/match.cpp, under
+  SQLITE_ORM_RTREE_SUPPORTED, with its own `using namespace sqlite_orm;`
+  (the file's sits inside the FTS5 guard).
+- The geometry function is an application-defined stand-in (func<Circle>):
+  SQLite registers geometry functions through
+  sqlite3_rtree_geometry_callback, which sqlite_orm does not wrap
+  (TODO.md, 46065925). Integer arguments keep float formatting out of the
+  expected text. Not compiled by Claude; trueqbit builds.
+
+# Discussed
+- measure.mjs against the parent: lines 57854 -> 57881 (+27), copies
+  3902 -> 3906 (+4, the R*Tree table setup of using_rtree.cpp), gzip bytes
+  469466 -> 469748 (+282); files, hops unchanged.
+- Green: pre-commit.sh exit 0; clang-format 20 unchanged; no "on purpose:".
