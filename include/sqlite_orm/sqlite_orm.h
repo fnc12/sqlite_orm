@@ -8164,6 +8164,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // is_statement_clause, is_index_element_of_v
 // #include "../vocabulary/node_traits.h"
 
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
 // #include "indexed_column.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

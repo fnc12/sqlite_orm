@@ -10,6 +10,7 @@
 #include "../functional/mpl/convenience.h"
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause, is_index_element_of_v
 #include "../vocabulary/node_traits.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "indexed_column.h"  // make_indexed_column
 
 namespace sqlite_orm::internal {
