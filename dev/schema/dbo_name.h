@@ -49,7 +49,7 @@ namespace sqlite_orm::internal {
     using is_dbo_name_literal = std::bool_constant<is_dbo_name_literal_v<T>>;
 
     /**
-     *  Returns the database object name carried by the `dbo_name_literal<…>` element of `annotations`,
+     *  Returns the database object name carried by the `dbo_name_literal<...>` element of `annotations`,
      *  or the type's reflected identifier when no such element is present.
      */
     template<class T, class Tuple>
@@ -64,7 +64,7 @@ namespace sqlite_orm::internal {
     }
 
     /**
-     *  Returns a copy of `tuple` with all `dbo_name_literal<…>` elements removed.
+     *  Returns a copy of `tuple` with all `dbo_name_literal<...>` elements removed.
      */
     template<class Tuple>
     constexpr auto filter_out_dbo_name(Tuple&& tuple) {
