@@ -1,0 +1,45 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: PR A of step 2c
+(refactor/schema-sqlite-terms), step 4 of 5.
+
+# Decided
+- trueqbit (decisions 16, 17, 20): content.h, prefix.h, tokenize.h,
+  unindexed.h merge into constraints/fts5_options.h; auxiliary.h stays
+  apart (trueqbit's correction: sqlite-vec's vec0 takes auxiliary columns
+  too).
+- trueqbit, this session: one commit - git mv content.h, the other three
+  appended by script, git rm - rather than refactoring.md's "copy first,
+  delete later" as two commits. Claude's reason for two had been the
+  rule's letter alone; the line check below shows nothing lost. The bend
+  of refactoring.md's letter is recorded here only; trueqbit declined an
+  ontocratic-feedback run for it.
+- trueqbit wrote the header, checked against
+  https://www.sqlite.org/fts5.html section 4: Purpose "represent the
+  configuration options and column options of an FTS5 table." - content,
+  prefix, tokenize are configuration options, UNINDEXED the one column
+  option; "FTS5" stays, as the folder leaves the module unsaid (ruling
+  13). Intention: the shared node-header Intention of schema/. The guard
+  SQLITE_ORM_FTS5_SUPPORTED is configuration, no relation, and stays out
+  of it. The sqlite.org links stay on the factories (decision 4 b).
+- Order: content, prefix, tokenize, unindexed, as node_definitions.h
+  listed them; the declarations as they stood, one internal namespace
+  block, one export block with one FTS5 guard; the includes are the union
+  of the four.
+- The doc-comments of the factories are left as they were (the docs
+  round's); tokenize's "'...''" carries a stray quote, for that round.
+
+# Discussed
+Green: pre-commit.sh 0; clang-format 20 unchanged; no "on purpose:".
+Lines of the four old files against the new one, as multisets: only in
+old - the duplicated #pragma once, guards, includes, namespace braces;
+only in new - the header block. The amalgamation: the same, plus the
+include comments.
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 475 | 472 | -3 |
+| lines | 57854 | 57827 | -27 |
+| copies | 3902 | 3887 | -15 |
+| hopsMean | 10.1 | 10.2 | +0.1 |
+| hopsMax | 221 | 218 | -3 |
+| gzipBytes | 469515 | 469591 | +76 |
