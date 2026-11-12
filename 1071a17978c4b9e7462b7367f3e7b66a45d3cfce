@@ -40,3 +40,24 @@ index_filters.h include arrived.
 | hopsMean | 10.2 | 10.2 | 0 |
 | hopsMax | 218 | 218 | 0 |
 | gzipBytes | 469618 | 469728 | +110 |
+
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: after #1616 was opened,
+trueqbit asked whether get_table_column_fields should be renamed
+collect_table_column_fields.
+
+# Decided
+- trueqbit: get_table_column_fields keeps its name.
+- Rejected: collect_table_column_fields - collect_ in this tree names the
+  serializer's collectors (collect_table_names, collect_column_expressions,
+  collect_table_column_expressions, collect_cte_column_names), which walk
+  an expression or table with a context and append to a run-time
+  container; get_table_column_fields walks nothing and appends nothing -
+  it filters one table definition's elements to its columns at compile
+  time and returns their member pointers as a tuple, and "collect" would
+  read as a sibling of collect_table_column_expressions.
+- Rejected: column_fields_of - _of names a type computed from a node
+  (naming convention), not a run-time value.
+- get_ stays in line with its one consumer, get_column_references_of,
+  which returns get_column_references(...) or get_table_column_fields(...)
+  from the same branches.
