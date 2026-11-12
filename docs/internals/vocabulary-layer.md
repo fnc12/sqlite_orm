@@ -128,7 +128,7 @@ The other algorithms files are chosen by what they compute:
 | `operand_predicates.h` | Whether a type may be an operand of a named expression factory (`are_valid_operands`). |
 | `index_filters.h` | Index sequences of the matching positions in a tuple of nodes — table elements, the database objects of a schema or a flattened expression — not filtered tuples. |
 | `accessors.h` | Uniform access to a node's relevant sub-part across dissimilar grammar families (`access_main_select`); the payoff of the semantic traits. Also `mapped_type_of_t`, the mapped object a record set stands for. |
-| `column_field_types.h` | Type tuples over the columns of a single table definition. |
+| `column_field_types.h` | The fields of the columns of a single table definition, and the type tuples that go with them. |
 | `argument_placeholders.h` | The return type placeholders of the built-in functions and their structural substitution. |
 | `field_predicates_fwd.h` | Declarations of the field-level predicates; their definitions are spread as described there. |
 | `field_predicates.h` | Definitions of the derived field predicates, reached only through the manifest. |
