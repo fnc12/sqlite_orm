@@ -1,13 +1,13 @@
 #pragma once
 
 /** @file
- *  Purpose: represent the VALUES row list.
+ *  Purpose: represent the VALUES clause.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  *
  *  Note: this header sits outside `ast/crud/`, unlike the other clause nodes a raw INSERT or
- *  REPLACE takes, because a VALUES row list is written both as an INSERT's rows and as the
+ *  REPLACE takes, because a VALUES clause is written both as an INSERT's rows and as the
  *  operand of an IN - in either spelling.
  */
 
@@ -32,7 +32,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
 
     /**
-     *  A VALUES row list assembled at runtime.
+     *  A VALUES clause assembled at runtime.
      */
     template<class T>
     struct dynamic_values_t {
