@@ -5845,7 +5845,7 @@ namespace sqlite_orm::internal {
      *  The positions of the ordinary tables in a tuple of database objects.
      */
     template<class DBOs>
-    using tables_index_sequence = filter_tuple_sequence_t<DBOs, is_ordinary_table>;
+    using ordinary_tables_index_sequence = filter_tuple_sequence_t<DBOs, is_ordinary_table>;
 
 #ifdef SQLITE_ORM_WITH_VIEW
     /**
@@ -22421,7 +22421,7 @@ namespace sqlite_orm::internal {
     template<class DBOs, satisfies<is_db_objects, DBOs> = true>
     constexpr int foreign_keys_count() {
         int res = 0;
-        iterate_tuple<DBOs>(tables_index_sequence<DBOs>{}, [&res](const auto* dummy) {
+        iterate_tuple<DBOs>(ordinary_tables_index_sequence<DBOs>{}, [&res](const auto* dummy) {
             using table_type = std::remove_pointer_t<decltype(dummy)>;
             res += table_type::template count_of<is_foreign_key>();
         });

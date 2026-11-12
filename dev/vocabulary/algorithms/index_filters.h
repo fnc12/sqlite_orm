@@ -53,7 +53,7 @@ namespace sqlite_orm::internal {
      *  The positions of the ordinary tables in a tuple of database objects.
      */
     template<class DBOs>
-    using tables_index_sequence = filter_tuple_sequence_t<DBOs, is_ordinary_table>;
+    using ordinary_tables_index_sequence = filter_tuple_sequence_t<DBOs, is_ordinary_table>;
 
 #ifdef SQLITE_ORM_WITH_VIEW
     /**
