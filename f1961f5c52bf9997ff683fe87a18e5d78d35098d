@@ -1,0 +1,80 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-11/12: pass 2 of the
+Purpose/Intention sweep (metatrom-ag/claude-code-plugins#293), round
+dev/schema/ (32 headers), on branch docs/purpose-intention-schema off
+dev at 3cd98276. The commit keeps the round's state on the remote before
+the refactors it waits for; it is rewritten once PR B is merged in.
+
+# Decided
+- trueqbit (8): schema/cte_mapping.h becomes schema/cte.h; a CTE is a
+  table its select defines for the lifetime of the statement it attaches
+  to. Purpose: "represent a common table expression as a table."
+- trueqbit (11 a, 14): "base table" becomes SQLite's "ordinary table"
+  (lang_createtable.html): base_table -> ordinary_table and its traits,
+  table.h -> ordinary_table.h, table_definitions.h ->
+  ordinary_table_definitions.h; table_identifier.h and table_base.h keep
+  "table" in the wide sense; make_table() stays. "Base table" also
+  collided with table_base.h, a C++ base class.
+- trueqbit (16, 17, 20): the four FTS5 option headers merge into
+  constraints/fts5_options.h, FTS5's own word (fts5.html); one file per
+  module's options. (18): the SQL constraints stay one file each. (19):
+  source-layout.md gains the per-module rule; a folder once a second
+  module's options arrive. auxiliary.h stays apart: auxiliary columns
+  serve virtual tables in general (see 04e81419's note).
+- trueqbit (24, 25): the table and view index sequences move from
+  schema/algorithms/table_filters.h into vocabulary/algorithms/
+  index_filters.h - classifying each element by a trait is vocabulary;
+  foreign_keys_count stays in schema/ as algorithms/foreign_keys.h.
+  vocabulary-layer.md "The core distinction" says what "search" and
+  "relate" mean.
+- trueqbit (26 a, with rename): get_table_column_fields moves into
+  vocabulary/algorithms/column_field_types.h, renamed column_fields.h;
+  column_lookup.h's Purpose stays.
+- trueqbit (27): two refactor pull requests, stacked on #1609 - PR A
+  refactor/schema-sqlite-terms (8, 11 a, 14, 16-20), PR B
+  refactor/schema-vocabulary-placement (24-26); this branch merges PR B in.
+- trueqbit (4 a, b): a Purpose or doc-comment naming an SQL or SQLite
+  construct is checked against its sqlite.org page, the URL in the note;
+  the link goes on the construct's public factory function - public
+  documentation, the pattern of the FTS5 option and built-in function
+  factories.
+- trueqbit (5 b): the ast/ Purposes naming a construct, and
+  ddl_predicates.h, field_predicates.h, values.h, are re-checked against
+  sqlite.org in a pull request of their own (docs/purpose-domain-recheck,
+  on #1609).
+- trueqbit (28): plans leave the comments: the trigger-callback idea
+  (triggers.h) goes to TODO.md; do_for_each_row keeps the per-row fact,
+  positive; virtual_table.h:96 is removed - cryptic, and 7e49f2b1 gives
+  no reason.
+- trueqbit (29 a): auxiliary() is unguarded by FTS5 in a fix pull
+  request from dev; #1597 (f8c9daa1) turned the outer guard, implied by
+  the inner 3.24.0 check, into SQLITE_ORM_FTS5_SUPPORTED.
+- trueqbit (30 b, ledger 16): a comment moved in a refactor is reworded
+  where it lands, in the same commit, its old words in the note - pull
+  requests that make sense alone, no tail left for later. The
+  refactoring rule's byte for byte holds for code; a rename is a step of
+  its own after the move. Applies to compute_sync_order and
+  object_type_matches.
+- trueqbit (31 b): the 9 non-ASCII lines of dev/ become ASCII in a pull
+  request from dev, once C4819 is confirmed.
+
+# Discussed
+- Weighed for 4: (c) the reviewer gets the sources - decision 6, in the
+  plugin; (d) a document mapping nodes to sqlite.org pages - rejected,
+  the factory's doc-comment carries the link.
+- 5: the notes since #1605 hold the cases trueqbit caught - VALUES as
+  IN's operand (8580143e, 8f124f0c), ddl_predicates.h and
+  field_predicates.h widened, accessors.h "driving expression"
+  (fcf089c8), ledger 21 (Q5).
+- 31: C4819 is from memory, untried; where it fails, the entry closes.
+- Green before the commit: pre-commit.sh exit 0, token streams identical,
+  clang-format-20 unchanged, no "on purpose:".
+
+# Later
+- The work goes to four sessions, handover-step2c-0..4 in the
+  calibration folder: refactors, docs round, domain re-check, small
+  fixes.
+- The round's commit message and note (the cut text of the seven old
+  @file blocks, schema-round/schema-headers.patch; the reviewer's
+  findings; the measure table) are written when this commit is rewritten.
+- Decisions 6 and 7: handover-feedback-domain-sources.md.
