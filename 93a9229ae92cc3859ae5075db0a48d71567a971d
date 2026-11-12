@@ -1,0 +1,15 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: PR B of step 2c
+(refactor/schema-vocabulary-placement), step 4 of 4, the rename.
+
+# Decided
+- trueqbit (decision 26 a with the rename): column_field_types.h ->
+  column_fields.h, a commit of its own after the move (1071a179). Its
+  Purpose already reads "compute the fields of columns and the types that
+  go with them."
+- Referrers: node_algorithms.h; vocabulary-layer.md's row and the
+  Schema-level algorithms section.
+
+# Discussed
+Green: pre-commit.sh 0; rename 100%; tokens differ in the umbrella's
+include line alone; clang-format 20 unchanged; no "on purpose:".
