@@ -1,0 +1,21 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12: PR B of step 2c
+(refactor/schema-vocabulary-placement), step 2 of 4.
+
+# Decided
+- trueqbit (hand-over step 2): "The core distinction" is sharpened:
+  "search" means finding by a lookup type (table_lookup.h), "relate" one
+  element against another (sync_order.h); filtering by a trait each
+  element answers alone is classification, hence vocabulary - the sentence
+  that hid the mismatch.
+- Claude: the placement test's third question and the tier table's row
+  take the same words ("traverse", "Search/traversal" leave), so the three
+  places agree; "not vocabulary" in the paragraph becomes "schema-level
+  algorithms" (rule wording).
+- Left as they are: "Classification of, and computation over, a single
+  node or type" in the tier table and the traits' "single node" - the
+  vocabulary's index filters already ran over table elements before this
+  pull request.
+
+# Discussed
+Green: pre-commit.sh 0, documented paths included; Markdown only.
