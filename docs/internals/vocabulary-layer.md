@@ -23,7 +23,7 @@ From the bottom up:
 | Language mechanics | `dev/functional/` | General-purpose C++ utilities, among them pointer-to-member mechanics. Not SQL, not DSL. |
 | DSL vocabulary | `dev/vocabulary/` | Classification of, and computation over, a **single** node or type. |
 | Node definitions | `dev/schema/`, `dev/ast/` | The concrete node structs, each specializing the vocabulary axes in place. |
-| Schema-level algorithms | `dev/schema/algorithms/` | Search and relation **across a collection** of nodes. Consumes vocabulary; is not vocabulary. |
+| Schema-level algorithms | `dev/schema/algorithms/` | Search, relation and aggregation **across a collection** of nodes. Consumes vocabulary; is not vocabulary. |
 
 ### Pointer-to-member mechanics — one tier below the DSL
 
@@ -69,9 +69,10 @@ accessors extracting a type from a single node.
 composing several traits and projections into a compound answer — a bool, an index sequence,
 a sub-object, a type tuple. One complete definition, never specialized.
 
-Algorithms that search or relate nodes *across a collection* are **schema-level
+Algorithms that search, relate or aggregate nodes *across a collection* are **schema-level
 algorithms**: searching finds a node by a lookup type (`table_lookup.h`), relating sets one node
-against another (`sync_order.h`); see [Schema-level algorithms](#schema-level-algorithms).
+against another (`sync_order.h`), aggregating combines an answer over all of them
+(`foreign_keys.h`); see [Schema-level algorithms](#schema-level-algorithms).
 Filtering a collection by a trait each element answers alone is classification, and stays
 vocabulary: `index_filters.h` keeps the positions of the matching elements.
 
@@ -84,7 +85,8 @@ vocabulary: `index_filters.h` keeps the positions of the matching elements.
 > have a node, tell me something about it"?
 > → `vocabulary/algorithms/`
 >
-> **Does it search across a collection by a lookup type, or relate its nodes to one another?**
+> **Does it search across a collection by a lookup type, relate its nodes to one another, or
+> aggregate over them?**
 > → **not vocabulary.** `dev/schema/algorithms/`, possibly feeding a vocabulary algorithm.
 
 - **Complexity never determines the tier.** `is_raw_dml_expression_v` composes grammar
@@ -213,13 +215,13 @@ algorithms, in `algorithms/recordset_predicates.h`.
 
 ## Schema-level algorithms
 
-`dev/schema/algorithms/` holds algorithms that search or relate nodes **across a
-collection**. They consume vocabulary, which is why they are easily misfiled. The reference
+`dev/schema/algorithms/` holds algorithms that search, relate or aggregate nodes
+**across a collection**. They consume vocabulary, which is why they are easily misfiled. The reference
 example is `sync_order.h`: a topological sort of the `db_objects_tuple`, relating its members
 rather than classifying a node in hand. `table_lookup.h` finds the database object mapping a
 lookup type ("table" in the wide sense: ordinary tables, views and virtual tables) and feeds it
 into the vocabulary algorithms of `column_field_types.h`,
-`column_lookup.h` a column across the schema, and `table_filters.h` counts the foreign keys of its tables.
+`column_lookup.h` a column across the schema, and `foreign_keys.h` counts the foreign keys of its tables.
 
 They operate on the **schema**, not on `storage_t`, so they are named `schema_*`, never
 `storage_*`. The facilities for the tuple itself (`db_objects_tuple`, `db_objects_cat`,

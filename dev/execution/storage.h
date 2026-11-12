@@ -51,8 +51,8 @@
 #include "../result_set/mapped_view.h"
 #include "../result_set/result_set_view.h"
 #include "../schema/algorithms/column_lookup.h"
+#include "../schema/algorithms/foreign_keys.h"
 #include "../schema/algorithms/sync_order.h"
-#include "../schema/algorithms/table_filters.h"
 #include "../schema/constraints/generated_always.h"  // basic_generated_always
 #include "../serialization/serializer_context.h"
 #include "../serialization/serializing_util.h"
