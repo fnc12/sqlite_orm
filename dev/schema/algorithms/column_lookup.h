@@ -1,9 +1,10 @@
 #pragma once
 
-/** @file Lookup of a column definition within a tuple of database objects.
+/** @file
+ *  Purpose: find a column across the database objects of a schema.
  *
- *  Schema-level algorithms like `table_lookup.h`: they locate the table definition mapping a column
- *  expression's object type - or the CTE a moniker names - and find the column within it.
+ *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
+ *  consumes the vocabulary layer.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

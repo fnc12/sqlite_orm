@@ -1,15 +1,10 @@
 #pragma once
 
-/** @file Lookup of a table definition within a tuple of database objects.
+/** @file
+ *  Purpose: find the table that maps a type among the database objects of a schema.
  *
- *  These are schema-level algorithms: they search *across* the collection of database objects
- *  to locate the one mapping a given lookup type, as opposed to classifying a node already in hand,
- *  which is what the vocabulary layer does. They consume the vocabulary layer to do so.
- *
- *  "Table" is meant in the wide SQL table sense here, covering ordinary tables, views
- *  and virtual tables alike. Indexes and triggers are deliberately not covered:
- *  their `object_type` is void, which `object_type_matches` filters out, so a lookup
- *  answers whether a type is mapped as a table - not whether it occurs in the schema at all.
+ *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
+ *  consumes the vocabulary layer.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -30,6 +25,7 @@ namespace sqlite_orm::internal {
      *  `std::true_type` if given object is mapped, `std::false_type` otherwise.
      *
      *  Note: unlike ordinary_table<>, index_t<>::object_type and trigger_t<>::object_type is always void.
+     *  A lookup thus finds a type mapped by a table in the wide sense: an ordinary table, a view or a virtual table.
      */
     template<typename DBO, typename Lookup>
     struct object_type_matches

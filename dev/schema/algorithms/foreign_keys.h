@@ -1,6 +1,10 @@
 #pragma once
 
-/** @file Computations over the ordinary tables within a tuple of database objects.
+/** @file
+ *  Purpose: compute over the foreign keys of a schema.
+ *
+ *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
+ *  consumes the vocabulary layer.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

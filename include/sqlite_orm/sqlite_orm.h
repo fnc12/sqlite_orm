@@ -1998,6 +1998,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "schema/column.h"
 
+/** @file
+ *  Purpose: represent a column of a table.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <optional>  //  std::optional
 #include <string>  //  std::string
@@ -5998,6 +6005,12 @@ namespace sqlite_orm::internal {
 // Included to specialize traits
 // #include "column_identifier.h"
 
+/** @file
+ *  Purpose: identify a column by its name.
+ *
+ *  Intention: a base of the column definitions in `schema/`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #endif
@@ -6266,6 +6279,13 @@ namespace sqlite_orm::internal {
 
 // #include "schema/ordinary_table.h"
 
+/** @file
+ *  Purpose: represent an ordinary table.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple_element, std::get, std::apply, std::tuple_cat
@@ -6512,6 +6532,13 @@ namespace sqlite_orm::internal {
 //  sqlite_orm::make_column
 // #include "constraints/generated_always.h"
 
+/** @file
+ *  Purpose: represent the constraint of a generated column.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif
@@ -6576,6 +6603,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "dbo_name.h"
+
+/** @file
+ *  Purpose: name a database object by an annotation on its mapped class.
+ *
+ *  Intention: read through C++26 reflection by the reflecting factories of the table, view and virtual table headers in
+ *  `schema/`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
@@ -6684,6 +6718,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "table_base.h"
 
+/** @file
+ *  Purpose: hold the bases the kinds of table build on.
+ *
+ *  Intention: a base of the ordinary table, view, virtual table and CTE nodes in `schema/`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <functional>  //  std::invoke
 #include <string>  //  std::string
@@ -6781,6 +6821,12 @@ namespace sqlite_orm::internal {
 // #include "column_identifier.h"
 
 // #include "table_identifier.h"
+
+/** @file
+ *  Purpose: identify a table, in the wide sense, by its name.
+ *
+ *  Intention: a base of the ordinary table, view, virtual table and CTE nodes in `schema/`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -7265,6 +7311,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // we include it here to be independent and consistent with the other schema nodes
 // #include "schema/constraints/auxiliary.h"
 
+/** @file
+ *  Purpose: represent the constraint that makes a column of a virtual table auxiliary.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same
 #endif
@@ -7302,6 +7355,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "schema/constraints/check.h"
 
+/** @file
+ *  Purpose: represent the CHECK constraint.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif
@@ -7331,6 +7391,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "schema/constraints/collate.h"
+
+/** @file
+ *  Purpose: represent the COLLATE constraint of a column.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same
@@ -7399,6 +7466,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "schema/constraints/default.h"
 
+/** @file
+ *  Purpose: represent the DEFAULT constraint.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <utility>  //  std::move
@@ -7437,6 +7511,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "schema/constraints/foreign_key.h"
+
+/** @file
+ *  Purpose: represent the FOREIGN KEY constraint.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <functional>  //  std::ref
@@ -7903,6 +7984,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "schema/constraints/null.h"
 
+/** @file
+ *  Purpose: represent the nullability constraint of a column.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same
 #endif
@@ -7933,6 +8021,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "schema/constraints/primary_key.h"
+
+/** @file
+ *  Purpose: represent the PRIMARY KEY constraint.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple
@@ -8097,6 +8192,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "schema/constraints/unique.h"
 
+/** @file
+ *  Purpose: represent the UNIQUE constraint.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple
@@ -8150,6 +8252,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "schema/index.h"
 
+/** @file
+ *  Purpose: represent an index.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple, std::declval, std::tuple_element_t
@@ -8167,6 +8276,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 // #include "indexed_column.h"
+
+/** @file
+ *  Purpose: represent an element of an index.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -8296,6 +8412,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "schema/indexed_column.h"
 
 // #include "schema/triggers.h"
+
+/** @file
+ *  Purpose: represent triggers and the expressions only their bodies take.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>
@@ -8656,6 +8779,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "schema/view.h"
 
+/** @file
+ *  Purpose: represent a view.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_VIEW
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
@@ -8762,6 +8892,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
 // #include "schema/virtual_table.h"
+
+/** @file
+ *  Purpose: represent a virtual table.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
@@ -18029,16 +18166,11 @@ namespace sqlite_orm::internal {
 
 // #include "../schema/algorithms/table_lookup.h"
 
-/** @file Lookup of a table definition within a tuple of database objects.
+/** @file
+ *  Purpose: find the table that maps a type among the database objects of a schema.
  *
- *  These are schema-level algorithms: they search *across* the collection of database objects
- *  to locate the one mapping a given lookup type, as opposed to classifying a node already in hand,
- *  which is what the vocabulary layer does. They consume the vocabulary layer to do so.
- *
- *  "Table" is meant in the wide SQL table sense here, covering ordinary tables, views
- *  and virtual tables alike. Indexes and triggers are deliberately not covered:
- *  their `object_type` is void, which `object_type_matches` filters out, so a lookup
- *  answers whether a type is mapped as a table - not whether it occurs in the schema at all.
+ *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
+ *  consumes the vocabulary layer.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -18058,12 +18190,11 @@ namespace sqlite_orm::internal {
 
 // #include "../db_objects.h"
 
-/** @file The tuple of database objects making up a schema.
+/** @file
+ *  Purpose: represent a schema as the tuple of its database objects.
  *
- *  A schema is represented as a tuple of database objects - tables, views, virtual tables,
- *  indexes and triggers. These are the generic facilities for recognizing and passing around
- *  such a tuple, and unpacking the tuples of database objects passed to `make_storage()`;
- *  locating an individual database object within one is the subject of `algorithms/table_lookup.h`.
+ *  Intention: set apart from the algorithms in `algorithms/` by `docs/internals/vocabulary-layer.md` "Schema-level
+ *  algorithms"; its tuple is what those algorithms and `make_storage()` take.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -18210,6 +18341,7 @@ namespace sqlite_orm::internal {
      *  `std::true_type` if given object is mapped, `std::false_type` otherwise.
      *
      *  Note: unlike ordinary_table<>, index_t<>::object_type and trigger_t<>::object_type is always void.
+     *  A lookup thus finds a type mapped by a table in the wide sense: an ordinary table, a view or a virtual table.
      */
     template<typename DBO, typename Lookup>
     struct object_type_matches
@@ -18626,6 +18758,13 @@ namespace sqlite_orm::internal {
 // #include "../schema/algorithms/table_lookup.h"
 // schema_pick_table_t, schema_mapped_column_field_types
 // #include "../schema/cte.h"
+
+/** @file
+ *  Purpose: represent a common table expression as a table.
+ *
+ *  Intention: placed by `docs/internals/source-layout.md`; gathered with the schema's database objects by
+ *  `cte_db_objects.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
@@ -22145,10 +22284,11 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 
 // #include "../schema/algorithms/column_lookup.h"
 
-/** @file Lookup of a column definition within a tuple of database objects.
+/** @file
+ *  Purpose: find a column across the database objects of a schema.
  *
- *  Schema-level algorithms like `table_lookup.h`: they locate the table definition mapping a column
- *  expression's object type - or the CTE a moniker names - and find the column within it.
+ *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
+ *  consumes the vocabulary layer.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -22292,7 +22432,11 @@ namespace sqlite_orm::internal {
 
 // #include "../schema/algorithms/foreign_keys.h"
 
-/** @file Computations over the ordinary tables within a tuple of database objects.
+/** @file
+ *  Purpose: compute over the foreign keys of a schema.
+ *
+ *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
+ *  consumes the vocabulary layer.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -22326,16 +22470,11 @@ namespace sqlite_orm::internal {
 
 // #include "../schema/algorithms/sync_order.h"
 
-/** @file Compile-time computation of the database object synchronization order.
+/** @file
+ *  Purpose: order the database objects of a schema so that each is synced after those it depends on.
  *
- *  `sync_schema()` must sync database objects in dependency order, not in declaration order:
- *  SQLite refuses to create an index or a trigger whose target table (or view) doesn't exist yet,
- *  and recreating a table (or a view) destroys its dependent indexes and triggers,
- *  which therefore must be synced afterwards in order to be recreated.
- *
- *  These are the only hard creation-time dependencies in SQLite -
- *  foreign keys, view selects, trigger bodies and fts5 external content are validated lazily
- *  at DML time and don't constrain the order.
+ *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
+ *  consumes the vocabulary layer.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -22371,6 +22510,12 @@ namespace sqlite_orm::internal {
      *  until after their target table or view.
      *  The dependency graph is trivially acyclic since indexes and triggers depend on tables and views only,
      *  which in turn depend on nothing.
+     *
+     *  `sync_schema()` syncs the database objects in this order: SQLite creates an index or a trigger
+     *  once its target table or view exists, and recreating a table or a view drops its indexes and triggers,
+     *  which are synced after it and so recreated.
+     *  These are SQLite's creation-time dependencies; foreign keys, view selects, trigger bodies
+     *  and the external content of an FTS5 table are resolved when a statement runs, and leave the order free.
      */
     template<class... DBO>
     constexpr std::array<size_t, sizeof...(DBO)> compute_sync_order() {
@@ -30867,8 +31012,10 @@ namespace sqlite_orm::internal {
 
 // #include "schema/column_definitions.h"
 
-/** @file Out-of-class definitions of column members, which need the statement serializer's machinery
- *  (`default_value_extractor.h`) that `schema/column.h` stays free of.
+/** @file
+ *  Purpose: define the members of a column whose bodies need the statement serializer.
+ *
+ *  Intention: keeps `schema/column.h` free of the serializer; gathered by `interface_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -30923,8 +31070,11 @@ namespace sqlite_orm::internal {
 
 // #include "schema/ordinary_table_definitions.h"
 
-/** @file Out-of-class definitions of table members, which need the column type printer (`type_printer.h`)
- *  that `schema/ordinary_table.h` stays free of.
+/** @file
+ *  Purpose: define the members of an ordinary table whose bodies need what `schema/ordinary_table.h` stays free of.
+ *
+ *  Intention: keeps `schema/ordinary_table.h` free of the type printer and of `builtin/dbos/pragma_table_info.h`;
+ *  gathered by `interface_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
