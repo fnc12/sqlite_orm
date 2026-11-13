@@ -6694,8 +6694,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <type_traits>  //  std::is_member_pointer
 #endif
 
-// #include "../functional/cxx_polyfill/type_traits.h"
-
 // #include "../functional/field_of.h"
 
 // #include "../functional/member_traits.h"
@@ -22114,10 +22112,6 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 // #include "../../functional/index_sequence_util.h"
 
 // #include "../../functional/mpl/convenience.h"
-
-// #include "../../functional/tuple_helper/tuple_filter.h"
-
-// #include "../../functional/tuple_helper/tuple_iteration.h"
 
 // #include "../../functional/type_traits.h"
 

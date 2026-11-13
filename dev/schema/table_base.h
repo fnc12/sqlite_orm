@@ -7,7 +7,6 @@
 #include <type_traits>  //  std::is_member_pointer
 #endif
 
-#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/field_of.h"
 #include "../functional/member_traits.h"
 #include "../functional/mpl/convenience.h"
