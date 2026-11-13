@@ -15,6 +15,7 @@
 #include "functions/aggregate.h"
 #include "functions/core.h"
 #include "functions/datetime.h"
+#include "functions/fts5_auxiliary.h"
 #include "functions/json.h"
 #include "functions/math.h"
 #include "functions/window.h"

@@ -10,7 +10,6 @@
 #include "dbos/dbstat.h"
 #include "dbos/fts5.h"
 #include "dbos/fts5_deprecations.h"
-#include "dbos/fts5_functions.h"
 #include "dbos/generate_series.h"
 #include "dbos/pragma_table_info.h"
 #include "dbos/rtree.h"
