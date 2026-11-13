@@ -1,0 +1,19 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: PR B (#1616), the second
+follow-up 0e6d8f8c named under Later.
+
+# Decided
+- trueqbit: a commit of its own. AGENTS.md's third placement line
+  predates the test 5bf091cc sharpened in vocabulary-layer.md ("does the
+  answer about an element depend on other elements of a collection, or
+  on the collection as a whole"); it now asks the same, with the table
+  clause folded in: "a table's columns and constraints included".
+- The "closed and single-node-scoped" line stays: vocabulary-layer.md
+  puts the table clause directly under the same question, and AGENTS.md
+  sends the reader there before adding a trait, predicate or algorithm.
+
+# Discussed
+Green: pre-commit.sh ran to its last step (git status), with GIT_DIR and
+GIT_WORK_TREE spelled out. A first run passed $PWD through wsl.exe,
+whose outer shell expanded it to the main checkout; git only read there,
+and the main checkout's status was unchanged.
