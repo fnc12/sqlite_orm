@@ -1,7 +1,12 @@
 #pragma once
 
-/** @file The built-in date and time functions https://www.sqlite.org/lang_datefunc.html: DATE(), TIME(),
- *        DATETIME(), JULIANDAY(), STRFTIME(), UNIXEPOCH() and TIMEDIFF().
+/** @file
+ *  Purpose: define the built-in SQL date and time functions.
+ *
+ *  Intention: a family of built-in SQL functions, as SQLite documents them at
+ *  https://www.sqlite.org/lang_datefunc.html, placed by `docs/internals/source-layout.md`; its functions are called
+ *  through `ast/builtin_function.h`, gathered by `builtin/functions.h`, and
+ *  `.claude/skills/add-builtin-function/SKILL.md` adds to it.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

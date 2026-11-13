@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the schema table.
+ *
+ *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
+ *  the nodes of `schema/`, gathered by `builtin/dbos.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #endif

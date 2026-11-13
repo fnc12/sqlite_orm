@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the R*Tree virtual table module.
+ *
+ *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
+ *  the nodes of `schema/`, gathered by `builtin/dbos.h`, and `.claude/skills/add-virtual-table/SKILL.md` adds others of
+ *  its kind.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_RTREE_SUPPORTED
 #include <cstdint>  //  std::int32_t

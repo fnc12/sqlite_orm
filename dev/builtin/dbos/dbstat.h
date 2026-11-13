@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the DBSTAT virtual table.
+ *
+ *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
+ *  the nodes of `schema/`, gathered by `builtin/dbos.h`, and `.claude/skills/add-virtual-table/SKILL.md` adds others of
+ *  its kind.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_DBSTAT_SUPPORTED
 #include <string>  //  std::string

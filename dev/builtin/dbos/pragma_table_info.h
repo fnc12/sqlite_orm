@@ -1,8 +1,11 @@
 #pragma once
 
-/** @file The rows of `PRAGMA table_info` and `PRAGMA table_xinfo`, and the eponymous virtual tables
- *        `pragma_table_info` and `pragma_table_xinfo` of their PRAGMA functions (C++26 reflection),
- *        bundled by `make_pragma_tables()`.
+/** @file
+ *  Purpose: represent the rows of the table_info PRAGMA, as a statement and as a table-valued function.
+ *
+ *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
+ *  the nodes of `schema/`, gathered by `builtin/dbos.h`, and `.claude/skills/add-virtual-table/SKILL.md` adds others of
+ *  its kind. The storage reads its rows when it syncs the schema.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

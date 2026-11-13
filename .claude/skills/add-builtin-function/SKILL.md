@@ -29,6 +29,8 @@ dropped:
   Wrap it in a function template instead where the public function takes the return type as a
   template argument, checks its arguments, or shares its name with other function templates or
   with a global C library function (`abs`, `round`, `time`, ...).
+  Under `using namespace sqlite_orm;` an object and a global function of the same name are an
+  ambiguous lookup, whereas two functions form an overload set.
 
 ## 2. C++17: the legacy node (`#ifndef SQLITE_ORM_WITH_CPP20_ALIASES` block)
 

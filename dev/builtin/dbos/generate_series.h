@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the generate_series table-valued function.
+ *
+ *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
+ *  the nodes of `schema/`, gathered by `builtin/dbos.h`, and `.claude/skills/add-virtual-table/SKILL.md` adds others of
+ *  its kind.
+ */
+
 #include "../../functional/gsl.h"
 #include "../../ast/table_reference.h"
 #include "../../schema/virtual_table.h"

@@ -1,9 +1,11 @@
 #pragma once
 
-/** @file The names of SQLite's built-in VFSes (OS interface layers), per platform, and the default one.
+/** @file
+ *  Purpose: name the built-in VFSes.
  *
- *  Like the built-in collations, they are the stock instances of a kind of named object that applications
- *  can register more of (`sqlite3_vfs_register()`); a storage opens its database with any registered one.
+ *  Intention: placed by `docs/internals/source-layout.md` (https://www.sqlite.org/vfs.html); read by
+ *  `execution/storage_options.h` and `execution/connection_holder.h`, which open a database with the VFS a storage
+ *  names.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

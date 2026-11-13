@@ -1,12 +1,11 @@
 #pragma once
 
-/** @file The built-in aggregate functions https://www.sqlite.org/lang_aggfunc.html: COUNT(), TOTAL(), SUM(),
- *        AVG(), MAX(), MIN(), GROUP_CONCAT(), STRING_AGG() and the percentile functions MEDIAN(), PERCENTILE(),
- *        PERCENTILE_CONT() and PERCENTILE_DISC().
+/** @file
+ *  Purpose: define the built-in aggregate SQL functions.
  *
- *        MAX() and MIN() take the scalar forms MAX(X,Y,...) and MIN(X,Y,...) along, defined as one overload set
- *        with the aggregate forms.
- *        The aggregate functions of JSON1 are with the other JSON functions, in `json.h`.
+ *  Intention: a family of built-in SQL functions, as SQLite documents them at https://www.sqlite.org/lang_aggfunc.html,
+ *  placed by `docs/internals/source-layout.md`; its functions are called through `ast/builtin_function.h`, gathered by
+ *  `builtin/functions.h`, and `.claude/skills/add-builtin-function/SKILL.md` adds to it.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

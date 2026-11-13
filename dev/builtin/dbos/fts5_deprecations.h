@@ -1,18 +1,10 @@
 #pragma once
 
-/** @file The deprecated FTS5 spellings: `order_by(rank())` for the hidden FTS5 rank column, and `is_equal<Table>(x)`
- *        for the comparison of a whole FTS5 table with an expression.
+/** @file
+ *  Purpose: keep the deprecated FTS5 spellings apart.
  *
- *        `rank()` is the RANK() window function, and it happened to be the spelling of the hidden FTS5 rank
- *        column as well, by the bare `rank` it used to serialize to. That dual meaning gets a header of its own,
- *        which pulls in what it needs rather than having the FTS5 module, the window functions or ORDER BY
- *        depend on it.
- *
- *        `is_equal<Table>(x)` compares the table itself, which is not a binary condition: its left side is a type
- *        only. Unlike the rank spelling, it is not guarded by FTS5 support, as its classification trait is read by
- *        the serializer, the AST iterator and the node tuple in every build.
- *
- *        Goes as a whole in v1.11.
+ *  Intention: gathered by `builtin/dbos.h`; keeps `fts5.h`, `functions/window.h` and `ast/order_by.h` free of the
+ *  deprecated spellings, and each factory says when it goes.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -55,6 +47,9 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
+     *
+     *  It compares the table itself, whose left side is a type only, so it builds no binary condition. It stays
+     *  outside the FTS5 guard: the serializer, the AST iterator and the node tuple read its trait in every build.
      */
     template<class O, class R, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
     [[deprecated("Use the usual `is_equal` function to compare the hidden FTS5 'any' field or a field of your FTS "
@@ -86,6 +81,9 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
+     *
+     *  `rank()` is the RANK() window function; it spelled the hidden FTS5 rank column too, through the bare `rank`
+     *  it serialized to.
      */
     [[deprecated("Use the hidden FTS5 rank column instead")]]
     inline internal::order_by_t<internal::fts5_rank_column_t> order_by(decltype(rank()) /*rank*/) {

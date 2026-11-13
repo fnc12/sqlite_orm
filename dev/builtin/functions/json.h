@@ -1,7 +1,11 @@
 #pragma once
 
-/** @file The built-in JSON functions https://www.sqlite.org/json1.html, including the aggregate functions
- *        JSON_GROUP_ARRAY() and JSON_GROUP_OBJECT().
+/** @file
+ *  Purpose: define the built-in SQL JSON functions.
+ *
+ *  Intention: a family of built-in SQL functions, as SQLite documents them at https://www.sqlite.org/json1.html, placed
+ *  by `docs/internals/source-layout.md`; its functions are called through `ast/builtin_function.h`, gathered by
+ *  `builtin/functions.h`, and `.claude/skills/add-builtin-function/SKILL.md` adds to it.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
