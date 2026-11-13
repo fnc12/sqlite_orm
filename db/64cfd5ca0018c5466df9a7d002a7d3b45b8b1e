@@ -1,0 +1,35 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: the second commit of the
+refactor PR off dev that the dev/builtin/ Purpose check led to.
+
+# Decided
+- The Purpose check found "represent the rows of the table_info PRAGMA"
+  too narrow: the file holds table_xinfo as fully as table_info. Claude
+  noted the file name as equally narrow; trueqbit: "What would you
+  suggest if we renamed it? It will hold the other pragma table-valued
+  facilities as well (as already recorded in TODO I think)." TODO.md
+  "Functions" does list them, joining through make_pragma_tables().
+- Claude's lean, taken by trueqbit: dbos/pragma_tables.h - it matches
+  make_pragma_tables() and dbos/'s reading of these as eponymous
+  tables. Rejected: pragma_functions.h, after pragma.html's heading
+  "PRAGMA functions" - "function" reads as a C++ function (campaign rule
+  15), and execution/pragma.h holds the C++ functions that run PRAGMAs.
+- trueqbit, against Claude's narrow lean for the docs branch's Purpose:
+  a Purpose stays as wide as the file will hold, never narrowed because
+  members are missing yet. The docs round takes "represent the rows of
+  the PRAGMAs SQLite offers as table-valued functions."
+- Pure rename: the amalgamation differs in the include comments alone.
+
+# Discussed
+Green: pre-commit.sh 0; clang-format 20 unchanged; no "on purpose:".
+The token streams of the six includers differ by the include line
+only; pragma_tables.h is reported as differing because HEAD holds no
+file at its path.
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| lines | 57854 | 57854 | 0 |
+| copies | 3902 | 3902 | 0 |
+| hopsMean | 10.2 | 10.2 | 0 |
+| hopsMax | 221 | 221 | 0 |
+| gzipBytes | 469670 | 469673 | +3 |
