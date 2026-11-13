@@ -1,0 +1,23 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: the dev/schema/ docs round,
+after merging #1616 at 0bac9513 (805ea671).
+
+# Decided
+- trueqbit: Purpose "state what holds of the tables of a schema and
+  their columns." (Claude's offer); the Intention the other schema-level
+  algorithms share. It replaces foreign_keys.h's "compute over the
+  foreign keys of a schema." (acb70682), which went with that file.
+- headers.mjs: the argv Purpose of foreign_keys.h and its key are gone;
+  'algorithms/table_facts.h' takes the Purpose above. Rerun on the
+  merged tree, it changes table_facts.h alone; the other 28 headers come
+  out identical.
+- Re-read against the merged code: table_base.h's "define what the
+  different kinds of tables have in common." fits better without the
+  primary-key functions; column_lookup.h's "find a column across the
+  database objects of a schema." now holds lookups alone. Both stay.
+- Replaced @file line (#1616's, 0e6d8f8c): "Facts about the tables of a
+  tuple of database objects and their columns."
+
+# Discussed
+Green: pre-commit.sh 0; token streams identical; clang-format 20
+unchanged; no "on purpose:".
