@@ -3,6 +3,10 @@ trueqbit with Claude (Opus 5.5), 2026-11-12/13: round dev/schema/ of
 pass 2, commit 3 of handover-step2c-2-docs-round.md, after db4870bd.
 
 # Decided
+- trueqbit, 2026-11-13: the message carries no decision or ledger
+  numbers - they point into campaign.md and ledger.md, outside the
+  repository; the note holds them. Reworded from 36c4dc56 (dropped
+  "(decision 4 b)"), the tree unchanged.
 - trueqbit: the doc-comments as drafted - indexed_column_t, new_t, old_t,
   content_t, table_content_t new; ordinary_table and auxiliary_t
   replaced. ordinary_table's wording is the hand-over's disambiguation
