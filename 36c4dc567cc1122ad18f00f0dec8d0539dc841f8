@@ -1,0 +1,64 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-12/13: round dev/schema/ of
+pass 2, commit 3 of handover-step2c-2-docs-round.md, after db4870bd.
+
+# Decided
+- trueqbit: the doc-comments as drafted - indexed_column_t, new_t, old_t,
+  content_t, table_content_t new; ordinary_table and auxiliary_t
+  replaced. ordinary_table's wording is the hand-over's disambiguation
+  (rows stored by SQLite / computed by a view's select / provided by a
+  virtual table's module), linked to schematab.html.
+- trueqbit (b): links on the public factories only; the reflecting
+  factories (make_reflected_table, make_reflected_columns,
+  make_reflected_hidden_columns, make_reflected_virtual_table_definition)
+  stay as they are - they live in the internal namespace and are not
+  reachable through public calls.
+- Claude: the link goes on every overload as a paragraph of its own, as
+  the FTS5 option factories keep it; a factory without a doc-comment gets
+  a block holding the link alone (17 overloads). make_unique_index takes
+  lang_createindex.html#uniqueidx, beside make_index - not on the list
+  first shown to trueqbit, named before the commit.
+- Left without a comment, as their name says the construct: check_t,
+  index_t, null_t, not_null_t, collate_constraint_t, generated_always_t,
+  primary_key_with_autoincrement, raise_t, prefix_t, tokenize_t,
+  unindexed_t; bases and builders: index_base, unique_base,
+  primary_key_base, basic_generated_always, trigger_timing_t,
+  on_fk_action, fk_enforcement_state.
+- Correction carried from the hand-over: "ordinary table" is defined by
+  https://www.sqlite.org/schematab.html ("The 'table' string is used for
+  both ordinary and virtual tables."); lang_createtable.html, named as
+  the source in decision 11 a (see f1961f5c's and db4870bd's notes), uses
+  the term once and defines it nowhere.
+
+# Discussed
+- 4 (a): pages downloaded 2026-11-12 and their anchors checked:
+  lang_createtable.html (#tablecoldef, #primkeyconst, #uniqueconst,
+  #ckconst, #dfltval, #notnullconst, #collateclause), gencol.html,
+  foreignkeys.html, lang_createindex.html (#uniqueidx),
+  lang_createview.html, lang_createvtab.html, rtree.html
+  (#auxiliary_columns: "can have auxiliary columns that store arbitrary
+  data"), lang_createtrigger.html (#the_raise_function; NEW.column-name
+  and OLD.column-name, each valid on the events it is relevant to),
+  schematab.html.
+- Cut text:
+    auxiliary.h:      Auxiliary virtual table column constraint
+    fts5_options.h:   tokenize='...'' table constraint factory function. Used in FTS virtual tables.
+                      (the stray quote; the line stays otherwise)
+    ordinary_table.h: Represents an ordinary table, i.e. a table that actually stores data (as opposed
+                      to views and other virtual tables).
+- Green: pre-commit.sh exit 0; token streams identical; clang-format-20
+  unchanged; no "on purpose:".
+- Measure against db4870bd (include/ left out as generated):
+
+  | measure | before | after | change |
+  |---|---:|---:|---:|
+  | files | 472 | 472 | 0 |
+  | lines | 57919 | 57980 | +61 |
+  | copies | 3896 | 3901 | +5 |
+  | hopsMean | 10.2 | 10.2 | 0 |
+  | hopsMax | 218 | 218 | 0 |
+  | gzipBytes | 469866 | 470354 | +488 |
+
+# Later
+- Commits 4-6: the FTS5 options in TODO.md, the plans out of the
+  comments, the Purpose check pass.
