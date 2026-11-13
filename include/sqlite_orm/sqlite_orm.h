@@ -22351,6 +22351,8 @@ namespace sqlite_orm::internal {
 //  insertable_table_definition, column_field
 // #include "../../vocabulary/node_traits.h"
 
+// #include "../column_identifier.h"
+
 // #include "../db_objects.h"
 
 // #include "column_lookup.h"
@@ -22426,7 +22428,7 @@ namespace sqlite_orm::internal {
         bool result = false;
         iterate_tuple(table.elements,
                       col_index_sequence_with<elements_type, is_unique>{},
-                      [&result, &name](auto& column) {
+                      [&result, &name](const column_identifier& column) {
                           if (column.name == name) {
                               result = true;
                           }
