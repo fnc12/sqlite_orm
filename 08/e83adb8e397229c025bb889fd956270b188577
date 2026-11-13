@@ -1,0 +1,21 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: "push and open the draft,
+then merge" - #1618 (refactor/builtin-header-placement at db64cfd5)
+merged into the dev/builtin/ docs branch, as #1616 was into #1617.
+
+# Decided
+- Auto-merged but for the amalgamation, taken from ours and regenerated
+  by pre-commit.sh. git followed both renames, the docs' headers and
+  links with them.
+- The merge's delta against this branch equals #1618's delta against
+  dev, plus two comment lines that named the old path: the Intentions
+  of dbos/builtin_tables.h and schema/ordinary_table_definitions.h now
+  name pragma_tables.h. A path rename only; the relations themselves
+  change in the next commit.
+- Left for the next commit (the Purpose check's): fts5_auxiliary.h's
+  Intention still says "gathered by builtin/dbos.h", and the headers of
+  dbos.h, pragma_tables.h, fts5_deprecations.h and aggregate.h take the
+  Purposes trueqbit settled.
+
+# Discussed
+Green: pre-commit.sh 0; clang-format 20 unchanged; no "on purpose:".
