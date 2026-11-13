@@ -1,8 +1,12 @@
 # Scene
 trueqbit with Claude (Opus 5.5), 2026-11-13: round dev/schema/ of pass 2,
-commit 4 of handover-step2c-2-docs-round.md, after 36c4dc56.
+commit 4 of handover-step2c-2-docs-round.md, after 82426969.
 
 # Decided
+- trueqbit, 2026-11-13: the message carries no decision or ledger
+  numbers - they point into campaign.md and ledger.md, outside the
+  repository; the note holds them. Reworded from 4cf46314 (dropped
+  "Decision 20 of the dev/schema/ round:"), the tree unchanged.
 - trueqbit (20): the FTS5 options SQLite documents and sqlite_orm cannot
   spell go to TODO.md - content_rowid, columnsize, detail,
   contentless_delete, contentless_unindexed, tokendata, locale.
