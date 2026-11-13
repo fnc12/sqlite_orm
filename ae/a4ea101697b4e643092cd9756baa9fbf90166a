@@ -1,0 +1,18 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: PR B (#1616), the step after
+0e6d8f8c, which named these includes under Later.
+
+# Decided
+- trueqbit: follow-ups known in advance are commits of their own.
+- Checked by the names each header declares, not by a script's guess (a
+  first scan missed index_sequence_value_at): table_base.h names nothing
+  of cxx_polyfill/type_traits.h (polyfill::, remove_cvref_t, ...);
+  column_lookup.h names nothing of tuple_filter.h (filter_tuple_sequence_t,
+  filter_tuple_t, tuple_from_index_sequence_t, ...) or tuple_iteration.h
+  (iterate_tuple). The moved functions were their only users. Not
+  compiled; trueqbit builds.
+
+# Discussed
+Green: pre-commit.sh 0; clang-format 20 unchanged; no "on purpose:".
+Tokens differ in the three include lines alone; the amalgamation loses
+the three include comments, its order unchanged.
