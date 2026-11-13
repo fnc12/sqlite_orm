@@ -82,7 +82,10 @@ namespace sqlite_orm::internal {
     };
 
     /**
-     *  Represents an ordinary table, i.e. a table that actually stores data (as opposed to views and other virtual tables).
+     *  An ordinary table, whose rows SQLite itself stores; a view's rows are computed by its select, a virtual table's
+     *  are provided by its module.
+     *
+     *  https://www.sqlite.org/schematab.html
      */
     template<class O, class WithoutRowId, class... Cs>
     struct ordinary_table : table_identifier,
@@ -154,6 +157,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for an ordinary table.
      *  
      *  The mapped object type is determined implicitly from the first column definition.
+     *
+     *  https://www.sqlite.org/lang_createtable.html
+     *  https://www.sqlite.org/schematab.html
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::ordinary_table<T, std::false_type, Cs...> make_table(std::string name, Cs... definition) {
@@ -165,6 +171,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for an ordinary table.
      *  
      *  The mapped object type is explicitly specified.
+     *
+     *  https://www.sqlite.org/lang_createtable.html
+     *  https://www.sqlite.org/schematab.html
      */
     template<class T, class... Cs>
     internal::ordinary_table<T, std::false_type, Cs...> make_table(std::string name, Cs... definition) {
@@ -177,6 +186,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for an ordinary table.
      *
      *  The mapped object type is explicitly specified.
+     *
+     *  https://www.sqlite.org/lang_createtable.html
+     *  https://www.sqlite.org/schematab.html
      */
     template<orm_table_reference auto table, class... Cs>
     auto make_table(std::string name, Cs... definition) {
@@ -204,6 +216,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  Annotation values are constant expressions of literal types: a string default is spelled
      *  `[[= default_value("text")]]`, not with a `std::string`.
+     *
+     *  https://www.sqlite.org/lang_createtable.html
+     *  https://www.sqlite.org/schematab.html
      */
     template<class T, class... Cs>
         requires (internal::is_ordinary_table_constraint<Cs>::value && ...)
@@ -229,6 +244,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  Annotation values are constant expressions of literal types: a string default is spelled
      *  `[[= default_value("text")]]`, not with a `std::string`.
+     *
+     *  https://www.sqlite.org/lang_createtable.html
+     *  https://www.sqlite.org/schematab.html
      */
     template<orm_table_reference auto table, class... Cs>
         requires (internal::is_ordinary_table_constraint<Cs>::value && ...)

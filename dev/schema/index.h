@@ -50,6 +50,9 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createindex.html
+     */
     template<class T, class... Cols>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {
@@ -58,6 +61,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createindex.html
+     */
     template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {
@@ -66,6 +72,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createindex.html#uniqueidx
+     */
     template<class T, class... Cols>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_unique_index(std::string name, Cols... cols) {
@@ -74,6 +83,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), true, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createindex.html#uniqueidx
+     */
     template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_unique_index(std::string name, Cols... cols) {

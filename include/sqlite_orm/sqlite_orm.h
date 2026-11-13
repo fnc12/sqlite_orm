@@ -6178,6 +6178,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a column definition from a member object pointer of the object to be mapped.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#tablecoldef
      */
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
     internal::column_t<M, internal::empty_setter, Op...>
@@ -6191,6 +6193,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Factory function for a column definition from "setter" and "getter" member function pointers of the object to be mapped.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#tablecoldef
      */
     template<class G,
              class S,
@@ -6209,6 +6213,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Factory function for a column definition from "getter" and "setter" member function pointers of the object to be mapped.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#tablecoldef
      */
     template<class G,
              class S,
@@ -6590,11 +6596,17 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3031000
+    /**
+     *  https://www.sqlite.org/gencol.html
+     */
     template<class T>
     constexpr internal::generated_always_t<T> generated_always_as(T expression) {
         return {true, internal::basic_generated_always::storage_type::not_specified, std::move(expression)};
     }
 
+    /**
+     *  https://www.sqlite.org/gencol.html
+     */
     template<class T>
     constexpr internal::generated_always_t<T> as(T expression) {
         return {false, internal::basic_generated_always::storage_type::not_specified, std::move(expression)};
@@ -7149,7 +7161,10 @@ namespace sqlite_orm::internal {
     };
 
     /**
-     *  Represents an ordinary table, i.e. a table that actually stores data (as opposed to views and other virtual tables).
+     *  An ordinary table, whose rows SQLite itself stores; a view's rows are computed by its select, a virtual table's
+     *  are provided by its module.
+     *
+     *  https://www.sqlite.org/schematab.html
      */
     template<class O, class WithoutRowId, class... Cs>
     struct ordinary_table : table_identifier,
@@ -7221,6 +7236,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for an ordinary table.
      *  
      *  The mapped object type is determined implicitly from the first column definition.
+     *
+     *  https://www.sqlite.org/lang_createtable.html
+     *  https://www.sqlite.org/schematab.html
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::ordinary_table<T, std::false_type, Cs...> make_table(std::string name, Cs... definition) {
@@ -7232,6 +7250,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for an ordinary table.
      *  
      *  The mapped object type is explicitly specified.
+     *
+     *  https://www.sqlite.org/lang_createtable.html
+     *  https://www.sqlite.org/schematab.html
      */
     template<class T, class... Cs>
     internal::ordinary_table<T, std::false_type, Cs...> make_table(std::string name, Cs... definition) {
@@ -7244,6 +7265,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for an ordinary table.
      *
      *  The mapped object type is explicitly specified.
+     *
+     *  https://www.sqlite.org/lang_createtable.html
+     *  https://www.sqlite.org/schematab.html
      */
     template<orm_table_reference auto table, class... Cs>
     auto make_table(std::string name, Cs... definition) {
@@ -7271,6 +7295,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  Annotation values are constant expressions of literal types: a string default is spelled
      *  `[[= default_value("text")]]`, not with a `std::string`.
+     *
+     *  https://www.sqlite.org/lang_createtable.html
+     *  https://www.sqlite.org/schematab.html
      */
     template<class T, class... Cs>
         requires (internal::is_ordinary_table_constraint<Cs>::value && ...)
@@ -7296,6 +7323,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  Annotation values are constant expressions of literal types: a string default is spelled
      *  `[[= default_value("text")]]`, not with a `std::string`.
+     *
+     *  https://www.sqlite.org/lang_createtable.html
+     *  https://www.sqlite.org/schematab.html
      */
     template<orm_table_reference auto table, class... Cs>
         requires (internal::is_ordinary_table_constraint<Cs>::value && ...)
@@ -7328,7 +7358,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 namespace sqlite_orm::internal {
 #if SQLITE_VERSION_NUMBER >= 3024000
     /**
-     *  Auxiliary virtual table column constraint
+     *  An auxiliary column of a virtual table, a feature a virtual table module may offer.
      */
     struct auxiliary_t {};
 
@@ -7345,6 +7375,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3024000
     /**
      *  Auxiliary virtual table column
+     *
+     *  https://www.sqlite.org/rtree.html#auxiliary_columns
      */
     constexpr internal::auxiliary_t auxiliary() {
         return {};
@@ -7384,6 +7416,9 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#ckconst
+     */
     template<class T>
     constexpr internal::check_t<T> check(T t) {
         return {std::move(t)};
@@ -7451,14 +7486,23 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#collateclause
+     */
     constexpr internal::collate_constraint_t collate_nocase() {
         return {internal::collate_argument::nocase};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#collateclause
+     */
     constexpr internal::collate_constraint_t collate_binary() {
         return {internal::collate_argument::binary};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#collateclause
+     */
     constexpr internal::collate_constraint_t collate_rtrim() {
         return {internal::collate_argument::rtrim};
     }
@@ -7504,6 +7548,9 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#dfltval
+     */
     template<class T>
     constexpr internal::default_t<T> default_value(T t) {
         return {std::move(t)};
@@ -7817,6 +7864,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  FOREIGN KEY constraint factory function taking one or more fields, which can either be pointers to class members or column pointers.
      *  Available since SQLite 3.6.19
+     *
+     *  https://www.sqlite.org/foreignkeys.html
      */
     template<class... Cs>
     constexpr internal::foreign_key_intermediate_t<Cs...> foreign_key(Cs... columns) {
@@ -7827,6 +7876,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  FOREIGN KEY constraint factory function taking one or more fields that are member pointers of base classes,
      *  specifying the derived class as an explicit template argument.
      *  Available since SQLite 3.6.19
+     *
+     *  https://www.sqlite.org/foreignkeys.html
      */
     template<class O, class... Base, class... F>
     constexpr internal::foreign_key_intermediate_t<F O::*...> foreign_key(F Base::*... columns) {
@@ -7840,6 +7891,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  FOREIGN KEY constraint factory function taking one or more fields that are member pointers of base classes,
      *  specifying the derived class as an explicit template argument.
      *  Available since SQLite 3.6.19
+     *
+     *  https://www.sqlite.org/foreignkeys.html
      */
     template<orm_table_reference auto table, class... Base, class... F>
     constexpr auto foreign_key(F Base::*... columns) {
@@ -7871,6 +7924,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // Included to specialize traits
 
 namespace sqlite_orm::internal {
+    /**
+     *  The content option of an FTS5 table, given as its SQL value.
+     */
     template<class T>
     struct content_t {
         using value_type = T;
@@ -7881,6 +7937,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_content_v = polyfill::is_specialization_of_v<T, content_t>;
 
+    /**
+     *  The content option of an FTS5 table, naming a mapped table as its external content.
+     */
     template<class T>
     struct table_content_t {
         using mapped_type = T;
@@ -7960,7 +8019,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  tokenize='...'' table constraint factory function. Used in FTS virtual tables.
+     *  tokenize='...' table constraint factory function. Used in FTS virtual tables.
      *
      *  https://www.sqlite.org/fts5.html#tokenizers
      */
@@ -8011,10 +8070,16 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#notnullconst
+     */
     constexpr internal::null_t null() {
         return {};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#notnullconst
+     */
     constexpr internal::not_null_t not_null() {
         return {};
     }
@@ -8154,6 +8219,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  PRIMARY KEY constraint factory function taking one or more fields, which can either be pointers to class members or column pointers.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#primkeyconst
      */
     template<class... Cs>
     constexpr internal::primary_key_t<Cs...> primary_key(Cs... cs) {
@@ -8163,6 +8230,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  PRIMARY KEY constraint factory function taking one or more fields that are member pointers of base classes,
      *  specifying the derived class as an explicit template argument.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#primkeyconst
      */
     template<class O, class... Base, class... F>
     constexpr internal::primary_key_t<F O::*...> primary_key(F Base::*... columns) {
@@ -8175,6 +8244,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  PRIMARY KEY constraint factory function taking one or more fields that are member pointers of base classes,
      *  specifying the derived class as an explicit template argument.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#primkeyconst
      */
     template<orm_table_reference auto table, class... Base, class... F>
     constexpr auto primary_key(F Base::*... columns) {
@@ -8184,6 +8255,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  PRIMARY KEY column constraint factory function (used at a single column).
+     *
+     *  https://www.sqlite.org/lang_createtable.html#primkeyconst
      */
     constexpr internal::primary_key_t<> primary_key() {
         return {{}};
@@ -8236,6 +8309,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  UNIQUE table constraint factory function.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#uniqueconst
      */
     template<class... Args>
     constexpr internal::unique_t<Args...> unique(Args... args) {
@@ -8244,6 +8319,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  UNIQUE column constraint factory function.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#uniqueconst
      */
     constexpr internal::unique_t<> unique() {
         return {{}};
@@ -8297,6 +8374,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // Included to specialize traits
 
 namespace sqlite_orm::internal {
+    /**
+     *  An element of an index: a column or an expression, with its collation and sort order.
+     */
     template<class C>
     struct indexed_column_t {
         using column_type = C;
@@ -8338,6 +8418,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Use this function to specify indexed column inside `make_index` function call.
      *  Example: make_index("index_name", indexed_column(&User::id).asc())
+     *
+     *  https://www.sqlite.org/lang_createindex.html
      */
     template<class C>
     internal::indexed_column_t<C> indexed_column(C column_or_expression) {
@@ -8376,6 +8458,9 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createindex.html
+     */
     template<class T, class... Cols>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {
@@ -8384,6 +8469,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createindex.html
+     */
     template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {
@@ -8392,6 +8480,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createindex.html#uniqueidx
+     */
     template<class T, class... Cols>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_unique_index(std::string name, Cols... cols) {
@@ -8400,6 +8491,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), true, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createindex.html#uniqueidx
+     */
     template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_unique_index(std::string name, Cols... cols) {
@@ -8687,6 +8781,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_raise_v = std::is_same<T, raise_t>::value;
 
+    /**
+     *  A column of the row an INSERT or UPDATE writes, referenced in a trigger as NEW.column.
+     */
     template<class T>
     struct new_t {
         using expression_type = T;
@@ -8700,6 +8797,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_operator_argument_v<T, std::enable_if_t<is_new_row_ref_v<T>>> = true;
 
+    /**
+     *  A column of the row an UPDATE or DELETE changes, referenced in a trigger as OLD.column.
+     */
     template<class T>
     struct old_t {
         using expression_type = T;
@@ -8717,6 +8817,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  NEW.expression function used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html
      */
     template<class T>
     internal::new_t<T> new_(T expression) {
@@ -8725,6 +8827,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  OLD.expression function used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html
      */
     template<class T>
     internal::old_t<T> old(T expression) {
@@ -8733,6 +8837,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  RAISE(IGNORE) expression used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html#the_raise_function
      */
     inline internal::raise_t raise_ignore() {
         return {internal::raise_t::type_t::ignore, {}};
@@ -8740,6 +8846,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  RAISE(ROLLBACK, %message%) expression used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html#the_raise_function
      */
     inline internal::raise_t raise_rollback(std::string message) {
         return {internal::raise_t::type_t::rollback, std::move(message)};
@@ -8747,6 +8855,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  RAISE(ABORT, %message%) expression used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html#the_raise_function
      */
     inline internal::raise_t raise_abort(std::string message) {
         return {internal::raise_t::type_t::abort, std::move(message)};
@@ -8754,24 +8864,38 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  RAISE(FAIL, %message%) expression used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html#the_raise_function
      */
     inline internal::raise_t raise_fail(std::string message) {
         return {internal::raise_t::type_t::fail, std::move(message)};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtrigger.html
+     */
     template<class T, class... S>
     internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...>& part) {
         return {std::move(name), std::move(part.base), std::move(part.statements)};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtrigger.html
+     */
     inline internal::trigger_timing_t before() {
         return {internal::trigger_timing::trigger_before};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtrigger.html
+     */
     inline internal::trigger_timing_t after() {
         return {internal::trigger_timing::trigger_after};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtrigger.html
+     */
     inline internal::trigger_timing_t instead_of() {
         return {internal::trigger_timing::trigger_instead_of};
     }
@@ -8862,6 +8986,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
      *  The object type must be an aggregate. The optional `[[="…"_orm_name]]` class-scope annotation overrides
      *  the view name (otherwise the type's reflected identifier is used).
+     *
+     *  https://www.sqlite.org/lang_createview.html
      */
     template<class O, class Select>
         requires (internal::is_select_expression_v<Select>)
@@ -8881,6 +9007,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
      *  The object type must be an aggregate. The optional `[[="…"_orm_name]]` class-scope annotation overrides
      *  the view name (otherwise the type's reflected identifier is used).
+     *
+     *  https://www.sqlite.org/lang_createview.html
      */
     template<orm_table_reference auto table, class Select>
     auto make_view(Select select) {
@@ -9034,6 +9162,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *  
      *  [Deprecation notice] This factory function is deprecated and will be removed in v1.11.
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<class O, class M, class... Cs>
     internal::virtual_table<O, M, Cs...>
@@ -9045,6 +9175,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *  
      *  The mapped object type is explicitly specified.
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<class O, class M, class... Cs>
     internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
@@ -9056,6 +9188,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *  
      *  The mapped object type is determined implicitly from the first column definition.
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
@@ -9068,6 +9202,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *  
      *  The mapped object type is explicitly specified.
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<orm_table_reference auto table, class M, class... Cs>
     auto make_virtual_table(std::string name, internal::virtual_table_definition<M, Cs...> definition) {
@@ -9104,6 +9240,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  annotation of the mapped object type supplies the table name (otherwise the type's reflected identifier is used).
      *
      *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     auto make_virtual_table(internal::virtual_table_definition<M, Cs...> definition) {

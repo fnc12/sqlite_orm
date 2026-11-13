@@ -42,6 +42,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  UNIQUE table constraint factory function.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#uniqueconst
      */
     template<class... Args>
     constexpr internal::unique_t<Args...> unique(Args... args) {
@@ -50,6 +52,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  UNIQUE column constraint factory function.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#uniqueconst
      */
     constexpr internal::unique_t<> unique() {
         return {{}};

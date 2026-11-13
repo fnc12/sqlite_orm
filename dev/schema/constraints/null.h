@@ -26,10 +26,16 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#notnullconst
+     */
     constexpr internal::null_t null() {
         return {};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#notnullconst
+     */
     constexpr internal::not_null_t not_null() {
         return {};
     }

@@ -36,6 +36,9 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#dfltval
+     */
     template<class T>
     constexpr internal::default_t<T> default_value(T t) {
         return {std::move(t)};

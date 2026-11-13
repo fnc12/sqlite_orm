@@ -56,11 +56,17 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3031000
+    /**
+     *  https://www.sqlite.org/gencol.html
+     */
     template<class T>
     constexpr internal::generated_always_t<T> generated_always_as(T expression) {
         return {true, internal::basic_generated_always::storage_type::not_specified, std::move(expression)};
     }
 
+    /**
+     *  https://www.sqlite.org/gencol.html
+     */
     template<class T>
     constexpr internal::generated_always_t<T> as(T expression) {
         return {false, internal::basic_generated_always::storage_type::not_specified, std::move(expression)};

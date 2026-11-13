@@ -77,6 +77,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
      *  The object type must be an aggregate. The optional `[[="…"_orm_name]]` class-scope annotation overrides
      *  the view name (otherwise the type's reflected identifier is used).
+     *
+     *  https://www.sqlite.org/lang_createview.html
      */
     template<class O, class Select>
         requires (internal::is_select_expression_v<Select>)
@@ -96,6 +98,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
      *  The object type must be an aggregate. The optional `[[="…"_orm_name]]` class-scope annotation overrides
      *  the view name (otherwise the type's reflected identifier is used).
+     *
+     *  https://www.sqlite.org/lang_createview.html
      */
     template<orm_table_reference auto table, class Select>
     auto make_view(Select select) {

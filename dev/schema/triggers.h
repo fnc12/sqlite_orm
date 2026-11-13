@@ -241,6 +241,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_raise_v = std::is_same<T, raise_t>::value;
 
+    /**
+     *  A column of the row an INSERT or UPDATE writes, referenced in a trigger as NEW.column.
+     */
     template<class T>
     struct new_t {
         using expression_type = T;
@@ -254,6 +257,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_operator_argument_v<T, std::enable_if_t<is_new_row_ref_v<T>>> = true;
 
+    /**
+     *  A column of the row an UPDATE or DELETE changes, referenced in a trigger as OLD.column.
+     */
     template<class T>
     struct old_t {
         using expression_type = T;
@@ -271,6 +277,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  NEW.expression function used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html
      */
     template<class T>
     internal::new_t<T> new_(T expression) {
@@ -279,6 +287,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  OLD.expression function used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html
      */
     template<class T>
     internal::old_t<T> old(T expression) {
@@ -287,6 +297,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  RAISE(IGNORE) expression used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html#the_raise_function
      */
     inline internal::raise_t raise_ignore() {
         return {internal::raise_t::type_t::ignore, {}};
@@ -294,6 +306,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  RAISE(ROLLBACK, %message%) expression used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html#the_raise_function
      */
     inline internal::raise_t raise_rollback(std::string message) {
         return {internal::raise_t::type_t::rollback, std::move(message)};
@@ -301,6 +315,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  RAISE(ABORT, %message%) expression used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html#the_raise_function
      */
     inline internal::raise_t raise_abort(std::string message) {
         return {internal::raise_t::type_t::abort, std::move(message)};
@@ -308,24 +324,38 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  RAISE(FAIL, %message%) expression used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html#the_raise_function
      */
     inline internal::raise_t raise_fail(std::string message) {
         return {internal::raise_t::type_t::fail, std::move(message)};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtrigger.html
+     */
     template<class T, class... S>
     internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...>& part) {
         return {std::move(name), std::move(part.base), std::move(part.statements)};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtrigger.html
+     */
     inline internal::trigger_timing_t before() {
         return {internal::trigger_timing::trigger_before};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtrigger.html
+     */
     inline internal::trigger_timing_t after() {
         return {internal::trigger_timing::trigger_after};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtrigger.html
+     */
     inline internal::trigger_timing_t instead_of() {
         return {internal::trigger_timing::trigger_instead_of};
     }

@@ -133,6 +133,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *  
      *  [Deprecation notice] This factory function is deprecated and will be removed in v1.11.
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<class O, class M, class... Cs>
     internal::virtual_table<O, M, Cs...>
@@ -144,6 +146,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *  
      *  The mapped object type is explicitly specified.
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<class O, class M, class... Cs>
     internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
@@ -155,6 +159,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *  
      *  The mapped object type is determined implicitly from the first column definition.
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
@@ -167,6 +173,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *  
      *  The mapped object type is explicitly specified.
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<orm_table_reference auto table, class M, class... Cs>
     auto make_virtual_table(std::string name, internal::virtual_table_definition<M, Cs...> definition) {
@@ -203,6 +211,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  annotation of the mapped object type supplies the table name (otherwise the type's reflected identifier is used).
      *
      *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     auto make_virtual_table(internal::virtual_table_definition<M, Cs...> definition) {

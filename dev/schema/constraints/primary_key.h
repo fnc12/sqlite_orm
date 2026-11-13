@@ -128,6 +128,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  PRIMARY KEY constraint factory function taking one or more fields, which can either be pointers to class members or column pointers.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#primkeyconst
      */
     template<class... Cs>
     constexpr internal::primary_key_t<Cs...> primary_key(Cs... cs) {
@@ -137,6 +139,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  PRIMARY KEY constraint factory function taking one or more fields that are member pointers of base classes,
      *  specifying the derived class as an explicit template argument.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#primkeyconst
      */
     template<class O, class... Base, class... F>
     constexpr internal::primary_key_t<F O::*...> primary_key(F Base::*... columns) {
@@ -149,6 +153,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  PRIMARY KEY constraint factory function taking one or more fields that are member pointers of base classes,
      *  specifying the derived class as an explicit template argument.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#primkeyconst
      */
     template<orm_table_reference auto table, class... Base, class... F>
     constexpr auto primary_key(F Base::*... columns) {
@@ -158,6 +164,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  PRIMARY KEY column constraint factory function (used at a single column).
+     *
+     *  https://www.sqlite.org/lang_createtable.html#primkeyconst
      */
     constexpr internal::primary_key_t<> primary_key() {
         return {{}};

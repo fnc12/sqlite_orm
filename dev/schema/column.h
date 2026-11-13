@@ -183,6 +183,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a column definition from a member object pointer of the object to be mapped.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#tablecoldef
      */
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
     internal::column_t<M, internal::empty_setter, Op...>
@@ -196,6 +198,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Factory function for a column definition from "setter" and "getter" member function pointers of the object to be mapped.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#tablecoldef
      */
     template<class G,
              class S,
@@ -214,6 +218,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Factory function for a column definition from "getter" and "setter" member function pointers of the object to be mapped.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#tablecoldef
      */
     template<class G,
              class S,

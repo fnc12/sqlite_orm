@@ -27,6 +27,9 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#ckconst
+     */
     template<class T>
     constexpr internal::check_t<T> check(T t) {
         return {std::move(t)};

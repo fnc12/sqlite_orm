@@ -16,7 +16,7 @@
 namespace sqlite_orm::internal {
 #if SQLITE_VERSION_NUMBER >= 3024000
     /**
-     *  Auxiliary virtual table column constraint
+     *  An auxiliary column of a virtual table, a feature a virtual table module may offer.
      */
     struct auxiliary_t {};
 
@@ -33,6 +33,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3024000
     /**
      *  Auxiliary virtual table column
+     *
+     *  https://www.sqlite.org/rtree.html#auxiliary_columns
      */
     constexpr internal::auxiliary_t auxiliary() {
         return {};

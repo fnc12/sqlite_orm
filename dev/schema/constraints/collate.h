@@ -24,14 +24,23 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#collateclause
+     */
     constexpr internal::collate_constraint_t collate_nocase() {
         return {internal::collate_argument::nocase};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#collateclause
+     */
     constexpr internal::collate_constraint_t collate_binary() {
         return {internal::collate_argument::binary};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#collateclause
+     */
     constexpr internal::collate_constraint_t collate_rtrim() {
         return {internal::collate_argument::rtrim};
     }
