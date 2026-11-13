@@ -17397,7 +17397,7 @@ namespace sqlite_orm::internal {
 
 // #include "../ast/result_columns.h"
 
-// #include "../builtin/dbos/pragma_table_info.h"
+// #include "../builtin/dbos/pragma_tables.h"
 
 /** @file The rows of `PRAGMA table_info` and `PRAGMA table_xinfo`, and the eponymous virtual tables
  *        `pragma_table_info` and `pragma_table_xinfo` of their PRAGMA functions (C++26 reflection),
@@ -25838,7 +25838,7 @@ namespace sqlite_orm::internal {
 
 // #include "../ast/app_function.h"
 
-// #include "../builtin/dbos/pragma_table_info.h"
+// #include "../builtin/dbos/pragma_tables.h"
 
 // #include "../error_code.h"
 
@@ -26281,7 +26281,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/gsl.h"
 
-// #include "../builtin/dbos/pragma_table_info.h"
+// #include "../builtin/dbos/pragma_tables.h"
 
 // #include "../marshaling/row_extractor.h"
 
@@ -30965,7 +30965,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/mpl/convenience.h"
 
-// #include "../builtin/dbos/pragma_table_info.h"
+// #include "../builtin/dbos/pragma_tables.h"
 //  table_xinfo
 // #include "../type_mapping/type_printer.h"
 
@@ -35400,7 +35400,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif  //  SQLITE_ORM_DBSTAT_SUPPORTED
 
-// #include "pragma_table_info.h"
+// #include "pragma_tables.h"
 
 // #include "sqlite_schema.h"
 
@@ -35610,7 +35610,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
-// #include "dbos/pragma_table_info.h"
+// #include "dbos/pragma_tables.h"
 
 // #include "dbos/rtree.h"
 

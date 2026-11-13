@@ -11,6 +11,6 @@
 #include "dbos/fts5.h"
 #include "dbos/fts5_deprecations.h"
 #include "dbos/generate_series.h"
-#include "dbos/pragma_table_info.h"
+#include "dbos/pragma_tables.h"
 #include "dbos/rtree.h"
 #include "dbos/sqlite_schema.h"
