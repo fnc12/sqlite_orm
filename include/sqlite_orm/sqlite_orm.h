@@ -3270,6 +3270,9 @@ namespace sqlite_orm::internal {
     template<class... Op>
     struct column_constraints;
 
+    template<class... Cs>
+    struct insertable_table_definition;
+
     struct table_identifier;
 
     template<class T, class F>
@@ -6740,10 +6743,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <functional>  //  std::invoke
 #include <string>  //  std::string
 #include <tuple>  // std::tuple, std::tuple_size
-#include <type_traits>  //  std::is_member_pointer, std::remove_cvref
+#include <type_traits>  //  std::is_member_pointer
 #endif
-
-// #include "../functional/cxx_polyfill/type_traits.h"
 
 // #include "../functional/field_of.h"
 
@@ -7009,52 +7010,6 @@ namespace sqlite_orm::internal {
                                                                });
         }
     };
-
-    template<class... Cs, class G, class S>
-    bool table_primary_key_contains([[maybe_unused]] const insertable_table_definition<Cs...>& definition,
-                                    [[maybe_unused]] const column_field<G, S>& column) {
-        bool res = false;
-        // note: though `visit_table_primary_key()` does no work if a column primary key exists, we try to save the compiler some work with this check up front
-        if constexpr (/*bool hasNoColumnPK =*/!insertable_table_definition<Cs...>::template count_of_columns_with<
-                      is_primary_key>()) {
-            definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
-                using colrefs_tuple = decltype(primaryKey._columns);
-                using same_type_index_sequence =
-                    filter_tuple_sequence_t<colrefs_tuple,
-                                            check_if_is_type<member_field_type_t<G>>::template fn,
-                                            member_field_type_t>;
-                iterate_tuple(primaryKey._columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
-                    if (compare_fields(memberPointer, column.member_pointer) ||
-                        compare_fields(memberPointer, column.setter)) {
-                        res = true;
-                    }
-                });
-            });
-        }
-        return res;
-    }
-
-    template<class... Cs, class G, class S>
-    bool is_single_table_primary_key([[maybe_unused]] const insertable_table_definition<Cs...>& definition,
-                                     [[maybe_unused]] const column_field<G, S>& column) {
-        bool res = false;
-        // note: though `visit_table_primary_key()` does no work if a column primary key exists, we try to save the compiler some work with this check up front
-        if constexpr (/*bool hasNoColumnPK =*/!insertable_table_definition<Cs...>::template count_of_columns_with<
-                      is_primary_key>()) {
-            definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
-                // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
-                using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
-                if constexpr (std::tuple_size<colrefs_tuple>::value == 1) {
-                    auto& memberPointer = std::get<0>(primaryKey._columns);
-                    if (compare_fields(memberPointer, column.member_pointer) ||
-                        compare_fields(memberPointer, column.setter)) {
-                        res = true;
-                    }
-                }
-            });
-        }
-        return res;
-    }
 
     /**
      *  Mixin for an ordinary table, providing methods used to access a mapped object's member variables for insertion.
@@ -19286,6 +19241,117 @@ namespace sqlite_orm::internal {
 
 // #include "../error_code.h"
 
+// #include "../schema/algorithms/column_lookup.h"
+
+/** @file
+ *  Purpose: find a column across the database objects of a schema.
+ *
+ *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
+ *  consumes the vocabulary layer.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#include <tuple>  //  std::tuple_size, std::tuple_element, std::get
+#endif
+
+// #include "../../functional/index_sequence_util.h"
+
+// #include "../../functional/mpl/convenience.h"
+
+// #include "../../functional/type_traits.h"
+
+// #include "../../vocabulary/node_algorithms.h"
+//  col_index_sequence_of, mapped_type_of_t
+// #include "../../vocabulary/node_traits.h"
+
+// #include "../cte.h"
+
+// #include "../db_objects.h"
+
+// #include "table_lookup.h"
+
+namespace sqlite_orm::internal {
+    /**
+     *  Find column name by its type and member pointer.
+     */
+    template<class Lookup, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
+    const std::string* find_column_name(const DBOs& dbObjects, F Lookup::* field) {
+        return pick_table<mapped_type_of_t<Lookup>>(dbObjects).find_column_name(field);
+    }
+
+    /**
+     *  Materialize column pointer:
+     *  1. by explicit object type and member pointer.
+     *  2. by moniker and member pointer.
+     *  3. by moniker and alias_holder<>.
+     *
+     *  internal note: `find_column_name()` looks up a column alias in a CTE directly, without going through
+     *  `cte_table<>::find_column_name()`
+     */
+    template<class CP,
+             class DBOs,
+             std::enable_if_t<std::conjunction_v<is_db_objects<DBOs>, is_column_pointer<CP>>, bool> = true>
+    constexpr decltype(auto) materialize_column_pointer(const DBOs&, const CP& cp) {
+        if constexpr (is_alias_holder_v<field_type_t<CP>>) {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+            using moniker_type = type_t<CP>;
+            using table_type = schema_pick_table_t<moniker_type, DBOs>;
+            using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
+            using cte_fields_type = typename cte_mapper_type_t<table_type>::fields_type;
+
+            // lookup the column alias in the final column references
+            using colalias_index = find_tuple_type<cte_colrefs_tuple, field_type_t<CP>>;
+            static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
+                          "No such column mapped into the CTE");
+
+            return &aliased_field<type_t<field_type_t<CP>>,
+                                  std::tuple_element_t<colalias_index::value, cte_fields_type>>::field;
+#endif
+        } else {
+            return cp.field;
+        }
+    }
+
+    /**
+     *  Find column name by:
+     *  1. by explicit object type and member pointer.
+     *  2. by moniker and member pointer.
+     *  3. by moniker and alias_holder<>.
+     */
+    template<class CP,
+             class DBOs,
+             std::enable_if_t<std::conjunction_v<is_db_objects<DBOs>, is_column_pointer<CP>>, bool> = true>
+    const std::string* find_column_name(const DBOs& dbObjects, const CP& cp) {
+        if constexpr (is_alias_holder_v<field_type_t<CP>>) {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+            using moniker_type = type_t<CP>;
+            using table_type = schema_pick_table_t<moniker_type, DBOs>;
+            using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
+            using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
+
+            // note: even though the columns contain the [`aliased_field<>::*`] we perform the lookup using the column references.
+            // lookup the column alias in the final column references
+            using colalias_index = find_tuple_type<cte_colrefs_tuple, field_type_t<CP>>;
+            static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
+                          "No such column mapped into the CTE");
+
+            // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `cte_table<>::find_column_name()` mechanism;
+            //       however we have the column index already.
+            // lookup column in ordinary_table<>'s elements
+            constexpr size_t ColIdx = index_sequence_value_at<colalias_index::value>(column_index_sequence{});
+            auto& table = pick_table<type_t<CP>>(dbObjects);
+            return &std::get<ColIdx>(table.elements).name;
+#else
+            return nullptr;
+#endif
+        } else {
+            auto field = materialize_column_pointer(dbObjects, cp);
+            return pick_table<type_t<CP>>(dbObjects).find_column_name(field);
+        }
+    }
+}
+//  find_column_name, pick_table
 // #include "../schema/column_identifier.h"
 
 // #include "../vocabulary/node_algorithms.h"
@@ -22417,190 +22483,6 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 
 // #include "../schema/algorithms/column_lookup.h"
 
-/** @file
- *  Purpose: find a column across the database objects of a schema.
- *
- *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
- *  consumes the vocabulary layer.
- */
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
-#include <tuple>  //  std::tuple_size, std::tuple_element, std::get
-#endif
-
-// #include "../../functional/index_sequence_util.h"
-
-// #include "../../functional/mpl/convenience.h"
-
-// #include "../../functional/tuple_helper/tuple_filter.h"
-
-// #include "../../functional/tuple_helper/tuple_iteration.h"
-
-// #include "../../functional/type_traits.h"
-
-// #include "../../vocabulary/node_algorithms.h"
-//  col_index_sequence_of, col_index_sequence_with, mapped_type_of_t
-// #include "../../vocabulary/node_traits.h"
-
-// #include "../cte.h"
-
-// #include "../db_objects.h"
-
-// #include "table_lookup.h"
-
-namespace sqlite_orm::internal {
-    /**
-     *  Find column name by its type and member pointer.
-     */
-    template<class Lookup, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
-    const std::string* find_column_name(const DBOs& dbObjects, F Lookup::* field) {
-        return pick_table<mapped_type_of_t<Lookup>>(dbObjects).find_column_name(field);
-    }
-
-    /**
-     *  Materialize column pointer:
-     *  1. by explicit object type and member pointer.
-     *  2. by moniker and member pointer.
-     *  3. by moniker and alias_holder<>.
-     *
-     *  internal note: `find_column_name()` looks up a column alias in a CTE directly, without going through
-     *  `cte_table<>::find_column_name()`
-     */
-    template<class CP,
-             class DBOs,
-             std::enable_if_t<std::conjunction_v<is_db_objects<DBOs>, is_column_pointer<CP>>, bool> = true>
-    constexpr decltype(auto) materialize_column_pointer(const DBOs&, const CP& cp) {
-        if constexpr (is_alias_holder_v<field_type_t<CP>>) {
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-            using moniker_type = type_t<CP>;
-            using table_type = schema_pick_table_t<moniker_type, DBOs>;
-            using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
-            using cte_fields_type = typename cte_mapper_type_t<table_type>::fields_type;
-
-            // lookup the column alias in the final column references
-            using colalias_index = find_tuple_type<cte_colrefs_tuple, field_type_t<CP>>;
-            static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
-                          "No such column mapped into the CTE");
-
-            return &aliased_field<type_t<field_type_t<CP>>,
-                                  std::tuple_element_t<colalias_index::value, cte_fields_type>>::field;
-#endif
-        } else {
-            return cp.field;
-        }
-    }
-
-    /**
-     *  Find column name by:
-     *  1. by explicit object type and member pointer.
-     *  2. by moniker and member pointer.
-     *  3. by moniker and alias_holder<>.
-     */
-    template<class CP,
-             class DBOs,
-             std::enable_if_t<std::conjunction_v<is_db_objects<DBOs>, is_column_pointer<CP>>, bool> = true>
-    const std::string* find_column_name(const DBOs& dbObjects, const CP& cp) {
-        if constexpr (is_alias_holder_v<field_type_t<CP>>) {
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-            using moniker_type = type_t<CP>;
-            using table_type = schema_pick_table_t<moniker_type, DBOs>;
-            using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
-            using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
-
-            // note: even though the columns contain the [`aliased_field<>::*`] we perform the lookup using the column references.
-            // lookup the column alias in the final column references
-            using colalias_index = find_tuple_type<cte_colrefs_tuple, field_type_t<CP>>;
-            static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
-                          "No such column mapped into the CTE");
-
-            // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `cte_table<>::find_column_name()` mechanism;
-            //       however we have the column index already.
-            // lookup column in ordinary_table<>'s elements
-            constexpr size_t ColIdx = index_sequence_value_at<colalias_index::value>(column_index_sequence{});
-            auto& table = pick_table<type_t<CP>>(dbObjects);
-            return &std::get<ColIdx>(table.elements).name;
-#else
-            return nullptr;
-#endif
-        } else {
-            auto field = materialize_column_pointer(dbObjects, cp);
-            return pick_table<type_t<CP>>(dbObjects).find_column_name(field);
-        }
-    }
-
-    /**
-     *  Checks whether the column with the specified name has a column-level `UNIQUE` constraint
-     *  or is contained in a table-level `UNIQUE` constraint of the given table.
-     */
-    template<class Table, class DBOs, satisfies<is_db_objects, DBOs> = true>
-    bool is_column_unique(const DBOs& dbObjects, const Table& table, const std::string& name) {
-        using elements_type = elements_type_t<Table>;
-
-        bool result = false;
-        iterate_tuple(table.elements,
-                      col_index_sequence_with<elements_type, is_unique>{},
-                      [&result, &name](auto& column) {
-                          if (column.name == name) {
-                              result = true;
-                          }
-                      });
-        if (!result) {
-            iterate_tuple(
-                table.elements,
-                filter_tuple_sequence_t<elements_type, is_unique>{},
-                [&dbObjects, &result, &name](auto& uniqueConstraint) {
-                    iterate_tuple(uniqueConstraint.columns, [&dbObjects, &result, &name](auto& columnExpression) {
-                        if (const std::string* columnName = find_column_name(dbObjects, columnExpression)) {
-                            if (*columnName == name) {
-                                result = true;
-                            }
-                        }
-                    });
-                });
-        }
-        return result;
-    }
-}
-
-// #include "../schema/algorithms/foreign_keys.h"
-
-/** @file
- *  Purpose: compute over the foreign keys of a schema.
- *
- *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
- *  consumes the vocabulary layer.
- */
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::remove_pointer
-#endif
-
-// #include "../../functional/tuple_helper/tuple_iteration.h"
-
-// #include "../../functional/type_traits.h"
-
-// #include "../../vocabulary/node_algorithms.h"
-
-// #include "../../vocabulary/node_traits.h"
-
-// #include "../db_objects.h"
-
-namespace sqlite_orm::internal {
-    /**
-     *  The number of foreign keys over all ordinary tables of a tuple of database objects.
-     */
-    template<class DBOs, satisfies<is_db_objects, DBOs> = true>
-    constexpr int foreign_keys_count() {
-        int res = 0;
-        iterate_tuple<DBOs>(ordinary_tables_index_sequence<DBOs>{}, [&res](const auto* dummy) {
-            using table_type = std::remove_pointer_t<decltype(dummy)>;
-            res += table_type::template count_of<is_foreign_key>();
-        });
-        return res;
-    }
-}
-
 // #include "../schema/algorithms/sync_order.h"
 
 /** @file
@@ -22714,6 +22596,137 @@ namespace sqlite_orm::internal {
     using sync_order_sequence_t = typename sync_order_of<Tpl>::type;
 }
 
+// #include "../schema/algorithms/table_facts.h"
+
+/** @file Facts about the tables of a tuple of database objects and their columns.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#include <tuple>  //  std::tuple_size, std::get
+#include <type_traits>  //  std::remove_pointer
+#endif
+
+// #include "../../functional/cxx_polyfill/type_traits.h"
+
+// #include "../../functional/field_of.h"
+
+// #include "../../functional/member_traits.h"
+
+// #include "../../functional/mpl/convenience.h"
+
+// #include "../../functional/tuple_helper/tuple_filter.h"
+
+// #include "../../functional/tuple_helper/tuple_iteration.h"
+
+// #include "../../functional/type_traits.h"
+
+// #include "../../vocabulary/node_algorithms.h"
+
+// #include "../../vocabulary/node_fwd.h"
+//  insertable_table_definition, column_field
+// #include "../../vocabulary/node_traits.h"
+
+// #include "../column_identifier.h"
+
+// #include "../db_objects.h"
+
+// #include "column_lookup.h"
+
+namespace sqlite_orm::internal {
+    /**
+     *  The number of foreign keys over all ordinary tables of a tuple of database objects.
+     */
+    template<class DBOs, satisfies<is_db_objects, DBOs> = true>
+    constexpr int foreign_keys_count() {
+        int res = 0;
+        iterate_tuple<DBOs>(ordinary_tables_index_sequence<DBOs>{}, [&res](const auto* dummy) {
+            using table_type = std::remove_pointer_t<decltype(dummy)>;
+            res += table_type::template count_of<is_foreign_key>();
+        });
+        return res;
+    }
+
+    template<class... Cs, class G, class S>
+    bool table_primary_key_contains([[maybe_unused]] const insertable_table_definition<Cs...>& definition,
+                                    [[maybe_unused]] const column_field<G, S>& column) {
+        bool res = false;
+        // note: though `visit_table_primary_key()` does no work if a column primary key exists, we try to save the compiler some work with this check up front
+        if constexpr (/*bool hasNoColumnPK =*/!insertable_table_definition<Cs...>::template count_of_columns_with<
+                      is_primary_key>()) {
+            definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
+                using colrefs_tuple = decltype(primaryKey._columns);
+                using same_type_index_sequence =
+                    filter_tuple_sequence_t<colrefs_tuple,
+                                            check_if_is_type<member_field_type_t<G>>::template fn,
+                                            member_field_type_t>;
+                iterate_tuple(primaryKey._columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
+                    if (compare_fields(memberPointer, column.member_pointer) ||
+                        compare_fields(memberPointer, column.setter)) {
+                        res = true;
+                    }
+                });
+            });
+        }
+        return res;
+    }
+
+    template<class... Cs, class G, class S>
+    bool is_single_table_primary_key([[maybe_unused]] const insertable_table_definition<Cs...>& definition,
+                                     [[maybe_unused]] const column_field<G, S>& column) {
+        bool res = false;
+        // note: though `visit_table_primary_key()` does no work if a column primary key exists, we try to save the compiler some work with this check up front
+        if constexpr (/*bool hasNoColumnPK =*/!insertable_table_definition<Cs...>::template count_of_columns_with<
+                      is_primary_key>()) {
+            definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
+                // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
+                using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
+                if constexpr (std::tuple_size<colrefs_tuple>::value == 1) {
+                    auto& memberPointer = std::get<0>(primaryKey._columns);
+                    if (compare_fields(memberPointer, column.member_pointer) ||
+                        compare_fields(memberPointer, column.setter)) {
+                        res = true;
+                    }
+                }
+            });
+        }
+        return res;
+    }
+
+    /**
+     *  Checks whether the column with the specified name has a column-level `UNIQUE` constraint
+     *  or is contained in a table-level `UNIQUE` constraint of the given table.
+     */
+    template<class Table, class DBOs, satisfies<is_db_objects, DBOs> = true>
+    bool is_column_unique(const DBOs& dbObjects, const Table& table, const std::string& name) {
+        using elements_type = elements_type_t<Table>;
+
+        bool result = false;
+        iterate_tuple(table.elements,
+                      col_index_sequence_with<elements_type, is_unique>{},
+                      [&result, &name](const column_identifier& column) {
+                          if (column.name == name) {
+                              result = true;
+                          }
+                      });
+        if (!result) {
+            iterate_tuple(
+                table.elements,
+                filter_tuple_sequence_t<elements_type, is_unique>{},
+                [&dbObjects, &result, &name](auto& uniqueConstraint) {
+                    iterate_tuple(uniqueConstraint.columns, [&dbObjects, &result, &name](auto& columnExpression) {
+                        if (const std::string* columnName = find_column_name(dbObjects, columnExpression)) {
+                            if (*columnName == name) {
+                                result = true;
+                            }
+                        }
+                    });
+                });
+        }
+        return result;
+    }
+}
+
 // #include "../schema/constraints/generated_always.h"
 // basic_generated_always
 // #include "../serialization/serializer_context.h"
@@ -22745,6 +22758,8 @@ namespace sqlite_orm::internal {
 
 // #include "../error_code.h"
 
+// #include "../schema/algorithms/table_lookup.h"
+//  pick_table
 // #include "../schema/column_identifier.h"
 
 // #include "../vocabulary/node_fwd.h"
@@ -23267,6 +23282,8 @@ namespace sqlite_orm::internal {
 
 // #include "../marshaling/statement_binder.h"
 
+// #include "../schema/algorithms/table_facts.h"
+//  table_primary_key_contains, is_single_table_primary_key
 // #include "../schema/constraints/generated_always.h"
 // basic_generated_always
 // #include "../schema/constraints/primary_key.h"

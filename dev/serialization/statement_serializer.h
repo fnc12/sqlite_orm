@@ -37,6 +37,7 @@
 #include "../execution/prepared_statement.h"
 #include "../marshaling/field_printer.h"
 #include "../marshaling/statement_binder.h"
+#include "../schema/algorithms/table_facts.h"  //  table_primary_key_contains, is_single_table_primary_key
 #include "../schema/constraints/generated_always.h"  // basic_generated_always
 #include "../schema/constraints/primary_key.h"  // conflict_clause_t
 #include "../type_mapping/type_printer.h"

@@ -75,7 +75,7 @@ filter keeping the elements a trait answers yes for (`index_filters.h`). Does it
 elements of a collection, or on the collection as a whole? Then it is a
 [schema-level algorithm](#schema-level-algorithms): finding the one object that maps a lookup
 type (`table_lookup.h`), ordering objects by their dependencies (`sync_order.h`), summing over
-the tables (`foreign_keys.h`).
+the tables, or relating a column to the constraints of its table (`table_facts.h`).
 
 ## Deciding where something goes
 
@@ -85,6 +85,9 @@ the tables (`foreign_keys.h`).
 > **Is it composed from other vocabulary, but closed and single-node-scoped** — "I already
 > have a node, tell me something about it"?
 > → `vocabulary/algorithms/`
+>
+> A node that is itself a collection, such as a table of columns and constraints, counts as a
+> collection: a question that relates its elements to each other is schema-level.
 >
 > **Does the answer about an element depend on other elements of a collection**, or on the
 > collection as a whole?
@@ -223,7 +226,8 @@ example is `sync_order.h`: a topological sort of the `db_objects_tuple`, relatin
 rather than classifying a node in hand. `table_lookup.h` finds the database object mapping a
 lookup type ("table" in the wide sense: ordinary tables, views and virtual tables) and feeds it
 into the vocabulary algorithms of `column_fields.h`,
-`column_lookup.h` a column across the schema, and `foreign_keys.h` counts the foreign keys of its tables.
+`column_lookup.h` a column across the schema, and `table_facts.h` states facts of its tables: how many
+foreign keys they hold, whether a column belongs to a primary key or is unique.
 
 They operate on the **schema**, not on `storage_t`, so they are named `schema_*`, never
 `storage_*`. The facilities for the tuple itself (`db_objects_tuple`, `db_objects_cat`,

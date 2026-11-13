@@ -14,10 +14,8 @@
 
 #include "../../functional/index_sequence_util.h"
 #include "../../functional/mpl/convenience.h"
-#include "../../functional/tuple_helper/tuple_filter.h"
-#include "../../functional/tuple_helper/tuple_iteration.h"
 #include "../../functional/type_traits.h"
-#include "../../vocabulary/node_algorithms.h"  //  col_index_sequence_of, col_index_sequence_with, mapped_type_of_t
+#include "../../vocabulary/node_algorithms.h"  //  col_index_sequence_of, mapped_type_of_t
 #include "../../vocabulary/node_traits.h"
 #include "../cte.h"
 #include "../db_objects.h"
@@ -101,38 +99,5 @@ namespace sqlite_orm::internal {
             auto field = materialize_column_pointer(dbObjects, cp);
             return pick_table<type_t<CP>>(dbObjects).find_column_name(field);
         }
-    }
-
-    /**
-     *  Checks whether the column with the specified name has a column-level `UNIQUE` constraint
-     *  or is contained in a table-level `UNIQUE` constraint of the given table.
-     */
-    template<class Table, class DBOs, satisfies<is_db_objects, DBOs> = true>
-    bool is_column_unique(const DBOs& dbObjects, const Table& table, const std::string& name) {
-        using elements_type = elements_type_t<Table>;
-
-        bool result = false;
-        iterate_tuple(table.elements,
-                      col_index_sequence_with<elements_type, is_unique>{},
-                      [&result, &name](auto& column) {
-                          if (column.name == name) {
-                              result = true;
-                          }
-                      });
-        if (!result) {
-            iterate_tuple(
-                table.elements,
-                filter_tuple_sequence_t<elements_type, is_unique>{},
-                [&dbObjects, &result, &name](auto& uniqueConstraint) {
-                    iterate_tuple(uniqueConstraint.columns, [&dbObjects, &result, &name](auto& columnExpression) {
-                        if (const std::string* columnName = find_column_name(dbObjects, columnExpression)) {
-                            if (*columnName == name) {
-                                result = true;
-                            }
-                        }
-                    });
-                });
-        }
-        return result;
     }
 }
