@@ -1,0 +1,70 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: a step on PR B
+(refactor/schema-vocabulary-placement, #1616), taken from the dev/schema/
+docs round, where trueqbit found foreign_keys.h the one narrow file of
+schema/algorithms/.
+
+# Decided
+- trueqbit: the file is named table_facts.h ("facts": factual queries
+  about tables; issue #1329 asked whether a column is part of a primary
+  key). Weighed and dropped: schema filters (reintroduces the filter
+  term), folds.h, moving foreign_keys_count into storage_t (its only
+  consumer).
+- trueqbit (option D of four): table_facts.h holds all four functions.
+  The placement test stays as 5bf091cc wrote it; a table is a collection
+  of columns and constraints, and the primary-key functions relate a
+  column to another element of it, the PRIMARY KEY constraint. The
+  decision tree's "closed and single-node-scoped" read otherwise, so it
+  takes trueqbit's wording: "A node that is itself a collection, such as
+  a table of columns and constraints, counts as a collection: a question
+  that relates its elements to each other is schema-level."
+- Rejected: A (primary-key functions into vocabulary/algorithms/;
+  trueqbit: the heavy PK algorithms do not belong there); B ("the
+  vocabulary classifies only", sending get_table_column_fields back
+  against 1071a179); C (get_table_column_fields into table_facts.h too).
+  trueqbit: get_table_column_fields is access - it selects the columns
+  among a table's elements - and stays; the vocabulary holds
+  classification, selection and access (accessors.h, index_filters.h,
+  column_fields.h).
+- Weighed and rejected: keeping the primary-key functions in
+  table_base.h beside the definition they read (code-structures.md,
+  "an operation lives with the thing whose data it reads"). The
+  knowledge they carry is the PRIMARY KEY constraint's matched against a
+  column; vocabulary-layer.md's node header holds structs, factories and
+  trait definitions; and the facts would split across two files. Making
+  them members of insertable_table_definition was left out: it changes
+  every call.
+- trueqbit: insertable_table_definition is forward-declared in
+  node_fwd.h; column_field already is.
+- Moved by script, byte for byte: the removed lines of table_base.h and
+  column_lookup.h equal the added lines of table_facts.h, sorted.
+  Stale include comments trimmed: table_base.h's <type_traits> drops
+  std::remove_cvref, column_lookup.h's node_algorithms.h drops
+  col_index_sequence_with. The @file line reads "Facts about the tables
+  of a tuple of database objects and their columns."; the docs round
+  writes the header. Not compiled; trueqbit builds.
+
+# Discussed
+Green: pre-commit.sh 0; clang-format 20 unchanged; no "on purpose:".
+Tokens differ by design; the amalgamation's removed and added lines
+differ only in the moved includes, the forward declaration, two include
+comments and the @file line.
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 472 | 472 | 0 |
+| lines | 57833 | 57845 | +12 |
+| copies | 3887 | 3888 | +1 |
+| hopsMean | 10.2 | 10.3 | +0.1 |
+| hopsMax | 218 | 218 | 0 |
+| gzipBytes | 469726 | 469833 | +107 |
+
+# Later
+- Includes left in place, now possibly unused: table_base.h's
+  cxx_polyfill/type_traits.h; column_lookup.h's tuple_filter.h and
+  tuple_iteration.h. A pruning step of its own, on trueqbit's word.
+- AGENTS.md's placement test (lines 43-44, "closed and
+  single-node-scoped", "Searches or traverses across a collection")
+  mirrors the decision tree in older words.
+- The docs round merges #1616 again: headers.mjs takes table_facts.h,
+  the PR body's Purposes table and "Left out on purpose" follow.
