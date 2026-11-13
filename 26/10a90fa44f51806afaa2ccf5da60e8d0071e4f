@@ -1,0 +1,35 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: the dev/builtin/ round,
+commit 2, decision 6 of the round (Claude's lean, taken).
+
+# Decided
+- Links added by script (scratchpad builtin_links.py, adapted from the
+  schema round's links.py to match structs too), on every overload:
+  dbstat.h (dbstat, using_dbstat, make_dbstat_table: dbstat.html),
+  fts5.h (fts5, using_fts5 x3: fts5.html), generate_series.h
+  (generate_series, make_generate_series_table: series.html),
+  pragma_table_info.h (table_info: #pragma_table_info, table_xinfo:
+  #pragma_table_xinfo, make_pragma_tables: #pragfunc), rtree.h
+  (using_rtree x2: rtree.html, using_rtree_i32 x2:
+  #integer_valued_r_trees), sqlite_schema.h (sqlite_master;
+  make_sqlite_schema_table, which had no doc-comment: schematab.html).
+  Every anchor checked against the pages read 2026-11-13.
+- The reflecting using_rtree/using_rtree_i32 overloads are public
+  (SQLITE_ORM_EXPORT), unlike schema/'s internal reflecting factories,
+  so they take the link.
+- Left out: the FTS5 auxiliary functions, which link already on every
+  overload (Claude's first scan miscounted them); vfs.h's name constants
+  (constants, not named in decision 6); the table-reference constants
+  (dbstat_table, generate_series_table, ...).
+
+# Discussed
+Green: pre-commit.sh 0; token streams identical; clang-format 20
+unchanged; no "on purpose:".
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| lines | 58027 | 58045 | +18 |
+| copies | 3907 | 3907 | 0 |
+| hopsMean | 10.4 | 10.4 | 0 |
+| hopsMax | 218 | 218 | 0 |
+| gzipBytes | 469913 | 470013 | +100 |
