@@ -33818,7 +33818,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
-    template<class R, class X, class... Args>
+    template<class R = std::string, class X, class... Args>
     constexpr internal::builtin_function_t<R, internal::json_extract_string, X, Args...> json_extract(X x,
                                                                                                       Args... args) {
         return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
@@ -33914,7 +33914,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
-    template<class R, class X>
+    template<class R = std::string, class X>
     constexpr internal::builtin_function_t<R, internal::json_quote_string, X> json_quote(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
@@ -34007,7 +34007,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return internal::json_array_length.template operator()<R>(std::move(args)...);
     }
 
-    template<class R, class... Args>
+    template<class R = std::string, class... Args>
     constexpr auto json_extract(Args... args) {
         return internal::json_extract.template operator()<R>(std::move(args)...);
     }
@@ -34075,7 +34075,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     inline constexpr orm_builtin_function auto json_pretty = internal::json_pretty;
 #endif
-    template<class R, class X>
+    template<class R = std::string, class X>
     constexpr auto json_quote(X x) {
         return internal::json_quote.template operator()<R>(std::move(x));
     }
