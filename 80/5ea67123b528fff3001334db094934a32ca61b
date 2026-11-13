@@ -1,0 +1,24 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: the dev/schema/ docs round,
+after #1616 took 0e6d8f8c, aea4ea10 and de5d5e06 (table_facts.h, its
+include pruning, AGENTS.md's placement test), 0acd384c and 2b038eab (the
+serializers include the schema algorithms they call; the gcc C++17 CI
+failure) and 0bac9513 (is_column_unique takes column_identifier).
+
+# Decided
+- A merge, never a rebase; the branch was pushed at acb70682. A first
+  merge at de5d5e06 was staged, then aborted uncommitted once the CI
+  fixes landed on #1616, and redone at 0bac9513.
+- foreign_keys.h: modify/delete conflict, resolved by deleting it - its
+  code lives on in table_facts.h; the header acb70682 gave it ("compute
+  over the foreign keys of a schema.") goes with it.
+- include/sqlite_orm/sqlite_orm.h: conflict resolved by regenerating it
+  (pre-commit.sh 0).
+- trueqbit: follow-ups known in advance are commits of their own, so
+  table_facts.h's header is the next commit, not part of the merge.
+
+# Discussed
+The docs round's delta outside include/, against PR B's head, is
+identical before (5bf091cc..acb70682) and after
+(0bac9513..merge), foreign_keys.h aside: 30 files +329 -43 before, 29
+files +324 -42 after.
