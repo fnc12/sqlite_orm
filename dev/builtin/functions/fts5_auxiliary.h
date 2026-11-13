@@ -3,9 +3,11 @@
 /** @file
  *  Purpose: define the FTS5 auxiliary functions.
  *
- *  Intention: placed by `docs/internals/source-layout.md` (https://www.sqlite.org/fts5.html#auxiliary_functions); its
- *  functions are called through `ast/builtin_function.h` and take the table through the hidden column of `fts5.h`;
- *  gathered by `builtin/dbos.h`.
+ *  Intention: a family of built-in SQL functions, as SQLite documents them at
+ *  https://www.sqlite.org/fts5.html#auxiliary_functions, placed by `docs/internals/source-layout.md`; its functions are
+ *  called through `ast/builtin_function.h`, gathered by `builtin/functions.h`, and
+ *  `.claude/skills/add-builtin-function/SKILL.md` adds to it. They take their table through the hidden column of
+ *  `dbos/fts5.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

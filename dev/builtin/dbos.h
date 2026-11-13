@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: gather the database objects SQLite provides.
+ *  Purpose: gather the database objects SQLite provides, with their deprecated spellings.
  *
  *  Intention: the umbrella of `dbos/`, placed by `docs/internals/source-layout.md`; the single header takes it, through
  *  `third_party/amalgamate/sqlite_orm.json`, in place of the files behind it.

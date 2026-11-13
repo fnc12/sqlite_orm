@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: represent the rows of the table_info PRAGMA, as a statement and as a table-valued function.
+ *  Purpose: represent the rows of the PRAGMAs SQLite offers as table-valued functions.
  *
  *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
  *  the nodes of `schema/`, gathered by `builtin/dbos.h`, and `.claude/skills/add-virtual-table/SKILL.md` adds others of

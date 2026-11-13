@@ -17626,7 +17626,7 @@ namespace sqlite_orm::internal {
 // #include "../builtin/dbos/pragma_tables.h"
 
 /** @file
- *  Purpose: represent the rows of the table_info PRAGMA, as a statement and as a table-valued function.
+ *  Purpose: represent the rows of the PRAGMAs SQLite offers as table-valued functions.
  *
  *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
  *  the nodes of `schema/`, gathered by `builtin/dbos.h`, and `.claude/skills/add-virtual-table/SKILL.md` adds others of
@@ -17801,7 +17801,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../builtin/functions/aggregate.h"
 
 /** @file
- *  Purpose: define the built-in aggregate SQL functions.
+ *  Purpose: define the built-in aggregate SQL functions, and the scalar ones that share their names.
  *
  *  Intention: a family of built-in SQL functions, as SQLite documents them at https://www.sqlite.org/lang_aggfunc.html,
  *  placed by `docs/internals/source-layout.md`; its functions are called through `ast/builtin_function.h`, gathered by
@@ -33227,9 +33227,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 /** @file
  *  Purpose: define the FTS5 auxiliary functions.
  *
- *  Intention: placed by `docs/internals/source-layout.md` (https://www.sqlite.org/fts5.html#auxiliary_functions); its
- *  functions are called through `ast/builtin_function.h` and take the table through the hidden column of `fts5.h`;
- *  gathered by `builtin/dbos.h`.
+ *  Intention: a family of built-in SQL functions, as SQLite documents them at
+ *  https://www.sqlite.org/fts5.html#auxiliary_functions, placed by `docs/internals/source-layout.md`; its functions are
+ *  called through `ast/builtin_function.h`, gathered by `builtin/functions.h`, and
+ *  `.claude/skills/add-builtin-function/SKILL.md` adds to it. They take their table through the hidden column of
+ *  `dbos/fts5.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -35605,7 +35607,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #pragma once
 
 /** @file
- *  Purpose: gather the database objects SQLite provides.
+ *  Purpose: gather the database objects SQLite provides, with their deprecated spellings.
  *
  *  Intention: the umbrella of `dbos/`, placed by `docs/internals/source-layout.md`; the single header takes it, through
  *  `third_party/amalgamate/sqlite_orm.json`, in place of the files behind it.
@@ -35802,10 +35804,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "dbos/fts5_deprecations.h"
 
 /** @file
- *  Purpose: keep the deprecated FTS5 spellings apart.
+ *  Purpose: keep apart the deprecated FTS5 spellings that overload a general factory of the DSL.
  *
- *  Intention: gathered by `builtin/dbos.h`; keeps `fts5.h`, `functions/window.h` and `ast/order_by.h` free of the
- *  deprecated spellings, and each factory says when it goes.
+ *  Intention: gathered by `builtin/dbos.h`; keeps `fts5.h` free of what they need, `ast/order_by.h`,
+ *  `functions/window.h` and the statement serializer, and each factory says when it goes.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

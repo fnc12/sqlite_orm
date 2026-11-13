@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: define the built-in aggregate SQL functions.
+ *  Purpose: define the built-in aggregate SQL functions, and the scalar ones that share their names.
  *
  *  Intention: a family of built-in SQL functions, as SQLite documents them at https://www.sqlite.org/lang_aggfunc.html,
  *  placed by `docs/internals/source-layout.md`; its functions are called through `ast/builtin_function.h`, gathered by

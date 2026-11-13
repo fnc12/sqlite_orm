@@ -1,10 +1,10 @@
 #pragma once
 
 /** @file
- *  Purpose: keep the deprecated FTS5 spellings apart.
+ *  Purpose: keep apart the deprecated FTS5 spellings that overload a general factory of the DSL.
  *
- *  Intention: gathered by `builtin/dbos.h`; keeps `fts5.h`, `functions/window.h` and `ast/order_by.h` free of the
- *  deprecated spellings, and each factory says when it goes.
+ *  Intention: gathered by `builtin/dbos.h`; keeps `fts5.h` free of what they need, `ast/order_by.h`,
+ *  `functions/window.h` and the statement serializer, and each factory says when it goes.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
