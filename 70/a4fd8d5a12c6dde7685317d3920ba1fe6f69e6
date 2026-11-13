@@ -1,0 +1,146 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: pass 2, the dev/builtin/
+round, branch docs/purpose-intention-builtin stacked on #1617 (worktree
+C:\projects\wt-purpose-intention-builtin, from 60ce2051).
+
+# Decided
+- trueqbit took all of Claude's leans:
+  1. the function families "define" (source-layout.md: definitions, not
+     nodes), rather than "represent";
+  2. core.h "define the core SQL functions." - SQLite's word
+     (lang_corefunc.html: "The core functions shown below are available
+     by default"), rather than "the scalar functions of no other family";
+  3. functions.h's block is cut: the add-builtin-function skill holds
+     both definition forms and the wrapping rule; the why of the wrapping
+     (ambiguous lookup under `using namespace sqlite_orm;`) is added to
+     the skill's wrapping line; window.h's paragraphs 2 and 3 likewise
+     (source-layout.md, vocabulary-layer.md:310);
+  4. fts5_deprecations.h: the rank() dual meaning onto the deprecated
+     order_by(rank()), the is_equal<Table> passage onto its factory, "Goes
+     as a whole in v1.11" cut (each factory's notice says it); the
+     header-of-its-own reason goes into the Intention;
+  5. fts5_functions.h's passage onto fts5::hidden::any's doc-comment
+     (fts5.h), the one declaration it concerns, its `///` line turned into
+     a `/** */` block;
+  6. links on the public structs and factories lacking one: the next
+     commit.
+- trueqbit: the headers that gather say "umbrella", as node_traits.h and
+  node_algorithms.h do: functions.h and dbos.h.
+- Rule 15: "function" and "collation" read otherwise in C++: the families
+  say "SQL function"; collations.h takes SQLite's "collating functions"
+  (datatype3.html#collation: "built-in collating functions: BINARY,
+  NOCASE, and RTRIM").
+- Intentions by Claude, from the code: each family links its page;
+  core.h names where the scalar MAX/MIN live (aggregate.h, one overload
+  set; aggregate.h's sentence saying so was cut, the max/min doc-comments
+  carry both links); collations.h names its readers (the COLLATE nodes of
+  ast/ and schema/, the serializer); vfs.h its readers
+  (storage_options.h, connection_holder.h); pragma_table_info.h that the
+  storage reads its rows when syncing (storage.h:1196,
+  pragma.table_xinfo); sqlite_schema.h leaves out the virtual-table skill.
+- Sources read 2026-11-13 (sqlite.org): lang_corefunc, lang_aggfunc,
+  lang_datefunc, json1, lang_mathfunc, windowfunctions, datatype3, vfs,
+  dbstat ("a read-only eponymous virtual table"), series ("The
+  generate_series Table-Valued Function", a loadable extension), pragma
+  ("PRAGMA functions ... table-valued functions"), schematab, fts5
+  (section 5, "Auxiliary functions ... the name of the FTS5 table is
+  specified as the first argument"), rtree.
+- Written by script (scratchpad builtin_headers.py, idempotent); five
+  files had no block (dbstat.h, fts5.h, generate_series.h, rtree.h,
+  sqlite_schema.h) and take one below #pragma once.
+
+# Discussed
+Green: pre-commit.sh 0; token streams identical; clang-format 20
+unchanged; no "on purpose:".
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 472 | 472 | 0 |
+| lines | 57987 | 58027 | +40 |
+| copies | 3905 | 3907 | +2 |
+| hopsMean | 10.4 | 10.4 | 0 |
+| hopsMax | 218 | 218 | 0 |
+| gzipBytes | 470154 | 469913 | -241 |
+
+Cut and replaced text, file by file:
+- dev/builtin/collations.h:
+    /** @file SQLite's built-in collating functions: BINARY, NOCASE and RTRIM.
+     *  Like the built-in functions and database objects, they are the stock instances of a kind of named object
+     *  that applications can register more of (`storage_base::create_collation()`).
+- dev/builtin/dbos.h:
+    /** @file Umbrella header for the database objects SQLite provides itself:
+     *        its schema table (`sqlite_master`/`sqlite_schema`), the eponymous virtual tables (`dbstat`,
+     *        `generate_series`, `pragma_table_info`/`pragma_table_xinfo`), the bundle `make_builtin_tables()`
+     *        and the virtual table modules (FTS5, R*Tree).
+- dev/builtin/dbos/builtin_tables.h:
+    /** @file The tuple of the database objects SQLite provides itself, `make_builtin_tables()`.
+- dev/builtin/dbos/fts5.h:
+                /// Hidden column with the same name as the table itself. It is a blob only meaningful when matching any of the other FTS5 columns.
+- dev/builtin/dbos/fts5_deprecations.h:
+    /** @file The deprecated FTS5 spellings: `order_by(rank())` for the hidden FTS5 rank column, and `is_equal<Table>(x)`
+     *        for the comparison of a whole FTS5 table with an expression.
+     *        `rank()` is the RANK() window function, and it happened to be the spelling of the hidden FTS5 rank
+     *        column as well, by the bare `rank` it used to serialize to. That dual meaning gets a header of its own,
+     *        which pulls in what it needs rather than having the FTS5 module, the window functions or ORDER BY
+     *        depend on it.
+     *
+     *        `is_equal<Table>(x)` compares the table itself, which is not a binary condition: its left side is a type
+     *        only. Unlike the rank spelling, it is not guarded by FTS5 support, as its classification trait is read by
+     *        the serializer, the AST iterator and the node tuple in every build.
+     *
+     *        Goes as a whole in v1.11.
+- dev/builtin/dbos/fts5_functions.h:
+    /** @file The FTS5 auxiliary functions `highlight()`, `bm25()` and `snippet()`.
+     *  An FTS5 auxiliary function is an ordinary built-in function whose first argument is the FTS5 table's
+     *  hidden column named like the table (`fts5::hidden::any`), which is how SQLite refers to the table
+     *  in `bm25(posts)`: `posts` is a column reference. The factories accept that column alone as the first
+     *  argument, and the general built-in function machinery does the rest - the column serializes like any
+     *  other column and names its table for the FROM clause.
+- dev/builtin/dbos/pragma_table_info.h:
+    /** @file The rows of `PRAGMA table_info` and `PRAGMA table_xinfo`, and the eponymous virtual tables
+     *        `pragma_table_info` and `pragma_table_xinfo` of their PRAGMA functions (C++26 reflection),
+     *        bundled by `make_pragma_tables()`.
+- dev/builtin/functions.h:
+    /** @file Umbrella header for the built-in SQL functions, one header per family as SQLite documents them.
+     *        In C++20 builds a built-in function is a definition object of `ast/builtin_function.h` (name + overload set),
+     *        published in the `sqlite_orm` namespace as a copy - or wrapped by a function template where the public
+     *        function takes the return type as a template argument, shares its name with other function templates or
+     *        checks its arguments. The C++17 branch keeps the legacy factories over `builtin_function_t`.
+     *
+     *        A built-in whose name is also that of a C library function in the global namespace - `abs`, `round`,
+     *        `time`, `random`, `strftime`, `printf` - is wrapped as well: under `using namespace sqlite_orm;` an object
+     *        and a function of the same name are an ambiguous lookup, whereas two functions are an overload set.
+- dev/builtin/functions/aggregate.h:
+    /** @file The built-in aggregate functions https://www.sqlite.org/lang_aggfunc.html: COUNT(), TOTAL(), SUM(),
+     *        AVG(), MAX(), MIN(), GROUP_CONCAT(), STRING_AGG() and the percentile functions MEDIAN(), PERCENTILE(),
+     *        PERCENTILE_CONT() and PERCENTILE_DISC().
+     *        MAX() and MIN() take the scalar forms MAX(X,Y,...) and MIN(X,Y,...) along, defined as one overload set
+     *        with the aggregate forms.
+     *        The aggregate functions of JSON1 are with the other JSON functions, in `json.h`.
+- dev/builtin/functions/core.h:
+    /** @file The built-in core functions https://www.sqlite.org/lang_corefunc.html, the scalar functions not
+     *        grouped elsewhere - except MAX(X,Y,...) and MIN(X,Y,...), which share their definitions with the
+     *        aggregate functions of the same name in `aggregate.h`.
+- dev/builtin/functions/datetime.h:
+    /** @file The built-in date and time functions https://www.sqlite.org/lang_datefunc.html: DATE(), TIME(),
+     *        DATETIME(), JULIANDAY(), STRFTIME(), UNIXEPOCH() and TIMEDIFF().
+- dev/builtin/functions/json.h:
+    /** @file The built-in JSON functions https://www.sqlite.org/json1.html, including the aggregate functions
+     *        JSON_GROUP_ARRAY() and JSON_GROUP_OBJECT().
+- dev/builtin/functions/math.h:
+    /** @file The built-in mathematical functions https://www.sqlite.org/lang_mathfunc.html,
+     *        available as of SQLite 3.35.0 [see `SQLITE_ORM_MATH_FUNCTIONS_SUPPORTED` in sqlite3/sqlite3_config.h].
+- dev/builtin/functions/window.h:
+    /** @file The built-in window functions: ROW_NUMBER(), RANK(), DENSE_RANK(), PERCENT_RANK(), CUME_DIST(),
+     *        NTILE(N), LAG(expr), LEAD(expr), FIRST_VALUE(expr), LAST_VALUE(expr) and NTH_VALUE(expr, N).
+     *        They are built-in functions of the window kind, applied by an OVER clause: in C++20 builds definition
+     *        objects of `ast/builtin_function.h` (`"ROW_NUMBER"_builtin.window<int()>()`), in C++17 builds legacy
+     *        factories over `builtin_window_function_t`. Either way their call nodes are built-in function calls,
+     *        classified by `is_builtin_function_call` like those of the scalar and aggregate functions.
+     *
+     *        Like the headers of the scalar and aggregate functions, this header holds definitions, not nodes, hence it
+     *        lives outside `ast/`.
+- dev/builtin/vfs.h:
+    /** @file The names of SQLite's built-in VFSes (OS interface layers), per platform, and the default one.
+     *  Like the built-in collations, they are the stock instances of a kind of named object that applications
+     *  can register more of (`sqlite3_vfs_register()`); a storage opens its database with any registered one.
