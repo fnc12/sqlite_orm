@@ -41,7 +41,8 @@ trait, predicate or algorithm.** The placement test:
 
 - Specialized against something concrete, a node struct or a raw type? → `dev/vocabulary/traits/`
 - Composed from other vocabulary, closed and single-node-scoped? → `dev/vocabulary/algorithms/`
-- Searches or traverses across a collection? → not vocabulary: `dev/schema/algorithms/`
+- Does the answer about an element depend on other elements of a collection, or on the
+  collection as a whole, a table's columns and constraints included? → not vocabulary: `dev/schema/algorithms/`
 
 Complexity never determines the tier. Where nearby code does it differently, nearby code is
 the outlier: follow the doc, and convert the outlier rather than copying it.
