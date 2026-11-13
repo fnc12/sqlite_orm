@@ -1,0 +1,61 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: the dev/builtin/ round,
+its third commit - the Purpose check, after #1618's merge (08e83adb).
+
+# Decided
+The ontocratic-reviewer, briefed with the Purpose rule alone, read the
+19 Purposes against code and sqlite.org; Claude verified its findings
+against the code (fts5.h:125 using_fts5<T, Cs...>, the deprecated
+highlight<O> in fts5_auxiliary.h, table_xinfo in pragma_tables.h).
+Purposes, old -> new:
+- functions/aggregate.h: "define the built-in aggregate SQL functions."
+  -> "..., and the scalar ones that share their names." (the scalar
+  MAX(X,Y,...) and MIN(X,Y,...), lang_corefunc.html; core.h's
+  Intention points here). Claude's lean, taken.
+- dbos.h: "gather the database objects SQLite provides." -> "..., with
+  their deprecated spellings." Claude's lean (b) was "with the
+  functions and spellings that belong to them"; trueqbit: "Refactor" -
+  #1618 moved the auxiliary functions to functions/, so only the
+  deprecated FTS5 spellings remain beside the objects; Claude narrowed
+  the clause, trueqbit's yes ("yes to all three").
+- dbos/fts5_deprecations.h: "keep the deprecated FTS5 spellings apart."
+  (false: using_fts5<T, Cs...> and highlight<O> live elsewhere) ->
+  "keep apart the deprecated FTS5 spellings that overload a general
+  factory of the DSL." (is_equal of ast/binary_condition.h, order_by of
+  ast/order_by.h). Claude's first wording said "another module's
+  factory"; trueqbit asked what "module" meant - it reads as an SQLite
+  virtual table module, FTS5 being one, and as a C++20 module; reworded.
+  Its Intention was false too ("keeps fts5.h ... free of the deprecated
+  spellings", fts5.h:125 holds one): now it keeps fts5.h free of what
+  the two need - ast/order_by.h, functions/window.h, the serializer.
+  It stays in dbos/: both spellings belong to the FTS5 table.
+- dbos/pragma_tables.h: "represent the rows of the table_info PRAGMA,
+  as a statement and as a table-valued function." -> "represent the
+  rows of the PRAGMAs SQLite offers as table-valued functions."
+  (pragma.html#pragfunc). Claude leaned for "... that list a table's
+  columns"; trueqbit: "we never did that just because things were
+  missing, so it should stay as wide as it will hold" - TODO.md lists
+  the PRAGMAs that join through make_pragma_tables().
+- functions/fts5_auxiliary.h: Purpose unchanged; its Intention becomes
+  the family Intention (fts5.html#auxiliary_functions), "gathered by
+  builtin/functions.h", plus the hidden column of dbos/fts5.h.
+- "Built-in" stays in the Purposes (finding 5): SQLite's own term -
+  "built-in collating functions", "built-in VFSes", "Built-in Aggregate
+  Functions"; in window.h it tells the built-in window functions from
+  aggregate window functions. Claude's lean, taken.
+- The other 13 Purposes stand; the reviewer confirmed each against its
+  sqlite.org page.
+- Written by scratchpad builtin_headers.py, keys and Purposes updated to
+  match (backup builtin_headers.py.bak1).
+
+# Discussed
+Green: pre-commit.sh 0; token streams identical; clang-format 20
+unchanged; no "on purpose:".
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| lines | 58052 | 58054 | +2 |
+| copies | 3907 | 3907 | 0 |
+| hopsMean | 10.4 | 10.4 | 0 |
+| hopsMax | 218 | 218 | 0 |
+| gzipBytes | 470266 | 470299 | +33 |
