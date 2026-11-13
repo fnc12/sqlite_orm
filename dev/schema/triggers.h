@@ -19,11 +19,6 @@
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
-// NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
-// (Could be implemented with a normal trigger that insert or update an internal table and then retreive
-// the event in the C++ code, to call the C++ user callback, with update hooks: https://www.sqlite.org/c3ref/update_hook.html)
-// It could be an interesting feature to bring to sqlite_orm that other libraries don't have ?
-
 namespace sqlite_orm::internal {
     enum class trigger_timing { trigger_before, trigger_after, trigger_instead_of };
     enum class trigger_type { trigger_delete, trigger_insert, trigger_update };
@@ -110,9 +105,10 @@ namespace sqlite_orm::internal {
          */
         trigger_type_base type_base;
         /**
-         *  Value used to determine if we execute the trigger on each row or on each statement
-         *  (SQLite doesn't support the FOR EACH STATEMENT syntax yet: https://sqlite.org/lang_createtrigger.html#description
-         *  so this value is more of a placeholder for a later update)
+         *  Whether the trigger spells FOR EACH ROW; SQLite runs every trigger once for each row, with the clause
+         *  or without it.
+         *
+         *  https://www.sqlite.org/lang_createtrigger.html#description
          */
         bool do_for_each_row = false;
         /**
