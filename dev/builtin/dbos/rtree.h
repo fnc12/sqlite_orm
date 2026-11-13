@@ -71,6 +71,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a RTREE virtual table definition.
+     *
+     *  https://www.sqlite.org/rtree.html
      */
     template<class... Cs>
     internal::virtual_table_definition<internal::rtree_module_tag, Cs...> using_rtree(Cs... definition) {
@@ -86,6 +88,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The columns are reflected from the non-static data members of O and their annotations.
      *
      *  Example: `make_virtual_table(using_rtree<DemoIndex>())`
+     *
+     *  https://www.sqlite.org/rtree.html
      */
     template<class O>
     auto using_rtree() {
@@ -99,6 +103,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Factory function for a RTREE_I32 virtual table definition.
+     *
+     *  https://www.sqlite.org/rtree.html#integer_valued_r_trees
      */
     template<class... Cs>
     internal::virtual_table_definition<internal::rtree_i32_module_tag, Cs...> using_rtree_i32(Cs... definition) {
@@ -114,6 +120,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The columns are reflected from the non-static data members of O and their annotations.
      *
      *  Example: `make_virtual_table(using_rtree_i32<DemoIndex>())`
+     *
+     *  https://www.sqlite.org/rtree.html#integer_valued_r_trees
      */
     template<class O>
     auto using_rtree_i32() {

@@ -17649,6 +17649,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  A row of `PRAGMA table_info`, and data structure for the `pragma_table_info` eponymous virtual table.
+     *
+     *  https://www.sqlite.org/pragma.html#pragma_table_info
      */
     struct table_info {
         int cid = 0;
@@ -17682,6 +17684,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  A row of `PRAGMA table_xinfo`, and data structure for the `pragma_table_xinfo` eponymous virtual table.
+     *
+     *  https://www.sqlite.org/pragma.html#pragma_table_xinfo
      */
     struct table_xinfo {
         int cid = 0;
@@ -17780,6 +17784,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  E.g.
      *  auto storage = make_storage("", make_pragma_tables(), make_table<User>());
+     *
+     *  https://www.sqlite.org/pragma.html#pragfunc
      */
     inline auto make_pragma_tables() {
         return std::tuple{
@@ -20918,19 +20924,40 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_UNIX
+    /**
+     *  https://www.sqlite.org/vfs.html#standard_unix_vfses
+     */
     inline constexpr std::string_view unix_vfs_name = "unix";
+    /**
+     *  https://www.sqlite.org/vfs.html#standard_unix_vfses
+     */
     inline constexpr std::string_view unix_posix_vfs_name = unix_vfs_name;
+    /**
+     *  https://www.sqlite.org/vfs.html#standard_unix_vfses
+     */
     inline constexpr std::string_view unix_dotfile_vfs_name = "unix-dotfile";
 #ifdef SQLITE_ORM_APPLE
     inline constexpr std::string_view unix_afp_vfs_name = "unix-afp";
 #endif
+    /**
+     *  https://www.sqlite.org/vfs.html#specifying_which_vfs_to_use
+     */
     inline constexpr std::string_view default_vfs_name = unix_vfs_name;
 #endif
 
 #ifdef SQLITE_ORM_WIN
+    /**
+     *  https://www.sqlite.org/vfs.html#standard_windows_vfses
+     */
     inline constexpr std::string_view win32_vfs_name = "win32";
+    /**
+     *  https://www.sqlite.org/vfs.html#standard_windows_vfses
+     */
     inline constexpr std::string_view win32_longpath_vfs_name = "win32-longpath";
 
+    /**
+     *  https://www.sqlite.org/vfs.html#specifying_which_vfs_to_use
+     */
     inline constexpr std::string_view default_vfs_name = win32_vfs_name;
 #endif
 }
@@ -30975,6 +31002,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  One can infer this fact from the following SQL statement:
      *  It qualifies the set of columns, but bails out with error "no such table: sqlite_schema": `SELECT sqlite_schema.* from sqlite_schema`.
      *  Hence we keep its previous table name `sqlite_master`, and provide `sqlite_schema` as a table alias in sqlite_orm.
+     *
+     *  https://www.sqlite.org/schematab.html
      */
     struct sqlite_master {
         std::string type;
@@ -30988,6 +31017,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
     };
 
+    /**
+     *  https://www.sqlite.org/schematab.html
+     */
     inline auto make_sqlite_schema_table() {
         return make_table("sqlite_master",
                           make_column("type", &sqlite_master::type),
@@ -35203,6 +35235,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
      *  Data structure for the `dbstat` eponymous virtual table.
+     *
+     *  https://www.sqlite.org/dbstat.html
      */
     struct dbstat {
         std::string name;
@@ -35244,6 +35278,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  
      *  Though the DBSTAT virtual table is an eponymous table SQLite allows to create a virtual table instance with a different name.
      *  This is mostly useful with binding input arguments (so-called table values), e.g. a different schema than "main" or whether to query aggregated results.
+     *
+     *  https://www.sqlite.org/dbstat.html
      */
     template<class... Value>
     auto using_dbstat(Value... tableValues) {
@@ -35288,6 +35324,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Factory function for the DBSTAT default eponymous virtual table.
+     *
+     *  https://www.sqlite.org/dbstat.html
      */
     inline auto make_dbstat_table() {
         return make_virtual_table<dbstat>(internal::dbstat_module_tag::name(), using_dbstat());
@@ -35379,6 +35417,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
      *  Class namespace for hidden `fts5` columns.
+     *
+     *  https://www.sqlite.org/fts5.html
      */
     struct fts5 {
         /** 
@@ -35428,6 +35468,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a FTS5 virtual table definition.
      *  
      *  The hidden FTS5 columns 'any' [as a placeholder for the column with the same name as the table] and 'rank' are mapped into each table definition.
+     *
+     *  https://www.sqlite.org/fts5.html
      */
     template<class... Cs>
     auto using_fts5(Cs... definition) {
@@ -35445,6 +35487,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The mapped object type is explicitly specified.
      *  
      *  [Deprecation notice] This factory function is deprecated and will be removed in v1.11.
+     *
+     *  https://www.sqlite.org/fts5.html
      */
     template<class T, class... Cs>
     [[deprecated("Specify the explicit object type when calling `make_virtual_table()`.")]]
@@ -35462,6 +35506,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  and precede the table options.
      *
      *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
+     *
+     *  https://www.sqlite.org/fts5.html
      */
     template<class O, class... Cs>
         requires (internal::col_index_sequence_of<std::tuple<Cs...>>::size() == 0)
@@ -35885,6 +35931,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
      *  Data structure for the `generate_series` eponymous virtual table.
+     *
+     *  https://www.sqlite.org/series.html
      */
     struct generate_series {
         int value = 0;
@@ -35930,6 +35978,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for the `generate_series` default eponymous virtual table.
+     *
+     *  https://www.sqlite.org/series.html
      */
     inline auto make_generate_series_table() {
         return make_virtual_table<generate_series>(internal::generate_series_module_tag::name(),
@@ -36019,6 +36069,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a RTREE virtual table definition.
+     *
+     *  https://www.sqlite.org/rtree.html
      */
     template<class... Cs>
     internal::virtual_table_definition<internal::rtree_module_tag, Cs...> using_rtree(Cs... definition) {
@@ -36034,6 +36086,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The columns are reflected from the non-static data members of O and their annotations.
      *
      *  Example: `make_virtual_table(using_rtree<DemoIndex>())`
+     *
+     *  https://www.sqlite.org/rtree.html
      */
     template<class O>
     auto using_rtree() {
@@ -36047,6 +36101,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Factory function for a RTREE_I32 virtual table definition.
+     *
+     *  https://www.sqlite.org/rtree.html#integer_valued_r_trees
      */
     template<class... Cs>
     internal::virtual_table_definition<internal::rtree_i32_module_tag, Cs...> using_rtree_i32(Cs... definition) {
@@ -36062,6 +36118,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The columns are reflected from the non-static data members of O and their annotations.
      *
      *  Example: `make_virtual_table(using_rtree_i32<DemoIndex>())`
+     *
+     *  https://www.sqlite.org/rtree.html#integer_valued_r_trees
      */
     template<class O>
     auto using_rtree_i32() {

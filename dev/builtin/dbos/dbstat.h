@@ -39,6 +39,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
      *  Data structure for the `dbstat` eponymous virtual table.
+     *
+     *  https://www.sqlite.org/dbstat.html
      */
     struct dbstat {
         std::string name;
@@ -80,6 +82,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  
      *  Though the DBSTAT virtual table is an eponymous table SQLite allows to create a virtual table instance with a different name.
      *  This is mostly useful with binding input arguments (so-called table values), e.g. a different schema than "main" or whether to query aggregated results.
+     *
+     *  https://www.sqlite.org/dbstat.html
      */
     template<class... Value>
     auto using_dbstat(Value... tableValues) {
@@ -124,6 +128,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Factory function for the DBSTAT default eponymous virtual table.
+     *
+     *  https://www.sqlite.org/dbstat.html
      */
     inline auto make_dbstat_table() {
         return make_virtual_table<dbstat>(internal::dbstat_module_tag::name(), using_dbstat());

@@ -49,6 +49,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
      *  Class namespace for hidden `fts5` columns.
+     *
+     *  https://www.sqlite.org/fts5.html
      */
     struct fts5 {
         /** 
@@ -98,6 +100,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a FTS5 virtual table definition.
      *  
      *  The hidden FTS5 columns 'any' [as a placeholder for the column with the same name as the table] and 'rank' are mapped into each table definition.
+     *
+     *  https://www.sqlite.org/fts5.html
      */
     template<class... Cs>
     auto using_fts5(Cs... definition) {
@@ -115,6 +119,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The mapped object type is explicitly specified.
      *  
      *  [Deprecation notice] This factory function is deprecated and will be removed in v1.11.
+     *
+     *  https://www.sqlite.org/fts5.html
      */
     template<class T, class... Cs>
     [[deprecated("Specify the explicit object type when calling `make_virtual_table()`.")]]
@@ -132,6 +138,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  and precede the table options.
      *
      *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
+     *
+     *  https://www.sqlite.org/fts5.html
      */
     template<class O, class... Cs>
         requires (internal::col_index_sequence_of<std::tuple<Cs...>>::size() == 0)

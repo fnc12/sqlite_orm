@@ -27,6 +27,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
      *  Data structure for the `generate_series` eponymous virtual table.
+     *
+     *  https://www.sqlite.org/series.html
      */
     struct generate_series {
         int value = 0;
@@ -72,6 +74,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for the `generate_series` default eponymous virtual table.
+     *
+     *  https://www.sqlite.org/series.html
      */
     inline auto make_generate_series_table() {
         return make_virtual_table<generate_series>(internal::generate_series_module_tag::name(),
