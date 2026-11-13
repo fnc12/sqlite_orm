@@ -33,3 +33,16 @@ unchanged; no "on purpose:".
 | hopsMean | 10.4 | 10.4 | 0 |
 | hopsMax | 218 | 218 | 0 |
 | gzipBytes | 469913 | 470013 | +100 |
+
+# Later
+Amended 2026-11-13 on trueqbit's "VFS: amend, add the missing options in
+TODO" (the commit was unpushed): vfs.h's constants link vfs.html -
+unix, unix_posix (alias of "unix") and unix-dotfile
+#standard_unix_vfses; win32 and win32-longpath #standard_windows_vfses;
+both default_vfs_name #specifying_which_vfs_to_use; unix-afp has no
+section of vfs.html, no link. TODO.md "C API / runtime" gains
+unix-excl, unix-none, unix-namedsem (VxWorks only), win32-none,
+win32-longpath-none. The "vfs.h left out" line above is superseded.
+Green: pre-commit.sh 0; token streams identical; clang-format 20
+unchanged; no "on purpose:". Measure against 70a4fd8d after the amend:
+lines +25, copies 0, hops 10.4 / 218 unchanged, gzip +143.
