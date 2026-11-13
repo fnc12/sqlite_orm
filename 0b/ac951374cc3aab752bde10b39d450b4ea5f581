@@ -1,0 +1,18 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: trueqbit asked for this
+commit on #1616, after the two include fixes.
+
+# Decided
+- trueqbit: is_column_unique's first iteration takes
+  `const column_identifier&` in place of `auto&`, against template
+  instantiation explosion.
+- Checked: the elements col_index_sequence_with<..., is_unique> keeps are
+  columns; column_t and hidden_column both derive from column_identifier
+  (column.h:96, :108); iterate_tuple calls lambda(std::get<Idx>(tpl)),
+  so the const column reference converts to its base. The second
+  iteration, over the table-level UNIQUE constraints and their column
+  expressions, stays generic: find_column_name needs the expression's
+  type.
+- table_facts.h includes column_identifier.h, which it now names.
+  pre-commit.sh 0; the amalgamation gains the include comment alone.
+  Not compiled; CI and trueqbit build.
