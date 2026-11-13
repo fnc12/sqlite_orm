@@ -1,0 +1,41 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: round dev/schema/ of pass 2,
+commit 5 of handover-step2c-2-docs-round.md, after e67cf8f1.
+
+# Decided
+- trueqbit (28, ledger 33): the comments of schema/ hold no plans. The
+  trigger-callback idea (triggers.h, above the namespace) goes to TODO.md
+  under "C API / runtime", beside the hooks item; do_for_each_row keeps
+  the fact, positive, with the page's link; virtual_table.h's note on
+  deriving virtual_table from virtual_table_definition is removed -
+  cryptic, and 7e49f2b1 ("Recomposition of the facilities for virtual
+  tables") gives no reason.
+- trueqbit, 2026-11-13: the commit message names no decision or ledger
+  number (first drafted with "Decision 28, ledger entry 33:"); 82426969
+  and e67cf8f1 were reworded the same way. A correction owed to
+  ontocratic-feedback, deferred by trueqbit and appended to
+  handover-feedback-domain-sources.md.
+
+# Discussed
+- 4 (a): https://www.sqlite.org/lang_createtrigger.html#description, read
+  2026-11-12/13: "At this time SQLite supports only FOR EACH ROW
+  triggers, not FOR EACH STATEMENT triggers. Hence explicitly specifying
+  FOR EACH ROW is optional." The serializer writes " FOR EACH ROW" when
+  do_for_each_row is set (statement_serializer.h).
+- Cut text:
+    triggers.h, above the namespace:
+      // NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
+      // (Could be implemented with a normal trigger that insert or update an internal table and then retreive
+      // the event in the C++ code, to call the C++ user callback, with update hooks: https://www.sqlite.org/c3ref/update_hook.html)
+      // It could be an interesting feature to bring to sqlite_orm that other libraries don't have ?
+    triggers.h, do_for_each_row:
+      Value used to determine if we execute the trigger on each row or on each statement
+      (SQLite doesn't support the FOR EACH STATEMENT syntax yet: https://sqlite.org/lang_createtrigger.html#description
+      so this value is more of a placeholder for a later update)
+    virtual_table.h, virtual_table_definition:
+      If desired or necessary one day, derive `virtual_table` from it, similar to `ordinary_table` deriving from `ordinary_table_definition`.
+- Green: pre-commit.sh exit 0; token streams identical; clang-format-20
+  unchanged; no "on purpose:".
+
+# Later
+- Commit 6: the Purpose check pass over schema/.
