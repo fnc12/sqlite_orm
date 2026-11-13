@@ -22598,7 +22598,11 @@ namespace sqlite_orm::internal {
 
 // #include "../schema/algorithms/table_facts.h"
 
-/** @file Facts about the tables of a tuple of database objects and their columns.
+/** @file
+ *  Purpose: state what holds of the tables of a schema and their columns.
+ *
+ *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
+ *  consumes the vocabulary layer.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
