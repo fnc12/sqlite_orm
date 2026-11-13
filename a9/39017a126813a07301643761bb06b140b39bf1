@@ -1,0 +1,51 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: during the dev/builtin/
+Purpose/Intention round, the Purpose check found that builtin/dbos.h
+gathers things that are no database objects. A refactor PR of its own,
+off dev, merged into docs/purpose-intention-builtin afterwards.
+
+# Decided
+- trueqbit: "Not sure why we have fts5_functions.h under dbo/. Maybe the
+  commit where I introduced this says details. Refactor."
+- History read: f5523a11 created dev/ast/fts5_functions.h; 479e683e
+  moved it to vtabs/ ("no longer defines a node ... meaningful only with
+  the FTS5 virtual table"; next to fts5.h it could include it, retiring
+  the forward declaration of fts5 and the template detour of the
+  deprecated highlight<O>()); 31de6766 widened vtabs/ to builtin_dbos/
+  and carried every file along; 547e995f made it builtin/dbos/. No
+  commit chose dbos/ for it.
+- Claude's lean, taken by trueqbit: builtin/functions/fts5_auxiliary.h -
+  the families of functions/ are named by SQLite's grouping, and
+  "auxiliary functions" is fts5.html's term ("FTS5 provides three
+  built-in auxiliary functions"). The include of fts5.h stays, as
+  "../dbos/fts5.h"; dbos/fts5_deprecations.h already includes
+  "../functions/window.h", so the two folders include each other.
+- trueqbit, on Claude's corrected lean: .claude/skills/add-builtin-function/
+  SKILL.md lists fts5_auxiliary.h among the headers of functions/ - the
+  line lists what the folder holds, and fts5_auxiliary.h defines its
+  functions through the ""_builtin mechanism the skill teaches. Claude
+  first left it out ("the skill covers SQLite's core families") and
+  withdrew that. The frontmatter description stays: FTS5's three
+  built-in auxiliary functions are all present.
+- source-layout.md's criterion is unchanged ("the built-in SQL functions
+  in functions/, one header per family as SQLite documents them").
+- Pure move: the amalgamation holds the same lines, the include comments
+  aside; fts5.h now enters it earlier, through functions.h. Its order is
+  not this change's concern (trueqbit's ruling of 0acd384c: a clean
+  header carries it).
+
+# Discussed
+Green: pre-commit.sh 0; clang-format 20 unchanged; no "on purpose:".
+The token streams of dbos.h, functions.h and fts5_auxiliary.h differ
+by their includes only, as a move makes them.
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| lines | 57854 | 57854 | 0 |
+| copies | 3902 | 3902 | 0 |
+| hopsMean | 10.1 | 10.2 | +0.1 |
+| hopsMax | 221 | 221 | 0 |
+| gzipBytes | 469447 | 469670 | +223 |
+
+# Later
+- Next commit: dbos/pragma_table_info.h becomes dbos/pragma_tables.h.
