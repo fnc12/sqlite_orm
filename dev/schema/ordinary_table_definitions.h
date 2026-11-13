@@ -3,7 +3,7 @@
 /** @file
  *  Purpose: define the members of an ordinary table whose bodies need what `schema/ordinary_table.h` stays free of.
  *
- *  Intention: keeps `schema/ordinary_table.h` free of the type printer and of `builtin/dbos/pragma_table_info.h`;
+ *  Intention: keeps `schema/ordinary_table.h` free of the type printer and of `builtin/dbos/pragma_tables.h`;
  *  gathered by `interface_definitions.h`.
  */
 
@@ -14,7 +14,7 @@
 #endif
 
 #include "../functional/mpl/convenience.h"
-#include "../builtin/dbos/pragma_table_info.h"  //  table_xinfo
+#include "../builtin/dbos/pragma_tables.h"  //  table_xinfo
 #include "../type_mapping/type_printer.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_traits.h"
