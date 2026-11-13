@@ -22480,6 +22480,8 @@ namespace sqlite_orm::internal {
 
 // #include "../error_code.h"
 
+// #include "../schema/algorithms/table_lookup.h"
+//  pick_table
 // #include "../schema/column_identifier.h"
 
 // #include "../vocabulary/node_fwd.h"
