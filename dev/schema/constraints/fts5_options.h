@@ -17,6 +17,9 @@
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
+    /**
+     *  The content option of an FTS5 table, given as its SQL value.
+     */
     template<class T>
     struct content_t {
         using value_type = T;
@@ -27,6 +30,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_content_v = polyfill::is_specialization_of_v<T, content_t>;
 
+    /**
+     *  The content option of an FTS5 table, naming a mapped table as its external content.
+     */
     template<class T>
     struct table_content_t {
         using mapped_type = T;
@@ -106,7 +112,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  tokenize='...'' table constraint factory function. Used in FTS virtual tables.
+     *  tokenize='...' table constraint factory function. Used in FTS virtual tables.
      *
      *  https://www.sqlite.org/fts5.html#tokenizers
      */

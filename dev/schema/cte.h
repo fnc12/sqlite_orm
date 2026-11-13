@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent a common table expression as a table.
+ *
+ *  Intention: placed by `docs/internals/source-layout.md`; gathered with the schema's database objects by
+ *  `cte_db_objects.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <string>  //  std::string

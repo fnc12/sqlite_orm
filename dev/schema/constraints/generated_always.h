@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the constraint that makes a column generated.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif
@@ -49,11 +56,17 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3031000
+    /**
+     *  https://www.sqlite.org/gencol.html
+     */
     template<class T>
     constexpr internal::generated_always_t<T> generated_always_as(T expression) {
         return {true, internal::basic_generated_always::storage_type::not_specified, std::move(expression)};
     }
 
+    /**
+     *  https://www.sqlite.org/gencol.html
+     */
     template<class T>
     constexpr internal::generated_always_t<T> as(T expression) {
         return {false, internal::basic_generated_always::storage_type::not_specified, std::move(expression)};

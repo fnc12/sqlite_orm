@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the CHECK constraint.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif
@@ -20,6 +27,9 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#ckconst
+     */
     template<class T>
     constexpr internal::check_t<T> check(T t) {
         return {std::move(t)};

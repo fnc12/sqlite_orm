@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent an element of an index.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <utility>  //  std::move
@@ -10,6 +17,9 @@
 #include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
+    /**
+     *  An element of an index: a column or an expression, with its collation and sort order.
+     */
     template<class C>
     struct indexed_column_t {
         using column_type = C;
@@ -51,6 +61,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Use this function to specify indexed column inside `make_index` function call.
      *  Example: make_index("index_name", indexed_column(&User::id).asc())
+     *
+     *  https://www.sqlite.org/lang_createindex.html
      */
     template<class C>
     internal::indexed_column_t<C> indexed_column(C column_or_expression) {

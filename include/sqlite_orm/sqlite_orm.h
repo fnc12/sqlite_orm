@@ -1998,6 +1998,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "schema/column.h"
 
+/** @file
+ *  Purpose: represent a column of a table.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <optional>  //  std::optional
 #include <string>  //  std::string
@@ -6001,6 +6008,12 @@ namespace sqlite_orm::internal {
 // Included to specialize traits
 // #include "column_identifier.h"
 
+/** @file
+ *  Purpose: identify a column by its name.
+ *
+ *  Intention: a base of the column definitions in `schema/`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #endif
@@ -6168,6 +6181,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a column definition from a member object pointer of the object to be mapped.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#tablecoldef
      */
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
     internal::column_t<M, internal::empty_setter, Op...>
@@ -6181,6 +6196,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Factory function for a column definition from "setter" and "getter" member function pointers of the object to be mapped.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#tablecoldef
      */
     template<class G,
              class S,
@@ -6199,6 +6216,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Factory function for a column definition from "getter" and "setter" member function pointers of the object to be mapped.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#tablecoldef
      */
     template<class G,
              class S,
@@ -6268,6 +6287,13 @@ namespace sqlite_orm::internal {
 #endif
 
 // #include "schema/ordinary_table.h"
+
+/** @file
+ *  Purpose: represent an ordinary table.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -6515,6 +6541,13 @@ namespace sqlite_orm::internal {
 //  sqlite_orm::make_column
 // #include "constraints/generated_always.h"
 
+/** @file
+ *  Purpose: represent the constraint that makes a column generated.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif
@@ -6566,11 +6599,17 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3031000
+    /**
+     *  https://www.sqlite.org/gencol.html
+     */
     template<class T>
     constexpr internal::generated_always_t<T> generated_always_as(T expression) {
         return {true, internal::basic_generated_always::storage_type::not_specified, std::move(expression)};
     }
 
+    /**
+     *  https://www.sqlite.org/gencol.html
+     */
     template<class T>
     constexpr internal::generated_always_t<T> as(T expression) {
         return {false, internal::basic_generated_always::storage_type::not_specified, std::move(expression)};
@@ -6579,6 +6618,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "dbo_name.h"
+
+/** @file
+ *  Purpose: name a database object by an annotation on its mapped class.
+ *
+ *  Intention: read through C++26 reflection by the reflecting factories of the table, view and virtual table headers in
+ *  `schema/`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
@@ -6687,6 +6733,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "table_base.h"
 
+/** @file
+ *  Purpose: define what the different kinds of tables have in common.
+ *
+ *  Intention: a base of the ordinary table, view, virtual table and CTE nodes in `schema/`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <functional>  //  std::invoke
 #include <string>  //  std::string
@@ -6782,6 +6834,12 @@ namespace sqlite_orm::internal {
 // #include "column_identifier.h"
 
 // #include "table_identifier.h"
+
+/** @file
+ *  Purpose: identify a table, in the wide sense, by its name.
+ *
+ *  Intention: a base of the ordinary table, view, virtual table and CTE nodes in `schema/`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -7058,7 +7116,10 @@ namespace sqlite_orm::internal {
     };
 
     /**
-     *  Represents an ordinary table, i.e. a table that actually stores data (as opposed to views and other virtual tables).
+     *  An ordinary table, whose rows SQLite itself stores; a view's rows are computed by its select, a virtual table's
+     *  are provided by its module.
+     *
+     *  https://www.sqlite.org/schematab.html
      */
     template<class O, class WithoutRowId, class... Cs>
     struct ordinary_table : table_identifier,
@@ -7130,6 +7191,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for an ordinary table.
      *  
      *  The mapped object type is determined implicitly from the first column definition.
+     *
+     *  https://www.sqlite.org/lang_createtable.html
+     *  https://www.sqlite.org/schematab.html
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::ordinary_table<T, std::false_type, Cs...> make_table(std::string name, Cs... definition) {
@@ -7141,6 +7205,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for an ordinary table.
      *  
      *  The mapped object type is explicitly specified.
+     *
+     *  https://www.sqlite.org/lang_createtable.html
+     *  https://www.sqlite.org/schematab.html
      */
     template<class T, class... Cs>
     internal::ordinary_table<T, std::false_type, Cs...> make_table(std::string name, Cs... definition) {
@@ -7153,6 +7220,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for an ordinary table.
      *
      *  The mapped object type is explicitly specified.
+     *
+     *  https://www.sqlite.org/lang_createtable.html
+     *  https://www.sqlite.org/schematab.html
      */
     template<orm_table_reference auto table, class... Cs>
     auto make_table(std::string name, Cs... definition) {
@@ -7180,6 +7250,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  Annotation values are constant expressions of literal types: a string default is spelled
      *  `[[= default_value("text")]]`, not with a `std::string`.
+     *
+     *  https://www.sqlite.org/lang_createtable.html
+     *  https://www.sqlite.org/schematab.html
      */
     template<class T, class... Cs>
         requires (internal::is_ordinary_table_constraint<Cs>::value && ...)
@@ -7205,6 +7278,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  Annotation values are constant expressions of literal types: a string default is spelled
      *  `[[= default_value("text")]]`, not with a `std::string`.
+     *
+     *  https://www.sqlite.org/lang_createtable.html
+     *  https://www.sqlite.org/schematab.html
      */
     template<orm_table_reference auto table, class... Cs>
         requires (internal::is_ordinary_table_constraint<Cs>::value && ...)
@@ -7220,6 +7296,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // we include it here to be independent and consistent with the other schema nodes
 // #include "schema/constraints/auxiliary.h"
 
+/** @file
+ *  Purpose: represent the constraint that makes a column of a virtual table auxiliary.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same
 #endif
@@ -7230,7 +7313,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 namespace sqlite_orm::internal {
 #if SQLITE_VERSION_NUMBER >= 3024000
     /**
-     *  Auxiliary virtual table column constraint
+     *  An auxiliary column of a virtual table, a feature a virtual table module may offer.
      */
     struct auxiliary_t {};
 
@@ -7247,6 +7330,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3024000
     /**
      *  Auxiliary virtual table column
+     *
+     *  https://www.sqlite.org/rtree.html#auxiliary_columns
      */
     constexpr internal::auxiliary_t auxiliary() {
         return {};
@@ -7256,6 +7341,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "schema/constraints/check.h"
+
+/** @file
+ *  Purpose: represent the CHECK constraint.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
@@ -7279,6 +7371,9 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#ckconst
+     */
     template<class T>
     constexpr internal::check_t<T> check(T t) {
         return {std::move(t)};
@@ -7286,6 +7381,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "schema/constraints/collate.h"
+
+/** @file
+ *  Purpose: represent the COLLATE constraint of a column.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same
@@ -7339,20 +7441,36 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#collateclause
+     */
     constexpr internal::collate_constraint_t collate_nocase() {
         return {internal::collate_argument::nocase};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#collateclause
+     */
     constexpr internal::collate_constraint_t collate_binary() {
         return {internal::collate_argument::binary};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#collateclause
+     */
     constexpr internal::collate_constraint_t collate_rtrim() {
         return {internal::collate_argument::rtrim};
     }
 }
 
 // #include "schema/constraints/default.h"
+
+/** @file
+ *  Purpose: represent the DEFAULT constraint.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -7385,6 +7503,9 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#dfltval
+     */
     template<class T>
     constexpr internal::default_t<T> default_value(T t) {
         return {std::move(t)};
@@ -7392,6 +7513,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "schema/constraints/foreign_key.h"
+
+/** @file
+ *  Purpose: represent the FOREIGN KEY constraint.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <functional>  //  std::ref
@@ -7691,6 +7819,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  FOREIGN KEY constraint factory function taking one or more fields, which can either be pointers to class members or column pointers.
      *  Available since SQLite 3.6.19
+     *
+     *  https://www.sqlite.org/foreignkeys.html
      */
     template<class... Cs>
     constexpr internal::foreign_key_intermediate_t<Cs...> foreign_key(Cs... columns) {
@@ -7701,6 +7831,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  FOREIGN KEY constraint factory function taking one or more fields that are member pointers of base classes,
      *  specifying the derived class as an explicit template argument.
      *  Available since SQLite 3.6.19
+     *
+     *  https://www.sqlite.org/foreignkeys.html
      */
     template<class O, class... Base, class... F>
     constexpr internal::foreign_key_intermediate_t<F O::*...> foreign_key(F Base::*... columns) {
@@ -7714,6 +7846,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  FOREIGN KEY constraint factory function taking one or more fields that are member pointers of base classes,
      *  specifying the derived class as an explicit template argument.
      *  Available since SQLite 3.6.19
+     *
+     *  https://www.sqlite.org/foreignkeys.html
      */
     template<orm_table_reference auto table, class... Base, class... F>
     constexpr auto foreign_key(F Base::*... columns) {
@@ -7745,6 +7879,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // Included to specialize traits
 
 namespace sqlite_orm::internal {
+    /**
+     *  The content option of an FTS5 table, given as its SQL value.
+     */
     template<class T>
     struct content_t {
         using value_type = T;
@@ -7755,6 +7892,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_content_v = polyfill::is_specialization_of_v<T, content_t>;
 
+    /**
+     *  The content option of an FTS5 table, naming a mapped table as its external content.
+     */
     template<class T>
     struct table_content_t {
         using mapped_type = T;
@@ -7834,7 +7974,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  tokenize='...'' table constraint factory function. Used in FTS virtual tables.
+     *  tokenize='...' table constraint factory function. Used in FTS virtual tables.
      *
      *  https://www.sqlite.org/fts5.html#tokenizers
      */
@@ -7858,6 +7998,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "schema/constraints/null.h"
 
+/** @file
+ *  Purpose: represent the nullability constraint of a column.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same
 #endif
@@ -7878,16 +8025,29 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#notnullconst
+     */
     constexpr internal::null_t null() {
         return {};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtable.html#notnullconst
+     */
     constexpr internal::not_null_t not_null() {
         return {};
     }
 }
 
 // #include "schema/constraints/primary_key.h"
+
+/** @file
+ *  Purpose: represent the PRIMARY KEY constraint.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple
@@ -8014,6 +8174,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  PRIMARY KEY constraint factory function taking one or more fields, which can either be pointers to class members or column pointers.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#primkeyconst
      */
     template<class... Cs>
     constexpr internal::primary_key_t<Cs...> primary_key(Cs... cs) {
@@ -8023,6 +8185,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  PRIMARY KEY constraint factory function taking one or more fields that are member pointers of base classes,
      *  specifying the derived class as an explicit template argument.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#primkeyconst
      */
     template<class O, class... Base, class... F>
     constexpr internal::primary_key_t<F O::*...> primary_key(F Base::*... columns) {
@@ -8035,6 +8199,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  PRIMARY KEY constraint factory function taking one or more fields that are member pointers of base classes,
      *  specifying the derived class as an explicit template argument.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#primkeyconst
      */
     template<orm_table_reference auto table, class... Base, class... F>
     constexpr auto primary_key(F Base::*... columns) {
@@ -8044,6 +8210,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  PRIMARY KEY column constraint factory function (used at a single column).
+     *
+     *  https://www.sqlite.org/lang_createtable.html#primkeyconst
      */
     constexpr internal::primary_key_t<> primary_key() {
         return {{}};
@@ -8051,6 +8219,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "schema/constraints/unique.h"
+
+/** @file
+ *  Purpose: represent the UNIQUE constraint.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -8089,6 +8264,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  UNIQUE table constraint factory function.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#uniqueconst
      */
     template<class... Args>
     constexpr internal::unique_t<Args...> unique(Args... args) {
@@ -8097,6 +8274,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  UNIQUE column constraint factory function.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#uniqueconst
      */
     constexpr internal::unique_t<> unique() {
         return {{}};
@@ -8104,6 +8283,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "schema/index.h"
+
+/** @file
+ *  Purpose: represent an index.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -8119,7 +8305,16 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // is_statement_clause, is_index_element_of_v
 // #include "../vocabulary/node_traits.h"
 
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
 // #include "indexed_column.h"
+
+/** @file
+ *  Purpose: represent an element of an index.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
@@ -8134,6 +8329,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // Included to specialize traits
 
 namespace sqlite_orm::internal {
+    /**
+     *  An element of an index: a column or an expression, with its collation and sort order.
+     */
     template<class C>
     struct indexed_column_t {
         using column_type = C;
@@ -8175,6 +8373,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Use this function to specify indexed column inside `make_index` function call.
      *  Example: make_index("index_name", indexed_column(&User::id).asc())
+     *
+     *  https://www.sqlite.org/lang_createindex.html
      */
     template<class C>
     internal::indexed_column_t<C> indexed_column(C column_or_expression) {
@@ -8213,6 +8413,9 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createindex.html
+     */
     template<class T, class... Cols>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {
@@ -8221,6 +8424,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createindex.html
+     */
     template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {
@@ -8229,6 +8435,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createindex.html#uniqueidx
+     */
     template<class T, class... Cols>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_unique_index(std::string name, Cols... cols) {
@@ -8237,6 +8446,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), true, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createindex.html#uniqueidx
+     */
     template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_unique_index(std::string name, Cols... cols) {
@@ -8249,6 +8461,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "schema/indexed_column.h"
 
 // #include "schema/triggers.h"
+
+/** @file
+ *  Purpose: represent triggers and the expressions only triggers take.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>
@@ -8294,11 +8513,6 @@ namespace sqlite_orm::internal {
 // Included to specialize traits
 // #include "../vocabulary/traits/operand_traits_fwd.h"
 // Included to specialize traits
-
-// NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
-// (Could be implemented with a normal trigger that insert or update an internal table and then retreive
-// the event in the C++ code, to call the C++ user callback, with update hooks: https://www.sqlite.org/c3ref/update_hook.html)
-// It could be an interesting feature to bring to sqlite_orm that other libraries don't have ?
 
 namespace sqlite_orm::internal {
     enum class trigger_timing { trigger_before, trigger_after, trigger_instead_of };
@@ -8386,9 +8600,10 @@ namespace sqlite_orm::internal {
          */
         trigger_type_base type_base;
         /**
-         *  Value used to determine if we execute the trigger on each row or on each statement
-         *  (SQLite doesn't support the FOR EACH STATEMENT syntax yet: https://sqlite.org/lang_createtrigger.html#description
-         *  so this value is more of a placeholder for a later update)
+         *  Whether the trigger spells FOR EACH ROW; SQLite runs every trigger once for each row, with the clause
+         *  or without it.
+         *
+         *  https://www.sqlite.org/lang_createtrigger.html#description
          */
         bool do_for_each_row = false;
         /**
@@ -8517,6 +8732,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_raise_v = std::is_same<T, raise_t>::value;
 
+    /**
+     *  A column of the row an INSERT or UPDATE writes, referenced in a trigger as NEW.column.
+     */
     template<class T>
     struct new_t {
         using expression_type = T;
@@ -8530,6 +8748,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_operator_argument_v<T, std::enable_if_t<is_new_row_ref_v<T>>> = true;
 
+    /**
+     *  A column of the row an UPDATE or DELETE changes, referenced in a trigger as OLD.column.
+     */
     template<class T>
     struct old_t {
         using expression_type = T;
@@ -8547,6 +8768,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  NEW.expression function used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html
      */
     template<class T>
     internal::new_t<T> new_(T expression) {
@@ -8555,6 +8778,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  OLD.expression function used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html
      */
     template<class T>
     internal::old_t<T> old(T expression) {
@@ -8563,6 +8788,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  RAISE(IGNORE) expression used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html#the_raise_function
      */
     inline internal::raise_t raise_ignore() {
         return {internal::raise_t::type_t::ignore, {}};
@@ -8570,6 +8797,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  RAISE(ROLLBACK, %message%) expression used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html#the_raise_function
      */
     inline internal::raise_t raise_rollback(std::string message) {
         return {internal::raise_t::type_t::rollback, std::move(message)};
@@ -8577,6 +8806,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  RAISE(ABORT, %message%) expression used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html#the_raise_function
      */
     inline internal::raise_t raise_abort(std::string message) {
         return {internal::raise_t::type_t::abort, std::move(message)};
@@ -8584,30 +8815,51 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  RAISE(FAIL, %message%) expression used within TRIGGER expressions
+     *
+     *  https://www.sqlite.org/lang_createtrigger.html#the_raise_function
      */
     inline internal::raise_t raise_fail(std::string message) {
         return {internal::raise_t::type_t::fail, std::move(message)};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtrigger.html
+     */
     template<class T, class... S>
     internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...>& part) {
         return {std::move(name), std::move(part.base), std::move(part.statements)};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtrigger.html
+     */
     inline internal::trigger_timing_t before() {
         return {internal::trigger_timing::trigger_before};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtrigger.html
+     */
     inline internal::trigger_timing_t after() {
         return {internal::trigger_timing::trigger_after};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createtrigger.html
+     */
     inline internal::trigger_timing_t instead_of() {
         return {internal::trigger_timing::trigger_instead_of};
     }
 }
 
 // #include "schema/view.h"
+
+/** @file
+ *  Purpose: represent a view.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_VIEW
@@ -8685,6 +8937,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
      *  The object type must be an aggregate. The optional `[[="…"_orm_name]]` class-scope annotation overrides
      *  the view name (otherwise the type's reflected identifier is used).
+     *
+     *  https://www.sqlite.org/lang_createview.html
      */
     template<class O, class Select>
         requires (internal::is_select_expression_v<Select>)
@@ -8704,6 +8958,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
      *  The object type must be an aggregate. The optional `[[="…"_orm_name]]` class-scope annotation overrides
      *  the view name (otherwise the type's reflected identifier is used).
+     *
+     *  https://www.sqlite.org/lang_createview.html
      */
     template<orm_table_reference auto table, class Select>
     auto make_view(Select select) {
@@ -8715,6 +8971,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
 // #include "schema/virtual_table.h"
+
+/** @file
+ *  Purpose: represent a virtual table.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
@@ -8810,7 +9073,6 @@ namespace sqlite_orm::internal {
      *  Encapsulates the intermediary (and temporary) `using_module(...)` expression.
      *  
      *  Implementation note: When making the virtual table this virtual table definition is unpacked into the virtual table type itself.
-     *  If desired or necessary one day, derive `virtual_table` from it, similar to `ordinary_table` deriving from `ordinary_table_definition`.
      */
     template<class M, class... Cs>
     struct virtual_table_definition : virtual_table_traits<M, Cs...>::definition_type {
@@ -8850,6 +9112,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *  
      *  [Deprecation notice] This factory function is deprecated and will be removed in v1.11.
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<class O, class M, class... Cs>
     internal::virtual_table<O, M, Cs...>
@@ -8861,6 +9125,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *  
      *  The mapped object type is explicitly specified.
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<class O, class M, class... Cs>
     internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
@@ -8872,6 +9138,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *  
      *  The mapped object type is determined implicitly from the first column definition.
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
@@ -8884,6 +9152,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *  
      *  The mapped object type is explicitly specified.
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<orm_table_reference auto table, class M, class... Cs>
     auto make_virtual_table(std::string name, internal::virtual_table_definition<M, Cs...> definition) {
@@ -8920,6 +9190,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  annotation of the mapped object type supplies the table name (otherwise the type's reflected identifier is used).
      *
      *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     auto make_virtual_table(internal::virtual_table_definition<M, Cs...> definition) {
@@ -17982,16 +18254,11 @@ namespace sqlite_orm::internal {
 
 // #include "../schema/algorithms/table_lookup.h"
 
-/** @file Lookup of a table definition within a tuple of database objects.
+/** @file
+ *  Purpose: find the table that maps a type among the database objects of a schema.
  *
- *  These are schema-level algorithms: they search *across* the collection of database objects
- *  to locate the one mapping a given lookup type, as opposed to classifying a node already in hand,
- *  which is what the vocabulary layer does. They consume the vocabulary layer to do so.
- *
- *  "Table" is meant in the wide SQL table sense here, covering ordinary tables, views
- *  and virtual tables alike. Indexes and triggers are deliberately not covered:
- *  their `object_type` is void, which `object_type_matches` filters out, so a lookup
- *  answers whether a type is mapped as a table - not whether it occurs in the schema at all.
+ *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
+ *  consumes the vocabulary layer.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -18011,12 +18278,11 @@ namespace sqlite_orm::internal {
 
 // #include "../db_objects.h"
 
-/** @file The tuple of database objects making up a schema.
+/** @file
+ *  Purpose: represent a schema as the tuple of its database objects.
  *
- *  A schema is represented as a tuple of database objects - tables, views, virtual tables,
- *  indexes and triggers. These are the generic facilities for recognizing and passing around
- *  such a tuple, and unpacking the tuples of database objects passed to `make_storage()`;
- *  locating an individual database object within one is the subject of `algorithms/table_lookup.h`.
+ *  Intention: set apart from the algorithms in `algorithms/` by `docs/internals/vocabulary-layer.md` "Schema-level
+ *  algorithms"; its tuple is what those algorithms and `make_storage()` take.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -18163,6 +18429,7 @@ namespace sqlite_orm::internal {
      *  `std::true_type` if given object is mapped, `std::false_type` otherwise.
      *
      *  Note: unlike ordinary_table<>, index_t<>::object_type and trigger_t<>::object_type is always void.
+     *  A lookup thus finds a type mapped by a table in the wide sense: an ordinary table, a view or a virtual table.
      */
     template<typename DBO, typename Lookup>
     struct object_type_matches
@@ -18580,6 +18847,13 @@ namespace sqlite_orm::internal {
 // schema_pick_table_t, schema_mapped_column_field_types
 // #include "../schema/cte.h"
 
+/** @file
+ *  Purpose: represent a common table expression as a table.
+ *
+ *  Intention: placed by `docs/internals/source-layout.md`; gathered with the schema's database objects by
+ *  `cte_db_objects.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <string>  //  std::string
@@ -18969,10 +19243,11 @@ namespace sqlite_orm::internal {
 
 // #include "../schema/algorithms/column_lookup.h"
 
-/** @file Lookup of a column definition within a tuple of database objects.
+/** @file
+ *  Purpose: find a column across the database objects of a schema.
  *
- *  Schema-level algorithms like `table_lookup.h`: they locate the table definition mapping a column
- *  expression's object type - or the CTE a moniker names - and find the column within it.
+ *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
+ *  consumes the vocabulary layer.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -22210,16 +22485,11 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_s
 
 // #include "../schema/algorithms/sync_order.h"
 
-/** @file Compile-time computation of the database object synchronization order.
+/** @file
+ *  Purpose: order the database objects of a schema so that each is synced after those SQLite needs before it.
  *
- *  `sync_schema()` must sync database objects in dependency order, not in declaration order:
- *  SQLite refuses to create an index or a trigger whose target table (or view) doesn't exist yet,
- *  and recreating a table (or a view) destroys its dependent indexes and triggers,
- *  which therefore must be synced afterwards in order to be recreated.
- *
- *  These are the only hard creation-time dependencies in SQLite -
- *  foreign keys, view selects, trigger bodies and fts5 external content are validated lazily
- *  at DML time and don't constrain the order.
+ *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
+ *  consumes the vocabulary layer.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -22255,6 +22525,12 @@ namespace sqlite_orm::internal {
      *  until after their target table or view.
      *  The dependency graph is trivially acyclic since indexes and triggers depend on tables and views only,
      *  which in turn depend on nothing.
+     *
+     *  `sync_schema()` syncs the database objects in this order: SQLite creates an index or a trigger
+     *  once its target table or view exists, and recreating a table or a view drops its indexes and triggers,
+     *  which are synced after it and so recreated.
+     *  These are SQLite's creation-time dependencies; foreign keys, view selects, trigger bodies
+     *  and the external content of an FTS5 table are resolved when a statement runs, and leave the order free.
      */
     template<class... DBO>
     constexpr std::array<size_t, sizeof...(DBO)> compute_sync_order() {
@@ -22322,7 +22598,11 @@ namespace sqlite_orm::internal {
 
 // #include "../schema/algorithms/table_facts.h"
 
-/** @file Facts about the tables of a tuple of database objects and their columns.
+/** @file
+ *  Purpose: state what holds of the tables of a schema and their columns.
+ *
+ *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
+ *  consumes the vocabulary layer.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -30886,8 +31166,10 @@ namespace sqlite_orm::internal {
 
 // #include "schema/column_definitions.h"
 
-/** @file Out-of-class definitions of column members, which need the statement serializer's machinery
- *  (`default_value_extractor.h`) that `schema/column.h` stays free of.
+/** @file
+ *  Purpose: define the members of a column whose bodies need the statement serializer.
+ *
+ *  Intention: keeps `schema/column.h` free of the serializer; gathered by `interface_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -30942,8 +31224,11 @@ namespace sqlite_orm::internal {
 
 // #include "schema/ordinary_table_definitions.h"
 
-/** @file Out-of-class definitions of table members, which need the column type printer (`type_printer.h`)
- *  that `schema/ordinary_table.h` stays free of.
+/** @file
+ *  Purpose: define the members of an ordinary table whose bodies need what `schema/ordinary_table.h` stays free of.
+ *
+ *  Intention: keeps `schema/ordinary_table.h` free of the type printer and of `builtin/dbos/pragma_table_info.h`;
+ *  gathered by `interface_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

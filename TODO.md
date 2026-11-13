@@ -30,6 +30,7 @@
 * introspection functions: `sqlite_version()`, `sqlite_source_id()`, `sqlite_compileoption_used()`, `sqlite_compileoption_get()`, `sqlite_offset()`
 * `substring()` alias for `substr()` (3.34)
 * the `fts5vocab` virtual table
+* the remaining FTS5 table options https://sqlite.org/fts5.html: `content_rowid`, `columnsize`, `detail`, `contentless_delete` (3.43), `contentless_unindexed`, `tokendata`, `locale` - `schema/constraints/fts5_options.h` spells `content`, `prefix`, `tokenize` and the column option `UNINDEXED` so far
 * the remaining PRAGMA table-valued functions with rowsets (`index_list`, `index_info`/`index_xinfo`, `foreign_key_list`, `foreign_key_check`, `table_list`, `database_list`, `collation_list`, `function_list`, ...), C++26 reflection only: the module tag of a reflected eponymous table could be a generic `reflected_eponymous_module<O>`, its `name()` taken from a `static constexpr` copy of the row type's `orm_name` annotation, so that each pragma needs only its annotated row type and its entry in `make_pragma_tables()`; `table_info`/`table_xinfo` would then need their annotation conditionally, as their row types exist before C++26
 
 * `as_result<R>(expr)`: a result type override for any expression (generalizing `as_optional`), as the successor of the built-in functions' `R` template parameters
@@ -51,6 +52,7 @@
 * user-defined window functions (`sqlite3_create_window_function` with step/inverse/value/final)
 * function flags for user-defined functions: `SQLITE_DETERMINISTIC`, `SQLITE_DIRECTONLY` (3.30), `SQLITE_INNOCUOUS` (3.31)
 * hooks: update hook, commit hook, rollback hook, preupdate hook, `sqlite3_trace_v2`, authorizer
+* C++ callbacks on trigger events: a trigger that writes each event into an internal table, read back in C++ through the update hook https://sqlite.org/c3ref/update_hook.html to call the user's callback
 * `sqlite3_serialize` / `sqlite3_deserialize` (enabled by default since 3.36) — a natural fit next to the backup API
 * URI filenames (`SQLITE_OPEN_URI`): `file:...?mode=...&cache=shared`, shared in-memory databases, `immutable=1`
 * small C API wrappers: `sqlite3_changes64`/`sqlite3_total_changes64` (3.37), `sqlite3_txn_state` (3.34), `sqlite3_error_offset` (3.38), `sqlite3_is_interrupted` (3.41) and `interrupt()`, `sqlite3_db_name` (3.39), `sqlite3_db_readonly` (3.7.11), `sqlite3_stmt_readonly`/`sqlite3_stmt_busy`/`sqlite3_stmt_isexplain`, `sqlite3_setlk_timeout` (3.50)

@@ -1,5 +1,11 @@
 #pragma once
 
+/** @file
+ *  Purpose: define what the different kinds of tables have in common.
+ *
+ *  Intention: a base of the ordinary table, view, virtual table and CTE nodes in `schema/`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <functional>  //  std::invoke
 #include <string>  //  std::string
