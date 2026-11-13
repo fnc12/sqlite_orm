@@ -1,9 +1,10 @@
 #pragma once
 
-/** @file SQLite's built-in collating functions: BINARY, NOCASE and RTRIM.
+/** @file
+ *  Purpose: represent the built-in collating functions.
  *
- *  Like the built-in functions and database objects, they are the stock instances of a kind of named object
- *  that applications can register more of (`storage_base::create_collation()`).
+ *  Intention: placed by `docs/internals/source-layout.md` (https://www.sqlite.org/datatype3.html#collation); read by
+ *  the COLLATE nodes of `ast/` and `schema/` and by the statement serializer.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

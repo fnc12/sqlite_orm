@@ -1,8 +1,13 @@
 #pragma once
 
-/** @file The built-in core functions https://www.sqlite.org/lang_corefunc.html, the scalar functions not
- *        grouped elsewhere - except MAX(X,Y,...) and MIN(X,Y,...), which share their definitions with the
- *        aggregate functions of the same name in `aggregate.h`.
+/** @file
+ *  Purpose: define the core SQL functions.
+ *
+ *  Intention: a family of built-in SQL functions, as SQLite documents them at
+ *  https://www.sqlite.org/lang_corefunc.html, placed by `docs/internals/source-layout.md`; its functions are called
+ *  through `ast/builtin_function.h`, gathered by `builtin/functions.h`, and
+ *  `.claude/skills/add-builtin-function/SKILL.md` adds to it. The scalar MAX(X,Y,...) and MIN(X,Y,...) are defined with
+ *  their aggregate forms, in `aggregate.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

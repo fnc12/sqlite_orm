@@ -6,7 +6,8 @@ description: Use when adding one of SQLite's built-in SQL functions (core, date/
 # Adding a built-in SQL function
 
 Built-in functions are definitions, not nodes: one header per family as SQLite documents them, in
-`dev/builtin/functions/` (`core.h`, `datetime.h`, `aggregate.h`, `math.h`, `json.h`, `window.h`).
+`dev/builtin/functions/` (`core.h`, `datetime.h`, `aggregate.h`, `math.h`, `json.h`, `window.h`,
+`fts5_auxiliary.h`).
 Their call nodes and the definition mechanism live in `dev/ast/builtin_function.h`, whose comment
 on `""_builtin` states how definitions are published. `UNISTR` in `core.h` is a compact example to
 compare with.
@@ -29,6 +30,8 @@ dropped:
   Wrap it in a function template instead where the public function takes the return type as a
   template argument, checks its arguments, or shares its name with other function templates or
   with a global C library function (`abs`, `round`, `time`, ...).
+  Under `using namespace sqlite_orm;` an object and a global function of the same name are an
+  ambiguous lookup, whereas two functions form an overload set.
 
 ## 2. C++17: the legacy node (`#ifndef SQLITE_ORM_WITH_CPP20_ALIASES` block)
 

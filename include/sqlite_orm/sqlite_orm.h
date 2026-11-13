@@ -7395,10 +7395,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../builtin/collations.h"
 
-/** @file SQLite's built-in collating functions: BINARY, NOCASE and RTRIM.
+/** @file
+ *  Purpose: represent the built-in collating functions.
  *
- *  Like the built-in functions and database objects, they are the stock instances of a kind of named object
- *  that applications can register more of (`storage_base::create_collation()`).
+ *  Intention: placed by `docs/internals/source-layout.md` (https://www.sqlite.org/datatype3.html#collation); read by
+ *  the COLLATE nodes of `ast/` and `schema/` and by the statement serializer.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -17622,11 +17623,14 @@ namespace sqlite_orm::internal {
 
 // #include "../ast/result_columns.h"
 
-// #include "../builtin/dbos/pragma_table_info.h"
+// #include "../builtin/dbos/pragma_tables.h"
 
-/** @file The rows of `PRAGMA table_info` and `PRAGMA table_xinfo`, and the eponymous virtual tables
- *        `pragma_table_info` and `pragma_table_xinfo` of their PRAGMA functions (C++26 reflection),
- *        bundled by `make_pragma_tables()`.
+/** @file
+ *  Purpose: represent the rows of the PRAGMAs SQLite offers as table-valued functions.
+ *
+ *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
+ *  the nodes of `schema/`, gathered by `builtin/dbos.h`, and `.claude/skills/add-virtual-table/SKILL.md` adds others of
+ *  its kind. The storage reads its rows when it syncs the schema.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -17645,6 +17649,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  A row of `PRAGMA table_info`, and data structure for the `pragma_table_info` eponymous virtual table.
+     *
+     *  https://www.sqlite.org/pragma.html#pragma_table_info
      */
     struct table_info {
         int cid = 0;
@@ -17678,6 +17684,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  A row of `PRAGMA table_xinfo`, and data structure for the `pragma_table_xinfo` eponymous virtual table.
+     *
+     *  https://www.sqlite.org/pragma.html#pragma_table_xinfo
      */
     struct table_xinfo {
         int cid = 0;
@@ -17776,6 +17784,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  E.g.
      *  auto storage = make_storage("", make_pragma_tables(), make_table<User>());
+     *
+     *  https://www.sqlite.org/pragma.html#pragfunc
      */
     inline auto make_pragma_tables() {
         return std::tuple{
@@ -17790,13 +17800,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../builtin/functions/aggregate.h"
 
-/** @file The built-in aggregate functions https://www.sqlite.org/lang_aggfunc.html: COUNT(), TOTAL(), SUM(),
- *        AVG(), MAX(), MIN(), GROUP_CONCAT(), STRING_AGG() and the percentile functions MEDIAN(), PERCENTILE(),
- *        PERCENTILE_CONT() and PERCENTILE_DISC().
+/** @file
+ *  Purpose: define the built-in aggregate SQL functions, and the scalar ones that share their names.
  *
- *        MAX() and MIN() take the scalar forms MAX(X,Y,...) and MIN(X,Y,...) along, defined as one overload set
- *        with the aggregate forms.
- *        The aggregate functions of JSON1 are with the other JSON functions, in `json.h`.
+ *  Intention: a family of built-in SQL functions, as SQLite documents them at https://www.sqlite.org/lang_aggfunc.html,
+ *  placed by `docs/internals/source-layout.md`; its functions are called through `ast/builtin_function.h`, gathered by
+ *  `builtin/functions.h`, and `.claude/skills/add-builtin-function/SKILL.md` adds to it.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -20900,10 +20909,12 @@ namespace sqlite_orm::internal {
 
 // #include "../builtin/vfs.h"
 
-/** @file The names of SQLite's built-in VFSes (OS interface layers), per platform, and the default one.
+/** @file
+ *  Purpose: name the built-in VFSes.
  *
- *  Like the built-in collations, they are the stock instances of a kind of named object that applications
- *  can register more of (`sqlite3_vfs_register()`); a storage opens its database with any registered one.
+ *  Intention: placed by `docs/internals/source-layout.md` (https://www.sqlite.org/vfs.html); read by
+ *  `execution/storage_options.h` and `execution/connection_holder.h`, which open a database with the VFS a storage
+ *  names.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -20913,19 +20924,40 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_UNIX
+    /**
+     *  https://www.sqlite.org/vfs.html#standard_unix_vfses
+     */
     inline constexpr std::string_view unix_vfs_name = "unix";
+    /**
+     *  https://www.sqlite.org/vfs.html#standard_unix_vfses
+     */
     inline constexpr std::string_view unix_posix_vfs_name = unix_vfs_name;
+    /**
+     *  https://www.sqlite.org/vfs.html#standard_unix_vfses
+     */
     inline constexpr std::string_view unix_dotfile_vfs_name = "unix-dotfile";
 #ifdef SQLITE_ORM_APPLE
     inline constexpr std::string_view unix_afp_vfs_name = "unix-afp";
 #endif
+    /**
+     *  https://www.sqlite.org/vfs.html#specifying_which_vfs_to_use
+     */
     inline constexpr std::string_view default_vfs_name = unix_vfs_name;
 #endif
 
 #ifdef SQLITE_ORM_WIN
+    /**
+     *  https://www.sqlite.org/vfs.html#standard_windows_vfses
+     */
     inline constexpr std::string_view win32_vfs_name = "win32";
+    /**
+     *  https://www.sqlite.org/vfs.html#standard_windows_vfses
+     */
     inline constexpr std::string_view win32_longpath_vfs_name = "win32-longpath";
 
+    /**
+     *  https://www.sqlite.org/vfs.html#specifying_which_vfs_to_use
+     */
     inline constexpr std::string_view default_vfs_name = win32_vfs_name;
 #endif
 }
@@ -26107,7 +26139,7 @@ namespace sqlite_orm::internal {
 
 // #include "../ast/app_function.h"
 
-// #include "../builtin/dbos/pragma_table_info.h"
+// #include "../builtin/dbos/pragma_tables.h"
 
 // #include "../error_code.h"
 
@@ -26550,7 +26582,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/gsl.h"
 
-// #include "../builtin/dbos/pragma_table_info.h"
+// #include "../builtin/dbos/pragma_tables.h"
 
 // #include "../marshaling/row_extractor.h"
 
@@ -30942,6 +30974,13 @@ namespace sqlite_orm::internal {
 
 // #include "../builtin/dbos/sqlite_schema.h"
 
+/** @file
+ *  Purpose: represent the schema table.
+ *
+ *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
+ *  the nodes of `schema/`, gathered by `builtin/dbos.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #endif
@@ -30963,6 +31002,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  One can infer this fact from the following SQL statement:
      *  It qualifies the set of columns, but bails out with error "no such table: sqlite_schema": `SELECT sqlite_schema.* from sqlite_schema`.
      *  Hence we keep its previous table name `sqlite_master`, and provide `sqlite_schema` as a table alias in sqlite_orm.
+     *
+     *  https://www.sqlite.org/schematab.html
      */
     struct sqlite_master {
         std::string type;
@@ -30976,6 +31017,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
     };
 
+    /**
+     *  https://www.sqlite.org/schematab.html
+     */
     inline auto make_sqlite_schema_table() {
         return make_table("sqlite_master",
                           make_column("type", &sqlite_master::type),
@@ -31227,7 +31271,7 @@ namespace sqlite_orm::internal {
 /** @file
  *  Purpose: define the members of an ordinary table whose bodies need what `schema/ordinary_table.h` stays free of.
  *
- *  Intention: keeps `schema/ordinary_table.h` free of the type printer and of `builtin/dbos/pragma_table_info.h`;
+ *  Intention: keeps `schema/ordinary_table.h` free of the type printer and of `builtin/dbos/pragma_tables.h`;
  *  gathered by `interface_definitions.h`.
  */
 
@@ -31239,7 +31283,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/mpl/convenience.h"
 
-// #include "../builtin/dbos/pragma_table_info.h"
+// #include "../builtin/dbos/pragma_tables.h"
 //  table_xinfo
 // #include "../type_mapping/type_printer.h"
 
@@ -31708,25 +31752,26 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #pragma once
 
-/** @file Umbrella header for the built-in SQL functions, one header per family as SQLite documents them.
+/** @file
+ *  Purpose: gather the built-in SQL functions.
  *
- *        In C++20 builds a built-in function is a definition object of `ast/builtin_function.h` (name + overload set),
- *        published in the `sqlite_orm` namespace as a copy - or wrapped by a function template where the public
- *        function takes the return type as a template argument, shares its name with other function templates or
- *        checks its arguments. The C++17 branch keeps the legacy factories over `builtin_function_t`.
- *
- *        A built-in whose name is also that of a C library function in the global namespace - `abs`, `round`,
- *        `time`, `random`, `strftime`, `printf` - is wrapped as well: under `using namespace sqlite_orm;` an object
- *        and a function of the same name are an ambiguous lookup, whereas two functions are an overload set.
+ *  Intention: the umbrella of `functions/`, one header per family as SQLite documents them, placed by
+ *  `docs/internals/source-layout.md`; the single header takes it, through `third_party/amalgamate/sqlite_orm.json`, in
+ *  place of the files behind it.
  */
 
 // #include "functions/aggregate.h"
 
 // #include "functions/core.h"
 
-/** @file The built-in core functions https://www.sqlite.org/lang_corefunc.html, the scalar functions not
- *        grouped elsewhere - except MAX(X,Y,...) and MIN(X,Y,...), which share their definitions with the
- *        aggregate functions of the same name in `aggregate.h`.
+/** @file
+ *  Purpose: define the core SQL functions.
+ *
+ *  Intention: a family of built-in SQL functions, as SQLite documents them at
+ *  https://www.sqlite.org/lang_corefunc.html, placed by `docs/internals/source-layout.md`; its functions are called
+ *  through `ast/builtin_function.h`, gathered by `builtin/functions.h`, and
+ *  `.claude/skills/add-builtin-function/SKILL.md` adds to it. The scalar MAX(X,Y,...) and MIN(X,Y,...) are defined with
+ *  their aggregate forms, in `aggregate.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -32975,8 +33020,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functions/datetime.h"
 
-/** @file The built-in date and time functions https://www.sqlite.org/lang_datefunc.html: DATE(), TIME(),
- *        DATETIME(), JULIANDAY(), STRFTIME(), UNIXEPOCH() and TIMEDIFF().
+/** @file
+ *  Purpose: define the built-in SQL date and time functions.
+ *
+ *  Intention: a family of built-in SQL functions, as SQLite documents them at
+ *  https://www.sqlite.org/lang_datefunc.html, placed by `docs/internals/source-layout.md`; its functions are called
+ *  through `ast/builtin_function.h`, gathered by `builtin/functions.h`, and
+ *  `.claude/skills/add-builtin-function/SKILL.md` adds to it.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -33172,10 +33222,451 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
+// #include "functions/fts5_auxiliary.h"
+
+/** @file
+ *  Purpose: define the FTS5 auxiliary functions.
+ *
+ *  Intention: a family of built-in SQL functions, as SQLite documents them at
+ *  https://www.sqlite.org/fts5.html#auxiliary_functions, placed by `docs/internals/source-layout.md`; its functions are
+ *  called through `ast/builtin_function.h`, gathered by `builtin/functions.h`, and
+ *  `.claude/skills/add-builtin-function/SKILL.md` adds to it. They take their table through the hidden column of
+ *  `dbos/fts5.h`.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#include <string_view>  //  std::string_view
+#include <tuple>  //  std::make_tuple
+#include <type_traits>  //  std::enable_if
+#include <utility>  //  std::move
+#endif
+
+#include <sqlite3.h>
+
+// #include "../../ast/builtin_function.h"
+
+// #include "../../ast/column_pointer.h"
+//  column
+// #include "../../vocabulary/node_algorithms.h"
+//  hidden_column_of_vtab, hidden_field_of_vtab
+// #include "../dbos/fts5.h"
+
+/** @file
+ *  Purpose: represent the FTS5 virtual table module.
+ *
+ *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
+ *  the nodes of `schema/`, gathered by `builtin/dbos.h`, and `.claude/skills/add-virtual-table/SKILL.md` adds others of
+ *  its kind.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
+#include <optional>  //  std::optional
+#include <tuple>  //  std::tuple_size, std::make_tuple, std::get, std::tuple_cat, std::apply
+#include <utility>  //  std::forward, std::move
+#include <vector>
+#endif
+#endif
+
+// #include "../../functional/gsl.h"
+
+// #include "../../functional/member_traits.h"
+
+// #include "../../schema/virtual_table.h"
+
+// #include "../../vocabulary/node_algorithms.h"
+
+// #include "../../vocabulary/node_traits.h"
+
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
+namespace sqlite_orm::internal {
+    struct fts5_module_tag {
+        // simplify conceptual/meta programming
+        using module_type = fts5_module_tag;
+
+        static constexpr orm_gsl::czstring name() {
+            return "fts5";
+        }
+    };
+
+    template<class... Cs>
+    constexpr void validate_fts5_definition() {
+        static_assert((is_fts5_table_element_or_constraint<Cs>::value && ...),
+                      "Incorrect table elements or constraints");
+    }
+
+    template<class... Cs>
+    virtual_table_definition<fts5_module_tag, Cs...> make_fts5_definition(Cs... definition) {
+        return {{std::make_tuple(std::move(definition)...)}};
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /** 
+     *  Class namespace for hidden `fts5` columns.
+     *
+     *  https://www.sqlite.org/fts5.html
+     */
+    struct fts5 {
+        /** 
+         *  Hidden columns of the `fts5` virtual table, which can be referred to using a 'column pointer' or using `hidden_fields_of<>` fields.
+         */
+        struct hidden {
+            /**
+             *  Hidden column with the same name as the table itself. It is a blob only meaningful when matching any of the other FTS5 columns.
+             *  An FTS5 auxiliary function takes its table through this column: SQLite reads `bm25(posts)` as a
+             *  reference to it, and like any column it names its table for the FROM clause.
+             */
+            std::vector<char> any;
+            std::optional<int> rank;
+
+            /** 
+             *  Internal meta programming helper to rebind hidden columns to a specific object type.
+             */
+            template<class O>
+            struct _of;
+        };
+
+        /** 
+         *  Map hidden columns to a specific object type to simplify programming.
+
+         *  Example:
+         *  struct Post {
+         *   using hidden = fts5::hidden_fields_of<Post>;
+         *  };
+         */
+        template<class O>
+        struct hidden_fields_of {
+            static constexpr auto any_field = internal::as_field_of<hidden::_of<O>>(&fts5::hidden::any);
+            static constexpr auto rank_field = internal::as_field_of<hidden::_of<O>>(&fts5::hidden::rank);
+
+            hidden_fields_of() = delete;
+        };
+
+        fts5() = delete;
+    };
+
+    template<class O>
+    struct fts5::hidden::_of : fts5::hidden {
+        using enclosing_type = O;
+    };
+
+    /**
+     *  Factory function for a FTS5 virtual table definition.
+     *  
+     *  The hidden FTS5 columns 'any' [as a placeholder for the column with the same name as the table] and 'rank' are mapped into each table definition.
+     *
+     *  https://www.sqlite.org/fts5.html
+     */
+    template<class... Cs>
+    auto using_fts5(Cs... definition) {
+        using namespace ::sqlite_orm::internal;
+        validate_fts5_definition<Cs...>();
+        return make_fts5_definition(std::forward<Cs>(definition)...,
+                                    // note: eponymous column name is filled in later in `make_virtual_table()`
+                                    make_hidden_column("", &fts5::hidden::any),
+                                    make_hidden_column("rank", &fts5::hidden::rank));
+    }
+
+    /**
+     *  Factory function for a FTS5 virtual table definition.
+     *  
+     *  The mapped object type is explicitly specified.
+     *  
+     *  [Deprecation notice] This factory function is deprecated and will be removed in v1.11.
+     *
+     *  https://www.sqlite.org/fts5.html
+     */
+    template<class T, class... Cs>
+    [[deprecated("Specify the explicit object type when calling `make_virtual_table()`.")]]
+    internal::virtual_table_description<T, internal::fts5_module_tag, Cs...> using_fts5(Cs... definition) {
+        internal::validate_fts5_definition<Cs...>();
+
+        return {std::make_tuple(std::forward<Cs>(definition)...)};
+    }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+    /**
+     *  Factory function for a FTS5 virtual table definition.
+     *
+     *  The columns are reflected from the non-static data members of O and their annotations,
+     *  and precede the table options.
+     *
+     *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
+     *
+     *  https://www.sqlite.org/fts5.html
+     */
+    template<class O, class... Cs>
+        requires (internal::col_index_sequence_of<std::tuple<Cs...>>::size() == 0)
+    auto using_fts5(Cs... options) {
+        return std::apply(
+            [](auto&&... definition) static {
+                return using_fts5(std::forward<decltype(definition)>(definition)...);
+            },
+            std::tuple_cat(internal::make_reflected_columns<O>(), std::tuple<Cs...>{std::move(options)...}));
+    }
+#endif
+
+    template<class O, class... Cs>
+    internal::virtual_table<O, internal::fts5_module_tag, Cs...>
+    make_virtual_table(std::string tableName,
+                       internal::virtual_table_definition<internal::fts5_module_tag, Cs...> definition) {
+        using namespace ::sqlite_orm::internal;
+
+        constexpr size_t eponymous_column_index =
+            std::tuple_size<elements_type_t<virtual_table_traits<fts5_module_tag, Cs...>>>::value - 2;
+        // fill in the eponymous hidden column name
+        std::get<eponymous_column_index>(definition.elements).name = tableName;
+
+        return {std::move(tableName), std::move(definition)};
+    }
+}
+#endif
+
+namespace sqlite_orm::internal {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /*
+     *  The first parameter is the table's hidden column; the public factories constrain the call to it.
+     */
+    inline constexpr auto highlight =
+        "HIGHLIGHT"_builtin.scalar<std::string(anything, int, std::string_view, std::string_view)>();
+    inline constexpr auto bm25 = "BM25"_builtin.scalar<double(anything, variadic<double>)>();
+    inline constexpr auto snippet =
+        "SNIPPET"_builtin
+            .scalar<std::string(anything, int, std::string_view, std::string_view, std::string_view, int)>();
+#else
+    struct highlight_string {
+        std::string_view serialize() const {
+            return "HIGHLIGHT";
+        }
+    };
+
+    struct bm25_string {
+        std::string_view serialize() const {
+            return "BM25";
+        }
+    };
+
+    struct snippet_string {
+        std::string_view serialize() const {
+            return "SNIPPET";
+        }
+    };
+
+    template<class... Args>
+    constexpr builtin_function_t<std::string, highlight_string, Args...> highlight(Args... args) {
+        return {std::make_tuple(std::move(args)...)};
+    }
+
+    template<class... Args>
+    constexpr builtin_function_t<double, bm25_string, Args...> bm25(Args... args) {
+        return {std::make_tuple(std::move(args)...)};
+    }
+
+    template<class... Args>
+    constexpr builtin_function_t<std::string, snippet_string, Args...> snippet(Args... args) {
+        return {std::make_tuple(std::move(args)...)};
+    }
+#endif
+}
+
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    /**
+     *  The FTS5 highlight function.
+     *  See https://www.sqlite.org/fts5.html#the_highlight_function
+     */
+    template<class CP, class X, class Y, class Z>
+        requires (internal::hidden_column_of_vtab<CP, fts5>)
+    constexpr auto highlight(CP theAnyField, X x, Y y, Z z) {
+        return internal::highlight(std::move(theAnyField), std::move(x), std::move(y), std::move(z));
+    }
+
+    /**
+     *  The FTS5 highlight function.
+     *  See https://www.sqlite.org/fts5.html#the_highlight_function
+     */
+    template<class Hidden, class F, class X, class Y, class Z>
+        requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
+    constexpr auto highlight(F Hidden::* theAnyField, X x, Y y, Z z) {
+        return internal::highlight(theAnyField, std::move(x), std::move(y), std::move(z));
+    }
+
+    /**
+     *  The FTS5 bm25 auxiliary function. Optionally takes one weight per mapped table column.
+     *  See https://www.sqlite.org/fts5.html#the_bm25_function
+     */
+    template<class CP, class... Ws>
+        requires (internal::hidden_column_of_vtab<CP, fts5>)
+    constexpr auto bm25(CP theAnyField, Ws... weights) {
+        return internal::bm25(std::move(theAnyField), std::move(weights)...);
+    }
+
+    /**
+     *  The FTS5 bm25 auxiliary function. Optionally takes one weight per mapped table column.
+     *  See https://www.sqlite.org/fts5.html#the_bm25_function
+     */
+    template<class Hidden, class F, class... Ws>
+        requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
+    constexpr auto bm25(F Hidden::* theAnyField, Ws... weights) {
+        return internal::bm25(theAnyField, std::move(weights)...);
+    }
+
+    /**
+     *  The FTS5 snippet auxiliary function: returns the text of the column `columnIndex` with the matches
+     *  surrounded by `matchOpen`/`matchClose`, truncated to at most `tokenCount` tokens,
+     *  with `ellipses` marking the truncations.
+     *  See https://www.sqlite.org/fts5.html#the_snippet_function
+     */
+    template<class CP, class X1, class X2, class X3, class X4, class X5>
+        requires (internal::hidden_column_of_vtab<CP, fts5>)
+    constexpr auto snippet(CP theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
+        return internal::snippet(std::move(theAnyField),
+                                 std::move(columnIndex),
+                                 std::move(matchOpen),
+                                 std::move(matchClose),
+                                 std::move(ellipses),
+                                 std::move(tokenCount));
+    }
+
+    /**
+     *  The FTS5 snippet auxiliary function: returns the text of the column `columnIndex` with the matches
+     *  surrounded by `matchOpen`/`matchClose`, truncated to at most `tokenCount` tokens,
+     *  with `ellipses` marking the truncations.
+     *  See https://www.sqlite.org/fts5.html#the_snippet_function
+     */
+    template<class Hidden, class F, class X1, class X2, class X3, class X4, class X5>
+        requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
+    constexpr auto
+    snippet(F Hidden::* theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
+        return internal::snippet(theAnyField,
+                                 std::move(columnIndex),
+                                 std::move(matchOpen),
+                                 std::move(matchClose),
+                                 std::move(ellipses),
+                                 std::move(tokenCount));
+    }
+#else
+    /**
+     *  The FTS5 highlight function.
+     *  See https://www.sqlite.org/fts5.html#the_highlight_function
+     */
+    template<class CP,
+             class X,
+             class Y,
+             class Z,
+             std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
+    constexpr auto highlight(CP theAnyField, X x, Y y, Z z) {
+        return internal::highlight(std::move(theAnyField), std::move(x), std::move(y), std::move(z));
+    }
+
+    /**
+     *  The FTS5 highlight function.
+     *  See https://www.sqlite.org/fts5.html#the_highlight_function
+     */
+    template<class Hidden,
+             class F,
+             class X,
+             class Y,
+             class Z,
+             std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
+    constexpr auto highlight(F Hidden::* theAnyField, X x, Y y, Z z) {
+        return internal::highlight(theAnyField, std::move(x), std::move(y), std::move(z));
+    }
+
+    /**
+     *  The FTS5 bm25 auxiliary function. Optionally takes one weight per mapped table column.
+     *  See https://www.sqlite.org/fts5.html#the_bm25_function
+     */
+    template<class CP, class... Ws, std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
+    constexpr auto bm25(CP theAnyField, Ws... weights) {
+        return internal::bm25(std::move(theAnyField), std::move(weights)...);
+    }
+
+    /**
+     *  The FTS5 bm25 auxiliary function. Optionally takes one weight per mapped table column.
+     *  See https://www.sqlite.org/fts5.html#the_bm25_function
+     */
+    template<class Hidden,
+             class F,
+             class... Ws,
+             std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
+    constexpr auto bm25(F Hidden::* theAnyField, Ws... weights) {
+        return internal::bm25(theAnyField, std::move(weights)...);
+    }
+
+    /**
+     *  The FTS5 snippet auxiliary function: returns the text of the column `columnIndex` with the matches
+     *  surrounded by `matchOpen`/`matchClose`, truncated to at most `tokenCount` tokens,
+     *  with `ellipses` marking the truncations.
+     *  See https://www.sqlite.org/fts5.html#the_snippet_function
+     */
+    template<class CP,
+             class X1,
+             class X2,
+             class X3,
+             class X4,
+             class X5,
+             std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
+    constexpr auto snippet(CP theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
+        return internal::snippet(std::move(theAnyField),
+                                 std::move(columnIndex),
+                                 std::move(matchOpen),
+                                 std::move(matchClose),
+                                 std::move(ellipses),
+                                 std::move(tokenCount));
+    }
+
+    /**
+     *  The FTS5 snippet auxiliary function: returns the text of the column `columnIndex` with the matches
+     *  surrounded by `matchOpen`/`matchClose`, truncated to at most `tokenCount` tokens,
+     *  with `ellipses` marking the truncations.
+     *  See https://www.sqlite.org/fts5.html#the_snippet_function
+     */
+    template<class Hidden,
+             class F,
+             class X1,
+             class X2,
+             class X3,
+             class X4,
+             class X5,
+             std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
+    constexpr auto
+    snippet(F Hidden::* theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
+        return internal::snippet(theAnyField,
+                                 std::move(columnIndex),
+                                 std::move(matchOpen),
+                                 std::move(matchClose),
+                                 std::move(ellipses),
+                                 std::move(tokenCount));
+    }
+#endif
+
+    /**
+     *  The FTS5 highlight function. The table type is specified as a template argument.
+     *  See https://www.sqlite.org/fts5.html#the_highlight_function
+     *
+     *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
+     */
+    template<class O, class X, class Y, class Z, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
+    [[deprecated("Use the `highlight` function accepting the hidden FTS5 'any' field instead")]]
+    constexpr auto highlight(X x, Y y, Z z) {
+        //  the hidden column named like the table stands for the table
+        return highlight(column<O>(&fts5::hidden::any), std::move(x), std::move(y), std::move(z));
+    }
+}
+#endif
+
 // #include "functions/json.h"
 
-/** @file The built-in JSON functions https://www.sqlite.org/json1.html, including the aggregate functions
- *        JSON_GROUP_ARRAY() and JSON_GROUP_OBJECT().
+/** @file
+ *  Purpose: define the built-in SQL JSON functions.
+ *
+ *  Intention: a family of built-in SQL functions, as SQLite documents them at https://www.sqlite.org/json1.html, placed
+ *  by `docs/internals/source-layout.md`; its functions are called through `ast/builtin_function.h`, gathered by
+ *  `builtin/functions.h`, and `.claude/skills/add-builtin-function/SKILL.md` adds to it.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -33598,8 +34089,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functions/math.h"
 
-/** @file The built-in mathematical functions https://www.sqlite.org/lang_mathfunc.html,
- *        available as of SQLite 3.35.0 [see `SQLITE_ORM_MATH_FUNCTIONS_SUPPORTED` in sqlite3/sqlite3_config.h].
+/** @file
+ *  Purpose: define the built-in mathematical SQL functions.
+ *
+ *  Intention: a family of built-in SQL functions, as SQLite documents them at
+ *  https://www.sqlite.org/lang_mathfunc.html, placed by `docs/internals/source-layout.md`; its functions are called
+ *  through `ast/builtin_function.h`, gathered by `builtin/functions.h`, and
+ *  `.claude/skills/add-builtin-function/SKILL.md` adds to it.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -34783,16 +35279,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functions/window.h"
 
-/** @file The built-in window functions: ROW_NUMBER(), RANK(), DENSE_RANK(), PERCENT_RANK(), CUME_DIST(),
- *        NTILE(N), LAG(expr), LEAD(expr), FIRST_VALUE(expr), LAST_VALUE(expr) and NTH_VALUE(expr, N).
+/** @file
+ *  Purpose: define the built-in SQL window functions.
  *
- *        They are built-in functions of the window kind, applied by an OVER clause: in C++20 builds definition
- *        objects of `ast/builtin_function.h` (`"ROW_NUMBER"_builtin.window<int()>()`), in C++17 builds legacy
- *        factories over `builtin_window_function_t`. Either way their call nodes are built-in function calls,
- *        classified by `is_builtin_function_call` like those of the scalar and aggregate functions.
- *
- *        Like the headers of the scalar and aggregate functions, this header holds definitions, not nodes, hence it
- *        lives outside `ast/`.
+ *  Intention: a family of built-in SQL functions, as SQLite documents them at
+ *  https://www.sqlite.org/windowfunctions.html#builtins, placed by `docs/internals/source-layout.md`; its functions are
+ *  called through `ast/builtin_function.h`, gathered by `builtin/functions.h`, and
+ *  `.claude/skills/add-builtin-function/SKILL.md` adds to it.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -35113,15 +35606,20 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #pragma once
 
-/** @file Umbrella header for the database objects SQLite provides itself:
- *        its schema table (`sqlite_master`/`sqlite_schema`), the eponymous virtual tables (`dbstat`,
- *        `generate_series`, `pragma_table_info`/`pragma_table_xinfo`), the bundle `make_builtin_tables()`
- *        and the virtual table modules (FTS5, R*Tree).
+/** @file
+ *  Purpose: gather the database objects SQLite provides, with their deprecated spellings.
+ *
+ *  Intention: the umbrella of `dbos/`, placed by `docs/internals/source-layout.md`; the single header takes it, through
+ *  `third_party/amalgamate/sqlite_orm.json`, in place of the files behind it.
  */
 
 // #include "dbos/builtin_tables.h"
 
-/** @file The tuple of the database objects SQLite provides itself, `make_builtin_tables()`.
+/** @file
+ *  Purpose: bundle the tables SQLite provides itself.
+ *
+ *  Intention: placed by `docs/internals/source-layout.md`; gathers the tables of `sqlite_schema.h`, `dbstat.h` and
+ *  `pragma_tables.h` for `make_storage()`, and is gathered by `builtin/dbos.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -35129,6 +35627,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
 // #include "dbstat.h"
+
+/** @file
+ *  Purpose: represent the DBSTAT virtual table.
+ *
+ *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
+ *  the nodes of `schema/`, gathered by `builtin/dbos.h`, and `.claude/skills/add-virtual-table/SKILL.md` adds others of
+ *  its kind.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_DBSTAT_SUPPORTED
@@ -35166,6 +35672,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
      *  Data structure for the `dbstat` eponymous virtual table.
+     *
+     *  https://www.sqlite.org/dbstat.html
      */
     struct dbstat {
         std::string name;
@@ -35207,6 +35715,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  
      *  Though the DBSTAT virtual table is an eponymous table SQLite allows to create a virtual table instance with a different name.
      *  This is mostly useful with binding input arguments (so-called table values), e.g. a different schema than "main" or whether to query aggregated results.
+     *
+     *  https://www.sqlite.org/dbstat.html
      */
     template<class... Value>
     auto using_dbstat(Value... tableValues) {
@@ -35251,6 +35761,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Factory function for the DBSTAT default eponymous virtual table.
+     *
+     *  https://www.sqlite.org/dbstat.html
      */
     inline auto make_dbstat_table() {
         return make_virtual_table<dbstat>(internal::dbstat_module_tag::name(), using_dbstat());
@@ -35258,7 +35770,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif  //  SQLITE_ORM_DBSTAT_SUPPORTED
 
-// #include "pragma_table_info.h"
+// #include "pragma_tables.h"
 
 // #include "sqlite_schema.h"
 
@@ -35289,173 +35801,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "dbos/fts5.h"
 
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ORM_FTS5_SUPPORTED
-#include <optional>  //  std::optional
-#include <tuple>  //  std::tuple_size, std::make_tuple, std::get, std::tuple_cat, std::apply
-#include <utility>  //  std::forward, std::move
-#include <vector>
-#endif
-#endif
-
-// #include "../../functional/gsl.h"
-
-// #include "../../functional/member_traits.h"
-
-// #include "../../schema/virtual_table.h"
-
-// #include "../../vocabulary/node_algorithms.h"
-
-// #include "../../vocabulary/node_traits.h"
-
-#ifdef SQLITE_ORM_FTS5_SUPPORTED
-namespace sqlite_orm::internal {
-    struct fts5_module_tag {
-        // simplify conceptual/meta programming
-        using module_type = fts5_module_tag;
-
-        static constexpr orm_gsl::czstring name() {
-            return "fts5";
-        }
-    };
-
-    template<class... Cs>
-    constexpr void validate_fts5_definition() {
-        static_assert((is_fts5_table_element_or_constraint<Cs>::value && ...),
-                      "Incorrect table elements or constraints");
-    }
-
-    template<class... Cs>
-    virtual_table_definition<fts5_module_tag, Cs...> make_fts5_definition(Cs... definition) {
-        return {{std::make_tuple(std::move(definition)...)}};
-    }
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /** 
-     *  Class namespace for hidden `fts5` columns.
-     */
-    struct fts5 {
-        /** 
-         *  Hidden columns of the `fts5` virtual table, which can be referred to using a 'column pointer' or using `hidden_fields_of<>` fields.
-         */
-        struct hidden {
-            /// Hidden column with the same name as the table itself. It is a blob only meaningful when matching any of the other FTS5 columns.
-            std::vector<char> any;
-            std::optional<int> rank;
-
-            /** 
-             *  Internal meta programming helper to rebind hidden columns to a specific object type.
-             */
-            template<class O>
-            struct _of;
-        };
-
-        /** 
-         *  Map hidden columns to a specific object type to simplify programming.
-
-         *  Example:
-         *  struct Post {
-         *   using hidden = fts5::hidden_fields_of<Post>;
-         *  };
-         */
-        template<class O>
-        struct hidden_fields_of {
-            static constexpr auto any_field = internal::as_field_of<hidden::_of<O>>(&fts5::hidden::any);
-            static constexpr auto rank_field = internal::as_field_of<hidden::_of<O>>(&fts5::hidden::rank);
-
-            hidden_fields_of() = delete;
-        };
-
-        fts5() = delete;
-    };
-
-    template<class O>
-    struct fts5::hidden::_of : fts5::hidden {
-        using enclosing_type = O;
-    };
-
-    /**
-     *  Factory function for a FTS5 virtual table definition.
-     *  
-     *  The hidden FTS5 columns 'any' [as a placeholder for the column with the same name as the table] and 'rank' are mapped into each table definition.
-     */
-    template<class... Cs>
-    auto using_fts5(Cs... definition) {
-        using namespace ::sqlite_orm::internal;
-        validate_fts5_definition<Cs...>();
-        return make_fts5_definition(std::forward<Cs>(definition)...,
-                                    // note: eponymous column name is filled in later in `make_virtual_table()`
-                                    make_hidden_column("", &fts5::hidden::any),
-                                    make_hidden_column("rank", &fts5::hidden::rank));
-    }
-
-    /**
-     *  Factory function for a FTS5 virtual table definition.
-     *  
-     *  The mapped object type is explicitly specified.
-     *  
-     *  [Deprecation notice] This factory function is deprecated and will be removed in v1.11.
-     */
-    template<class T, class... Cs>
-    [[deprecated("Specify the explicit object type when calling `make_virtual_table()`.")]]
-    internal::virtual_table_description<T, internal::fts5_module_tag, Cs...> using_fts5(Cs... definition) {
-        internal::validate_fts5_definition<Cs...>();
-
-        return {std::make_tuple(std::forward<Cs>(definition)...)};
-    }
-
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-    /**
-     *  Factory function for a FTS5 virtual table definition.
-     *
-     *  The columns are reflected from the non-static data members of O and their annotations,
-     *  and precede the table options.
-     *
-     *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
-     */
-    template<class O, class... Cs>
-        requires (internal::col_index_sequence_of<std::tuple<Cs...>>::size() == 0)
-    auto using_fts5(Cs... options) {
-        return std::apply(
-            [](auto&&... definition) static {
-                return using_fts5(std::forward<decltype(definition)>(definition)...);
-            },
-            std::tuple_cat(internal::make_reflected_columns<O>(), std::tuple<Cs...>{std::move(options)...}));
-    }
-#endif
-
-    template<class O, class... Cs>
-    internal::virtual_table<O, internal::fts5_module_tag, Cs...>
-    make_virtual_table(std::string tableName,
-                       internal::virtual_table_definition<internal::fts5_module_tag, Cs...> definition) {
-        using namespace ::sqlite_orm::internal;
-
-        constexpr size_t eponymous_column_index =
-            std::tuple_size<elements_type_t<virtual_table_traits<fts5_module_tag, Cs...>>>::value - 2;
-        // fill in the eponymous hidden column name
-        std::get<eponymous_column_index>(definition.elements).name = tableName;
-
-        return {std::move(tableName), std::move(definition)};
-    }
-}
-#endif
-
 // #include "dbos/fts5_deprecations.h"
 
-/** @file The deprecated FTS5 spellings: `order_by(rank())` for the hidden FTS5 rank column, and `is_equal<Table>(x)`
- *        for the comparison of a whole FTS5 table with an expression.
+/** @file
+ *  Purpose: keep apart the deprecated FTS5 spellings that overload a general factory of the DSL.
  *
- *        `rank()` is the RANK() window function, and it happened to be the spelling of the hidden FTS5 rank
- *        column as well, by the bare `rank` it used to serialize to. That dual meaning gets a header of its own,
- *        which pulls in what it needs rather than having the FTS5 module, the window functions or ORDER BY
- *        depend on it.
- *
- *        `is_equal<Table>(x)` compares the table itself, which is not a binary condition: its left side is a type
- *        only. Unlike the rank spelling, it is not guarded by FTS5 support, as its classification trait is read by
- *        the serializer, the AST iterator and the node tuple in every build.
- *
- *        Goes as a whole in v1.11.
+ *  Intention: gathered by `builtin/dbos.h`; keeps `fts5.h` free of what they need, `ast/order_by.h`,
+ *  `functions/window.h` and the statement serializer, and each factory says when it goes.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -35505,6 +35857,9 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
+     *
+     *  It compares the table itself, whose left side is a type only, so it builds no binary condition. It stays
+     *  outside the FTS5 guard: the serializer, the AST iterator and the node tuple read its trait in every build.
      */
     template<class O, class R, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
     [[deprecated("Use the usual `is_equal` function to compare the hidden FTS5 'any' field or a field of your FTS "
@@ -35536,6 +35891,9 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
+     *
+     *  `rank()` is the RANK() window function; it spelled the hidden FTS5 rank column too, through the bare `rank`
+     *  it serialized to.
      */
     [[deprecated("Use the hidden FTS5 rank column instead")]]
     inline internal::order_by_t<internal::fts5_rank_column_t> order_by(decltype(rank()) /*rank*/) {
@@ -35544,271 +35902,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
-// #include "dbos/fts5_functions.h"
-
-/** @file The FTS5 auxiliary functions `highlight()`, `bm25()` and `snippet()`.
- *
- *  An FTS5 auxiliary function is an ordinary built-in function whose first argument is the FTS5 table's
- *  hidden column named like the table (`fts5::hidden::any`), which is how SQLite refers to the table
- *  in `bm25(posts)`: `posts` is a column reference. The factories accept that column alone as the first
- *  argument, and the general built-in function machinery does the rest - the column serializes like any
- *  other column and names its table for the FROM clause.
- */
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
-#include <string_view>  //  std::string_view
-#include <tuple>  //  std::make_tuple
-#include <type_traits>  //  std::enable_if
-#include <utility>  //  std::move
-#endif
-
-#include <sqlite3.h>
-
-// #include "../../ast/builtin_function.h"
-
-// #include "../../ast/column_pointer.h"
-//  column
-// #include "../../vocabulary/node_algorithms.h"
-//  hidden_column_of_vtab, hidden_field_of_vtab
-// #include "fts5.h"
-
-namespace sqlite_orm::internal {
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /*
-     *  The first parameter is the table's hidden column; the public factories constrain the call to it.
-     */
-    inline constexpr auto highlight =
-        "HIGHLIGHT"_builtin.scalar<std::string(anything, int, std::string_view, std::string_view)>();
-    inline constexpr auto bm25 = "BM25"_builtin.scalar<double(anything, variadic<double>)>();
-    inline constexpr auto snippet =
-        "SNIPPET"_builtin
-            .scalar<std::string(anything, int, std::string_view, std::string_view, std::string_view, int)>();
-#else
-    struct highlight_string {
-        std::string_view serialize() const {
-            return "HIGHLIGHT";
-        }
-    };
-
-    struct bm25_string {
-        std::string_view serialize() const {
-            return "BM25";
-        }
-    };
-
-    struct snippet_string {
-        std::string_view serialize() const {
-            return "SNIPPET";
-        }
-    };
-
-    template<class... Args>
-    constexpr builtin_function_t<std::string, highlight_string, Args...> highlight(Args... args) {
-        return {std::make_tuple(std::move(args)...)};
-    }
-
-    template<class... Args>
-    constexpr builtin_function_t<double, bm25_string, Args...> bm25(Args... args) {
-        return {std::make_tuple(std::move(args)...)};
-    }
-
-    template<class... Args>
-    constexpr builtin_function_t<std::string, snippet_string, Args...> snippet(Args... args) {
-        return {std::make_tuple(std::move(args)...)};
-    }
-#endif
-}
-
-#ifdef SQLITE_ORM_FTS5_SUPPORTED
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    /**
-     *  The FTS5 highlight function.
-     *  See https://www.sqlite.org/fts5.html#the_highlight_function
-     */
-    template<class CP, class X, class Y, class Z>
-        requires (internal::hidden_column_of_vtab<CP, fts5>)
-    constexpr auto highlight(CP theAnyField, X x, Y y, Z z) {
-        return internal::highlight(std::move(theAnyField), std::move(x), std::move(y), std::move(z));
-    }
-
-    /**
-     *  The FTS5 highlight function.
-     *  See https://www.sqlite.org/fts5.html#the_highlight_function
-     */
-    template<class Hidden, class F, class X, class Y, class Z>
-        requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
-    constexpr auto highlight(F Hidden::* theAnyField, X x, Y y, Z z) {
-        return internal::highlight(theAnyField, std::move(x), std::move(y), std::move(z));
-    }
-
-    /**
-     *  The FTS5 bm25 auxiliary function. Optionally takes one weight per mapped table column.
-     *  See https://www.sqlite.org/fts5.html#the_bm25_function
-     */
-    template<class CP, class... Ws>
-        requires (internal::hidden_column_of_vtab<CP, fts5>)
-    constexpr auto bm25(CP theAnyField, Ws... weights) {
-        return internal::bm25(std::move(theAnyField), std::move(weights)...);
-    }
-
-    /**
-     *  The FTS5 bm25 auxiliary function. Optionally takes one weight per mapped table column.
-     *  See https://www.sqlite.org/fts5.html#the_bm25_function
-     */
-    template<class Hidden, class F, class... Ws>
-        requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
-    constexpr auto bm25(F Hidden::* theAnyField, Ws... weights) {
-        return internal::bm25(theAnyField, std::move(weights)...);
-    }
-
-    /**
-     *  The FTS5 snippet auxiliary function: returns the text of the column `columnIndex` with the matches
-     *  surrounded by `matchOpen`/`matchClose`, truncated to at most `tokenCount` tokens,
-     *  with `ellipses` marking the truncations.
-     *  See https://www.sqlite.org/fts5.html#the_snippet_function
-     */
-    template<class CP, class X1, class X2, class X3, class X4, class X5>
-        requires (internal::hidden_column_of_vtab<CP, fts5>)
-    constexpr auto snippet(CP theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
-        return internal::snippet(std::move(theAnyField),
-                                 std::move(columnIndex),
-                                 std::move(matchOpen),
-                                 std::move(matchClose),
-                                 std::move(ellipses),
-                                 std::move(tokenCount));
-    }
-
-    /**
-     *  The FTS5 snippet auxiliary function: returns the text of the column `columnIndex` with the matches
-     *  surrounded by `matchOpen`/`matchClose`, truncated to at most `tokenCount` tokens,
-     *  with `ellipses` marking the truncations.
-     *  See https://www.sqlite.org/fts5.html#the_snippet_function
-     */
-    template<class Hidden, class F, class X1, class X2, class X3, class X4, class X5>
-        requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
-    constexpr auto
-    snippet(F Hidden::* theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
-        return internal::snippet(theAnyField,
-                                 std::move(columnIndex),
-                                 std::move(matchOpen),
-                                 std::move(matchClose),
-                                 std::move(ellipses),
-                                 std::move(tokenCount));
-    }
-#else
-    /**
-     *  The FTS5 highlight function.
-     *  See https://www.sqlite.org/fts5.html#the_highlight_function
-     */
-    template<class CP,
-             class X,
-             class Y,
-             class Z,
-             std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
-    constexpr auto highlight(CP theAnyField, X x, Y y, Z z) {
-        return internal::highlight(std::move(theAnyField), std::move(x), std::move(y), std::move(z));
-    }
-
-    /**
-     *  The FTS5 highlight function.
-     *  See https://www.sqlite.org/fts5.html#the_highlight_function
-     */
-    template<class Hidden,
-             class F,
-             class X,
-             class Y,
-             class Z,
-             std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
-    constexpr auto highlight(F Hidden::* theAnyField, X x, Y y, Z z) {
-        return internal::highlight(theAnyField, std::move(x), std::move(y), std::move(z));
-    }
-
-    /**
-     *  The FTS5 bm25 auxiliary function. Optionally takes one weight per mapped table column.
-     *  See https://www.sqlite.org/fts5.html#the_bm25_function
-     */
-    template<class CP, class... Ws, std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
-    constexpr auto bm25(CP theAnyField, Ws... weights) {
-        return internal::bm25(std::move(theAnyField), std::move(weights)...);
-    }
-
-    /**
-     *  The FTS5 bm25 auxiliary function. Optionally takes one weight per mapped table column.
-     *  See https://www.sqlite.org/fts5.html#the_bm25_function
-     */
-    template<class Hidden,
-             class F,
-             class... Ws,
-             std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
-    constexpr auto bm25(F Hidden::* theAnyField, Ws... weights) {
-        return internal::bm25(theAnyField, std::move(weights)...);
-    }
-
-    /**
-     *  The FTS5 snippet auxiliary function: returns the text of the column `columnIndex` with the matches
-     *  surrounded by `matchOpen`/`matchClose`, truncated to at most `tokenCount` tokens,
-     *  with `ellipses` marking the truncations.
-     *  See https://www.sqlite.org/fts5.html#the_snippet_function
-     */
-    template<class CP,
-             class X1,
-             class X2,
-             class X3,
-             class X4,
-             class X5,
-             std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
-    constexpr auto snippet(CP theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
-        return internal::snippet(std::move(theAnyField),
-                                 std::move(columnIndex),
-                                 std::move(matchOpen),
-                                 std::move(matchClose),
-                                 std::move(ellipses),
-                                 std::move(tokenCount));
-    }
-
-    /**
-     *  The FTS5 snippet auxiliary function: returns the text of the column `columnIndex` with the matches
-     *  surrounded by `matchOpen`/`matchClose`, truncated to at most `tokenCount` tokens,
-     *  with `ellipses` marking the truncations.
-     *  See https://www.sqlite.org/fts5.html#the_snippet_function
-     */
-    template<class Hidden,
-             class F,
-             class X1,
-             class X2,
-             class X3,
-             class X4,
-             class X5,
-             std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
-    constexpr auto
-    snippet(F Hidden::* theAnyField, X1 columnIndex, X2 matchOpen, X3 matchClose, X4 ellipses, X5 tokenCount) {
-        return internal::snippet(theAnyField,
-                                 std::move(columnIndex),
-                                 std::move(matchOpen),
-                                 std::move(matchClose),
-                                 std::move(ellipses),
-                                 std::move(tokenCount));
-    }
-#endif
-
-    /**
-     *  The FTS5 highlight function. The table type is specified as a template argument.
-     *  See https://www.sqlite.org/fts5.html#the_highlight_function
-     *
-     *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
-     */
-    template<class O, class X, class Y, class Z, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
-    [[deprecated("Use the `highlight` function accepting the hidden FTS5 'any' field instead")]]
-    constexpr auto highlight(X x, Y y, Z z) {
-        //  the hidden column named like the table stands for the table
-        return highlight(column<O>(&fts5::hidden::any), std::move(x), std::move(y), std::move(z));
-    }
-}
-#endif
-
 // #include "dbos/generate_series.h"
+
+/** @file
+ *  Purpose: represent the generate_series table-valued function.
+ *
+ *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
+ *  the nodes of `schema/`, gathered by `builtin/dbos.h`, and `.claude/skills/add-virtual-table/SKILL.md` adds others of
+ *  its kind.
+ */
 
 // #include "../../functional/gsl.h"
 
@@ -35831,6 +35933,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
      *  Data structure for the `generate_series` eponymous virtual table.
+     *
+     *  https://www.sqlite.org/series.html
      */
     struct generate_series {
         int value = 0;
@@ -35876,6 +35980,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for the `generate_series` default eponymous virtual table.
+     *
+     *  https://www.sqlite.org/series.html
      */
     inline auto make_generate_series_table() {
         return make_virtual_table<generate_series>(internal::generate_series_module_tag::name(),
@@ -35884,9 +35990,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
-// #include "dbos/pragma_table_info.h"
+// #include "dbos/pragma_tables.h"
 
 // #include "dbos/rtree.h"
+
+/** @file
+ *  Purpose: represent the R*Tree virtual table module.
+ *
+ *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
+ *  the nodes of `schema/`, gathered by `builtin/dbos.h`, and `.claude/skills/add-virtual-table/SKILL.md` adds others of
+ *  its kind.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_RTREE_SUPPORTED
@@ -35957,6 +36071,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a RTREE virtual table definition.
+     *
+     *  https://www.sqlite.org/rtree.html
      */
     template<class... Cs>
     internal::virtual_table_definition<internal::rtree_module_tag, Cs...> using_rtree(Cs... definition) {
@@ -35972,6 +36088,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The columns are reflected from the non-static data members of O and their annotations.
      *
      *  Example: `make_virtual_table(using_rtree<DemoIndex>())`
+     *
+     *  https://www.sqlite.org/rtree.html
      */
     template<class O>
     auto using_rtree() {
@@ -35985,6 +36103,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Factory function for a RTREE_I32 virtual table definition.
+     *
+     *  https://www.sqlite.org/rtree.html#integer_valued_r_trees
      */
     template<class... Cs>
     internal::virtual_table_definition<internal::rtree_i32_module_tag, Cs...> using_rtree_i32(Cs... definition) {
@@ -36000,6 +36120,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The columns are reflected from the non-static data members of O and their annotations.
      *
      *  Example: `make_virtual_table(using_rtree_i32<DemoIndex>())`
+     *
+     *  https://www.sqlite.org/rtree.html#integer_valued_r_trees
      */
     template<class O>
     auto using_rtree_i32() {

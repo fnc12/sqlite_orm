@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the FTS5 virtual table module.
+ *
+ *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
+ *  the nodes of `schema/`, gathered by `builtin/dbos.h`, and `.claude/skills/add-virtual-table/SKILL.md` adds others of
+ *  its kind.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_FTS5_SUPPORTED
 #include <optional>  //  std::optional
@@ -41,13 +49,19 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
      *  Class namespace for hidden `fts5` columns.
+     *
+     *  https://www.sqlite.org/fts5.html
      */
     struct fts5 {
         /** 
          *  Hidden columns of the `fts5` virtual table, which can be referred to using a 'column pointer' or using `hidden_fields_of<>` fields.
          */
         struct hidden {
-            /// Hidden column with the same name as the table itself. It is a blob only meaningful when matching any of the other FTS5 columns.
+            /**
+             *  Hidden column with the same name as the table itself. It is a blob only meaningful when matching any of the other FTS5 columns.
+             *  An FTS5 auxiliary function takes its table through this column: SQLite reads `bm25(posts)` as a
+             *  reference to it, and like any column it names its table for the FROM clause.
+             */
             std::vector<char> any;
             std::optional<int> rank;
 
@@ -86,6 +100,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a FTS5 virtual table definition.
      *  
      *  The hidden FTS5 columns 'any' [as a placeholder for the column with the same name as the table] and 'rank' are mapped into each table definition.
+     *
+     *  https://www.sqlite.org/fts5.html
      */
     template<class... Cs>
     auto using_fts5(Cs... definition) {
@@ -103,6 +119,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  The mapped object type is explicitly specified.
      *  
      *  [Deprecation notice] This factory function is deprecated and will be removed in v1.11.
+     *
+     *  https://www.sqlite.org/fts5.html
      */
     template<class T, class... Cs>
     [[deprecated("Specify the explicit object type when calling `make_virtual_table()`.")]]
@@ -120,6 +138,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  and precede the table options.
      *
      *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
+     *
+     *  https://www.sqlite.org/fts5.html
      */
     template<class O, class... Cs>
         requires (internal::col_index_sequence_of<std::tuple<Cs...>>::size() == 0)

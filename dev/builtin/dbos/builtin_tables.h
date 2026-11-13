@@ -1,6 +1,10 @@
 #pragma once
 
-/** @file The tuple of the database objects SQLite provides itself, `make_builtin_tables()`.
+/** @file
+ *  Purpose: bundle the tables SQLite provides itself.
+ *
+ *  Intention: placed by `docs/internals/source-layout.md`; gathers the tables of `sqlite_schema.h`, `dbstat.h` and
+ *  `pragma_tables.h` for `make_storage()`, and is gathered by `builtin/dbos.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -8,7 +12,7 @@
 #endif
 
 #include "dbstat.h"
-#include "pragma_table_info.h"
+#include "pragma_tables.h"
 #include "sqlite_schema.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
