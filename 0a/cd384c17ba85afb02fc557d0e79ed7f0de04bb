@@ -22,8 +22,7 @@ builds failing, find_column_name unknown where it is used.
   serializer.
 
 # Later
-- ontocratic-feedback candidate: 1071a179's note checked that
-  column_reference.h used nothing else of column_lookup.h, and not what
-  the dropped include had placed ahead of others in the amalgamation.
-  Removing an include in this tree asks for the amalgamation positions
-  of what it carried, against their first uses.
+- trueqbit, on Claude's proposal to check amalgamation positions when an
+  include is removed: rejected - too specific for the plugin; the cause
+  is a header that does not include what it uses, and a clean header
+  makes the order irrelevant. Nothing goes to ontocratic-feedback.
