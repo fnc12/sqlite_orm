@@ -6539,7 +6539,7 @@ namespace sqlite_orm::internal {
 // #include "constraints/generated_always.h"
 
 /** @file
- *  Purpose: represent the constraint of a generated column.
+ *  Purpose: represent the constraint that makes a column generated.
  *
  *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -6731,7 +6731,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "table_base.h"
 
 /** @file
- *  Purpose: hold the bases the kinds of table build on.
+ *  Purpose: define what the different kinds of tables have in common.
  *
  *  Intention: a base of the ordinary table, view, virtual table and CTE nodes in `schema/`.
  */
@@ -8508,7 +8508,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "schema/triggers.h"
 
 /** @file
- *  Purpose: represent triggers and the expressions only their bodies take.
+ *  Purpose: represent triggers and the expressions only triggers take.
  *
  *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -22604,7 +22604,7 @@ namespace sqlite_orm::internal {
 // #include "../schema/algorithms/sync_order.h"
 
 /** @file
- *  Purpose: order the database objects of a schema so that each is synced after those it depends on.
+ *  Purpose: order the database objects of a schema so that each is synced after those SQLite needs before it.
  *
  *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
  *  consumes the vocabulary layer.

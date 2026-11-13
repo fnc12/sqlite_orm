@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: order the database objects of a schema so that each is synced after those it depends on.
+ *  Purpose: order the database objects of a schema so that each is synced after those SQLite needs before it.
  *
  *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
  *  consumes the vocabulary layer.

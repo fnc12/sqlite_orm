@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: hold the bases the kinds of table build on.
+ *  Purpose: define what the different kinds of tables have in common.
  *
  *  Intention: a base of the ordinary table, view, virtual table and CTE nodes in `schema/`.
  */
