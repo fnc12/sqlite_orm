@@ -1,0 +1,79 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: round dev/schema/ of pass 2,
+commit 6 of handover-step2c-2-docs-round.md - the Purpose check pass. One
+report-only dispatch of ontocratic-reviewer over the 29 Purposes, briefed
+with the rule alone (the Purpose says why the file exists, names no
+member, spelling or variant; read the Action against the Purpose and the
+Purpose against the Action), no suspects, with the downloaded sqlite.org
+pages named in the brief (decision 6, lean b). It reported 14 findings,
+13 holds. Claude checked its code claims before offering them.
+
+# Decided
+- Taken (trueqbit):
+  - table_base.h: "hold the bases the kinds of table build on." ->
+    "define what the different kinds of tables have in common." The
+    reviewer's "define what the kinds of table share."; trueqbit asked for
+    the plural and offered "types"/"have in common"; "kinds" kept, as
+    "type" reads otherwise in C++ (ruling 15) - ordinary_table, query_view
+    and virtual_table are C++ types; "have in common" over "share", which
+    also reads as shared ownership. The file also holds
+    table_primary_key_contains and is_single_table_primary_key, which are
+    no bases.
+  - triggers.h (1): "...only their bodies take." -> "...only triggers
+    take." - lang_createtrigger.html: "Both the WHEN clause and the trigger
+    actions may access elements of the row ... NEW.column-name and
+    OLD.column-name"; WHEN is outside the body.
+  - generated_always.h (6): "represent the constraint of a generated
+    column." -> "represent the constraint that makes a column generated."
+    - gencol.html: generated columns "may have NOT NULL, CHECK, and
+    UNIQUE constraints, and foreign key constraints".
+  - sync_order.h (14): "...after those it depends on." -> "...after those
+    SQLite needs before it." - foreignkeys.html: "The parent key
+    definitions of foreign key constraints are not checked when a table is
+    created."; the code orders indexes and triggers after their table or
+    view only.
+- Kept (trueqbit):
+  - dbo_name.h (2), against the reviewer's "name a database object after
+    its mapped class." and Claude's lean for it: dbo_name represents the
+    name the programmer supplies as a C++ reflection annotation on the
+    struct; resolve_dbo_name's fallback to extract_type_identifier<T>() is
+    how a missing annotation is read, not the file's reason. Claude took a
+    fact about the code for a fact about the Purpose - a correction,
+    deferred with the third one in handover-feedback-domain-sources.md.
+  - db_objects.h (4), against "represent a schema by its database
+    objects.": the tuple is the "how", sqlite_orm's reading of a schema
+    (ruling 13's qualifier, as cte.h's "as a table"); the proposal says
+    nothing a reader does not already know.
+  - table_identifier.h (9), column_identifier.h (10): "by its name" is how
+    SQL identifies a table or a column, the concept rather than the
+    member (b).
+  - algorithms/foreign_keys.h: "compute over the foreign keys of a
+    schema." (b); the reviewer: the plural name opens it to a kind.
+- Kept, as already ruled (not reopened): fts5_options.h (3, trueqbit's
+  wording from PR A); default.h, collate.h (12, "constraint" against
+  SQLite's "clause" - ruling 13); auxiliary.h (13, a "+" mark in R*Tree
+  rather than a constraint - ruling 13); column_lookup.h (11, decision 2
+  settled by 26).
+- Kept against the reviewer, Claude: column_definitions.h,
+  ordinary_table_definitions.h (7, 8) - "whose bodies need ..." is the
+  file's reason where it diverges from its parent's (campaign.md "Later",
+  "When the header adds to the name"), not a relation for the Intention.
+
+# Dissent
+- trueqbit, 2026-11-13, on PR B's 67289968 (table_filters.h ->
+  algorithms/foreign_keys.h) and f8977fcb (its @file line narrowed to
+  "the ordinary tables"): "I just don't like the narrowing that happened
+  now that I see it in reality. This means we would have to widen again
+  to hold other potential algorithms in the future." Left as it is for
+  now; the count stays over ordinary tables (only make_table takes a
+  foreign_key(); a view takes no constraint). A widening of the file or
+  of the count is a change to PR B's code, in PR B or a fix stacked on
+  it, not in this docs round.
+
+# Discussed
+- Reviewer's code claims checked: resolve_dbo_name (dbo_name.h:63-71),
+  table_base.h's free functions (:187, :211), is_column_unique
+  (column_lookup.h:111).
+- Green: pre-commit.sh exit 0; token streams identical; clang-format-20
+  unchanged; no "on purpose:". headers.mjs updated to the final wordings
+  and reproduces the tree.
