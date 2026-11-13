@@ -30,6 +30,7 @@
 * introspection functions: `sqlite_version()`, `sqlite_source_id()`, `sqlite_compileoption_used()`, `sqlite_compileoption_get()`, `sqlite_offset()`
 * `substring()` alias for `substr()` (3.34)
 * the `fts5vocab` virtual table
+* the remaining FTS5 table options https://sqlite.org/fts5.html: `content_rowid`, `columnsize`, `detail`, `contentless_delete` (3.43), `contentless_unindexed`, `tokendata`, `locale` - `schema/constraints/fts5_options.h` spells `content`, `prefix`, `tokenize` and the column option `UNINDEXED` so far
 * the remaining PRAGMA table-valued functions with rowsets (`index_list`, `index_info`/`index_xinfo`, `foreign_key_list`, `foreign_key_check`, `table_list`, `database_list`, `collation_list`, `function_list`, ...), C++26 reflection only: the module tag of a reflected eponymous table could be a generic `reflected_eponymous_module<O>`, its `name()` taken from a `static constexpr` copy of the row type's `orm_name` annotation, so that each pragma needs only its annotated row type and its entry in `make_pragma_tables()`; `table_info`/`table_xinfo` would then need their annotation conditionally, as their row types exist before C++26
 
 * `as_result<R>(expr)`: a result type override for any expression (generalizing `as_optional`), as the successor of the built-in functions' `R` template parameters
