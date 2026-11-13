@@ -1,0 +1,22 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: round dev/schema/ of pass 2,
+commit 4 of handover-step2c-2-docs-round.md, after 36c4dc56.
+
+# Decided
+- trueqbit (20): the FTS5 options SQLite documents and sqlite_orm cannot
+  spell go to TODO.md - content_rowid, columnsize, detail,
+  contentless_delete, contentless_unindexed, tokendata, locale.
+- Claude: placed under "Functions" beside the fts5vocab item, so FTS5's
+  open work sits together; the form follows 8f124f0c's VALUES item (what
+  is missing, then what the tree spells so far).
+
+# Discussed
+- 4 (a): https://www.sqlite.org/fts5.html, read 2026-11-12/13: each of
+  the seven options is documented there (anchors the_columnsize_option,
+  the_detail_option, contentless_delete_tables,
+  the_contentless_unindexed_option, the_tokendata_option,
+  the_locale_option; content_rowid in the option list of section 4).
+  Only contentless_delete carries a version on the page ("As of version
+  3.43.0"); the others go without one rather than from memory.
+- dev/ spells none of the seven (grep).
+- Green: pre-commit.sh exit 0; the amalgamation unchanged.
