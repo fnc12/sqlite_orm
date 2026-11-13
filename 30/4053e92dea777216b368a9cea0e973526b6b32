@@ -1,0 +1,19 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: issue #1576, branch
+fix/json-default-result-type (worktree C:\projects\wt-json-default-result-type),
+stacked on docs/purpose-intention-builtin (PR #1619, which merges #1618).
+
+# Decided
+- The issue's suggested fix as given: R defaults to std::string for
+  json_extract and json_quote, in both the legacy (C++17) wrappers and the
+  C++20 wrappers of dev/builtin/functions/json.h.
+- json_quote keeps its R rather than being fixed to std::string, so
+  json_quote<float> (tests/json.cpp) and every explicit R still compile.
+- Tests written first: json_extract gets a SECTION, json_quote a plain block
+  (its other cases are plain blocks; a lone SECTION would rerun them).
+  Each pins the result type with STATIC_REQUIRE and the value.
+
+# Discussed
+Not compiled (trueqbit verifies builds). pre-commit.sh exit 0; WSL git
+needs GIT_DIR=/mnt/c/projects/sqlite_orm/.git/worktrees/<name> and
+GIT_WORK_TREE for a Windows worktree, whose .git file holds a Windows path.
