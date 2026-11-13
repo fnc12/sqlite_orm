@@ -1,0 +1,12 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-13: found beside 0acd384c, the
+same kind of reliance; trueqbit: a commit of its own.
+
+# Decided
+- Found by scanning dev/ outside schema/algorithms/ for calls of the
+  schema algorithms (find_column_name, pick_table, the table facts, ...)
+  in files without the include: cte_column_names_collector.h (fixed by
+  0acd384c) and serializing_util.h:383 (pick_table<object_type>).
+- The amalgamation is unchanged but for the include comment:
+  table_lookup.h stays at 17983, pick_table at 18302, the call at 22849.
+  pre-commit.sh 0.
