@@ -104,6 +104,9 @@ jobs:
   # ===================
   linux:
     runs-on: ${{ matrix.os }}
+    # note: an empty image runs the job directly on the runner
+    container:
+      image: ${{ matrix.container }}
     continue-on-error: ${{ matrix.experimental || false }}
     strategy:
       fail-fast: false
@@ -146,13 +149,14 @@ jobs:
 
           - name: "gcc-16, C++26"
             os: ubuntu-24.04
+            container: ubuntu:26.10
             cc: gcc-16
             cxx: g++-16
             cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_26=ON"
             build_examples: "-DBUILD_EXAMPLES=ON"
             install_compiler: true
-            compiler_package: g++-16
-            compiler_ppa: ppa:ubuntu-toolchain-r/test
+            # the tools of the runner image the container lacks
+            compiler_package: g++-16 git curl zip unzip tar pkg-config cmake ninja-build ca-certificates
 
     name: Linux - ${{ matrix.name }}
 
@@ -164,14 +168,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # note: the container runs as root, without sudo
       - name: Install compiler
         if: matrix.install_compiler
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
-          if [ -n "${{ matrix.compiler_ppa }}" ]; then
-            sudo add-apt-repository -y ${{ matrix.compiler_ppa }}
-          fi
-          sudo apt-get -o Acquire::Retries=5 update
-          sudo apt-get -o Acquire::Retries=5 install -y ${{ matrix.compiler_package }}
+          sudo=$(command -v sudo || true)
+          $sudo apt-get -o Acquire::Retries=5 update
+          $sudo apt-get -o Acquire::Retries=5 install -y ${{ matrix.compiler_package }}
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
