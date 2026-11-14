@@ -1,0 +1,29 @@
+# Scene
+2026-11-13/14, trueqbit and Claude. Question: is fnc12/sqlite_orm#790 still to do,
+and how should sync_schema be amended for foreign keys.
+
+# Decided
+- Claude: #790 part 2 (INSERT INTO 'C' DEFAULT VALUES) is settled - replace writes the
+  primary key; insert(into<T>(), columns(...), values(...)) exists. Part 1 is open:
+  schema_status decides from PRAGMA table_xinfo alone.
+- trueqbit: the findings go as a plan into docs/plans/ on a branch of their own, in the
+  short format shown in the conversation, the hand-over inline, no line numbers.
+- trueqbit: the plan names the commit it was written against, dev at 8d304ddf.
+
+# Discussed
+- Probe, Python sqlite3 against :memory:, SQLite 3.50.4: foreign_key_list ids run in
+  reverse declaration order; unspecified actions read NO ACTION; DEFERRABLE is absent.
+  With PRAGMA foreign_keys on, copying a violating row fails and leaves <table>_backup
+  behind, dropping a referenced parent fails, and dropping a parent with an ON DELETE
+  CASCADE child empties the child silently - a bug of today in backup_table and
+  drop_create_with_loss, independent of #790.
+- The damage-control hook blocks a Bash command whose text holds DROP TABLE, also an
+  in-memory probe; the script went through the Write tool.
+
+# Later
+- The six decisions of the plan (violating rows, DEFERRABLE, name comparison, reader
+  placement, result value, PR split) stay open until the maintainers choose; then
+  sub-issues of #790.
+- No PR is open for the branch yet.
+- A comment for #790, closing part 2 and narrowing the issue to part 1, drafted;
+  not posted.
