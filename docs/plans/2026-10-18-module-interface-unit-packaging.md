@@ -1,0 +1,68 @@
+# Packaging the module interface units
+
+Date: 2026-10-18
+Branch base: `feature/public-config-header` (#1598)
+
+## Goal
+
+An installed sqlite_orm ships `<sqlite_orm/sqlite_orm.h>` and `<sqlite_orm/sqlite_orm_config.h>`, but no module
+interface unit, so `import sqlite_orm;` works only in a build of the source tree. The installed package should ship
+the interface unit, for the consumer to build the module with its own compiler and flags.
+
+## Current state
+
+- `packaging/CMakeLists.txt` installs `FILE_SET CXX_MODULES` of target `sqlite_orm`. That target is an `INTERFACE`
+  library without a module file set, so nothing is installed.
+- The file set belongs to `sqlite_orm_module` (`cmake/SqliteOrmModule.cmake`), which is neither installed nor
+  exported. It is defined only if sqlite_orm is the top-level project.
+- `SqliteOrmTargets` is exported twice to the same destination, once with `CXX_MODULES_DIRECTORY` and without
+  namespace, once with namespace `sqlite_orm::`.
+
+## Approach
+
+CMake 3.28 installs a module file set with `install(TARGETS ... FILE_SET CXX_MODULES DESTINATION ...)` and records it
+in the exported targets with `install(EXPORT ... CXX_MODULES_DIRECTORY ...)`. A CMake consumer then compiles the
+interface unit as part of its own build.
+
+- Install and export `sqlite_orm_module` instead of `sqlite_orm`, into one `SqliteOrmTargets` export with namespace
+  `sqlite_orm::`. The interface unit keeps going to `${SQLITE_ORM_INSTALL_CMAKEDIR}/src`.
+- The interface unit includes `<sqlite_orm/sqlite_orm.h>`, which resolves against the installed include directory.
+- Importers include `<sqlite_orm/sqlite_orm_config.h>` before `import sqlite_orm;` to test the configuration.
+- With CMake 4.3 or newer, additionally install a Common Package Specification (CPS) file from the same export, by
+  `install(PACKAGE_INFO ... EXPORT SqliteOrmTargets CXX_MODULES_DIRECTORY ...)`. Its per-configuration part references
+  a module manifest in the format of P3286 (the format of the standard libraries' `modules.json`) by the attribute
+  `cpp_module_metadata`; the manifest names the interface unit relative to itself. `find_package` imports the module
+  from it, and the consumer's build provides `import std` as for any other module.
+
+Verified on 2026-11-10 with a static library of one module interface unit, with and without `import std`, with Ninja:
+by g++-16 with CMake 4.3.6, 4.4.1 and 4.5.0-rc3, and by MSVC 19.51 with CMake 4.3.3 and 4.5.0-rc3 (`import std` by 4.5
+only). A consumer that finds only the CPS file builds and runs `import`.
+
+## Open questions
+
+- `sqlite_orm_module` has to be defined when sqlite_orm is installed, not only as the top-level project.
+- `cmake/SqliteOrmModule.cmake` picks one of `sqlite_orm.ixx`, `.cppm` and `.cxx` for the compiler at configure time,
+  so the installed package would carry the unit for the installer's compiler only. The units differ only in their
+  warning suppressions and comments.
+- The consumer's toolchain has to provide the standard library modules: the interface units import `std.compat`.
+- The Visual Studio generators don't support exporting or installing module information. MSBuild itself compiles an
+  interface unit added to a project, so an MSBuild consumer can add the installed unit by hand.
+- The CPS file requires the package `SQLite3`. CMake resolves the requirements of a CPS package by a nested
+  `find_package` that accepts only a CPS or a CMake configuration package, not a find module like `FindSQLite3`, so a
+  consumer that finds sqlite_orm by the CPS file only fails to configure. A configuration package in
+  `CMAKE_FIND_PACKAGE_REDIRECTS_DIR` that includes CMake's `FindSQLite3.cmake` resolves it: with it, a consumer builds
+  and runs `import sqlite_orm;` from the CPS file (g++-16, CMake 4.5.0-rc3, 2026-11-10). The CMake configuration
+  package resolves `SQLite3` by `find_dependency`, which uses the find module. Which of the two packages
+  `find_package(SqliteOrm)` picks when both are installed is untested.
+
+## Out of scope
+
+There is no build-system-agnostic install location for module interface units as of CMake 4.5. Apart from the CPS
+module manifest, other build systems describe installed modules in their own way, if at all (as of 2026-11):
+
+- Meson 1.10 supports `import std` only, experimentally.
+- Bazel builds dependencies from source; `cc_library` declares interface units by `module_interfaces`
+  (experimental).
+- build2 lists the modules of an installed library in its pkg-config file, by the variable `cxx.modules`.
+- xmake distributes module packages in its own format.
+- vcpkg and Conan rely on the package's CMake configuration files.
