@@ -27,3 +27,17 @@ and how should sync_schema be amended for foreign keys.
 - No PR is open for the branch yet.
 - A comment for #790, closing part 2 and narrowing the issue to part 1, drafted;
   not posted.
+
+# Scene
+2026-11-14, trueqbit and Claude: the #790 comment, drafted in the take before, posted.
+
+# Decided
+- trueqbit: the comment links the plan as "the planning doc", and goes up on #790:
+  https://github.com/fnc12/sqlite_orm/issues/790#issuecomment-6874084954
+- Claude: the link points at the plan in commit a88853cf, not at the branch, so it
+  still resolves once the plan is deleted after its work; the comment names the
+  branch beside it.
+
+# Later
+- The issue's title still names both parts; renaming it to part 1 alone is trueqbit's
+  call, open.
