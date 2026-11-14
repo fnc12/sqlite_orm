@@ -18,28 +18,10 @@
 #include "../vocabulary/node_algorithms.h"  // is_operand_or_bindable, are_valid_operands, unwrap_expression
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
+#include "binary_operator.h"
 #include "operand_tags.h"
 
 namespace sqlite_orm::internal {
-    /**
-     *  L - type of the left operand
-     *  R - type of the right operand
-     *  Ds - the operator's tag, followed by further tags classifying the operator's operand capabilities
-     */
-    template<class L, class R, class... Ds>
-    struct binary_operator : Ds... {
-        using left_type = L;
-        using right_type = R;
-
-        left_type lhs;
-        right_type rhs;
-
-        constexpr binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
-    };
-
-    template<class T>
-    constexpr bool is_binary_operator_v = polyfill::is_specialization_of<T, binary_operator>::value;
-
     struct conc_string {
         using result_type = std::string;
 
@@ -231,22 +213,6 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_unary_operator_v = std::disjunction<polyfill::is_specialization_of<T, unary_minus_t>,
                                                           polyfill::is_specialization_of<T, bitwise_not_t>>::value;
-
-    struct assign_string {
-        std::string_view serialize() const {
-            return "=";
-        }
-    };
-
-    /**
-     *  Result of assign = operator
-     */
-    template<class L, class R>
-    using assign_t = binary_operator<L, R, assign_string>;
-
-    //  note: see `is_conc_v`
-    template<class T>
-    constexpr bool is_assign_v = is_binary_operator_v<T> && std::is_base_of<assign_string, T>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -369,14 +335,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "bitwise_not() argument must be a bindable value or one of sqlite_orm-recognized operands: "
                       "member pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {internal::unwrap_expression(std::move(expression))};
-    }
-
-    template<class L, class R>
-    internal::assign_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>> assign(L lhs, R rhs) {
-        static_assert(internal::is_referencable_operand<L>::value,
-                      "the assignment target must be one of sqlite_orm-recognized operands: member pointers, column "
-                      "pointers, c()-wrapped values, aliases or expressions");
-        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
     }
 
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
