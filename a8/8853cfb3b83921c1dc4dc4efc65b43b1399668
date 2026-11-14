@@ -41,3 +41,12 @@ and how should sync_schema be amended for foreign keys.
 # Later
 - The issue's title still names both parts; renaming it to part 1 alone is trueqbit's
   call, open.
+
+# Scene
+2026-11-14, trueqbit and Claude: the posted #790 comment amended to say when part 2
+was settled.
+
+# Decided
+- trueqbit: the comment names the commit and the PR that settled part 2: bdb47328
+  ("added raw insert", the first commit on dev adding insert_raw_t), merged on
+  2021-09-28 by #793, first tagged in v1.7 - two weeks after #790 was opened.
