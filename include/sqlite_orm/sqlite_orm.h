@@ -6591,7 +6591,7 @@ namespace sqlite_orm::internal {
     using is_dbo_name_literal = std::bool_constant<is_dbo_name_literal_v<T>>;
 
     /**
-     *  Returns the database object name carried by the `dbo_name_literal<…>` element of `annotations`,
+     *  Returns the database object name carried by the `dbo_name_literal<...>` element of `annotations`,
      *  or the type's reflected identifier when no such element is present.
      */
     template<class T, class Tuple>
@@ -6606,7 +6606,7 @@ namespace sqlite_orm::internal {
     }
 
     /**
-     *  Returns a copy of `tuple` with all `dbo_name_literal<…>` elements removed.
+     *  Returns a copy of `tuple` with all `dbo_name_literal<...>` elements removed.
      */
     template<class Tuple>
     constexpr auto filter_out_dbo_name(Tuple&& tuple) {
@@ -7174,12 +7174,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  The mapped object type is explicitly specified, columns and column constraints are deferred from
      *  the object type's non-static data members and their annotations. Class-scope annotations on
-     *  the object type contribute table-level constraints; the optional `[[=orm_name("…")]]` annotation
+     *  the object type contribute table-level constraints; the optional `[[=orm_name("...")]]` annotation
      *  overrides the table name (otherwise the type's reflected identifier is used).
      *
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
      *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
-     *  the `requires` clause — column-level constraints come from annotations only.
+     *  the `requires` clause - column-level constraints come from annotations only.
      *  Table-level constraints naming the object type's members (composite primary key, foreign key,
      *  multi-column unique) cannot be class-scope annotations: a class-head annotation is parsed before
      *  the class name is declared.
@@ -7199,12 +7199,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  The mapped object type is explicitly specified, columns and column constraints are deferred from
      *  the object type's non-static data members and their annotations. Class-scope annotations on
-     *  the object type contribute table-level constraints; the optional `[[=orm_name("…")]]` annotation
+     *  the object type contribute table-level constraints; the optional `[[=orm_name("...")]]` annotation
      *  overrides the table name (otherwise the type's reflected identifier is used).
      *
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
      *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
-     *  the `requires` clause — column-level constraints come from annotations only.
+     *  the `requires` clause - column-level constraints come from annotations only.
      *  Table-level constraints naming the object type's members (composite primary key, foreign key,
      *  multi-column unique) cannot be class-scope annotations: a class-head annotation is parsed before
      *  the class name is declared.
@@ -8728,7 +8728,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a view definition.
      *
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
-     *  The object type must be an aggregate. The optional `[[="…"_orm_name]]` class-scope annotation overrides
+     *  The object type must be an aggregate. The optional `[[="..."_orm_name]]` class-scope annotation overrides
      *  the view name (otherwise the type's reflected identifier is used).
      */
     template<class O, class Select>
@@ -8747,7 +8747,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a view definition.
      *
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
-     *  The object type must be an aggregate. The optional `[[="…"_orm_name]]` class-scope annotation overrides
+     *  The object type must be an aggregate. The optional `[[="..."_orm_name]]` class-scope annotation overrides
      *  the view name (otherwise the type's reflected identifier is used).
      */
     template<orm_table_reference auto table, class Select>
@@ -8961,7 +8961,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *
      *  The mapped object type is determined implicitly from the first column definition.
-     *  An eponymous virtual table is named after its module. Otherwise the optional `[[=orm_name("…")]]`
+     *  An eponymous virtual table is named after its module. Otherwise the optional `[[=orm_name("...")]]`
      *  annotation of the mapped object type supplies the table name (otherwise the type's reflected identifier is used).
      *
      *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
