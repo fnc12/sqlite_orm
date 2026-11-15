@@ -1,0 +1,28 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-15, on #1622:
+"dynamic_order_by_t's data members should be private".
+
+# Decided
+- Checked: no class in dev/, tests/ or examples/ derives from
+  dynamic_order_by_t, and none reads entries or context from outside:
+  order_by_serializer iterates begin()/end(); the one node.entries in
+  traversal/ast_iterator.h is dynamic_set's.
+- trueqbit: "go, commit both and push". Not compiled; trueqbit and CI
+  build.
+
+# Discussed
+Green: pre-commit.sh 0, run twice; clang-format 20 unchanged; no "on
+purpose:". The token stream of ast/order_by.h differs by the access
+specifier alone.
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 474 | 474 | 0 |
+| lines | 58139 | 58139 | 0 |
+| copies | 3915 | 3915 | 0 |
+| hopsMean | 10.4 | 10.4 | 0 |
+| hopsMax | 220 | 220 | 0 |
+| gzipBytes | 471874 | 471873 | -1 |
+
+# Later
+- #1622's body counts six refactor commits under Deviations.
