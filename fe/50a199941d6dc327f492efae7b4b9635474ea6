@@ -1,0 +1,27 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-15, on #1622: "multi_order_by_t
+doesn't need a user-defined constructor anymore".
+
+# Decided
+- Checked: multi_order_by() returns {{std::forward<Args>(args)...}},
+  which copy-list-initializes the args_type tuple either way - through
+  the constructor's parameter before, the member now; nothing else
+  constructs a multi_order_by_t; node_tuple and ast_iterator read only
+  args and args_type (args_type_t).
+- trueqbit: "go, commit both and push". Not compiled; CI's VS 2017
+  (v141) job is the one to watch, an aggregate's brace initialization
+  being where old MSVC differed.
+
+# Discussed
+Green: pre-commit.sh 0, run twice; clang-format 20 unchanged; no "on
+purpose:". The token stream of ast/order_by.h differs by the
+constructor alone.
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 474 | 474 | 0 |
+| lines | 58140 | 58139 | -1 |
+| copies | 3915 | 3915 | 0 |
+| hopsMean | 10.4 | 10.4 | 0 |
+| hopsMax | 220 | 220 | 0 |
+| gzipBytes | 471891 | 471874 | -17 |
