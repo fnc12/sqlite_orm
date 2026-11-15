@@ -52,6 +52,14 @@
 #include "table_name_collector.h"
 
 namespace sqlite_orm::internal {
+    /**
+     *  Purpose: write a node of the DSL or of the schema as SQL text.
+     *
+     *  Intention: a customization point a node specializes, grammar-matching it as `docs/internals/vocabulary-layer.md`
+     *  "How consumers match a node" holds, and `.claude/skills/add-dsl-node/SKILL.md` adds to it; placed by
+     *  `docs/internals/source-layout.md`; draws on the helpers of `serialization/`, and on `type_mapping/` and
+     *  `marshaling/` for the types and values it writes; the storage runs the SQL it writes.
+     */
     template<class T, class SFINAE = void>
     struct statement_serializer;
 

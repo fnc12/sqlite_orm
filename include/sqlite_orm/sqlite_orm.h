@@ -1400,7 +1400,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #pragma once
 
-/** @file Quoting and escaping of SQL text: identifiers, string and blob literals.
+/** @file
+ *  Purpose: quote identifiers and literal values for SQL text.
+ *
+ *  Intention: public, exported by the named module; the statement serializer, its helpers and the storage quote through
+ *  it.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -14319,6 +14323,12 @@ namespace sqlite_orm::internal {
         bool omit_column_type = false;
     };
 
+    /**
+     *  Purpose: carry the context of a serialization.
+     *
+     *  Intention: created by the storage and the views of `result_set/`; the statement serializer passes it down to its
+     *  helpers, and the dynamic nodes of `ast/` keep it to serialize their entries as they are added.
+     */
     template<class DBOs>
     struct serializer_context : serializer_context_base {
         using db_objects_type = DBOs;
@@ -19272,6 +19282,14 @@ namespace sqlite_orm::internal {
 
 // #include "serialization/cte_column_names.h"
 
+/** @file
+ *  Purpose: name the columns of a CTE.
+ *
+ *  Intention: placed by `docs/internals/source-layout.md`; serves `cte_db_objects.h`, which maps a CTE as a table, and
+ *  the statement serializer, which writes the column list of a CTE; built where CTEs are, from SQLite 3.8.3 with
+ *  `SQLITE_ORM_WITH_CTE`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <functional>  //  std::reference_wrapper
@@ -21527,20 +21545,17 @@ namespace sqlite_orm::internal {
 
 namespace sqlite_orm::internal {
     /**
-     *  ast_iterator accepts any expression and a callable object
-     *  which will be called for any node of provided expression.
-     *  E.g. if we pass `where(is_equal(5, max(&User::id, 10))` then
-     *  callable object will be called with 5, &User::id and 10.
-     *  ast_iterator is used in finding literals to be bound to
-     *  a statement, and to collect table names.
-     *  
-     *  Note that not all leaves of the expression tree are visited:
-     *  Column expressions can be more complex, but are passed as a whole to the callable.
-     *  Examples are `column_pointer<>` and `alias_qualified_column_t<>`.
-     *  
-     *  To use `ast_iterator` call `iterate_ast(object, callable);`
-     *  
-     *  `T` is an ast element, e.g. where_t
+     *  Purpose: traverse the nodes of an expression tree.
+     *
+     *  Intention: a customization point a node specializes, grammar-matching it as `docs/internals/vocabulary-layer.md`
+     *  "How consumers match a node" holds, and `.claude/skills/add-dsl-node/SKILL.md` adds to it; placed by
+     *  `docs/internals/source-layout.md` "Vocabulary and traversal"; the binding of parameters in `execution/` and
+     *  `result_set/`, the collection of table names and the lookup of a bound value in
+     *  `execution/get_prepared_statement.h` walk through it.
+     *
+     *  The callable handed to `iterate_ast` is called with each leaf: `where(is_equal(5, max(&User::id, 10)))` calls it
+     *  with 5, `&User::id` and 10. Column expressions such as `column_pointer<>` and `alias_qualified_column_t<>` reach
+     *  the callable whole, rather than leaf by leaf.
      */
     template<class T, class SFINAE = void>
     struct ast_iterator {
@@ -22967,7 +22982,11 @@ namespace sqlite_orm::internal {
         return collectedExpressions;
     }
 
-    /** @short Column expression collector.
+    /**
+     *  Purpose: expand the column expression of a select into its result columns, as SQL text.
+     *
+     *  Intention: a helper of the statement serializer, which alone includes it, placed by
+     *  `docs/internals/source-layout.md`.
      */
     struct column_expressions_collector {
         /** 
@@ -23041,6 +23060,12 @@ namespace sqlite_orm::internal {
 // #include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
+    /**
+     *  Purpose: write the ordering terms of an ORDER BY clause as SQL text.
+     *
+     *  Intention: a part of the statement serializer, which alone includes it, placed by
+     *  `docs/internals/source-layout.md`; `streaming.h` streams a list of ordering terms through it.
+     */
     template<class T, class SFINAE = void>
     struct order_by_serializer;
 
@@ -23121,6 +23146,13 @@ namespace sqlite_orm::internal {
 // #include "quoting.h"
 
 // #include "streaming.h"
+
+/** @file
+ *  Purpose: stream the pieces of SQL text that many statements share.
+ *
+ *  Intention: placed by `docs/internals/source-layout.md`; used by the statement serializer and by `execution/`, whose
+ *  storage and PRAGMAs write some statements directly.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <array>
@@ -23620,6 +23652,13 @@ namespace sqlite_orm::internal {
         table_name_set table_names;
     };
 
+    /**
+     *  Purpose: find the tables an expression refers to.
+     *
+     *  Intention: a callable for `traversal/ast_iterator.h`, placed by `docs/internals/source-layout.md`; serves the
+     *  statement serializer where a statement leaves its tables implicit, and the dynamic SET of
+     *  `ast/crud/set_definitions.h`.
+     */
     template<class DBOs>
     struct table_name_collector : table_name_collector_base {
         using db_objects_type = DBOs;
@@ -23677,6 +23716,14 @@ namespace sqlite_orm::internal {
 }
 
 namespace sqlite_orm::internal {
+    /**
+     *  Purpose: write a node of the DSL or of the schema as SQL text.
+     *
+     *  Intention: a customization point a node specializes, grammar-matching it as `docs/internals/vocabulary-layer.md`
+     *  "How consumers match a node" holds, and `.claude/skills/add-dsl-node/SKILL.md` adds to it; placed by
+     *  `docs/internals/source-layout.md`; draws on the helpers of `serialization/`, and on `type_mapping/` and
+     *  `marshaling/` for the types and values it writes; the storage runs the SQL it writes.
+     */
     template<class T, class SFINAE = void>
     struct statement_serializer;
 
@@ -31282,7 +31329,11 @@ namespace sqlite_orm::internal {
     auto serialize(const T& t, const Ctx& context);
 
     /**
-     *  Serialize a column's default value.
+     *  Purpose: write a column's default value as SQL text, apart from a statement.
+     *
+     *  Intention: serves `schema/column_definitions.h`: a column's default as the storage compares it with the
+     *  database's when it syncs the schema; declares the serializer's entry point, which `statement_serializer.h`
+     *  defines.
      */
     template<class T>
     std::string serialize_default_value(const default_t<T>& dft) {
@@ -31419,6 +31470,15 @@ namespace sqlite_orm::internal {
 // #include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
+    /**
+     *  Purpose: flatten an expression tree into the types of its nodes.
+     *
+     *  Intention: a customization point a node specializes, grammar-matching it as `docs/internals/vocabulary-layer.md`
+     *  "How consumers match a node" holds, and `.claude/skills/add-dsl-node/SKILL.md` adds to it; placed by
+     *  `docs/internals/source-layout.md` "Vocabulary and traversal"; `execution/get_prepared_statement.h` finds the
+     *  type of a bound value through it and the value itself through `ast_iterator.h`, so the two keep a node's
+     *  children in the same order.
+     */
     template<class T, class SFINAE = void>
     struct node_tuple {
         using type = std::tuple<T>;

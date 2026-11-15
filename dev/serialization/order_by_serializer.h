@@ -14,6 +14,12 @@
 #include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
+    /**
+     *  Purpose: write the ordering terms of an ORDER BY clause as SQL text.
+     *
+     *  Intention: a part of the statement serializer, which alone includes it, placed by
+     *  `docs/internals/source-layout.md`; `streaming.h` streams a list of ordering terms through it.
+     */
     template<class T, class SFINAE = void>
     struct order_by_serializer;
 

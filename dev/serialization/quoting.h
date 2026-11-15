@@ -1,6 +1,10 @@
 #pragma once
 
-/** @file Quoting and escaping of SQL text: identifiers, string and blob literals.
+/** @file
+ *  Purpose: quote identifiers and literal values for SQL text.
+ *
+ *  Intention: public, exported by the named module; the statement serializer, its helpers and the storage quote through
+ *  it.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

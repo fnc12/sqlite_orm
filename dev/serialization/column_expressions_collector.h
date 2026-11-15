@@ -58,7 +58,11 @@ namespace sqlite_orm::internal {
         return collectedExpressions;
     }
 
-    /** @short Column expression collector.
+    /**
+     *  Purpose: expand the column expression of a select into its result columns, as SQL text.
+     *
+     *  Intention: a helper of the statement serializer, which alone includes it, placed by
+     *  `docs/internals/source-layout.md`.
      */
     struct column_expressions_collector {
         /** 
