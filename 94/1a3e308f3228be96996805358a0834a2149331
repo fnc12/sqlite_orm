@@ -1,0 +1,51 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-15: the serialization/ and
+traversal/ round of pass 2, before its headers. Branch
+refactor/serialization-header-names off #1619's head (a9a9393d), on
+trueqbit's word: "branch off PR #1619 ... Then base further work on this
+refactor branch ... I want to keep a single working and review line."
+The first of three renames, one move each.
+
+# Decided
+- Claude's draft put every header as an @file block; trueqbit: a file
+  whose reason one construct carries takes the header on that
+  construct's doc-comment, the @file block staying for the node headers
+  of ast/ and schema/ (an internal node struct with a public factory,
+  often a family) and for grouping files. Recorded in campaign.md
+  "Form".
+- cte_column_names_collector.h was named in the singular, after the
+  collector, which does one of three steps; the reason is borne by
+  resolve_cte_column_names. Claude leaned for an @file header;
+  trueqbit offered cte_column_names_collecting.h or cte_column_names.h.
+  Claude's lean, taken: cte_column_names.h - "collecting" narrows the
+  name to step 1 again.
+- History read (git log --follow): ae87b11a combined the collector into
+  one constexpr-if dispatch, 8e9f0b59 looked up an asterisk's table by
+  its mapped type, 0acd384c (note: the include of column_lookup.h it
+  calls). No commit chose the name for a reason beyond the collector.
+- Pure rename: the file at 100% similarity; cte_db_objects.h and
+  statement_serializer.h change their include line; the amalgamation
+  differs in the two include comments alone. TODO.md, docs/, AGENTS.md,
+  .claude/skills/ and the amalgamation manifests name no old path.
+
+# Discussed
+Green: pre-commit.sh 0; clang-format 20 unchanged; no "on purpose:".
+The token streams differ by the include lines, as a rename makes them.
+pre-commit.sh amalgamates before it formats: a run on a tree whose
+includes clang-format then re-sorts leaves a stale amalgamation - a
+second run fixed it here (the reverse sed of the split left storage.h
+unsorted for one run).
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 474 | 474 | 0 |
+| lines | 58107 | 58107 | 0 |
+| copies | 3915 | 3915 | 0 |
+| hopsMean | 10.4 | 10.4 | 0 |
+| hopsMax | 220 | 220 | 0 |
+| gzipBytes | 470740 | 470736 | -4 |
+
+# Later
+- Next: serializing_util.h becomes streaming.h, then
+  default_value_extractor.h becomes default_value_serialization.h; then
+  docs/purpose-intention-serialization fast-forwards here.
