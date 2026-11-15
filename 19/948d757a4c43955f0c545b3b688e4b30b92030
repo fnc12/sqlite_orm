@@ -1,0 +1,69 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-15: the serialization/ round,
+the Purpose check's commit. One report-only ontocratic-reviewer
+dispatch, the Purpose rule alone, no suspects, the sqlite.org pages
+(lang_select, lang_with, lang_expr, lang_keywords) fetched into the
+scratchpad. Claude verified each finding against the code before
+offering it; trueqbit: "your leans".
+
+# Decided
+Purposes, old -> new:
+- traversal/node_tuple.h: "flatten an expression tree into the types of
+  its nodes." -> "... of its leaves." Only the primary template yields
+  std::tuple<T>; every specialization yields its children (where,
+  operators, select, function calls) or nothing (aliases, into, the
+  implicit join constraint) - the order get_prepared_statement.h lines
+  up with the leaves ast_iterator hands to its callable.
+- serialization/streaming.h: "stream the pieces of SQL text that many
+  statements share." -> "stream pieces of SQL text into the statement
+  being written." Several modes have one caller (compound expressions,
+  column constraints of a schema definition, a CTE's constraints), and
+  the sharing is a relation: the Intention names it ("used by the
+  statement serializer and by execution/ ..."). trueqbit asked whether
+  the Purpose needs "shared" or the Intention holds it; Claude: the
+  Intention, the Purpose keeps the reason.
+- serialization/quoting.h: "quote identifiers and literal values for
+  SQL text." -> "quote identifiers and string literals for SQL text."
+  lang_expr.html#literal_values_constants_: literal values are
+  "integers, floating point numbers, strings, BLOBs, or NULLs"; "BLOB
+  literals are string literals containing hexadecimal data".
+- order_by_serializer.h: fixed by the refactor d43e0e69, its Purpose
+  unchanged.
+Held, Claude's leans:
+- column_expressions_collector.h (reviewer: wider than a select's
+  result columns, uncertain): the columns/struct serializer
+  (statement_serializer.h, the use_parentheses branch) runs alone only
+  in tests/statement_serializer_tests/select_constraints.cpp:20; a
+  select's own columns go through collect_column_expressions(sel.col).
+- "expression tree" in ast_iterator.h, node_tuple.h,
+  table_name_collector.h: the tree's term (source-layout.md "Walking an
+  expression tree"; a prepared statement's node is its `expression`),
+  though SQLite's `expr` is narrower.
+- statement_serializer's name, narrower than its Purpose: taken as
+  given; ledger.
+- serializer_context.h, a Purpose restating the name: trueqbit's ruling
+  of this round; campaign.md "When the header adds to the name".
+- Clean per the reviewer: default_value_serialization.h,
+  cte_column_names.h, table_name_collector.h, statement_serializer.h,
+  ast_iterator.h.
+- serialization-round/serialization_headers.py carries the new
+  Purposes, so a rerun on a clean tree writes them.
+
+# Discussed
+Green: pre-commit.sh 0; token streams identical; clang-format 20
+unchanged; no "on purpose:"; no CR.
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 474 | 474 | 0 |
+| lines | 58140 | 58140 | 0 |
+| copies | 3915 | 3915 | 0 |
+| hopsMean | 10.4 | 10.4 | 0 |
+| hopsMax | 220 | 220 | 0 |
+| gzipBytes | 471883 | 471891 | +8 |
+
+# Later
+- The draft pull request on docs/purpose-intention-builtin; the branch
+  is pushed later, on trueqbit's word ("push the branch later").
+- fnc12/sqlite_orm#1621 (opened this session): blob literals written as
+  raw bytes by field_printer<std::vector<char>>.
