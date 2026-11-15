@@ -1401,7 +1401,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #pragma once
 
 /** @file
- *  Purpose: quote identifiers and literal values for SQL text.
+ *  Purpose: quote identifiers and string literals for SQL text.
  *
  *  Intention: public, exported by the named module; the statement serializer, its helpers and the storage quote through
  *  it.
@@ -23146,7 +23146,7 @@ namespace sqlite_orm::internal {
 // #include "streaming.h"
 
 /** @file
- *  Purpose: stream the pieces of SQL text that many statements share.
+ *  Purpose: stream pieces of SQL text into the statement being written.
  *
  *  Intention: placed by `docs/internals/source-layout.md`; used by the statement serializer and by `execution/`, whose
  *  storage and PRAGMAs write some statements directly.
@@ -31468,7 +31468,7 @@ namespace sqlite_orm::internal {
 
 namespace sqlite_orm::internal {
     /**
-     *  Purpose: flatten an expression tree into the types of its nodes.
+     *  Purpose: flatten an expression tree into the types of its leaves.
      *
      *  Intention: a customization point a node specializes, grammar-matching it as `docs/internals/vocabulary-layer.md`
      *  "How consumers match a node" holds, and `.claude/skills/add-dsl-node/SKILL.md` adds to it; placed by

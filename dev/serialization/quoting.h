@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: quote identifiers and literal values for SQL text.
+ *  Purpose: quote identifiers and string literals for SQL text.
  *
  *  Intention: public, exported by the named module; the statement serializer, its helpers and the storage quote through
  *  it.

@@ -16,7 +16,7 @@
 
 namespace sqlite_orm::internal {
     /**
-     *  Purpose: flatten an expression tree into the types of its nodes.
+     *  Purpose: flatten an expression tree into the types of its leaves.
      *
      *  Intention: a customization point a node specializes, grammar-matching it as `docs/internals/vocabulary-layer.md`
      *  "How consumers match a node" holds, and `.claude/skills/add-dsl-node/SKILL.md` adds to it; placed by
