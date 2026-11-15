@@ -1,0 +1,16 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-15: the merge cascade #1613 ->
+#1616 -> #1617 -> #1619, last step: #1617 at 5d614899 into #1619's
+branch (367bbe0d).
+
+# Decided
+- Merged without conflicts. #1618's commits (a939017a, db64cfd5) were
+  merged here at 08e83adb and come again through dev's 2d2ad653: the
+  same commits, nothing to resolve. The amalgamation pre-commit.sh
+  regenerates equals the merged one.
+- No header names a renamed path; dev/ holds no non-ASCII byte. TODO.md
+  holds nine em dashes, all on dev already (the ASCII chore, #1610, took
+  the sources only).
+
+# Discussed
+Green: pre-commit.sh 0; clang-format 20 unchanged; no "on purpose:".
