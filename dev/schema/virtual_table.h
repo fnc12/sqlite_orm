@@ -192,7 +192,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *
      *  The mapped object type is determined implicitly from the first column definition.
-     *  An eponymous virtual table is named after its module. Otherwise the optional `[[=orm_name("…")]]`
+     *  An eponymous virtual table is named after its module. Otherwise the optional `[[=orm_name("...")]]`
      *  annotation of the mapped object type supplies the table name (otherwise the type's reflected identifier is used).
      *
      *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`

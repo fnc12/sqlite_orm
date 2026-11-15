@@ -8,7 +8,7 @@
 #endif
 
 #include "dbstat.h"
-#include "pragma_table_info.h"
+#include "pragma_tables.h"
 #include "sqlite_schema.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
