@@ -158,7 +158,7 @@ namespace sqlite_orm::internal {
             this->entries.clear();
         }
 
-      protected:
+      private:
         std::vector<entry_t> entries;
         context_t context;
     };
