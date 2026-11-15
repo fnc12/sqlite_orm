@@ -1,0 +1,17 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-15: "Merge-cascade latest
+origin/refactor/schema-sqlite-terms (PR #1613) -> #1616 -> #1617 ->
+#1619". This is the first step: #1613 at e4a03701 into #1616's branch
+(0bac9513).
+
+# Decided
+- Merged without conflicts. The amalgamation pre-commit.sh regenerates
+  equals the merged one.
+- The incoming dev/ changes (26 files: keyword_literals.h,
+  binary_operator.h/assignment.h, the ASCII sources, auxiliary()'s
+  guard, #1618's moves) use none of what #1616 moved: the only user of
+  table_facts.h's algorithms among them is execution/storage.h, which
+  includes table_facts.h. Not compiled; trueqbit and CI build.
+
+# Discussed
+Green: pre-commit.sh 0; clang-format 20 unchanged; no "on purpose:".
