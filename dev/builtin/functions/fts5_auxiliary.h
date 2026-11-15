@@ -22,7 +22,7 @@
 #include "../../ast/builtin_function.h"
 #include "../../ast/column_pointer.h"  //  column
 #include "../../vocabulary/node_algorithms.h"  //  hidden_column_of_vtab, hidden_field_of_vtab
-#include "fts5.h"
+#include "../dbos/fts5.h"
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES

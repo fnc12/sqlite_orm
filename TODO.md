@@ -50,6 +50,7 @@
 
 * blob incremental I/O https://sqlite.org/c3ref/blob_open.html
 * user-defined window functions (`sqlite3_create_window_function` with step/inverse/value/final)
+* custom R*Tree queries https://sqlite.org/rtree.html#customquery: registering geometry and query callbacks (`sqlite3_rtree_geometry_callback`, `sqlite3_rtree_query_callback`), the functions `match()` names in `id MATCH circle(...)`
 * function flags for user-defined functions: `SQLITE_DETERMINISTIC`, `SQLITE_DIRECTONLY` (3.30), `SQLITE_INNOCUOUS` (3.31)
 * hooks: update hook, commit hook, rollback hook, preupdate hook, `sqlite3_trace_v2`, authorizer
 * C++ callbacks on trigger events: a trigger that writes each event into an internal table, read back in C++ through the update hook https://sqlite.org/c3ref/update_hook.html to call the user's callback
