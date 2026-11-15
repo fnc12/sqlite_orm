@@ -87,6 +87,10 @@ from anywhere else.
   declares: the `/** @file */` block where the file groups related symbols, otherwise the
   doc-comment of its main symbol or facility. A Markdown document carries them as a blockquote
   under its title. The comment rules above apply below them.
+- A Purpose or doc-comment naming an SQL or SQLite construct takes the construct's meaning from
+  SQLite's documentation, or from the documentation of the module that defines it, rather than
+  from the cases sqlite_orm uses it for today. A page silent on a case leaves the case open, for
+  the maintainers to settle.
 - Type metafunctions: `_of` names a type computed from a node (`column_result_of_t`,
   `table_type_of_t`); `_for` names a selection or construction for given parameters
   (`node_tuple_for`). No names like "proxy" for plain type computations.
