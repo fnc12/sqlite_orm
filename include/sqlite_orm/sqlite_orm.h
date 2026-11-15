@@ -22810,7 +22810,317 @@ namespace sqlite_orm::internal {
 // basic_generated_always
 // #include "../serialization/serializer_context.h"
 
-// #include "../serialization/serializing_util.h"
+// #include "../serialization/statement_serializer.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <sstream>  //  std::ostringstream
+#include <string>  //  std::string
+#include <string_view>  //  std::string_view
+#include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref, std::disjunction
+#include <utility>  //  std::make_pair
+#include <vector>  //  std::vector
+#ifndef SQLITE_ORM_OMITS_CODECVT
+#include <codecvt>  //  std::codecvt_utf8_utf16
+#include <locale>  // std::wstring_convert
+#endif
+#include <array>
+#include <functional>  //  std::invoke
+#include <list>  //  std::list
+#include <memory>
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#include <ranges>  //  std::views::transform
+#endif
+#endif
+
+// #include "../functional/cxx_polyfill/functional.h"
+// polyfill::identity
+// #include "../functional/cxx_polyfill/type_traits.h"
+// std::remove_cvref, std::disjunction
+// #include "../functional/always_default.h"
+
+namespace sqlite_orm::internal {
+    /*  
+     *  Function object whose variadic call operator always returns the default constructed value of its template parameter type.
+     */
+    template<class R>
+    struct always_default_of {
+        template<class... Args>
+        SQLITE_ORM_STATIC_CALLOP constexpr R operator()(Args&&...) SQLITE_ORM_OR_CONST_CALLOP {
+            return R();
+        }
+
+        using is_transparent = int;
+    };
+
+    template<class R>
+    constexpr always_default_of<R> always_default{};
+}
+
+// #include "../functional/gsl.h"
+
+// #include "../functional/mpl/convenience.h"
+
+// #include "../functional/ref_unwrapping.h"
+//  forward_lvalue_ref
+// #include "../functional/tuple_helper/tuple_filter.h"
+
+// #include "../functional/type_traits.h"
+
+// #include "../ast/crud/insert.h"
+// conflict_action
+// #include "../ast/crud/set.h"
+
+// #include "../ast/literal.h"
+
+// #include "../ast/result_columns.h"
+
+// #include "../builtin/collations.h"
+//  collate_argument_to_string
+// #include "../error_code.h"
+
+// #include "../execution/prepared_statement.h"
+
+// #include "../marshaling/field_printer.h"
+
+// #include "../marshaling/statement_binder.h"
+
+// #include "../schema/algorithms/table_facts.h"
+//  table_primary_key_contains, is_single_table_primary_key
+// #include "../schema/constraints/generated_always.h"
+// basic_generated_always
+// #include "../schema/constraints/primary_key.h"
+// conflict_clause_t
+// #include "../type_mapping/type_printer.h"
+
+// #include "../vocabulary/node_algorithms.h"
+
+// #include "../vocabulary/node_fwd.h"
+// column_constraints
+// #include "../vocabulary/node_traits.h"
+
+// #include "column_expressions_collector.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <functional>  //  std::reference_wrapper
+#include <string>  //  std::string
+#include <system_error>
+#include <type_traits>  //  std::is_base_of
+#include <utility>  //  std::move
+#include <vector>  //  std::vector
+#endif
+
+// #include "../functional/mpl/convenience.h"
+
+// #include "../functional/tuple_helper/tuple_iteration.h"
+
+// #include "../functional/type_traits.h"
+
+// #include "../error_code.h"
+
+// #include "../schema/algorithms/table_lookup.h"
+//  pick_table
+// #include "../schema/column_identifier.h"
+
+// #include "../schema/table_identifier.h"
+
+// #include "../vocabulary/node_algorithms.h"
+// access_column_expression, mapped_type_of_t
+// #include "../vocabulary/node_traits.h"
+
+// #include "quoting.h"
+
+namespace sqlite_orm::internal {
+    template<class T, class Ctx>
+    auto serialize(const T& t, const Ctx& context);
+
+    template<class T, class Ctx>
+    std::vector<std::string>& collect_table_column_expressions(std::vector<std::string>& collectedExpressions,
+                                                               bool definedOrder,
+                                                               const Ctx& context) {
+        if (definedOrder) {
+            auto& table = pick_table<mapped_type_of_t<T>>(context.db_objects);
+            collectedExpressions.reserve(collectedExpressions.size() + table.template count_of<is_column>());
+            table.for_each_column([qualified = !context.omit_table_name,
+                                   &tableName = table.name,
+                                   &collectedExpressions](const column_identifier& column) {
+                if constexpr (is_alias_v<T>) {
+                    collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + "." +
+                                                   quote_identifier(column.name));
+                } else if (qualified) {
+                    collectedExpressions.push_back(quote_identifier(tableName) + "." + quote_identifier(column.name));
+                } else {
+                    collectedExpressions.push_back(quote_identifier(column.name));
+                }
+            });
+        } else {
+            collectedExpressions.reserve(collectedExpressions.size() + 1);
+            if constexpr (is_alias_v<T>) {
+                collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + ".*");
+            } else if (!context.omit_table_name) {
+                const table_identifier& table = pick_table<mapped_type_of_t<T>>(context.db_objects);
+                collectedExpressions.push_back(quote_identifier(table.name) + ".*");
+            } else {
+                collectedExpressions.emplace_back("*");
+            }
+        }
+
+        return collectedExpressions;
+    }
+
+    /** @short Column expression collector.
+     */
+    struct column_expressions_collector {
+        /** 
+         *  The default implementation simply serializes the passed argument.
+         */
+        template<class E, class Ctx>
+        std::vector<std::string>& operator()(const E& expression, const Ctx& context) {
+            // ...
+            if constexpr (polyfill::is_specialization_of_v<E, std::reference_wrapper>) {
+                return (*this)(expression.get(), context);
+            }
+            // ...
+            else if constexpr (is_asterisk_v<E> || is_object_node_v<E>) {
+                return collect_table_column_expressions<type_t<E>>(this->collectedExpressions,
+                                                                   expression.defined_order,
+                                                                   context);
+            }
+            // ...
+            else if constexpr (is_columns_v<E> || is_struct_v<E>) {
+                this->collectedExpressions.reserve(this->collectedExpressions.size() + expression.count);
+                iterate_tuple(expression.columns, [this, &context](auto& colExpr) {
+                    (*this)(colExpr, context);
+                });
+                // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
+                if constexpr (tuple_has<columns_type_t<E>, is_asterisk>::value) {
+                    this->collectedExpressions.shrink_to_fit();
+                }
+                return this->collectedExpressions;
+            }
+            // ...
+            else {
+                std::string columnExpression = serialize(expression, context);
+                if (columnExpression.empty()) {
+                    throw std::system_error{orm_error_code::column_not_found};
+                }
+                this->collectedExpressions.reserve(this->collectedExpressions.size() + 1);
+                this->collectedExpressions.push_back(std::move(columnExpression));
+                return this->collectedExpressions;
+            }
+        }
+
+        std::vector<std::string> collectedExpressions;
+    };
+
+    template<class T, class Ctx>
+    std::vector<std::string> collect_column_expressions(const T& expression, const Ctx& context) {
+        column_expressions_collector collector;
+        return collector(access_column_expression(expression), context);
+    }
+}
+
+// #include "cte_column_names.h"
+
+// #include "order_by_serializer.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <array>
+#include <sstream>  //  std::ostringstream
+#include <string>  //  std::string
+#include <utility>  //  std::exchange
+#endif
+
+// #include "../functional/gsl.h"
+
+// #include "../functional/type_traits.h"
+
+// #include "../ast/order_by.h"
+//  order_by_base, dynamic_order_by_entry_t
+// #include "../vocabulary/node_fwd.h"
+// order_by_base
+// #include "../vocabulary/node_traits.h"
+
+namespace sqlite_orm::internal {
+    template<class T, class SFINAE = void>
+    struct order_by_serializer;
+
+    template<class T, class Ctx>
+    std::string serialize_order_by(const T& t, const Ctx& context) {
+        order_by_serializer<T> serializer;
+        return serializer(t, context);
+    }
+
+    inline void seralize_collate(std::ostream& ss, const order_by_base& orderBy) {
+        if (!orderBy._collate_argument.empty()) {
+            ss << " COLLATE " << orderBy._collate_argument;
+        }
+        switch (orderBy._order) {
+            case 1:
+                ss << " ASC";
+                break;
+            case -1:
+                ss << " DESC";
+                break;
+        }
+#if SQLITE_VERSION_NUMBER >= 3030000
+        switch (orderBy._nulls) {
+            case 1:
+                ss << " NULLS FIRST";
+                break;
+            case -1:
+                ss << " NULLS LAST";
+                break;
+        }
+#endif
+    }
+
+    template<class T>
+    struct order_by_serializer<T, match_if<is_order_by, T>> {
+        using statement_type = T;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::ostringstream ss;
+            auto newContext = context;
+            newContext.omit_table_name = false;
+
+            ss << serialize(orderBy._expression, newContext);
+            seralize_collate(ss, orderBy);
+            return ss.str();
+        }
+    };
+
+    template<class T>
+    struct order_by_serializer<T, match_if<is_dynamic_order_by, T>> {
+        using statement_type = T;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
+                                                        const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+            std::ostringstream ss;
+            ss << static_cast<std::string>(orderBy) << " ";
+            static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
+#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+            for (bool first = true; const dynamic_order_by_entry_t& entry: orderBy) {
+                ss << sep[std::exchange(first, false)] << entry.name;
+                seralize_collate(ss, entry);
+            }
+#else
+            bool first = true;
+            for (const dynamic_order_by_entry_t& entry: orderBy) {
+                ss << sep[std::exchange(first, false)] << entry.name;
+                seralize_collate(ss, entry);
+            }
+#endif
+            return ss.str();
+        }
+    };
+}
+
+// #include "quoting.h"
+
+// #include "streaming.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <array>
@@ -23286,318 +23596,6 @@ namespace sqlite_orm::internal {
         return ss;
     }
 }
-
-// #include "../serialization/statement_serializer.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <sstream>  //  std::ostringstream
-#include <string>  //  std::string
-#include <string_view>  //  std::string_view
-#include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref, std::disjunction
-#include <utility>  //  std::make_pair
-#include <vector>  //  std::vector
-#ifndef SQLITE_ORM_OMITS_CODECVT
-#include <codecvt>  //  std::codecvt_utf8_utf16
-#include <locale>  // std::wstring_convert
-#endif
-#include <array>
-#include <functional>  //  std::invoke
-#include <list>  //  std::list
-#include <memory>
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
-#include <ranges>  //  std::views::transform
-#endif
-#endif
-
-// #include "../functional/cxx_polyfill/functional.h"
-// polyfill::identity
-// #include "../functional/cxx_polyfill/type_traits.h"
-// std::remove_cvref, std::disjunction
-// #include "../functional/always_default.h"
-
-namespace sqlite_orm::internal {
-    /*  
-     *  Function object whose variadic call operator always returns the default constructed value of its template parameter type.
-     */
-    template<class R>
-    struct always_default_of {
-        template<class... Args>
-        SQLITE_ORM_STATIC_CALLOP constexpr R operator()(Args&&...) SQLITE_ORM_OR_CONST_CALLOP {
-            return R();
-        }
-
-        using is_transparent = int;
-    };
-
-    template<class R>
-    constexpr always_default_of<R> always_default{};
-}
-
-// #include "../functional/gsl.h"
-
-// #include "../functional/mpl/convenience.h"
-
-// #include "../functional/ref_unwrapping.h"
-//  forward_lvalue_ref
-// #include "../functional/tuple_helper/tuple_filter.h"
-
-// #include "../functional/type_traits.h"
-
-// #include "../ast/crud/insert.h"
-// conflict_action
-// #include "../ast/crud/set.h"
-
-// #include "../ast/literal.h"
-
-// #include "../ast/result_columns.h"
-
-// #include "../builtin/collations.h"
-//  collate_argument_to_string
-// #include "../error_code.h"
-
-// #include "../execution/prepared_statement.h"
-
-// #include "../marshaling/field_printer.h"
-
-// #include "../marshaling/statement_binder.h"
-
-// #include "../schema/algorithms/table_facts.h"
-//  table_primary_key_contains, is_single_table_primary_key
-// #include "../schema/constraints/generated_always.h"
-// basic_generated_always
-// #include "../schema/constraints/primary_key.h"
-// conflict_clause_t
-// #include "../type_mapping/type_printer.h"
-
-// #include "../vocabulary/node_algorithms.h"
-
-// #include "../vocabulary/node_fwd.h"
-// column_constraints
-// #include "../vocabulary/node_traits.h"
-
-// #include "column_expressions_collector.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <functional>  //  std::reference_wrapper
-#include <string>  //  std::string
-#include <system_error>
-#include <type_traits>  //  std::is_base_of
-#include <utility>  //  std::move
-#include <vector>  //  std::vector
-#endif
-
-// #include "../functional/mpl/convenience.h"
-
-// #include "../functional/tuple_helper/tuple_iteration.h"
-
-// #include "../functional/type_traits.h"
-
-// #include "../error_code.h"
-
-// #include "../schema/algorithms/table_lookup.h"
-//  pick_table
-// #include "../schema/column_identifier.h"
-
-// #include "../schema/table_identifier.h"
-
-// #include "../vocabulary/node_algorithms.h"
-// access_column_expression, mapped_type_of_t
-// #include "../vocabulary/node_traits.h"
-
-// #include "quoting.h"
-
-namespace sqlite_orm::internal {
-    template<class T, class Ctx>
-    auto serialize(const T& t, const Ctx& context);
-
-    template<class T, class Ctx>
-    std::vector<std::string>& collect_table_column_expressions(std::vector<std::string>& collectedExpressions,
-                                                               bool definedOrder,
-                                                               const Ctx& context) {
-        if (definedOrder) {
-            auto& table = pick_table<mapped_type_of_t<T>>(context.db_objects);
-            collectedExpressions.reserve(collectedExpressions.size() + table.template count_of<is_column>());
-            table.for_each_column([qualified = !context.omit_table_name,
-                                   &tableName = table.name,
-                                   &collectedExpressions](const column_identifier& column) {
-                if constexpr (is_alias_v<T>) {
-                    collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + "." +
-                                                   quote_identifier(column.name));
-                } else if (qualified) {
-                    collectedExpressions.push_back(quote_identifier(tableName) + "." + quote_identifier(column.name));
-                } else {
-                    collectedExpressions.push_back(quote_identifier(column.name));
-                }
-            });
-        } else {
-            collectedExpressions.reserve(collectedExpressions.size() + 1);
-            if constexpr (is_alias_v<T>) {
-                collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + ".*");
-            } else if (!context.omit_table_name) {
-                const table_identifier& table = pick_table<mapped_type_of_t<T>>(context.db_objects);
-                collectedExpressions.push_back(quote_identifier(table.name) + ".*");
-            } else {
-                collectedExpressions.emplace_back("*");
-            }
-        }
-
-        return collectedExpressions;
-    }
-
-    /** @short Column expression collector.
-     */
-    struct column_expressions_collector {
-        /** 
-         *  The default implementation simply serializes the passed argument.
-         */
-        template<class E, class Ctx>
-        std::vector<std::string>& operator()(const E& expression, const Ctx& context) {
-            // ...
-            if constexpr (polyfill::is_specialization_of_v<E, std::reference_wrapper>) {
-                return (*this)(expression.get(), context);
-            }
-            // ...
-            else if constexpr (is_asterisk_v<E> || is_object_node_v<E>) {
-                return collect_table_column_expressions<type_t<E>>(this->collectedExpressions,
-                                                                   expression.defined_order,
-                                                                   context);
-            }
-            // ...
-            else if constexpr (is_columns_v<E> || is_struct_v<E>) {
-                this->collectedExpressions.reserve(this->collectedExpressions.size() + expression.count);
-                iterate_tuple(expression.columns, [this, &context](auto& colExpr) {
-                    (*this)(colExpr, context);
-                });
-                // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
-                if constexpr (tuple_has<columns_type_t<E>, is_asterisk>::value) {
-                    this->collectedExpressions.shrink_to_fit();
-                }
-                return this->collectedExpressions;
-            }
-            // ...
-            else {
-                std::string columnExpression = serialize(expression, context);
-                if (columnExpression.empty()) {
-                    throw std::system_error{orm_error_code::column_not_found};
-                }
-                this->collectedExpressions.reserve(this->collectedExpressions.size() + 1);
-                this->collectedExpressions.push_back(std::move(columnExpression));
-                return this->collectedExpressions;
-            }
-        }
-
-        std::vector<std::string> collectedExpressions;
-    };
-
-    template<class T, class Ctx>
-    std::vector<std::string> collect_column_expressions(const T& expression, const Ctx& context) {
-        column_expressions_collector collector;
-        return collector(access_column_expression(expression), context);
-    }
-}
-
-// #include "cte_column_names.h"
-
-// #include "order_by_serializer.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <array>
-#include <sstream>  //  std::ostringstream
-#include <string>  //  std::string
-#include <utility>  //  std::exchange
-#endif
-
-// #include "../functional/gsl.h"
-
-// #include "../functional/type_traits.h"
-
-// #include "../ast/order_by.h"
-//  order_by_base, dynamic_order_by_entry_t
-// #include "../vocabulary/node_fwd.h"
-// order_by_base
-// #include "../vocabulary/node_traits.h"
-
-namespace sqlite_orm::internal {
-    template<class T, class SFINAE = void>
-    struct order_by_serializer;
-
-    template<class T, class Ctx>
-    std::string serialize_order_by(const T& t, const Ctx& context) {
-        order_by_serializer<T> serializer;
-        return serializer(t, context);
-    }
-
-    inline void seralize_collate(std::ostream& ss, const order_by_base& orderBy) {
-        if (!orderBy._collate_argument.empty()) {
-            ss << " COLLATE " << orderBy._collate_argument;
-        }
-        switch (orderBy._order) {
-            case 1:
-                ss << " ASC";
-                break;
-            case -1:
-                ss << " DESC";
-                break;
-        }
-#if SQLITE_VERSION_NUMBER >= 3030000
-        switch (orderBy._nulls) {
-            case 1:
-                ss << " NULLS FIRST";
-                break;
-            case -1:
-                ss << " NULLS LAST";
-                break;
-        }
-#endif
-    }
-
-    template<class T>
-    struct order_by_serializer<T, match_if<is_order_by, T>> {
-        using statement_type = T;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            std::ostringstream ss;
-            auto newContext = context;
-            newContext.omit_table_name = false;
-
-            ss << serialize(orderBy._expression, newContext);
-            seralize_collate(ss, orderBy);
-            return ss.str();
-        }
-    };
-
-    template<class T>
-    struct order_by_serializer<T, match_if<is_dynamic_order_by, T>> {
-        using statement_type = T;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
-                                                        const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            std::ostringstream ss;
-            ss << static_cast<std::string>(orderBy) << " ";
-            static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
-#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
-            for (bool first = true; const dynamic_order_by_entry_t& entry: orderBy) {
-                ss << sep[std::exchange(first, false)] << entry.name;
-                seralize_collate(ss, entry);
-            }
-#else
-            bool first = true;
-            for (const dynamic_order_by_entry_t& entry: orderBy) {
-                ss << sep[std::exchange(first, false)] << entry.name;
-                seralize_collate(ss, entry);
-            }
-#endif
-            return ss.str();
-        }
-    };
-}
-
-// #include "quoting.h"
-
-// #include "serializing_util.h"
 
 // #include "table_name_collector.h"
 
@@ -26099,6 +26097,8 @@ namespace sqlite_orm::internal {
     };
 }
 
+// #include "../serialization/streaming.h"
+
 // #include "../sqlite3/sqlite3_statements.h"
 
 // #include "../sqlite3/sqlite3_types.h"
@@ -26386,7 +26386,7 @@ namespace sqlite_orm::internal {
 
 // #include "../serialization/quoting.h"
 
-// #include "../serialization/serializing_util.h"
+// #include "../serialization/streaming.h"
 
 // #include "../sqlite3/sqlite3_errors.h"
 
@@ -26629,7 +26629,7 @@ namespace sqlite_orm::internal {
 
 // #include "../marshaling/row_extractor.h"
 
-// #include "../serialization/serializing_util.h"
+// #include "../serialization/streaming.h"
 
 // #include "../sqlite3/sqlite3_statements.h"
 
@@ -31084,7 +31084,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../schema/column_identifier.h"
 
-// #include "../serialization/serializing_util.h"
+// #include "../serialization/streaming.h"
 
 // #include "../sqlite3/sqlite3_errors.h"
 

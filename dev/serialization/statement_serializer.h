@@ -48,7 +48,7 @@
 #include "cte_column_names.h"
 #include "order_by_serializer.h"
 #include "quoting.h"
-#include "serializing_util.h"
+#include "streaming.h"
 #include "table_name_collector.h"
 
 namespace sqlite_orm::internal {

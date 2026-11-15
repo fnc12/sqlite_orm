@@ -14,7 +14,7 @@
 #include "../functional/gsl.h"
 #include "../builtin/dbos/pragma_tables.h"
 #include "../marshaling/row_extractor.h"
-#include "../serialization/serializing_util.h"
+#include "../serialization/streaming.h"
 #include "../sqlite3/sqlite3_statements.h"
 #include "connection_holder.h"
 #include "journal_mode.h"
