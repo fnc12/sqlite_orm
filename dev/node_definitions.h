@@ -25,6 +25,7 @@
 
 #include "ast/alias.h"
 #include "ast/app_function.h"
+#include "ast/assignment.h"
 #include "ast/between.h"
 #include "ast/binary_condition.h"
 #include "ast/builtin_function.h"
@@ -50,6 +51,7 @@
 #include "ast/in.h"
 #include "ast/is_null.h"
 #include "ast/join.h"
+#include "ast/keyword_literals.h"
 #include "ast/limit.h"
 #include "ast/literal.h"
 #include "ast/match.h"
@@ -63,7 +65,6 @@
 #include "ast/rowid.h"
 #include "ast/rowset_deduplicators.h"
 #include "ast/select.h"
-#include "ast/special_keywords.h"
 #include "ast/table_reference.h"
 #include "ast/values.h"
 #include "ast/where.h"

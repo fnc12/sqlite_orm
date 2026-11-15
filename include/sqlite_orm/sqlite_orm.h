@@ -6679,7 +6679,7 @@ namespace sqlite_orm::internal {
     using is_dbo_name_literal = std::bool_constant<is_dbo_name_literal_v<T>>;
 
     /**
-     *  Returns the database object name carried by the `dbo_name_literal<…>` element of `annotations`,
+     *  Returns the database object name carried by the `dbo_name_literal<...>` element of `annotations`,
      *  or the type's reflected identifier when no such element is present.
      */
     template<class T, class Tuple>
@@ -6694,7 +6694,7 @@ namespace sqlite_orm::internal {
     }
 
     /**
-     *  Returns a copy of `tuple` with all `dbo_name_literal<…>` elements removed.
+     *  Returns a copy of `tuple` with all `dbo_name_literal<...>` elements removed.
      */
     template<class Tuple>
     constexpr auto filter_out_dbo_name(Tuple&& tuple) {
@@ -7238,12 +7238,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  The mapped object type is explicitly specified, columns and column constraints are deferred from
      *  the object type's non-static data members and their annotations. Class-scope annotations on
-     *  the object type contribute table-level constraints; the optional `[[=orm_name("…")]]` annotation
+     *  the object type contribute table-level constraints; the optional `[[=orm_name("...")]]` annotation
      *  overrides the table name (otherwise the type's reflected identifier is used).
      *
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
      *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
-     *  the `requires` clause — column-level constraints come from annotations only.
+     *  the `requires` clause - column-level constraints come from annotations only.
      *  Table-level constraints naming the object type's members (composite primary key, foreign key,
      *  multi-column unique) cannot be class-scope annotations: a class-head annotation is parsed before
      *  the class name is declared.
@@ -7266,12 +7266,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  The mapped object type is explicitly specified, columns and column constraints are deferred from
      *  the object type's non-static data members and their annotations. Class-scope annotations on
-     *  the object type contribute table-level constraints; the optional `[[=orm_name("…")]]` annotation
+     *  the object type contribute table-level constraints; the optional `[[=orm_name("...")]]` annotation
      *  overrides the table name (otherwise the type's reflected identifier is used).
      *
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
      *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
-     *  the `requires` clause — column-level constraints come from annotations only.
+     *  the `requires` clause - column-level constraints come from annotations only.
      *  Table-level constraints naming the object type's members (composite primary key, foreign key,
      *  multi-column unique) cannot be class-scope annotations: a class-head annotation is parsed before
      *  the class name is declared.
@@ -7326,7 +7326,6 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_FTS5_SUPPORTED
 #if SQLITE_VERSION_NUMBER >= 3024000
     /**
      *  Auxiliary virtual table column
@@ -7336,7 +7335,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     constexpr internal::auxiliary_t auxiliary() {
         return {};
     }
-#endif
 #endif
 }
 
@@ -8936,7 +8934,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a view definition.
      *
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
-     *  The object type must be an aggregate. The optional `[[="…"_orm_name]]` class-scope annotation overrides
+     *  The object type must be an aggregate. The optional `[[="..."_orm_name]]` class-scope annotation overrides
      *  the view name (otherwise the type's reflected identifier is used).
      *
      *  https://www.sqlite.org/lang_createview.html
@@ -8957,7 +8955,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a view definition.
      *
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
-     *  The object type must be an aggregate. The optional `[[="…"_orm_name]]` class-scope annotation overrides
+     *  The object type must be an aggregate. The optional `[[="..."_orm_name]]` class-scope annotation overrides
      *  the view name (otherwise the type's reflected identifier is used).
      *
      *  https://www.sqlite.org/lang_createview.html
@@ -9187,7 +9185,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *
      *  The mapped object type is determined implicitly from the first column definition.
-     *  An eponymous virtual table is named after its module. Otherwise the optional `[[=orm_name("…")]]`
+     *  An eponymous virtual table is named after its module. Otherwise the optional `[[=orm_name("...")]]`
      *  annotation of the mapped object type supplies the table name (otherwise the type's reflected identifier is used).
      *
      *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
@@ -9213,7 +9211,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/alias.h"
 
 /** @file
- *  Purpose: represent the aliases by which a statement refers to what it reads.
+ *  Purpose: represent the aliases a statement gives to what it reads and what it returns.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -10602,6 +10600,92 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
+// #include "ast/assignment.h"
+
+/** @file
+ *  Purpose: represent the assignment of a SET clause.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string_view>  //  std::string_view
+#include <type_traits>  //  std::is_base_of
+#include <utility>  //  std::move
+#endif
+
+// #include "../vocabulary/node_algorithms.h"
+// is_referencable_operand, unwrap_expression
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+// #include "binary_operator.h"
+
+/** @file
+ *  Purpose: give the binary operator nodes their shared shape.
+ *
+ *  Intention: a helper of the node headers in `ast/`, placed by `docs/internals/source-layout.md`; specializes the
+ *  grammar traits of the vocabulary layer, as `docs/internals/vocabulary-layer.md` holds, for the nodes built on it.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <utility>  //  std::move
+#endif
+
+// #include "../functional/cxx_polyfill/type_traits.h"
+
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    /**
+     *  L - type of the left operand
+     *  R - type of the right operand
+     *  Ds - the operator's tag, followed by further tags classifying the operator's operand capabilities
+     */
+    template<class L, class R, class... Ds>
+    struct binary_operator : Ds... {
+        using left_type = L;
+        using right_type = R;
+
+        left_type lhs;
+        right_type rhs;
+
+        constexpr binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
+    };
+
+    template<class T>
+    constexpr bool is_binary_operator_v = polyfill::is_specialization_of<T, binary_operator>::value;
+}
+
+namespace sqlite_orm::internal {
+    struct assign_string {
+        std::string_view serialize() const {
+            return "=";
+        }
+    };
+
+    /**
+     *  Result of assign = operator
+     */
+    template<class L, class R>
+    using assign_t = binary_operator<L, R, assign_string>;
+
+    //  note: see `is_conc_v` of `operators.h`
+    template<class T>
+    constexpr bool is_assign_v = is_binary_operator_v<T> && std::is_base_of<assign_string, T>::value;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    template<class L, class R>
+    internal::assign_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>> assign(L lhs, R rhs) {
+        static_assert(internal::is_referencable_operand<L>::value,
+                      "the assignment target must be one of sqlite_orm-recognized operands: member pointers, column "
+                      "pointers, c()-wrapped values, aliases or expressions");
+        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
+    }
+}
+
 // #include "ast/between.h"
 
 /** @file
@@ -10849,28 +10933,11 @@ namespace sqlite_orm::internal {
 // Included to specialize traits
 // #include "../vocabulary/traits/operand_traits_fwd.h"
 // Included to specialize traits
+// #include "binary_operator.h"
+
 // #include "operand_tags.h"
 
 namespace sqlite_orm::internal {
-    /**
-     *  L - type of the left operand
-     *  R - type of the right operand
-     *  Ds - the operator's tag, followed by further tags classifying the operator's operand capabilities
-     */
-    template<class L, class R, class... Ds>
-    struct binary_operator : Ds... {
-        using left_type = L;
-        using right_type = R;
-
-        left_type lhs;
-        right_type rhs;
-
-        constexpr binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
-    };
-
-    template<class T>
-    constexpr bool is_binary_operator_v = polyfill::is_specialization_of<T, binary_operator>::value;
-
     struct conc_string {
         using result_type = std::string;
 
@@ -11062,22 +11129,6 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_unary_operator_v = std::disjunction<polyfill::is_specialization_of<T, unary_minus_t>,
                                                           polyfill::is_specialization_of<T, bitwise_not_t>>::value;
-
-    struct assign_string {
-        std::string_view serialize() const {
-            return "=";
-        }
-    };
-
-    /**
-     *  Result of assign = operator
-     */
-    template<class L, class R>
-    using assign_t = binary_operator<L, R, assign_string>;
-
-    //  note: see `is_conc_v`
-    template<class T>
-    constexpr bool is_assign_v = is_binary_operator_v<T> && std::is_base_of<assign_string, T>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -11200,14 +11251,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                       "bitwise_not() argument must be a bindable value or one of sqlite_orm-recognized operands: "
                       "member pointers, column pointers, c()-wrapped values, aliases or expressions");
         return {internal::unwrap_expression(std::move(expression))};
-    }
-
-    template<class L, class R>
-    internal::assign_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>> assign(L lhs, R rhs) {
-        static_assert(internal::is_referencable_operand<L>::value,
-                      "the assignment target must be one of sqlite_orm-recognized operands: member pointers, column "
-                      "pointers, c()-wrapped values, aliases or expressions");
-        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
     }
 
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
@@ -13016,7 +13059,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/crud/default_values.h"
 
 /** @file
- *  Purpose: represent the DEFAULT VALUES modifier.
+ *  Purpose: represent the DEFAULT VALUES form of an INSERT.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -13038,7 +13081,7 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
-     *  Use this function to add `DEFAULT VALUES` modifier to raw `INSERT`.
+     *  Use this function to write a raw `INSERT` or `REPLACE` in its `DEFAULT VALUES` form.
      *
      *  @example
      *  ```
@@ -13876,7 +13919,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/crud/into.h"
 
 /** @file
- *  Purpose: represent the INTO clause.
+ *  Purpose: represent the table an INSERT or REPLACE writes into.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -14248,7 +14291,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/crud/set.h"
 
 /** @file
- *  Purpose: represent the SET clause of an UPDATE.
+ *  Purpose: represent the SET clause.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -16158,6 +16201,52 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
+// #include "ast/keyword_literals.h"
+
+/** @file
+ *  Purpose: represent the keywords SQL reads as literal values.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_same
+#endif
+
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
+    struct current_time_t {};
+
+    template<class T>
+    constexpr bool is_current_time_v = std::is_same<T, current_time_t>::value;
+
+    struct current_date_t {};
+
+    template<class T>
+    constexpr bool is_current_date_v = std::is_same<T, current_date_t>::value;
+
+    struct current_timestamp_t {};
+
+    template<class T>
+    constexpr bool is_current_timestamp_v = std::is_same<T, current_timestamp_t>::value;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    inline internal::current_time_t current_time() {
+        return {};
+    }
+
+    inline internal::current_date_t current_date() {
+        return {};
+    }
+
+    inline internal::current_timestamp_t current_timestamp() {
+        return {};
+    }
+}
 // #include "ast/limit.h"
 
 /** @file
@@ -16311,7 +16400,7 @@ namespace sqlite_orm::internal {
 // #include "ast/match.h"
 
 /** @file
- *  Purpose: represent the MATCH condition of a full-text search.
+ *  Purpose: represent the MATCH operator.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -16846,11 +16935,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // Included to specialize traits
 // #include "../vocabulary/traits/structural_traits_fwd.h"
 // Included to specialize traits
+// #include "assignment.h"
+//  assign_t
 // #include "binary_condition.h"
 //  and_condition_t, or_condition_t
 // #include "in.h"
-
-// #include "operators.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -17122,52 +17211,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/select.h"
 
-// #include "ast/special_keywords.h"
-
-/** @file
- *  Purpose: represent the keywords SQL evaluates to a value of their own.
- *
- *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
- *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
- */
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_same
-#endif
-
-// #include "../vocabulary/traits/grammar_traits_fwd.h"
-// Included to specialize traits
-
-namespace sqlite_orm::internal {
-    struct current_time_t {};
-
-    template<class T>
-    constexpr bool is_current_time_v = std::is_same<T, current_time_t>::value;
-
-    struct current_date_t {};
-
-    template<class T>
-    constexpr bool is_current_date_v = std::is_same<T, current_date_t>::value;
-
-    struct current_timestamp_t {};
-
-    template<class T>
-    constexpr bool is_current_timestamp_v = std::is_same<T, current_timestamp_t>::value;
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    inline internal::current_time_t current_time() {
-        return {};
-    }
-
-    inline internal::current_date_t current_date() {
-        return {};
-    }
-
-    inline internal::current_timestamp_t current_timestamp() {
-        return {};
-    }
-}
 // #include "ast/table_reference.h"
 
 /** @file
@@ -17252,13 +17295,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/values.h"
 
 /** @file
- *  Purpose: represent the VALUES row list.
+ *  Purpose: represent the VALUES clause.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  *
  *  Note: this header sits outside `ast/crud/`, unlike the other clause nodes a raw INSERT or
- *  REPLACE takes, because a VALUES row list is written both as an INSERT's rows and as the
+ *  REPLACE takes, because a VALUES clause is written both as an INSERT's rows and as the
  *  operand of an IN - in either spelling.
  */
 
@@ -17285,7 +17328,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
 
     /**
-     *  A VALUES row list assembled at runtime.
+     *  A VALUES clause assembled at runtime.
      */
     template<class T>
     struct dynamic_values_t {
