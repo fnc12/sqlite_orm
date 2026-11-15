@@ -1430,6 +1430,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
      *  Quote the given string value using single quotes,
      *  escape containing single quotes by doubling them.
+     *
+     *  https://www.sqlite.org/lang_expr.html#literal_values_constants_
      */
     inline std::string quote_string_literal(std::string v) {
         constexpr char quoteChar = '\'';
@@ -1437,8 +1439,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /** 
-     *  Quote the given string value using single quotes,
-     *  escape containing single quotes by doubling them.
+     *  Quote the given hexadecimal text as a BLOB literal, `x'...'`; the text is written as it is given.
+     *
+     *  https://www.sqlite.org/lang_expr.html#literal_values_constants_
      */
     inline std::string quote_blob_literal(std::string v) {
         constexpr char quoteChar = '\'';
@@ -1448,6 +1451,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
      *  Quote the given identifier using double quotes,
      *  escape containing double quotes by doubling them.
+     *
+     *  https://www.sqlite.org/lang_keywords.html
      */
     inline std::string quote_identifier(std::string identifier) {
         constexpr char quoteChar = '"';
