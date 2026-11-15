@@ -1,0 +1,31 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-15: the serialization/ round;
+found while checking each Intention sentence against the files it
+names. Decision 5 of the round, Claude's lean (a), taken: a commit of
+its own in this pull request, as the Intentions point to the document.
+
+# Decided
+- Old words: "`dev/serialization/` - The statement serializer, its
+  context, and the helpers only it uses: quoting (`quoting.h`),
+  streaming utilities, and the collectors walking an expression for
+  what serialization needs (`table_name_collector.h`). The customization
+  points it calls are not its own; they are type mapping and
+  marshaling."
+- "only it uses" was false: quoting.h (execution/storage_base.h),
+  streaming.h (execution/pragma.h, storage.h, storage_base.h,
+  storage_definitions.h), serializer_context.h (ast/order_by.h,
+  ast/crud/set.h, cte_db_objects.h, result_set/), cte_column_names.h
+  (cte_db_objects.h), table_name_collector.h
+  (ast/crud/set_definitions.h), default_value_serialization.h
+  (schema/column_definitions.h).
+- New words: "Writing SQL text: the statement serializer, its context,
+  quoting (`quoting.h`), the streaming of SQL text (`streaming.h`), and
+  the collectors walking an expression for what serialization needs
+  (`table_name_collector.h`). The storage and the nodes that serialize
+  their own entries use them too. The customization points it calls
+  belong to type mapping and marshaling." The negative "are not its
+  own" turned positive (rule wording).
+
+# Discussed
+Green: pre-commit.sh 0 (its check of the documented paths included);
+no CR; no "on purpose:". measure.mjs reads no Markdown: no change.
