@@ -12,7 +12,7 @@
 #endif
 
 #include "../functional/gsl.h"
-#include "../builtin/dbos/pragma_table_info.h"
+#include "../builtin/dbos/pragma_tables.h"
 #include "../marshaling/row_extractor.h"
 #include "../serialization/serializing_util.h"
 #include "../sqlite3/sqlite3_statements.h"

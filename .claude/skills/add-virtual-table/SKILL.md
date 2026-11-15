@@ -8,7 +8,7 @@ description: Use when adding a virtual table SQLite or an extension provides to 
 The headers live in `dev/builtin/dbos/`, one per module, included by the umbrella
 `dev/builtin/dbos.h`; the generic layer is `dev/schema/virtual_table.h`. Compare with
 `dev/builtin/dbos/generate_series.h` (eponymous, from an extension),
-`dev/builtin/dbos/pragma_table_info.h` (eponymous, reflection only, bundled) or
+`dev/builtin/dbos/pragma_tables.h` (eponymous, reflection only, bundled) or
 `dev/builtin/dbos/rtree.h` (a module with application-defined columns).
 
 Guard each header's contents, never its inclusion, with what the module needs: the SQLite version
