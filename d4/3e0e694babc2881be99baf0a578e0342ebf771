@@ -1,0 +1,39 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-15: the serialization/ round,
+its Purpose check. The ontocratic-reviewer, briefed with the Purpose
+rule alone, found order_by_serializer.h writing more than its Purpose
+("write the ordering terms of an ORDER BY clause as SQL text.").
+
+# Decided
+- Verified: order_by_serializer<dynamic_order_by> streamed
+  static_cast<std::string>(orderBy), order_by_string's "ORDER BY",
+  before its terms; statement_serializer's dynamic specialization
+  (then 2272-2279) passed it on, while the static (2265) and multi
+  (2290) forms added the keyword themselves.
+- Options offered: (a) widen the Purpose to name both, a variant; (b) a
+  refactor moving the keyword to statement_serializer, as the other two
+  forms have it. Claude's lean (b), on this line rather than a pull
+  request off dev (trueqbit: one working and review line); trueqbit:
+  "your leans", and "throw away the order_by_string base tag and
+  directly stream "ORDER BY"".
+- Call sites checked: serialize_order_by takes a dynamic order-by only
+  from statement_serializer's dynamic specialization, which now adds
+  the keyword; streaming.h:249 passes the static terms of a multi
+  ORDER BY; no other code converts an order-by node to std::string.
+- Pinned by the serializer tests: tests/statement_serializer_tests/
+  ast/dynamic_order_by.cpp (full "ORDER BY ..." through serialize()),
+  conditions.cpp, column_names.cpp. Not compiled; trueqbit and CI build.
+
+# Discussed
+Green: pre-commit.sh 0, run twice; clang-format 20 unchanged; no "on
+purpose:"; no CR. The token streams of the three files differ by the
+lines the refactor changes.
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 474 | 474 | 0 |
+| lines | 58145 | 58140 | -5 |
+| copies | 3915 | 3915 | 0 |
+| hopsMean | 10.4 | 10.4 | 0 |
+| hopsMax | 220 | 220 | 0 |
+| gzipBytes | 471901 | 471883 | -18 |
