@@ -1,0 +1,15 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-15: trueqbit asked to merge the
+latest origin/dev into docs/purpose-domain-recheck (#1612).
+
+# Decided
+- dev at 2d2ad653 brings #1609 (the rule this branch applies, its base
+  until now), #1614 (keyword_literals.h), #1615 (binary_operator.h,
+  assignment.h), #1610, #1611 and #1618; no conflict. With #1609 merged,
+  #1612's base is dev.
+
+# Discussed
+- Checks against origin/dev: pre-commit.sh exit 0, the regenerated
+  amalgamation equal to the merged one; the branch's dev/ changes still
+  comment-free token streams identical to dev's; clang-format 20 leaves
+  the tree unchanged; no "on purpose:".
