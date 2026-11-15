@@ -2262,8 +2262,7 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::ostringstream ss;
-            ss << static_cast<std::string>(orderBy) << " ";
-            ss << serialize_order_by(orderBy, context);
+            ss << "ORDER BY " << serialize_order_by(orderBy, context);
             return ss.str();
         }
     };
@@ -2275,7 +2274,7 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize_order_by(orderBy, context);
+            return "ORDER BY " + serialize_order_by(orderBy, context);
         }
     };
 
@@ -2287,7 +2286,7 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::ostringstream ss;
-            ss << static_cast<std::string>(orderBy) << " " << streaming_expressions_tuple(orderBy.args, context);
+            ss << "ORDER BY " << streaming_expressions_tuple(orderBy.args, context);
             return ss.str();
         }
     };
