@@ -1,0 +1,39 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-15: the third of three renames
+on refactor/serialization-header-names, ahead of the serialization/
+round's headers.
+
+# Decided
+- Claude flagged "extractor" (rule 15 of campaign.md "Form": a word that
+  reads otherwise in the tree is replaced): marshaling/ extracts a
+  column value from a statement, this file serializes a default value.
+  Claude's lean (a), a rename in a refactor of its own; trueqbit:
+  "Refactor ahead of this round", and later "rename ... so it reads
+  default_value_serialization.h", the name Claude had offered.
+  "serialization" rather than "serializer": the file holds a function,
+  serialize_default_value, and no serializer struct; its header goes on
+  that function's doc-comment.
+- History read (git log --follow): 8240ce9c (2018) split it out under
+  this name; 7476ea91 gathered it into serialization/; no recorded
+  reason for "extractor".
+- Pure rename: the file at 100% similarity; schema/column_definitions.h
+  changes its include line; the amalgamation differs in the include
+  comment alone.
+
+# Discussed
+Green: pre-commit.sh 0 (run twice); clang-format 20 unchanged; no "on
+purpose:". The token streams differ by the include line, as a rename
+makes them.
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 474 | 474 | 0 |
+| lines | 58107 | 58107 | 0 |
+| copies | 3915 | 3915 | 0 |
+| hopsMean | 10.4 | 10.4 | 0 |
+| hopsMax | 220 | 220 | 0 |
+| gzipBytes | 470875 | 470875 | 0 |
+
+# Later
+- docs/purpose-intention-serialization fast-forwards here; the header
+  commit follows on it.
