@@ -1,0 +1,110 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-15: pass 2, the serialization/
+and traversal/ round (handover-pass2-serialization-round.md), branch
+docs/purpose-intention-serialization at the head of
+refactor/serialization-header-names (02e3b604), off #1619's head.
+
+# Decided
+- Placement (trueqbit: "all singular-named header files should rather
+  not create file-level comments, if possible place the purpose on the
+  main carrier"; "ast/ + schema/ stands" - a node header holds an
+  internal node struct with its public factory, often a family). Claude
+  worded the test as the carrier, the name as its sign; recorded in
+  campaign.md "Form". On the carrier: statement_serializer,
+  serializer_context, order_by_serializer, table_name_collector,
+  column_expressions_collector (Claude's lean on trueqbit's open
+  question: the struct does the expanding, collect_column_expressions is
+  its entry), serialize_default_value, ast_iterator, node_tuple. @file:
+  quoting.h, streaming.h, cte_column_names.h (renamed for this, 941a3e30).
+- Purposes, Claude's leans taken ("otherwise your leans"), with two
+  changes by trueqbit:
+  - serializer_context: "hold the schema and the settings a
+    serialization runs under." judged "a tiny bit too detailed" - it
+    sums up members; now "carry the context of a serialization." The
+    guard eval is deferred, recorded in handover-feedback-domain-sources.md
+    (sixth).
+  - ast_iterator: Claude offered "visit"; trueqbit: a specific form of
+    visitation, a traversal of a tree's elements with rules, "iteration"
+    used interchangeably, and "traversal" fits documentation better.
+    Claude agreed: "visitation" reads in C++ as the Visitor pattern or
+    std::visit, double dispatch, which this is not; "iterate" in the tree
+    means "call for each element" (iterate_tuple), so the name stays.
+    Now "traverse the nodes of an expression tree."
+- Checked against sqlite.org (decision 4 a): ORDER BY, ordering terms -
+  https://www.sqlite.org/lang_select.html#orderby; CTE column names -
+  https://www.sqlite.org/lang_with.html (cte-table-name, its optional
+  column-name list); identifiers and literal values -
+  https://www.sqlite.org/lang_keywords.html,
+  https://www.sqlite.org/lang_expr.html#literal_values_constants_.
+- Every Intention sentence checked against the includes and the files
+  it names: serializer_context is created in execution/storage.h and
+  result_set/mapped_view.h, result_set_view.h, kept by
+  dynamic_order_by_t (ast/order_by.h:150 serializes on push) and
+  dynamic_set_t; the storage compares dflt_value at
+  execution/storage_base.h:1508; streaming.h escapes on its own and
+  includes no quoting.h, so quoting.h names the serializer, its helpers
+  (column_expressions_collector.h) and the storage (storage_base.h);
+  get_prepared_statement.h computes a bound value's index through
+  node_tuple and finds it through iterate_ast; add-dsl-node's SKILL.md
+  lists statement_serializer, ast_iterator and node_tuple.
+- Text cut or moved:
+  - quoting.h, its @file line, now the Purpose; the member list cut:
+    "/** @file Quoting and escaping of SQL text: identifiers, string and
+    blob literals. */"
+  - column_expressions_collector: "/** @short Column expression
+    collector. */" - repeats the name.
+  - serialize_default_value: "Serialize a column's default value." -
+    the Purpose says it.
+  - ast_iterator, the old block:
+      ast_iterator accepts any expression and a callable object
+      which will be called for any node of provided expression.
+      E.g. if we pass `where(is_equal(5, max(&User::id, 10))` then
+      callable object will be called with 5, &User::id and 10.
+      ast_iterator is used in finding literals to be bound to
+      a statement, and to collect table names.
+      Note that not all leaves of the expression tree are visited:
+      Column expressions can be more complex, but are passed as a whole
+      to the callable. Examples are `column_pointer<>` and
+      `alias_qualified_column_t<>`.
+      To use `ast_iterator` call `iterate_ast(object, callable);`
+      `T` is an ast element, e.g. where_t
+    Placed: the first sentence in the Purpose; the uses in the
+    Intention; the example, the column expressions and iterate_ast
+    reworded into a paragraph below it, positive (rule wording: "reach
+    the callable whole, rather than leaf by leaf"), the example's
+    missing parenthesis closed; "T is an ast element" cut - node_type
+    says it.
+- Written by serialization-round/serialization_headers.py (beside
+  campaign.md; idempotent, a second run writes nothing). Its two loops
+  first repeated a read-and-skip block; the copy hook refused it, and
+  the block became one function, rewrite().
+
+# Discussed
+Green: pre-commit.sh 0, run twice; token streams identical; clang-format
+20 unchanged; no "on purpose:"; no CR, no literal backslash-n. The strip
+trial (campaign.md "Generated files") on this amalgamation keeps the 8
+carrier Purposes and leaves no Intention. The customization-point
+sentence appears in three headers, as ast/'s shared one; copies stay 0.
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 474 | 474 | 0 |
+| lines | 58107 | 58143 | +36 |
+| copies | 3915 | 3915 | 0 |
+| hopsMean | 10.4 | 10.4 | 0 |
+| hopsMax | 220 | 220 | 0 |
+| gzipBytes | 470875 | 471821 | +946 |
+
+# Later
+- Commit 2: links on quoting.h's public functions (quote_identifier:
+  lang_keywords.html; quote_string_literal, quote_blob_literal:
+  lang_expr.html#literal_values_constants_; sql_escape none), and
+  quote_blob_literal's doc-comment, a wrong copy of
+  quote_string_literal's, reworded.
+- docs(internals): source-layout.md's "the helpers only it uses" is
+  false for quoting.h, streaming.h, serializer_context.h,
+  cte_column_names.h, table_name_collector.h and
+  default_value_serialization.h - reworded in a commit of its own.
+- Ledger: statement_serializer.h (2473 lines) stays whole - one purpose,
+  many tasks; the name ast_iterator stays.
+- Commit 3: the Purpose check, one report-only reviewer dispatch.
