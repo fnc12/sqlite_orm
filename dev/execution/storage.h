@@ -38,7 +38,7 @@
 #include "../ast/cte.h"
 #include "../ast/operators.h"
 #include "../ast/result_columns.h"
-#include "../builtin/dbos/pragma_table_info.h"
+#include "../builtin/dbos/pragma_tables.h"
 #include "../builtin/functions/aggregate.h"
 #include "../cte_db_objects.h"
 #include "../error_code.h"

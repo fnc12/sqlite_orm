@@ -11,7 +11,7 @@
 #endif
 
 #include "../functional/mpl/convenience.h"
-#include "../builtin/dbos/pragma_table_info.h"  //  table_xinfo
+#include "../builtin/dbos/pragma_tables.h"  //  table_xinfo
 #include "../type_mapping/type_printer.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_traits.h"

@@ -22,7 +22,7 @@
 
 #include "../functional/tuple_helper/tuple_iteration.h"
 #include "../ast/app_function.h"
-#include "../builtin/dbos/pragma_table_info.h"
+#include "../builtin/dbos/pragma_tables.h"
 #include "../error_code.h"
 #include "../marshaling/arg_values.h"
 #include "../marshaling/row_extractor.h"
