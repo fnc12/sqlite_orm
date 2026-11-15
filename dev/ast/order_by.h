@@ -112,8 +112,6 @@ namespace sqlite_orm::internal {
         using args_type = std::tuple<Args...>;
 
         args_type args;
-
-        multi_order_by_t(args_type args_) : args{std::move(args_)} {}
     };
 
     template<class T>
