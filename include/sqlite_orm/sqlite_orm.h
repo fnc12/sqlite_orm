@@ -19270,7 +19270,7 @@ namespace sqlite_orm::internal {
 
 // #include "schema/db_objects.h"
 
-// #include "serialization/cte_column_names_collector.h"
+// #include "serialization/cte_column_names.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
@@ -23496,7 +23496,7 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "cte_column_names_collector.h"
+// #include "cte_column_names.h"
 
 // #include "order_by_serializer.h"
 

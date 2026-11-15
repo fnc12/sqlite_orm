@@ -45,7 +45,7 @@
 #include "../vocabulary/node_fwd.h"  // column_constraints
 #include "../vocabulary/node_traits.h"
 #include "column_expressions_collector.h"
-#include "cte_column_names_collector.h"
+#include "cte_column_names.h"
 #include "order_by_serializer.h"
 #include "quoting.h"
 #include "serializing_util.h"
