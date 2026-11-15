@@ -1,0 +1,46 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-15: the second of three renames
+on refactor/serialization-header-names, ahead of the serialization/
+round's headers.
+
+# Decided
+- trueqbit asked whether serializing_util.h should become
+  serializing_utils.h (plural); Claude leaned for streaming.h - every
+  member streams SQL text into a std::ostream (stream_as, the
+  streaming_* tags and their operator<<, stream_identifier,
+  stream_sql_escaped), "streaming" reads in C++ as exactly that, and no
+  other file of dev/ takes the name. trueqbit: "streaming.h (that's a
+  good suggestion as the parent folder already carries
+  `serialization`)". A grouping file: it takes an @file header.
+- History read (git log --follow): 7476ea91 gathered it into
+  serialization/, 2b038eab (note: the include of table_lookup.h it
+  calls); the name predates both and carries no recorded reason.
+- Pure rename: the file at 100% similarity; statement_serializer.h and
+  execution/pragma.h, storage.h, storage_base.h, storage_definitions.h
+  change their include line. clang-format sorts storage.h's include
+  after statement_serializer.h, so the single header now reaches the
+  file through the serializer: its 466 lines move from 22855 to 23165,
+  still ahead of every use (first at 23420) and of
+  statement_serializer (23681). The amalgamation holds the same lines,
+  the include comments aside (checked as sorted multisets).
+- Claude's report to trueqbit before the commits, "only the 8 include
+  comment lines change", was read off a stale amalgamation (see 941a3e30's
+  note: pre-commit.sh amalgamates before it formats); corrected in the
+  report after this commit.
+
+# Discussed
+Green: pre-commit.sh 0 (run twice, the second on the formatted tree);
+clang-format 20 unchanged; no "on purpose:". The token streams differ by
+the include lines, as a rename makes them.
+
+| measure | before | after | change |
+|---|---:|---:|---:|
+| files | 474 | 474 | 0 |
+| lines | 58107 | 58107 | 0 |
+| copies | 3915 | 3915 | 0 |
+| hopsMean | 10.4 | 10.4 | 0 |
+| hopsMax | 220 | 220 | 0 |
+| gzipBytes | 470736 | 470875 | +139 |
+
+# Later
+- Next: default_value_extractor.h becomes default_value_serialization.h.
