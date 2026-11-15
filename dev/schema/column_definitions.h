@@ -11,7 +11,7 @@
 #endif
 
 #include "../functional/mpl/convenience.h"
-#include "../serialization/default_value_extractor.h"
+#include "../serialization/default_value_serialization.h"
 #include "../vocabulary/node_traits.h"
 #include "column.h"
 

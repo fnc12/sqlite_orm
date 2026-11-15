@@ -31265,7 +31265,7 @@ namespace sqlite_orm::internal {
 
 // #include "../functional/mpl/convenience.h"
 
-// #include "../serialization/default_value_extractor.h"
+// #include "../serialization/default_value_serialization.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
