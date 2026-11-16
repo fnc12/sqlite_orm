@@ -11,6 +11,7 @@ library is built, not how it is used.
 * [Source layout](source-layout.md) — where a header under `dev/` belongs, folder by folder.
 * [Review checklist](review-checklist.md) — the repository's conventions a change is checked
   against.
+* [Code style](../../AGENTS.md#code-style) — how the code is written, held in `AGENTS.md`.
 
 ## Design plans
 
