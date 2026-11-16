@@ -1,0 +1,16 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-16: fnc12 answered the question
+on #1624 (issuecomment-6911388727): "1 is ok, thanks".
+
+# Decided
+- fnc12: CONTRIBUTING.md links AGENTS.md "Code style"; the rules keep
+  their one home in AGENTS.md, which agents load in every session.
+  Weighed and declined: a docs/code-style.md that both link to.
+- trueqbit asked about a docs/internals/coding-style.md pointing to
+  AGENTS.md; Claude advised against a file holding only a link, and
+  fnc12 had just declined option 2. Taken instead (trueqbit): a line in
+  docs/internals/home.md, the index, beside the review checklist.
+- A pull request of its own from dev, independent of #1624.
+
+# Discussed
+- Checks: pre-commit.sh exit 0 (the documented paths included); LF.
