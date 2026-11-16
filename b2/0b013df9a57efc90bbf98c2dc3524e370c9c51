@@ -1,0 +1,25 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-16: #1613 (PR A, schema/'s names
+follow SQLite's terms) was merged on GitHub into its base
+docs/purpose-domain-recheck - #1612's branch, set as #1613's base by an
+earlier session - after #1612 itself had merged into dev; its branch was
+deleted. Its commits reached no dev.
+
+# Decided
+- trueqbit: merge docs/purpose-domain-recheck into dev directly, without
+  a pull request round trip; every commit it brings was reviewed in
+  #1613. Weighed: a carry pull request from that branch to dev (Claude's
+  first lean); restoring refactor/schema-sqlite-terms and opening the
+  carry pull request from it; retargeting #1616 to dev so it carries
+  #1613's commits again (rejected: they would be reviewed twice).
+- #1616, which GitHub moved to docs/purpose-domain-recheck when #1613's
+  branch was deleted, is retargeted to dev before that branch goes;
+  deleting a base branch closes the pull requests on it.
+
+# Discussed
+- The merge brings #1613's 7 commits (e3b4a72b and the 6 under it); its
+  tree equals the branch's: 29 files, +335 -411 against dev.
+- Checks: pre-commit.sh exit 0, the tree unchanged.
+- Claude first named fnc12 as the one who merged #1613, reading the head
+  repository's owner; GitHub records trueqbit. Corrected before anything
+  was posted.
