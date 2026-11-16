@@ -10,7 +10,7 @@
  *      after io.spawn(...):              io.poll();
  *
  *  The coroutines are resumed from inside `poll()`, hence on the thread of the host loop.
- *  `libhv.cpp` and `asio.cpp` next to this file do the same with those libraries.
+ *  The other files next to this one do the same with libuv, Qt, GLib, libhv and Asio.
  */
 
 #include <cstdio>  //  std::remove

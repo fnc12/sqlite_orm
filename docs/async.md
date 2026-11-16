@@ -87,10 +87,29 @@ hio_add(watcher, [](hio_t* watcher) { static_cast<io_context*>(hio_context(watch
 asio::posix::stream_descriptor descriptor(host, io.native_handle());
 descriptor.async_wait(asio::posix::stream_descriptor::wait_read, [&](auto error) { io.poll(); /* and wait again */ });
 
-// anything else: epoll, libuv (uv_poll_t), Qt (QSocketNotifier), GLib (g_unix_fd_add), ...
+// libuv
+uv_poll_init(loop, &watcher, io.native_handle());
+watcher.data = &io;
+uv_poll_start(&watcher, UV_READABLE, [](uv_poll_t* watcher, int, int) { static_cast<io_context*>(watcher->data)->poll(); });
+
+// Qt
+QSocketNotifier watcher(io.native_handle(), QSocketNotifier::Read);
+QObject::connect(&watcher, &QSocketNotifier::activated, [&io] { io.poll(); });
+
+// GLib
+g_unix_fd_add(io.native_handle(), G_IO_IN, [](gint, GIOCondition, gpointer io) -> gboolean {
+    static_cast<io_context*>(io)->poll();
+    return G_SOURCE_CONTINUE;
+}, &io);
+
+// epoll
+epoll_event event{.events = EPOLLIN, .data = {.fd = io.native_handle()}};
+epoll_ctl(loop, EPOLL_CTL_ADD, io.native_handle(), &event);  // and io.poll() when epoll_wait() reports it
 ```
 
-The descriptor is level-triggered and for watching only: never read from it, and do not let the host close it (with Asio, `release()` the `stream_descriptor` before it is destroyed). `examples/async_event_loops/` has complete programs: `epoll.cpp` with a hand-written loop, `libhv.cpp` with an HTTP server on libhv's event loops, and `asio.cpp` with Asio, which also shows how a coroutine of Asio (`asio::awaitable`) awaits a storage operation.
+The descriptor is level-triggered and for watching only: never read from it, and do not let the host close it (with Asio, `release()` the `stream_descriptor` before it is destroyed). `examples/async_event_loops/` has a complete program for each of them: `epoll.cpp` with a hand-written loop, `libuv.cpp`, `qt.cpp`, `glib.cpp`, `libhv.cpp` with an HTTP server on libhv's event loops, and `asio.cpp`, which also shows how a coroutine of Asio (`asio::awaitable`) awaits a storage operation.
+
+Two things hold for every host loop. Stop watching the descriptor before the `io_context` is destroyed. And an exception that `poll()` rethrows must not travel through the host: libuv, GLib and libhv are written in C, and Qt does not support exceptions in its event loop, so catch inside the coroutine, as the examples do, or around `poll()`.
 
 An exception that escapes a coroutine passed to `spawn()` is rethrown by `run()` or `poll()`.
 

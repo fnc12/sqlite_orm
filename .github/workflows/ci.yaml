@@ -150,6 +150,8 @@ jobs:
             cxx: g++-16
             cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_26=ON"
             build_examples: "-DBUILD_EXAMPLES=ON"
+            # the event loops that examples of the asynchronous storage are embedded into and that are not built from source
+            example_packages: libglib2.0-dev qt6-base-dev libboost-dev
             install_compiler: true
             compiler_package: g++-16
             compiler_ppa: ppa:ubuntu-toolchain-r/test
@@ -183,7 +185,13 @@ jobs:
         run: |
           vcpkg install sqlite3[core,dbstat,math,json1,fts5,rtree,soundex] catch2 --overlay-triplets=${{ github.workspace }}/vcpkg/triplets
 
-      # libhv, which an example of the asynchronous storage is built against: its sources and object files
+      - name: Install the dependencies of the examples
+        if: matrix.example_packages
+        run: |
+          sudo apt-get -o Acquire::Retries=5 update
+          sudo apt-get -o Acquire::Retries=5 install -y ${{ matrix.example_packages }}
+
+      # libhv and libuv, which examples of the asynchronous storage are built against: their sources and object files
       - name: Cache the dependencies of the examples
         if: matrix.build_examples
         uses: actions/cache@v4
