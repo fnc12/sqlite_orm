@@ -179,11 +179,16 @@ TEST_CASE("rtree layout tests") {
     using internal::rtree_module_tag;
     struct DemoIndex {
         int64 id;
-        float minX, maxX;
-        float minY, maxY;
-        float minZ, maxZ;
-        float minA, maxA;
-        float minB, maxB;
+        float minX;
+        float maxX;
+        float minY;
+        float maxY;
+        float minZ;
+        float maxZ;
+        float minA;
+        float maxA;
+        float minB;
+        float maxB;
 
         std::string objname;
         std::string objtype;
@@ -247,7 +252,8 @@ TEST_CASE("rtree_i32 static tests") {
     SECTION("table definition") {
         struct DemoIndex {
             int64 id;
-            std::int32_t minX, maxX;
+            std::int32_t minX;
+            std::int32_t maxX;
         };
 
         auto definition = using_rtree_i32(make_column("id", &DemoIndex::id, primary_key()),
