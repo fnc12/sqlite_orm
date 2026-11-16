@@ -347,7 +347,8 @@ TEST_CASE("pragma_table_info virtual table") {
     SECTION("objects") {
         auto rows = storage.select(object<table_info>(), from(pragma_table_info("users")));
         auto expected = storage.pragma.table_info("users");
-        std::vector<row_type> actualRows, expectedRows;
+        std::vector<row_type> actualRows;
+        std::vector<row_type> expectedRows;
         for (const auto& row: rows) {
             actualRows.push_back(to_tuple(row));
         }
@@ -403,7 +404,8 @@ TEST_CASE("pragma_table_xinfo virtual table") {
     SECTION("objects") {
         auto rows = storage.select(object<table_xinfo>(), from(pragma_table_xinfo("users", "main")));
         auto expected = storage.pragma.table_xinfo("users");
-        std::vector<row_type> actualRows, expectedRows;
+        std::vector<row_type> actualRows;
+        std::vector<row_type> expectedRows;
         for (const auto& row: rows) {
             actualRows.push_back(to_tuple(row));
         }
@@ -433,8 +435,10 @@ TEST_CASE("pragma_table_xinfo virtual table") {
 TEST_CASE("rtree virtual table schema") {
     struct DemoIndex {
         int64 id;
-        float minX, maxX;
-        float minY, maxY;
+        float minX;
+        float maxX;
+        float minY;
+        float maxY;
     };
 
     auto virtualTable = make_virtual_table("demo_index",
@@ -508,13 +512,16 @@ TEST_CASE("reflection-based fts5 virtual table") {
 namespace {
     struct[[= "reflected_demo_index"_orm_name]] ReflectedDemoIndex {
         [[= primary_key()]] int64 id;
-        float minX, maxX;
-        float minY, maxY;
+        float minX;
+        float maxX;
+        float minY;
+        float maxY;
     };
 
     struct ReflectedDemoIndexI32 {
         int64 id;
-        std::int32_t minX, maxX;
+        std::int32_t minX;
+        std::int32_t maxX;
     };
 }
 

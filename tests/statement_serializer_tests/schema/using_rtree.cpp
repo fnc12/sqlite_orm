@@ -7,8 +7,10 @@ using namespace sqlite_orm;
 TEST_CASE("statement_serializer rtree") {
     struct DemoIndex {
         int64 id;
-        float minX, maxX;
-        float minY, maxY;
+        float minX;
+        float maxX;
+        float minY;
+        float maxY;
 
         std::string objname;
         std::string objtype;
