@@ -579,6 +579,8 @@ TEST_CASE("async storage: iterate fetches row by row") {
         };
         run_test(io, body());
     }
+    //  guarded like the iteration over a select statement in tests/iterate.cpp: its view needs working C++20 views
+#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
     SECTION("rows of a select statement") {
         auto body = [&storage]() -> task<void> {
             co_await fill_users(storage, 50);
@@ -597,6 +599,7 @@ TEST_CASE("async storage: iterate fetches row by row") {
         };
         run_test(io, body());
     }
+#endif
     SECTION("two cursors interleave on one connection") {
         auto body = [&storage]() -> task<void> {
             co_await fill_users(storage, 20);
