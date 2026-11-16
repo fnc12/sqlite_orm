@@ -1,7 +1,7 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
 using namespace sqlite_orm;
 
 TEST_CASE("statement_serializer match") {
@@ -39,6 +39,50 @@ TEST_CASE("statement_serializer match") {
         auto node = match(&User::name, "Claude");
         auto value = serialize(node, context);
         REQUIRE(value == R"("name" MATCH 'Claude')");
+    }
+    SECTION("logical or") {
+        std::string value;
+        SECTION("operator") {
+            value = serialize(match(&User::name, "Claude") || match(&User::name, "Dua"), context);
+        }
+        SECTION("quoted operator") {
+            value = serialize(c(match(&User::name, "Claude")) || c(match(&User::name, "Dua")), context);
+        }
+        SECTION("function") {
+            value = serialize(or_(match(&User::name, "Claude"), match(&User::name, "Dua")), context);
+        }
+        REQUIRE(value == R"("name" MATCH 'Claude' OR "name" MATCH 'Dua')");
+    }
+    SECTION("logical or with table") {
+        std::string value;
+        SECTION("operator") {
+            value = serialize(match<User>("Claude") || match<User>("Dua"), context);
+        }
+        SECTION("function") {
+            value = serialize(or_(match<User>("Claude"), match<User>("Dua")), context);
+        }
+        REQUIRE(value == R"("users" MATCH 'Claude' OR "users" MATCH 'Dua')");
+    }
+    SECTION("logical and") {
+        std::string value;
+        SECTION("operator") {
+            value = serialize(match(&User::name, "Claude") && match(&User::name, "Dua"), context);
+        }
+        SECTION("function") {
+            value = serialize(and_(match(&User::name, "Claude"), match(&User::name, "Dua")), context);
+        }
+        REQUIRE(value == R"("name" MATCH 'Claude' AND "name" MATCH 'Dua')");
+    }
+    SECTION("negation") {
+        std::string value;
+        SECTION("field") {
+            value = serialize(!match(&User::name, "Claude"), context);
+            REQUIRE(value == R"(NOT "name" MATCH 'Claude')");
+        }
+        SECTION("table") {
+            value = serialize(!match<User>("Claude"), context);
+            REQUIRE(value == R"(NOT "users" MATCH 'Claude')");
+        }
     }
 }
 #endif

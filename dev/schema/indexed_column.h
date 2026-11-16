@@ -5,7 +5,7 @@
 #include <utility>  //  std::move
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 
@@ -15,7 +15,7 @@ namespace sqlite_orm::internal {
         using column_type = C;
 
         column_type _column_or_expression;
-        std::string _collation_name;
+        std::string _collation_name{};
         int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
 
         indexed_column_t<column_type> collate(std::string name) && {

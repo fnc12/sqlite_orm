@@ -2,8 +2,8 @@
 //  This example is implemented from here https://www.tutorialspoint.com/sqlite/sqlite_distinct_keyword.htm
 //
 
-#include <sqlite_orm/sqlite_orm.h>
 #include <iostream>
+#include <sqlite_orm/sqlite_orm.h>
 
 using std::cout;
 using std::endl;

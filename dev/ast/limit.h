@@ -1,13 +1,20 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the LIMIT clause.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif  //  SQLITE_ORM_IMPORT_STD_MODULE
 
-#include "../type_traits.h"
-#include "../optional_container.h"
-#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "../functional/optional_container.h"
+#include "../functional/type_traits.h"
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "offset.h"
 
 namespace sqlite_orm::internal {

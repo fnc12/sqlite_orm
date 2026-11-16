@@ -1,23 +1,27 @@
 #pragma once
 
-#include <sqlite3.h>  //  sqlite_int64
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple
+#include <optional>  //  std::optional
 #include <string>  //  std::string
-#include <memory>  //  std::unique_ptr
+#include <tuple>  //  std::tuple
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_member_object_pointer, std::is_signed
-#include <utility>  //  std::move
+#include <utility>  //  std::move, std::index_sequence, std::make_index_sequence
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#include <meta>  //  std::meta::info, std::meta::identifier_of
+#endif
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
-#include "../tuple_helper/tuple_traits.h"
-#include "../type_traits.h"
-#include "../member_traits/member_traits.h"
-#include "../type_is_nullable.h"
-#include "column_identifier.h"
+#include "../functional/cxx_polyfill/type_traits.h"
+#include "../functional/member_traits.h"
+#include "../functional/meta_util.h"
+#include "../functional/mpl/convenience.h"
+#include "../functional/type_traits.h"
+#include "../sqlite3/sqlite3_types.h"  //  int64
+#include "../type_mapping/type_is_nullable.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "column_identifier.h"
 
 namespace sqlite_orm::internal {
     struct empty_setter {};
@@ -78,9 +82,9 @@ namespace sqlite_orm::internal {
 
         /**
          *  Simplified interface for `DEFAULT` constraint
-         *  @return string representation of default value if it exists otherwise nullptr
+         *  @return string representation of default value if it exists, otherwise an empty optional
          */
-        std::unique_ptr<std::string> default_value() const;
+        std::optional<std::string> default_value() const;
     };
 
     /**
@@ -105,19 +109,6 @@ namespace sqlite_orm::internal {
 
     template<class T>
     constexpr bool is_hidden_column_v = polyfill::is_specialization_of<T, hidden_column>::value;
-
-    template<class T, class SFINAE = void>
-    struct column_field_expression {
-        using type = void;
-    };
-
-    template<class T>
-    struct column_field_expression<T, match_if<is_column, T>> {
-        using type = typename T::member_pointer_t;
-    };
-
-    template<typename T>
-    using column_field_expression_t = typename column_field_expression<T>::type;
 }
 
 namespace sqlite_orm::internal {
@@ -133,25 +124,25 @@ namespace sqlite_orm::internal {
     template<class F>
     struct check_pkcol<F, std::enable_if_t<std::is_integral<F>::value>> {
         // For 64-bit signed integer type: valid
-        template<class X = F,
-                 std::enable_if_t<sizeof(X) == sizeof(sqlite_int64) &&
-                                      std::is_signed<X>::value == std::is_signed<sqlite_int64>::value,
-                                  bool> = true>
+        template<
+            class X = F,
+            std::enable_if_t<sizeof(X) == sizeof(int64) && std::is_signed<X>::value == std::is_signed<int64>::value,
+                             bool> = true>
         static constexpr void validate_column_primary_key_with_autoincrement() {}
 
         // Design decision for integral types other than 64-bit signed integer:
         // It is the programmer's responsibility to ensure data integrity in the value range of the integral type
         // and in purview of SQLite using a 64-bit signed integer.
-        template<class X = F,
-                 std::enable_if_t<sizeof(X) != sizeof(sqlite_int64) ||
-                                      std::is_signed<X>::value != std::is_signed<sqlite_int64>::value,
-                                  bool> = true>
+        template<
+            class X = F,
+            std::enable_if_t<sizeof(X) != sizeof(int64) || std::is_signed<X>::value != std::is_signed<int64>::value,
+                             bool> = true>
         static constexpr void validate_column_primary_key_with_autoincrement() {}
     };
 
     // For non-integer types: static_assert failure
     template<class F>
-    struct check_pkcol<F, std::enable_if_t<!std::is_base_of<integer_printer, type_printer<F>>::value>> {
+    struct check_pkcol<F, std::enable_if_t<!is_integer_mapped_v<F>>> {
         static constexpr void validate_column_primary_key_with_autoincrement() {
             static_assert(polyfill::always_false_v<F>,
                           R"(AUTOINCREMENT is only allowed on an INTEGER PRIMARY KEY as an alias for the "rowid" key)");
@@ -232,3 +223,54 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}};
     }
 }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace sqlite_orm::internal {
+    /**
+     *  The columns of the non-static data members of `O`: named after the members' identifiers,
+     *  with the members' annotations as column constraints.
+     */
+    template<class O>
+    auto make_reflected_columns() {
+        static /*gcc*/ constexpr auto members = extract_members<O>();
+
+        return []<size_t... I>(std::index_sequence<I...>) static {
+            return std::tuple {
+                []<std::meta::info member>() static {
+                    return std::apply(
+                        [](auto&&... columnConstraints) static {
+                            return sqlite_orm::make_column(std::string(std::meta::identifier_of(member)),
+                                                           splice_member_pointer<member>(),
+                                                           std::move(columnConstraints)...);
+                        },
+                        splice_annotations<member>());
+                }.template operator()<members[I]>()...
+            };
+        }(std::make_index_sequence<members.size()>{});
+    }
+
+    /**
+     *  The hidden columns of the non-static data members of `O`'s nested `hidden` struct, if there is one,
+     *  named after the members' identifiers.
+     */
+    template<class O>
+    auto make_reflected_hidden_columns() {
+        static /*gcc*/ constexpr std::meta::info hidden = extract_nested_class<O>("hidden");
+
+        if constexpr (hidden == std::meta::info{}) {
+            return std::tuple<>{};
+        } else {
+            static /*gcc*/ constexpr auto members = extract_members<spliced_type_t<hidden>>();
+
+            return []<size_t... I>(std::index_sequence<I...>) static {
+                return std::tuple {
+                    []<std::meta::info member>() static {
+                        return make_hidden_column(std::string(std::meta::identifier_of(member)),
+                                                  splice_member_pointer<member>());
+                    }.template operator()<members[I]>()...
+                };
+            }(std::make_index_sequence<members.size()>{});
+        }
+    }
+}
+#endif

@@ -1,17 +1,27 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the CASE expression.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if
 #include <tuple>  //  std::tuple, std::get, std::tuple_cat, std::tuple_size, std::make_tuple
+#include <type_traits>  //  std::enable_if
 #include <utility>  //  std::move, std::pair
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
-#include "../optional_container.h"
+#include "../functional/cxx_polyfill/type_traits.h"
+#include "../functional/optional_container.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
+    /**
+     *  The result expression of a WHEN branch of a CASE expression.
+     */
     template<class T>
     struct then_t {
         using expression_type = T;
@@ -19,6 +29,9 @@ namespace sqlite_orm::internal {
         expression_type expression;
     };
 
+    /**
+     *  A CASE expression, with or without a base expression.
+     */
     template<class R, class T, class E, class... Args>
     struct simple_case_t {
         using return_type = R;

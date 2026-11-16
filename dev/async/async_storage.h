@@ -1,11 +1,19 @@
 #pragma once
 
+/** @file
+ *  Purpose: offer the storage's interface to coroutines, without blocking the thread on file I/O.
+ *
+ *  Intention: realizes `async_storage` and `make_async_storage()` over the unchanged synchronous storage of
+ *  `execution/storage.h`, each operation running on a fiber of the storage's `io_context`; uses `async_vfs.h`.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <coroutine>  //  std::coroutine_handle
 #include <cstddef>  //  std::size_t
 #include <deque>  //  std::deque
 #include <functional>  //  std::function
-#include <memory>  //  std::unique_ptr, std::make_unique
+#include <memory>  //  std::unique_ptr, std::make_unique, std::shared_ptr
 #include <stdexcept>  //  std::runtime_error
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
@@ -14,12 +22,17 @@
 #include <utility>  //  std::forward, std::move
 #include <vector>  //  std::vector
 #endif
+#endif
 
-#include "../storage.h"
+#include "../functional/cxx_polyfill/functional.h"  //  polyfill::identity
+#include "../execution/storage.h"
+#include "../execution/storage_options.h"  //  connection_control
+#include "async_cursor.h"
 #include "async_vfs.h"
 #include "io_context.h"
 #include "task.h"
 
+#ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
 
     /**
@@ -105,7 +118,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         /**
          *  The primitive everything else is built on: run `function(storage)` on a
          *  fiber, exclusively, and return its result. Use it for anything not
-         *  mirrored below (pragmas, limits, user-defined functions, iteration).
+         *  mirrored below (pragmas, limits, user-defined functions).
          */
         template<class F>
         auto run(F function) {
@@ -372,6 +385,34 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return this->run([cte = std::move(cte), expression = std::move(expression)](Storage& storage) mutable {
                 return storage.with_recursive(std::move(cte), std::move(expression));
             });
+        }
+
+        //  ---- row-by-row iteration ----
+
+        /**
+         *  The objects of a mapped type, fetched one at a time: `storage.iterate<User>(where(...))`.
+         *  Returns an `async_cursor`; no I/O happens before its first `next()`.
+         */
+        template<class O, class... Args>
+        auto iterate(Args&&... args) {
+            return this->make_cursor(internal::bind_arguments(
+                [](Storage& storage, auto&&... args) {
+                    return storage.template iterate<O>(std::move(args)...);
+                },
+                std::forward<Args>(args)...));
+        }
+
+        /**
+         *  The rows of a select statement, or of a select statement involving a common table expression,
+         *  fetched one at a time: `storage.iterate(select(columns(&User::id, &User::name)))`.
+         */
+        template<class Select>
+        auto iterate(Select expression) {
+            return this->make_cursor(internal::bind_arguments(
+                [](Storage& storage, auto&& expression) {
+                    return storage.iterate(std::move(expression));
+                },
+                std::move(expression)));
         }
 
         //  ---- prepared statements ----
@@ -647,7 +688,22 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return this->storage.libversion();
         }
 
+        /**
+         *  Destroy `resource`, something that owns a statement of this connection, as soon as no operation is
+         *  executing on it. Used by `async_cursor`.
+         */
+        void retire(std::shared_ptr<void> resource) noexcept {
+            if (this->turnstile.busy) {
+                this->retired.push_back(std::move(resource));
+            }
+        }
+
       private:
+        template<class MakeView>
+        async_cursor<async_storage, MakeView> make_cursor(MakeView makeView) {
+            return {*this, std::move(makeView)};
+        }
+
         template<class F>
         auto run_on_fiber(std::unique_ptr<F> function) -> task<std::invoke_result_t<F&, Storage&>> {
             using result_type = std::invoke_result_t<F&, Storage&>;
@@ -697,6 +753,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
          *  overtake it between release and resumption.
          */
         void release() {
+            this->retired.clear();
             if (this->turnstile.waiters.empty()) {
                 this->turnstile.busy = false;
                 return;
@@ -717,6 +774,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         io_context* context;
         Storage storage;
         internal::storage_turnstile turnstile;
+        std::vector<std::shared_ptr<void>> retired;
     };
 }
 
@@ -768,3 +826,4 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
     }
 }
+#endif

@@ -1,9 +1,14 @@
 #pragma once
 
-/** @file Cross-cutting role/capability traits in purview of the sqlite_orm EDSL.
+/** @file
+ *  Purpose: declare the traits classifying the DSL nodes by a role or capability they share across dissimilar grammar
+ *  families.
+ *
+ *  Intention: the semantic axis of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; the
+ *  traits are specialized in the corresponding header files of the nodes.
  */
 
-#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/cxx_polyfill/type_traits.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -28,6 +33,10 @@ namespace sqlite_orm::internal {
     /**
      *  Nodes that are a DML statement expression bound to a mapped object:
      *  `insert(object)`, `replace(object)`, `update(object)`, `remove<O>(ids)`.
+     *
+     *  Note: bound to an object is not the same as carrying one - `remove<O>(ids)` names its
+     *  object by primary key. Reaching for the object itself takes the additional check that
+     *  `access_dml_object()` makes.
      */
     template<class T, class SFINAE = void>
     constexpr bool is_object_dml_expression_v = false;

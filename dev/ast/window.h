@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the window a window function is evaluated over.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple
@@ -7,9 +14,9 @@
 #include <utility>  //  std::forward, std::move
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
-#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause, is_frame_start_bound_v, is_frame_end_bound_v
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
 
@@ -117,6 +124,9 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_over_v = polyfill::is_specialization_of_v<T, over_t>;
 
+    /**
+     *  A named window definition of the WINDOW clause of a select.
+     */
     template<class... Args>
     struct window_defn_t {
         using args_type = std::tuple<Args...>;

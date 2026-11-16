@@ -1,12 +1,21 @@
 #pragma once
 
+/** @file
+ *  Purpose: be the coroutine type an asynchronous storage operation returns.
+ *
+ *  Intention: realizes a lazy C++20 coroutine that any coroutine can `co_await`; used by every public header of `async/`.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <coroutine>  //  std::coroutine_handle, std::suspend_always, std::noop_coroutine
 #include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception
 #include <optional>  //  std::optional
 #include <utility>  //  std::exchange, std::forward, std::move
 #endif
+#endif
 
+#ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
 
     /**
@@ -199,3 +208,4 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         std::coroutine_handle<promise_type> handle;
     };
 }
+#endif

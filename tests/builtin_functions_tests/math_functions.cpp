@@ -1,0 +1,448 @@
+#include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
+
+using namespace sqlite_orm;
+
+#ifdef SQLITE_ORM_MATH_FUNCTIONS_SUPPORTED
+
+constexpr double Epsilon = 0.0001;
+static bool is_double_eq(double a, double b, double epsilon) {
+    return ((a - b) < epsilon) && ((b - a) < epsilon);
+}
+
+TEST_CASE("math functions") {
+    using namespace std::placeholders;
+    auto storage = make_storage("");
+    auto doubleComparator = std::bind(is_double_eq, _1, _2, Epsilon);
+    auto optionalComparator = [](const std::optional<double>& lhs, const std::optional<double>& rhs) {
+        if (lhs.has_value() && rhs.has_value()) {
+            return is_double_eq(*lhs, *rhs, Epsilon);
+        } else if (!lhs.has_value() && !rhs.has_value()) {
+            return true;
+        } else {
+            return false;
+        }
+    };
+    SECTION("acos") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::acos(1));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(acos<std::optional<double>>(1));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("acosh") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::acosh(1));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(acosh<std::optional<double>>(1));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("asin") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::asin(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(asin<std::optional<double>>(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("asinh") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::asinh(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(asinh<std::optional<double>>(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("atan") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::atan(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(atan<std::optional<double>>(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("atan2") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::atan2(0, 1));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(atan2<std::optional<double>>(0, 1));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("atanh") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::atanh(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(atanh<std::optional<double>>(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("ceil") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::ceil(0.5));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(ceil<std::optional<double>>(0.5));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("ceiling") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::ceiling(0.5));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(ceiling<std::optional<double>>(0.5));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("cos") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::cos(0));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(cos<std::optional<double>>(0));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("cosh") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::cosh(0));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(cosh<std::optional<double>>(0));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("degrees") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::degrees(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(degrees<std::optional<double>>(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("exp") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::exp(0));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(exp<std::optional<double>>(0));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("floor") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::floor(1.5));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(floor<std::optional<double>>(1.5));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("ln") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::ln(1));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(ln<std::optional<double>>(1));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("log(x)") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::log(10));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), doubleComparator));
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(log<std::optional<double>>(10));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), optionalComparator));
+        }
+    }
+    SECTION("log10") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::log10(10));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), doubleComparator));
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(log10<std::optional<double>>(10));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), optionalComparator));
+        }
+    }
+    SECTION("log(b, x)") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::log(25, 625));
+            decltype(rows) expected;
+            expected.push_back(2);
+            REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), doubleComparator));
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(log<std::optional<double>>(25, 625));
+            decltype(rows) expected;
+            expected.push_back(2);
+            REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), optionalComparator));
+        }
+    }
+    SECTION("log2") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::log2(4));
+            decltype(rows) expected;
+            expected.push_back(2);
+            REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), doubleComparator));
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(log2<std::optional<double>>(4));
+            decltype(rows) expected;
+            expected.push_back(2);
+            REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), optionalComparator));
+        }
+    }
+    SECTION("mod") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::mod_f(6, 5));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(mod_f<std::optional<double>>(6, 5));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("pi") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::pi());
+            decltype(rows) expected;
+            expected.push_back(3.141592654);
+            REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), doubleComparator));
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(pi<std::optional<double>>());
+            decltype(rows) expected;
+            expected.push_back(3.141592654);
+            REQUIRE(std::equal(rows.begin(), rows.end(), expected.begin(), optionalComparator));
+        }
+    }
+    SECTION("pow") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::pow(2, 3));
+            decltype(rows) expected;
+            expected.push_back(8);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(pow<std::optional<double>>(2, 3));
+            decltype(rows) expected;
+            expected.push_back(8);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("power") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::power(2, 3));
+            decltype(rows) expected;
+            expected.push_back(8);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(power<std::optional<double>>(2, 3));
+            decltype(rows) expected;
+            expected.push_back(8);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("radians") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::radians(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(radians<std::optional<double>>(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("sin") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::sin(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(sin<std::optional<double>>(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("sinh") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::sinh(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(sinh<std::optional<double>>(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("sqrt") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::sqrt(1));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(sqrt<std::optional<double>>(1));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("tan") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::tan(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(tan<std::optional<double>>(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("tanh") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::tanh(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(tanh<std::optional<double>>(0));
+            decltype(rows) expected;
+            expected.push_back(0);
+            REQUIRE(rows == expected);
+        }
+    }
+    SECTION("trunc") {
+        SECTION("simple") {
+            auto rows = storage.select(sqlite_orm::trunc(1.5));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+        SECTION("explicit type") {
+            auto rows = storage.select(trunc<std::optional<double>>(1.5));
+            decltype(rows) expected;
+            expected.push_back(1);
+            REQUIRE(rows == expected);
+        }
+    }
+}
+
+#endif  //  SQLITE_ORM_MATH_FUNCTIONS_SUPPORTED

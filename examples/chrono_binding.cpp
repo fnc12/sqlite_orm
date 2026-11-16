@@ -9,18 +9,18 @@
 
 #ifdef ENABLE_THIS_EXAMPLE
 #include <assert.h>
-#include <cstdio>  //  std::remove
-#include <string>
-#include <iostream>
 #include <chrono>
+#include <cstdio>  //  std::remove
 #include <format>
+#include <iostream>
+#include <string>
 
 ///////////////////////////////
 /// sys_days binding as TEXT
 /// ///////////////////////////
 
-#include <sstream>
 #include <regex>
+#include <sstream>
 
 /**
  *  This is the date we want to map to our sqlite db.
@@ -45,7 +45,7 @@ static std::optional<std::chrono::sys_days> sysDaysFromString(const std::string&
     using namespace std::literals;
     using namespace std::chrono;
 
-    std::stringstream ss{s};
+    std::istringstream ss{s};
     std::chrono::sys_days tt;
     ss >> std::chrono::parse("%F"s, tt);
     if (!ss.fail()) {

@@ -1,6 +1,7 @@
+#include <catch2/catch_all.hpp>
+#include <cstdint>  //  std::int32_t
 #include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch_all.hpp>
 
 extern "C" int sqlite3_series_init(sqlite3*, char**, const sqlite3_api_routines*);
 
@@ -15,7 +16,7 @@ namespace {
 
 using namespace sqlite_orm;
 
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
 TEST_CASE("fts5 virtual table schema") {
     using Catch::Matchers::UnorderedEquals;
     struct Post {
@@ -118,6 +119,29 @@ TEST_CASE("fts5 virtual table schema") {
                                                   highlight(Post::hidden::any_field, 1, "<b>", "</b>")),
                                           where(match(Post::hidden::any_field, "SQLite")),
                                           order_by(Post::hidden::rank_field));
+
+        ///    SELECT snippet(posts, 0, '[', ']', '...', 10)
+        ///    FROM posts
+        ///    WHERE posts MATCH 'fts5';
+        ///
+        ///    the title of the only matching post is short enough to come back whole,
+        ///    which keeps the expectation independent of the snippet-picking algorithm
+        auto snippets = storage.select(snippet(Post::hidden::any_field, 0, "[", "]", "...", 10),
+                                       where(match(Post::hidden::any_field, "fts5")));
+        decltype(snippets) expectedSnippets{"Learn SQlite [FTS5]"};
+        REQUIRE(snippets == expectedSnippets);
+
+        ///    SELECT bm25(posts), bm25(posts, 10.0, 5.0)
+        ///    FROM posts
+        ///    WHERE posts MATCH 'fts5'
+        ///    ORDER BY bm25(posts);
+        auto ranks = storage.select(columns(bm25(Post::hidden::any_field), bm25(Post::hidden::any_field, 10.0, 5.0)),
+                                    where(match(Post::hidden::any_field, "fts5")),
+                                    order_by(bm25(Post::hidden::any_field)));
+        REQUIRE(ranks.size() == 1);
+        //  the exact scores depend on the SQLite version; better matches make them more negative
+        REQUIRE(std::get<0>(ranks[0]) < 0.0);
+        REQUIRE(std::get<1>(ranks[0]) < 0.0);
     }
 }
 
@@ -156,7 +180,7 @@ TEST_CASE("issue1410") {
 #endif
 #endif
 
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
 TEST_CASE("dbstat virtual table schema") {
     SECTION("eponymous") {
         SECTION("definition") {
@@ -287,7 +311,125 @@ TEST_CASE("generate_series virtual table schema") {
 }
 #endif
 
-#ifdef SQLITE_ENABLE_RTREE
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+TEST_CASE("pragma_table_info virtual table") {
+    using Catch::Matchers::Equals;
+    using row_type = std::tuple<int, std::string, std::string, bool, std::string, int>;
+    constexpr auto to_tuple = [](const table_info& row) {
+        return row_type{row.cid, row.name, row.type, row.notnull, row.dflt_value, row.pk};
+    };
+    struct User {
+        int64 id = 0;
+        std::string name;
+        std::string nickname;
+    };
+
+    auto storage = make_storage("",
+                                make_pragma_tables(),
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name, default_value("")),
+                                           make_column("nickname", &User::nickname)));
+    storage.sync_schema();
+
+    SECTION("eponymous") {
+        REQUIRE(storage.tablename<table_info>() == "pragma_table_info");
+        REQUIRE_FALSE(storage.table_exists("pragma_table_info"));
+    }
+    SECTION("table-valued function") {
+        auto rows = storage.select(&table_info::name, from(pragma_table_info("users")));
+        REQUIRE_THAT(rows, Equals(std::vector<std::string>{"id", "name", "nickname"}));
+    }
+    SECTION("schema argument") {
+        auto rows = storage.select(&table_info::name, from(pragma_table_info("users", "main")));
+        REQUIRE_THAT(rows, Equals(std::vector<std::string>{"id", "name", "nickname"}));
+    }
+    SECTION("objects") {
+        auto rows = storage.select(object<table_info>(), from(pragma_table_info("users")));
+        auto expected = storage.pragma.table_info("users");
+        std::vector<row_type> actualRows, expectedRows;
+        for (const auto& row: rows) {
+            actualRows.push_back(to_tuple(row));
+        }
+        for (const auto& row: expected) {
+            expectedRows.push_back(to_tuple(row));
+        }
+        REQUIRE_THAT(actualRows, Equals(expectedRows));
+    }
+    SECTION("hidden columns") {
+        auto names = storage.select(&table_info::name, where(c(&table_info::hidden::arg) == "users"));
+        REQUIRE_THAT(names, Equals(std::vector<std::string>{"id", "name", "nickname"}));
+
+        auto args = storage.select(&table_info::hidden::arg, from(pragma_table_info("users")));
+        REQUIRE_THAT(args, Equals(std::vector<std::string>{"users", "users", "users"}));
+    }
+    SECTION("default value") {
+        //  `DEFAULT ''` is reported as the SQL expression text `''`, no default as an empty string (NULL)
+        auto rows =
+            storage.select(columns(&table_info::name, &table_info::dflt_value), from(pragma_table_info("users")));
+        REQUIRE_THAT(
+            rows,
+            Equals(std::vector<std::tuple<std::string, std::string>>{{"id", ""}, {"name", "''"}, {"nickname", ""}}));
+    }
+}
+
+#if SQLITE_VERSION_NUMBER >= 3026000
+TEST_CASE("pragma_table_xinfo virtual table") {
+    using Catch::Matchers::Equals;
+    using row_type = std::tuple<int, std::string, std::string, bool, std::string, int, int>;
+    constexpr auto to_tuple = [](const table_xinfo& row) {
+        return row_type{row.cid, row.name, row.type, row.notnull, row.dflt_value, row.pk, row.hidden};
+    };
+    struct User {
+        int64 id = 0;
+        std::string name;
+    };
+
+    auto storage = make_storage(
+        "",
+        make_pragma_tables(),
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
+    storage.sync_schema();
+
+    SECTION("eponymous") {
+        REQUIRE(storage.tablename<table_xinfo>() == "pragma_table_xinfo");
+        REQUIRE_FALSE(storage.table_exists("pragma_table_xinfo"));
+    }
+    SECTION("table-valued function") {
+        auto rows =
+            storage.select(columns(&table_xinfo::name, &table_xinfo::hidden), from(pragma_table_xinfo("users")));
+        REQUIRE_THAT(rows, Equals(std::vector<std::tuple<std::string, int>>{{"id", 0}, {"name", 0}}));
+    }
+    SECTION("objects") {
+        auto rows = storage.select(object<table_xinfo>(), from(pragma_table_xinfo("users", "main")));
+        auto expected = storage.pragma.table_xinfo("users");
+        std::vector<row_type> actualRows, expectedRows;
+        for (const auto& row: rows) {
+            actualRows.push_back(to_tuple(row));
+        }
+        for (const auto& row: expected) {
+            expectedRows.push_back(to_tuple(row));
+        }
+        REQUIRE_THAT(actualRows, Equals(expectedRows));
+    }
+    SECTION("hidden columns") {
+        auto names = storage.select(
+            &table_xinfo::name,
+            where(c(&table_xinfo::hidden::arg) == "users" and c(&table_xinfo::hidden::schema) == "main"));
+        REQUIRE_THAT(names, Equals(std::vector<std::string>{"id", "name"}));
+    }
+    SECTION("join with hidden columns of the same name") {
+        auto names =
+            storage.select(&table_xinfo::name,
+                           inner_join<table_info>(on(c(&table_info::name) == &table_xinfo::name)),
+                           where(c(&table_xinfo::hidden::arg) == "users" and c(&table_info::hidden::arg) == "users"));
+        REQUIRE_THAT(names, Equals(std::vector<std::string>{"id", "name"}));
+    }
+}
+#endif
+#endif
+
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
 TEST_CASE("rtree virtual table schema") {
     struct DemoIndex {
         int64 id;
@@ -322,4 +464,96 @@ TEST_CASE("rtree virtual table schema") {
         REQUIRE(rows == std::vector<int64>{28269});
     }
 }
+#endif
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
+namespace {
+    struct[[= "reflected_posts"_orm_name]] ReflectedPost {
+        std::string title;
+        std::string body;
+
+        using hidden = fts5::hidden_fields_of<ReflectedPost>;
+    };
+}
+
+TEST_CASE("reflection-based fts5 virtual table") {
+    auto virtualTable = make_virtual_table(using_fts5<ReflectedPost>(tokenize("porter ascii")));
+    using elements_type = decltype(virtualTable.elements);
+    STATIC_REQUIRE(internal::col_index_sequence_of<elements_type>::size() == 2);
+    STATIC_REQUIRE(internal::hidden_col_index_sequence_of<elements_type>::size() == 2);
+
+    SECTION("definition") {
+        REQUIRE(virtualTable.name == "reflected_posts");
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&ReflectedPost::title), "title"));
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&ReflectedPost::body), "body"));
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&fts5::hidden::any), "reflected_posts"));
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&fts5::hidden::rank), "rank"));
+    }
+    SECTION("storage") {
+        auto storage = make_storage("", std::move(virtualTable));
+        storage.sync_schema();
+        REQUIRE(storage.table_exists("reflected_posts"));
+
+        storage.insert(ReflectedPost{"Learn SQlite FTS5", "full-text search in SQLite using FTS5"});
+        storage.insert(ReflectedPost{"SQLite Tutorial", "Help you learn SQLite quickly"});
+
+        auto titles = storage.select(&ReflectedPost::title, where(match(ReflectedPost::hidden::any_field, "fts5")));
+        REQUIRE(titles == std::vector<std::string>{"Learn SQlite FTS5"});
+    }
+}
+#endif
+
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
+namespace {
+    struct[[= "reflected_demo_index"_orm_name]] ReflectedDemoIndex {
+        [[= primary_key()]] int64 id;
+        float minX, maxX;
+        float minY, maxY;
+    };
+
+    struct ReflectedDemoIndexI32 {
+        int64 id;
+        std::int32_t minX, maxX;
+    };
+}
+
+TEST_CASE("reflection-based rtree virtual table") {
+    SECTION("explicit table name") {
+        auto virtualTable = make_virtual_table("demo_index", using_rtree<ReflectedDemoIndex>());
+        STATIC_REQUIRE(std::is_same<decltype(virtualTable)::object_type, ReflectedDemoIndex>::value);
+        REQUIRE(virtualTable.name == "demo_index");
+    }
+    SECTION("rtree") {
+        auto virtualTable = make_virtual_table(using_rtree<ReflectedDemoIndex>());
+        using elements_type = decltype(virtualTable.elements);
+        STATIC_REQUIRE(internal::col_index_sequence_of<elements_type>::size() == 5);
+        REQUIRE(virtualTable.name == "reflected_demo_index");
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&ReflectedDemoIndex::id), "id"));
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&ReflectedDemoIndex::maxY), "maxY"));
+
+        auto storage = make_storage("", std::move(virtualTable));
+        storage.sync_schema();
+        REQUIRE(storage.table_exists("reflected_demo_index"));
+
+        storage.insert(into<ReflectedDemoIndex>(),
+                       columns(&ReflectedDemoIndex::id,
+                               &ReflectedDemoIndex::minX,
+                               &ReflectedDemoIndex::maxX,
+                               &ReflectedDemoIndex::minY,
+                               &ReflectedDemoIndex::maxY),
+                       values(std::tuple(28269, -80.851471, -80.735718, 35.272560, 35.407925)));
+        auto rows = storage.select(&ReflectedDemoIndex::id, where(c(&ReflectedDemoIndex::id) == 28269));
+        REQUIRE(rows == std::vector<int64>{28269});
+    }
+    SECTION("rtree_i32") {
+        auto virtualTable = make_virtual_table(using_rtree_i32<ReflectedDemoIndexI32>());
+        REQUIRE(virtualTable.name == "ReflectedDemoIndexI32");
+
+        auto storage = make_storage("", std::move(virtualTable));
+        storage.sync_schema();
+        REQUIRE(storage.table_exists("ReflectedDemoIndexI32"));
+    }
+}
+#endif
 #endif

@@ -1,5 +1,5 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 
 using namespace sqlite_orm;
 using internal::col_index_sequence_of, internal::col_index_sequence_with, internal::col_index_sequence_with_field_type,
@@ -10,7 +10,7 @@ using internal::table_definition, internal::insertable_table_definition;
 template<class Elements>
 using table_values_index_sequence = internal::filter_tuple_sequence_t<Elements, internal::is_literal>;
 
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
 TEST_CASE("generic vtab and dbstat layout tests") {
     using internal::dbstat_module_tag;
     struct mystat : dbstat {};
@@ -28,6 +28,8 @@ TEST_CASE("generic vtab and dbstat layout tests") {
         STATIC_REQUIRE(std::is_same<table_type::object_type, dbstat>::value);
         STATIC_REQUIRE(std::is_same<table_type::object_type::hidden::enclosing_type, dbstat>::value);
         STATIC_REQUIRE(is_base_template_of_v<table_definition, table_type>);
+        STATIC_REQUIRE_FALSE(is_base_template_of_v<insertable_table_definition, table_type>);
+        STATIC_REQUIRE(table_type::module_traits_type::is_eponymous::value);
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 10);
         STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, std::string>::size() == 3);
         STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 7);
@@ -75,6 +77,8 @@ TEST_CASE("generate_series layout tests") {
         STATIC_REQUIRE(std::is_same<table_type::object_type, generate_series>::value);
         STATIC_REQUIRE(std::is_same<table_type::object_type::hidden::enclosing_type, generate_series>::value);
         STATIC_REQUIRE(is_base_template_of_v<table_definition, table_type>);
+        STATIC_REQUIRE_FALSE(is_base_template_of_v<insertable_table_definition, table_type>);
+        STATIC_REQUIRE(table_type::module_traits_type::is_eponymous::value);
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 1);
         STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
         STATIC_REQUIRE(all_col_index_sequence_with_field_type<elements_type, int>::size() == 4);
@@ -83,7 +87,70 @@ TEST_CASE("generate_series layout tests") {
 }
 #endif
 
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+TEST_CASE("pragma_table_info layout tests") {
+    using internal::pragma_table_info_module_tag;
+
+    STATIC_REQUIRE(is_table_reference_v<decltype(pragma_table_info)>);
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    STATIC_REQUIRE(orm_table_reference<decltype(pragma_table_info)>);
+#endif
+
+    SECTION("default table definition") {
+        auto table = std::get<0>(make_pragma_tables());
+        using table_type = decltype(table);
+        using elements_type = decltype(table.elements);
+        STATIC_REQUIRE(std::is_same<table_type::module_type, pragma_table_info_module_tag>::value);
+        STATIC_REQUIRE(std::is_same<table_type::object_type, table_info>::value);
+        STATIC_REQUIRE(std::is_same<table_type::object_type::hidden::enclosing_type, table_info>::value);
+        STATIC_REQUIRE(is_base_template_of_v<table_definition, table_type>);
+        STATIC_REQUIRE_FALSE(is_base_template_of_v<insertable_table_definition, table_type>);
+        STATIC_REQUIRE(table_type::module_traits_type::is_eponymous::value);
+        STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 6);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 2);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, bool>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, std::string>::size() == 3);
+        STATIC_REQUIRE(all_col_index_sequence_with_field_type<elements_type, std::string>::size() == 5);
+        STATIC_REQUIRE(hidden_col_index_sequence_of<elements_type>::size() == 2);
+    }
+}
+
+#if SQLITE_VERSION_NUMBER >= 3026000
+TEST_CASE("pragma_table_xinfo layout tests") {
+    using internal::pragma_table_xinfo_module_tag;
+
+    STATIC_REQUIRE(is_table_reference_v<decltype(pragma_table_xinfo)>);
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    STATIC_REQUIRE(orm_table_reference<decltype(pragma_table_xinfo)>);
+#endif
+
+    SECTION("data member and nested struct named `hidden`") {
+        STATIC_REQUIRE(std::is_same<decltype(&table_xinfo::hidden), int table_xinfo::*>::value);
+        STATIC_REQUIRE(std::is_same<decltype(&table_xinfo::hidden::arg), std::string table_xinfo::hidden::*>::value);
+        STATIC_REQUIRE(std::is_same<internal::mapped_type_of_t<struct table_xinfo::hidden>, table_xinfo>::value);
+    }
+    SECTION("default table definition") {
+        auto table = std::get<1>(make_pragma_tables());
+        using table_type = decltype(table);
+        using elements_type = decltype(table.elements);
+        STATIC_REQUIRE(std::is_same<table_type::module_type, pragma_table_xinfo_module_tag>::value);
+        STATIC_REQUIRE(std::is_same<table_type::object_type, table_xinfo>::value);
+        STATIC_REQUIRE(std::is_same<table_type::object_type::hidden::enclosing_type, table_xinfo>::value);
+        STATIC_REQUIRE(is_base_template_of_v<table_definition, table_type>);
+        STATIC_REQUIRE_FALSE(is_base_template_of_v<insertable_table_definition, table_type>);
+        STATIC_REQUIRE(table_type::module_traits_type::is_eponymous::value);
+        STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 7);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 3);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, bool>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, std::string>::size() == 3);
+        STATIC_REQUIRE(all_col_index_sequence_with_field_type<elements_type, std::string>::size() == 5);
+        STATIC_REQUIRE(hidden_col_index_sequence_of<elements_type>::size() == 2);
+    }
+}
+#endif
+#endif
+
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
 TEST_CASE("fts5 layout tests") {
     using internal::fts5_module_tag;
     struct Post {
@@ -107,7 +174,7 @@ TEST_CASE("fts5 layout tests") {
 }
 #endif
 
-#ifdef SQLITE_ENABLE_RTREE
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
 TEST_CASE("rtree layout tests") {
     using internal::rtree_module_tag;
     struct DemoIndex {

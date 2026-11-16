@@ -12,15 +12,20 @@
 [![Patreon](https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white)](https://patreon.com/fnc12)
 
 # SQLite ORM
+
+> **Purpose:** let C++ code use SQLite through a domain-specific language the compiler checks.
+>
+> **Intention:** a header-only library on libsqlite3, for C++17 and later; maps C++ structs to tables through member pointers.
+
 SQLite ORM light header only library for modern C++. Please read the license precisely. The project has AGPL license for open source project and MIT license after purchasing it for 50$ (using [PayPal](https://paypal.me/fnc12) or any different way (contact using email fnc12@me.com)).
 
 Documentation is found in [docs](docs/home.md).
 
 # Status
-| Branch | Travis | Appveyor |
-| :----- | :----- | :------- |
-| [`master`](https://github.com/fnc12/sqlite_orm/tree/master) | [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=master)](https://travis-ci.org/fnc12/sqlite_orm) | [![Build status](https://ci.appveyor.com/api/projects/status/github/fnc12/sqlite_orm?branch=master&svg=true)](https://ci.appveyor.com/project/fnc12/sqlite-orm/history) | | | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm/) |
-| [`dev`](https://github.com/fnc12/sqlite_orm/tree/dev) | [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=dev)](https://travis-ci.org/fnc12/sqlite_orm) | [![Build status](https://ci.appveyor.com/api/projects/status/github/fnc12/sqlite_orm?branch=dev&svg=true)](https://ci.appveyor.com/project/fnc12/sqlite-orm/history) | | | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm/tree/dev) |
+| Branch | CI | Website |
+| :----- | :- | :------ |
+| [`master`](https://github.com/fnc12/sqlite_orm/tree/master) | [![CI](https://github.com/fnc12/sqlite_orm/actions/workflows/ci.yaml/badge.svg?branch=master)](https://github.com/fnc12/sqlite_orm/actions/workflows/ci.yaml?query=branch%3Amaster) | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm/) |
+| [`dev`](https://github.com/fnc12/sqlite_orm/tree/dev) | [![CI](https://github.com/fnc12/sqlite_orm/actions/workflows/ci.yaml/badge.svg?branch=dev)](https://github.com/fnc12/sqlite_orm/actions/workflows/ci.yaml?query=branch%3Adev) | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm/tree/dev) |
 
 # Advantages
 
@@ -412,8 +417,8 @@ Looks like magic but it works very simple. Cute function `c` (column) takes a cl
 * is_not_equal
 * greater_than
 * greater_or_equal
-* lesser_than
-* lesser_or_equal
+* less_than
+* less_or_equal
 * is_null
 * is_not_null
 

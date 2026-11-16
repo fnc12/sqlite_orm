@@ -1,5 +1,5 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 
 using namespace sqlite_orm;
 
@@ -11,14 +11,18 @@ TEST_CASE("statement_serializer rank") {
     std::string value;
     std::string expected;
     SECTION("rank") {
+        //  the RANK() window function, which is applied by an OVER clause
         auto node = rank();
         value = serialize(node, context);
-        expected = "rank";
+        expected = "RANK()";
     }
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
     SECTION("order by rank") {
+        //  the deprecated spelling of the hidden FTS5 rank column
         auto node = order_by(rank());
         value = serialize(node, context);
         expected = "ORDER BY rank";
     }
+#endif
     REQUIRE(value == expected);
 }

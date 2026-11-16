@@ -1,9 +1,9 @@
 #include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
 
+#include <assert.h>
 #include <iostream>
 #include <memory>
-#include <assert.h>
 
 using std::cout;
 using std::endl;

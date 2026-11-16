@@ -1,222 +1,160 @@
 # AGENTS.md
 
-This file provides guidance to AI coding agents working with code in this repository.
-It is the single source of instructions, regardless of which tool is reading it.
+Guidance for AI coding agents working in this repository, regardless of which tool reads it.
+The rules below apply to every change; the linked documents are read when a task needs them.
 
 ## About sqlite_orm
 
-sqlite_orm is a header-only C++17 ORM library for SQLite. It provides type-safe database operations without raw SQL strings, using C++ template metaprogramming to map C++ structs to database tables.
+sqlite_orm is a header-only C++ ORM for SQLite. C++17 is the baseline; C++20/23/26 features
+are compiled conditionally. Its only dependency is libsqlite3. It models SQL as a compile-time
+DSL of individually named node structs and maps C++ structs to tables through member
+pointers. License: AGPL for open source, MIT after purchase.
 
-**Key characteristics:**
-- Header-only library (main header: `include/sqlite_orm/sqlite_orm.h`)
-- Requires C++17 minimum (supports C++20, C++23, C++26)
-- Single dependency: libsqlite3
-- License: AGPL for open source, MIT after purchase
+## Repository layout
 
-## Build System
+- `dev/` - the sources, organized by functionality. **Read
+  [`docs/internals/source-layout.md`](docs/internals/source-layout.md) before adding, moving
+  or renaming a header.**
+- `include/sqlite_orm/sqlite_orm.h` - the **generated** single-header amalgamation of `dev/`.
+  Never edit it by hand: change `dev/` and regenerate it (see [Before every commit](#before-every-commit)).
+  `include/sqlite_orm/sqlite_orm_config.h` is generated the same way, from `dev/config/config.h`.
+- `not_single_header_include/sqlite_orm/` - the non-amalgamated variants. The includes of
+  `sqlite_orm.h` and `sqlite_orm_config.h` and the `sources` of `third_party/amalgamate/sqlite_orm.json` and
+  `sqlite_orm_config.json` respectively list the same headers in the same order; change both
+  together (`scripts/check-amalgamation-sources.sh` checks it).
+- `modules/` - the C++20 named module; public symbols are declared in
+  `SQLITE_ORM_EXPORT namespace sqlite_orm`.
+- `tests/` - Catch2 unit tests; `examples/` - one program per feature.
+- `docs/internals/` - how the library is built ([index](docs/internals/home.md));
+  `docs/plans/` - designs of work in progress, deleted once done ([policy](docs/plans/README.md)).
 
-### Building the project
+The main entry points: the storage (`dev/execution/storage.h`, `make_storage()`), the table
+definitions (`dev/schema/table.h`, `make_table()`) and the statement serializer
+(`dev/serialization/statement_serializer.h`).
+
+## Header rules
+
+**Header layers.** A *vocabulary layer* of traits and algorithms lets the library program
+against classification ("is this a column") instead of concrete node types. **Read
+[`docs/internals/vocabulary-layer.md`](docs/internals/vocabulary-layer.md) before adding a
+trait, predicate or algorithm.** The placement test:
+
+- Specialized against something concrete, a node struct or a raw type? → `dev/vocabulary/traits/`
+- Composed from other vocabulary, closed and single-node-scoped? → `dev/vocabulary/algorithms/`
+- Searches or traverses across a collection? → not vocabulary: `dev/schema/algorithms/`
+
+Complexity never determines the tier. Where nearby code does it differently, nearby code is
+the outlier: follow the doc, and convert the outlier rather than copying it.
+
+**Adding a DSL node** follows "Adding a new DSL node" in the vocabulary layer doc. In short:
+a node specializes its vocabulary traits in its own header, over a type predicate rather than
+by restating its template parameters; consumers grammar-match it and read it through the
+projections, never pattern-matching the concrete node. **Register the header in
+`dev/node_definitions.h`**: a missing entry compiles, and the trait silently falls back to its
+primary template.
+
+**The configuration is universally available.** Every header can rely on `dev/config/`
+without including it: the C++ feature and compiler macros, the platform macros, the SQLite
+version and feature macros (`SQLITE_VERSION_NUMBER`, `SQLITE_ORM_JSON_SUPPORTED`, ...), the
+capability macros (`SQLITE_ORM_WITH_CTE`, ...) and the internal macros
+(`SQLITE_ORM_EXPORT`, ...). Code depending on a compile option of SQLite tests the feature
+macro `dev/sqlite3/sqlite3_config.h` derives from it, never the `SQLITE_ENABLE_*` macro itself.
+This covers configuration only.
+A header that uses the SQLite C API (functions, types, constants such as
+`SQLITE_OPEN_READONLY`) includes `<sqlite3.h>` itself, and a header that uses a sqlite_orm
+symbol includes the header declaring it.
+
+**Never guard an `#include` of a sqlite_orm header**, whether with a feature macro, a SQLite
+version check or anything else. The amalgamation inlines a header where it is *first*
+included, so a guarded first inclusion drops it from every build where the condition is
+false. A header needed in one configuration only guards its *contents*. Guarding standard
+library includes is fine.
+
+**Out-of-class member definitions live in a `_definitions.h` header next to their class**,
+e.g. `schema/column_definitions.h` next to `schema/column.h`. Only the manifest
+`dev/interface_definitions.h` includes them: register a new one there, and never include one
+from anywhere else.
+
+## Code style
+
+- Match the surrounding code's patterns, naming and comment density.
+- Comments state what an entity is or checks, in one accurate sentence. No comparisons with
+  neighbours, justifications or restated context. Facts shared by a group of entities go once
+  in the group's heading.
+- Every file opens with `Purpose:`, the one reason it exists, and `Intention:`, what it
+  realizes, what it uses and whom it speaks to, written before its first line of code. It
+  stands below only what the language must put first, as the doc-comment of what the file
+  declares: the `/** @file */` block where the file groups related symbols, otherwise the
+  doc-comment of its main symbol or facility. A Markdown document carries them as a blockquote
+  under its title. The comment rules above apply below them.
+- A Purpose or doc-comment naming an SQL or SQLite construct takes the construct's meaning from
+  SQLite's documentation, or from the documentation of the module that defines it, rather than
+  from the cases sqlite_orm uses it for today. A page silent on a case leaves the case open, for
+  the maintainers to settle.
+- Type metafunctions: `_of` names a type computed from a node (`column_result_of_t`,
+  `table_type_of_t`); `_for` names a selection or construction for given parameters
+  (`node_tuple_for`). No names like "proxy" for plain type computations.
+- Prefer `std::ranges` algorithms, with projections, wherever the code's C++ standard has
+  them.
+- Weigh internal design alternatives by what library consumers can observe: their types, call
+  sites and diagnostics.
+
+## Development workflow
+
+### Before every commit
+
+Run [`scripts/pre-commit.sh`](scripts/pre-commit.sh), on Linux, macOS or WSL. It regenerates
+the amalgamations, formats the sources with clang-format 20 (the version CI lints with), warns
+about changed files containing carriage returns, and checks the order of the amalgamation
+sources and that the paths named in this file and in `docs/internals/` exist. Every commit carries its own regenerated amalgamation, so that each
+one is consistent by itself. Files use LF line endings, enforced by `.gitattributes`. When
+moving or renaming a file, update the documents naming it.
+
+### Building and testing
+
 ```bash
-# Configure with default C++17
-cmake -B build
-
-# Configure with specific C++ standard
-cmake -B build -DSQLITE_ORM_ENABLE_CXX_20=ON
-cmake -B build -DSQLITE_ORM_ENABLE_CXX_23=ON
-
-# Build
+cmake -B build -DBUILD_TESTING=ON              # C++17; add -DSQLITE_ORM_ENABLE_CXX_20=ON (or _23, _26)
+cmake -B build -DBUILD_EXAMPLES=ON             # the examples
 cmake --build build
-
-# Install (may need admin rights)
-cmake --build build --target install
+ctest --test-dir build                         # all tests
+./build/tests/unit_tests "[ast_iterator]"      # selected by Catch2 test name or tag
 ```
 
-### Running tests
-```bash
-# Build tests (from project root)
-cmake -B build -DBUILD_TESTING=ON
-cmake --build build
+- Behavioral changes and fixes come with tests, written to fail first. Refactorings and moves
+  are covered by the existing suite.
+- Tests are organized with `TEST_CASE` and `SECTION`; serializer output is tested under
+  `tests/statement_serializer_tests/`.
+- CI builds on Linux, Windows and macOS with several compilers and C++ standards.
+  `-Werror=reorder` is on for GCC and Clang; MSVC builds with `/bigobj` and `/EHsc`.
+- The named module tests (`tests/named_module/`) import the module from target
+  `sqlite_orm_module` (`cmake/SqliteOrmModule.cmake`). It needs C++23 and either
+  MSVC with a Visual Studio generator or the Ninja generator with CMake 4.5;
+  `-DSQLITE_ORM_BUILD_MODULE_TESTS=OFF` skips them. CI runs them in
+  `.github/workflows/named-module.yaml` only.
 
-# Run all tests
-cd build && ctest
+### Branches and pull requests
 
-# Run unit tests directly (with more control)
-./build/tests/unit_tests
+- `master` is the release branch. Development happens on `dev`: base branches and PRs on it.
+  Check the current branch with `git branch --show-current` rather than assuming it.
+- Bring a branch up to date by merging `dev`, or the base branch of a stacked PR, into it;
+  don't rebase.
+- Following [`CONTRIBUTING.md`](CONTRIBUTING.md):
+  - discuss significant behavioral changes in an issue first;
+  - the PR title describes the change, without an issue number, and the description links
+    the issue (`Fixes #9999`);
+  - write commit messages in English;
+  - squash commits that add code a later commit of the same PR removes.
 
-# Run specific test by name using Catch2 filter
-./build/tests/unit_tests "Limits"
-./build/tests/unit_tests "[ast_iterator]"
-```
+## References
 
-The test suite uses Catch2 framework. All test files are in `tests/` directory. Tests are organized using `TEST_CASE` and `SECTION` macros.
-
-### Building examples
-```bash
-cmake -B build -DBUILD_EXAMPLES=ON
-cmake --build build
-```
-
-## Architecture Overview
-
-### Core Design Pattern
-The library uses a **storage-centric architecture** with compile-time type safety through template metaprogramming:
-
-1. **Storage object** (`dev/storage.h`, `dev/storage_base.h`): The main interface that provides CRUD operations, query building, and schema management. Created via `make_storage()`.
-
-2. **Table definitions** (`dev/schema/table.h`): Tables are defined using `make_table()` which maps C++ structs to database schema. Columns are mapped using member pointers.
-
-3. **Type system** (`dev/type_traits.h`, `dev/type_printer.h`): Extensive compile-time type introspection to deduce types from member pointers and validate queries at compile time.
-
-4. **Statement serialization** (`dev/statement_serializer.h`, `dev/serializer_context.h`): Converts C++ expression objects into SQL strings.
-
-5. **Expression objects** (`dev/conditions.h`, `dev/core_functions.h`, `dev/ast/`): Type-safe representations of SQL operations (WHERE, JOIN, ORDER BY, etc.).
-
-### Key Implementation Files
-
-**Storage layer:**
-- `dev/storage.h` - Main storage template with CRUD operations
-- `dev/storage_base.h` - Base class with connection management, transactions, UDFs
-- `dev/storage_impl.h` - Implementation details
-- `dev/connection_holder.h` - RAII wrapper for sqlite3 connections
-
-**Schema definition:**
-- `dev/schema/table.h` - Table definitions
-- `dev/schema/column.h` - Column definitions and constraints
-- `dev/schema/view.h` - View support
-- `dev/schema/virtual_table.h` - Virtual table support
-- `dev/schema/index.h` - Index support
-- `dev/schema/triggers.h` - Trigger support
-- `dev/schema/constraints/` - One header per constraint (`primary_key`, `foreign_key`, `check`, ...)
-- `dev/schema/algorithms/` - Algorithms operating across the whole schema, e.g. `sync_order.h`
-- `dev/vtabs/` - Built-in virtual tables (fts5, rtree, dbstat, generate_series)
-
-**Vocabulary layer** (see [Header layers](#header-layers) below):
-- `dev/vocabulary/traits/` - Open classification traits, specialized at each node's own header
-- `dev/vocabulary/algorithms/` - Closed algorithms composed from those traits
-- `dev/vocabulary/node_traits.h`, `dev/vocabulary/node_algorithms.h` - Declaration-only umbrellas
-- `dev/node_definitions.h`, `dev/node_algorithm_definitions.h` - Completeness manifests
-- `dev/member_traits/` - Pointer-to-member mechanics; one tier below the DSL
-
-**Query building:**
-- `dev/conditions.h` - WHERE clause conditions
-- `dev/core_functions.h` - SQL functions
-- `dev/ast/` - AST nodes for query, DML and operational constructs (`select_t`, `insert_t`, `where`, `window`, ...)
-
-**Type binding:**
-- `dev/statement_binder.h` - Binds C++ values to prepared statements
-- `dev/row_extractor.h` - Extracts C++ objects from result rows
-- `dev/field_printer.h` - Serializes field values
-
-**Utilities:**
-- `dev/prepared_statement.h` - Prepared statement support
-- `dev/ast_iterator.h` - Traverses expression ASTs
-- `dev/transaction_guard.h` - RAII transaction guards
-- `dev/cte_storage.h` - Common Table Expression support
-
-### Header Organization
-
-`dev/` is the source of truth, organized by functionality.
-`include/sqlite_orm/sqlite_orm.h` is the **generated** single-header
-amalgamation of `dev/`. Never edit it by hand — change `dev/` and regenerate.
-`not_single_header_include/` holds the non-amalgamated variant.
-
-### Header layers
-
-**Read [`docs/internals/vocabulary-layer.md`](docs/internals/vocabulary-layer.md) before
-adding, moving or renaming anything under `dev/`.** It is the authority on where internal
-code belongs and why; what follows is only enough to know when to consult it.
-
-sqlite_orm models SQL as a compile-time DSL of individually named node structs. A
-*vocabulary layer* of traits and algorithms lets the rest of the library program against
-classification and capability ("is this a column", "is this a select expression") instead
-of against concrete node types. The placement test for anything new:
-
-- Specialized against something concrete — a node struct or a raw type? → `dev/vocabulary/traits/`
-- Composed from other vocabulary, but closed and single-node-scoped ("I already have a node, tell me something about it")? → `dev/vocabulary/algorithms/`
-- Searches or traverses *across a collection* to locate or relate nodes? → **not vocabulary.** `dev/schema/algorithms/`
-
-Complexity never determines the tier — only those three questions do. A trait that
-composes five others is still a trait.
-
-#### Adding a new DSL node
-
-1. Define the node struct in `dev/schema/` or `dev/ast/`.
-2. In **that same header**, specialize whichever vocabulary axes apply (grammar, semantic,
-   structural, operand), including the relevant `vocabulary/traits/*_fwd.h` for each.
-3. **Register the header in `dev/node_definitions.h`.**
-4. Add tests under `tests/`.
-
-Step 3 is not optional and does not fail loudly. The `_fwd` split removed the transitive
-inclusion that used to guarantee specializations were compiled in; a missing entry means
-the trait silently falls back to its primary template and the node quietly loses its
-classification. The test suite is the backstop.
-
-Definition-only headers deliberately excluded from the declaration-only umbrellas —
-`vocabulary/algorithms/field_predicates.h` today — are registered in
-`dev/node_algorithm_definitions.h` instead.
-
-## Development Workflow
-
-### Code Style
-- Follow existing code patterns in the codebase
-- C++17 is the baseline; conditional compilation for C++20/23/26 features
-- Use template metaprogramming for compile-time type safety
-- Member pointers are used extensively for column mapping
-
-### Testing Requirements
-- All changes must include tests in the `tests/` directory
-- Use Test-Driven Development (TDD): write failing test first
-- Tests use Catch2 framework with `TEST_CASE` and `SECTION`
-- Ensure tests pass on multiple platforms (CI runs on Linux, Windows, macOS)
-
-### Compilation Considerations
-- MSVC requires `/bigobj` flag for 64-bit builds (already configured)
-- MSVC requires `/EHsc` for exception handling
-- Clang/GCC: watch for `-Wreorder` warnings (treated as errors)
-- Large template instantiations may cause long compile times
-
-### Pull Request Guidelines
-Per `CONTRIBUTING.md`:
-- Create GitHub issue for significant changes (not needed for typos/warnings)
-- PR title must begin with issue number: `#9999 : description`
-- Base PRs against `dev` branch (not `master`)
-- Commit messages in English only
-- Squash commits if adding/removing code within same PR
-- All tests must pass on CI (Travis, AppVeyor, GitHub Actions)
-
-## Common Patterns
-
-### Creating a storage
-```cpp
-auto storage = make_storage("database.db",
-    make_table("users",
-        make_column("id", &User::id, primary_key().autoincrement()),
-        make_column("name", &User::name)
-    )
-);
-storage.sync_schema(); // Creates/migrates schema
-```
-
-### Query expressions
-Queries are built using expression objects that overload operators:
-- `where(c(&User::id) == 5)` - type-safe WHERE clause
-- `order_by(&User::name)` - ORDER BY
-- `limit(10)` - LIMIT
-- Composable: `where(...), order_by(...), limit(...)`
-
-### Member pointers for type safety
-`&User::id` is used instead of string `"id"`. The library deduces the type and column name from the member pointer at compile time, preventing runtime SQL injection and type mismatches.
-
-## Important Notes
-
-- **Internal structure**: See `docs/internals/vocabulary-layer.md` for header layering and placement rules. It also records open work (traits not yet lifted into the vocabulary layer, `storage_*` → `schema_*` renames) — check it before starting a refactor that may already be planned there.
-- **Thread safety**: See `docs/thread-safety.md`. Storage objects are thread-safe by default since v1.10.
-- **Schema sync**: `sync_schema()` attempts to preserve data but may drop tables if column constraints change significantly. Back up data before schema changes.
-- **In-memory databases**: Use `:memory:` or `""` as filename.
-- **Primary key requirement**: CRUD operations like `get()`, `update()`, `remove()` require a primary key column.
-- **No raw SQL**: The library's design philosophy avoids raw SQL strings for type safety, but you can use `execute()` for raw queries if needed.
-
-## Branches
-`master` is the release branch; active development happens on `dev`, and feature branches
-are based on it. Check out the actual current branch with `git branch --show-current`
-rather than assuming.
+- `TODO.md` records missing features and open work, and `docs/plans/` designs in progress:
+  check them before starting a refactor.
+- [`docs/internals/review-checklist.md`](docs/internals/review-checklist.md) - what a change
+  is reviewed against.
+- [`docs/thread-safety.md`](docs/thread-safety.md) - the threading guarantees of a storage.
+- `.claude/skills/` - step-by-step recipes in the Agent Skills format, for
+  [adding a DSL node](.claude/skills/add-dsl-node/SKILL.md),
+  [a built-in SQL function](.claude/skills/add-builtin-function/SKILL.md) or
+  [a virtual table](.claude/skills/add-virtual-table/SKILL.md), and for
+  [moving or renaming a header](.claude/skills/move-header/SKILL.md).
+- `.claude/agents/sqlite-orm-reviewer.md` - a reviewer agent working through the review checklist.

@@ -1,0 +1,64 @@
+#pragma once
+
+/** @file Out-of-class definitions of table members, which need the column type printer (`type_printer.h`)
+ *  that `schema/table.h` stays free of.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <algorithm>  //  std::find_if, std::ranges::find
+#include <type_traits>  //  std::remove_reference
+#include <utility>  //  std::move
+#endif
+
+#include "../functional/mpl/convenience.h"
+#include "../builtin/dbos/pragma_tables.h"  //  table_xinfo
+#include "../type_mapping/type_printer.h"
+#include "../vocabulary/node_algorithms.h"
+#include "../vocabulary/node_traits.h"
+#include "table.h"
+
+namespace sqlite_orm::internal {
+    template<class T, class WithoutRowId, class... Cs>
+    std::vector<table_xinfo> base_table<T, WithoutRowId, Cs...>::get_table_info() const {
+        std::vector<table_xinfo> res;
+        res.reserve(col_index_sequence_of<elements_type>::size());
+        this->for_each_column([&res](auto& column) {
+            using field_type = field_type_t<std::remove_reference_t<decltype(column)>>;
+            std::string dft = column.default_value().value_or(std::string{});
+            using constraints_tuple = decltype(column.constraints);
+            constexpr bool hasExplicitNull =
+                mpl::invoke_t<mpl::disjunction<check_if_has<is_null_constraint>>, constraints_tuple>::value;
+            constexpr bool hasExplicitNotNull =
+                mpl::invoke_t<mpl::disjunction<check_if_has<is_not_null_constraint>>, constraints_tuple>::value;
+            res.emplace_back(-1,
+                             column.name,
+                             type_printer<field_type>().print(),
+                             !hasExplicitNull && !hasExplicitNotNull
+                                 ? column.is_not_null()
+                                 : (hasExplicitNull ? !hasExplicitNull : hasExplicitNotNull),
+                             std::move(dft),
+                             column.template is<is_primary_key>(),
+                             column.template is<is_generated_always>());
+        });
+        const auto tableKeyColumnNames = this->table_key_columns_names();
+#if defined(SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
+        for (int n = 1; const std::string& columnName: tableKeyColumnNames) {
+            if (auto it = std::ranges::find(res, columnName, &table_xinfo::name); it != res.end()) {
+                it->pk = n;
+            }
+            ++n;
+        }
+#else
+        for (size_t i = 0; i < tableKeyColumnNames.size(); ++i) {
+            const std::string& columnName = tableKeyColumnNames[i];
+            auto it = std::find_if(res.begin(), res.end(), [&columnName](const table_xinfo& ti) {
+                return ti.name == columnName;
+            });
+            if (it != res.end()) {
+                it->pk = static_cast<int>(i + 1);
+            }
+        }
+#endif
+        return res;
+    }
+}

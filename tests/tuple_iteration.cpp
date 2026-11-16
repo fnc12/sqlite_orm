@@ -1,8 +1,8 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
-#include <typeindex>  //  std::type_index
+#include <sqlite_orm/sqlite_orm.h>
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_pointer
+#include <typeindex>  //  std::type_index
 
 using namespace sqlite_orm;
 

@@ -1,2 +1,6 @@
 # exclude until clang-format understands C++ reflection syntax
 ./dev/functional/meta_util.h
+# the order of the includes matters, see the file's own comment
+./not_single_header_include/sqlite_orm/sqlite_orm.h
+# the module units, whose global module fragments are ordered by hand
+./modules/*

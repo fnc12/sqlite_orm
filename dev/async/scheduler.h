@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: run fibers on one thread and resume each when the I/O it waits for has completed.
+ *
+ *  Intention: realizes the loop underneath `io_context.h`; uses `fiber.h` and `io_uring_engine.h`,
+ *  and is called by `async_vfs.h` from inside a fiber.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <algorithm>  //  std::find_if
 #include <cassert>  //  assert
@@ -7,16 +15,19 @@
 #include <cstdint>  //  std::int32_t, std::int64_t, std::uint64_t
 #include <deque>  //  std::deque
 #include <functional>  //  std::function
+#include <iterator>  //  std::next
 #include <memory>  //  std::unique_ptr
 #include <mutex>  //  std::mutex, std::lock_guard
 #include <utility>  //  std::move
 #include <vector>  //  std::vector
+#endif
 #endif
 
 #include "fiber.h"
 #include "io_operation.h"
 #include "io_uring_engine.h"
 
+#ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
 
     /**
@@ -56,7 +67,12 @@ namespace sqlite_orm::internal {
          *  Create a fiber and make it runnable.
          */
         void spawn(std::function<void()> function, std::size_t stackSize = fiber::defaultStackSize) {
-            auto newFiber = std::make_unique<fiber>(std::move(function), stackSize);
+            std::unique_ptr<fiber> newFiber = this->take_idle(fiber::rounded_stack_size(stackSize));
+            if (newFiber) {
+                newFiber->restart(std::move(function));
+            } else {
+                newFiber = std::make_unique<fiber>(std::move(function), stackSize);
+            }
             this->ready.push_back(newFiber.get());
             this->fibers.push_back(std::move(newFiber));
             ++this->alive;
@@ -99,6 +115,14 @@ namespace sqlite_orm::internal {
          */
         bool is_idle() const noexcept {
             return this->ready.empty() && this->inFlight == (this->wakeArmed ? 1u : 0u);
+        }
+
+        /**
+         *  True when another loop iteration would make progress without waiting: a fiber is runnable,
+         *  or I/O is queued that the kernel has not been told about yet.
+         */
+        bool has_runnable() const noexcept {
+            return !this->ready.empty() || this->engine.has_unsubmitted();
         }
 
         std::size_t fibers_alive() const noexcept {
@@ -183,6 +207,22 @@ namespace sqlite_orm::internal {
             }
         };
 
+        /**
+         *  The most recently finished fiber whose stack has the given size, or nullptr.
+         */
+        std::unique_ptr<fiber> take_idle(std::size_t stackSize) {
+            auto it =
+                std::find_if(this->idle.rbegin(), this->idle.rend(), [stackSize](const std::unique_ptr<fiber>& owned) {
+                    return owned->stack_size() == stackSize;
+                });
+            if (it == this->idle.rend()) {
+                return nullptr;
+            }
+            std::unique_ptr<fiber> taken = std::move(*it);
+            this->idle.erase(std::next(it).base());
+            return taken;
+        }
+
         std::int32_t await(io_operation& operation) {
             fiber* self = fiber::current();
             assert(self && "scheduler I/O must be called from inside a fiber");
@@ -245,6 +285,9 @@ namespace sqlite_orm::internal {
                                                return owned.get() == next;
                                            });
                     if (it != this->fibers.end()) {
+                        if (this->idle.size() < scheduler::maxIdleFibers) {
+                            this->idle.push_back(std::move(*it));
+                        }
                         this->fibers.erase(it);
                     }
                 }
@@ -281,6 +324,13 @@ namespace sqlite_orm::internal {
         io_uring_engine engine;
         std::deque<fiber*> ready;
         std::vector<std::unique_ptr<fiber>> fibers;
+        /**
+         *  Finished fibers kept for their stacks: mapping a stack and faulting its pages in costs more than
+         *  a typical storage operation. Bounded, so that a burst of concurrent operations does not pin its
+         *  stacks forever.
+         */
+        static constexpr std::size_t maxIdleFibers = 64;
+        std::vector<std::unique_ptr<fiber>> idle;
         std::vector<io_operation*> completed;
         std::size_t inFlight = 0;  //  operations in the kernel (including the wake operation)
         std::size_t alive = 0;
@@ -292,3 +342,4 @@ namespace sqlite_orm::internal {
         std::function<bool()> externalReady;
     };
 }
+#endif

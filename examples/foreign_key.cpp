@@ -4,10 +4,10 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 
-#include <string>
-#include <iostream>
 #include <assert.h>
+#include <iostream>
 #include <memory>
+#include <string>
 
 #if SQLITE_VERSION_NUMBER >= 3006019
 #define ENABLE_THIS_EXAMPLE

@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: switch between machine stacks on one thread.
+ *
+ *  Intention: the foundation of `fiber.h`: two naked functions per supported architecture (x86_64 System V, aarch64 AAPCS64),
+ *  inline so that the library stays header-only; speaks to nobody else.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
 /**
  *  Minimal stackful context switch for x86_64 (SysV) and aarch64 (AAPCS64),
  *  GCC or Clang, as inline naked functions so that the library stays header-only.
@@ -92,3 +100,4 @@ __attribute__((naked, noinline)) inline void sqlite_orm_context_trampoline() {
 #error "sqlite_orm async: unsupported architecture"
 #endif
 }
+#endif

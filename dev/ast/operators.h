@@ -1,0 +1,456 @@
+#pragma once
+
+/** @file
+ *  Purpose: represent the operators on expressions.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#include <string_view>  //  std::string_view
+#include <type_traits>  //  std::enable_if, std::disjunction, std::is_base_of
+#include <utility>  //  std::move, std::forward
+#endif
+
+#include "../functional/cxx_polyfill/type_traits.h"
+#include "../vocabulary/node_algorithms.h"  // is_operand_or_bindable, are_valid_operands, unwrap_expression
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
+#include "binary_operator.h"
+#include "operand_tags.h"
+
+namespace sqlite_orm::internal {
+    struct conc_string {
+        using result_type = std::string;
+
+        std::string_view serialize() const {
+            return "||";
+        }
+    };
+
+    /**
+     *  Result of concatenation || operator
+     */
+    template<class L, class R>
+    using conc_t = binary_operator<L, R, conc_string>;
+
+    //  note: the operator's tag tells it apart, but only of a binary operator -
+    //  a class deriving from a tag, e.g. a tuple of operator nodes, is no operator
+    template<class T>
+    constexpr bool is_conc_v = is_binary_operator_v<T> && std::is_base_of<conc_string, T>::value;
+
+    template<class T>
+    constexpr bool is_chainable_operand_v<T, std::enable_if_t<is_conc_v<T>>> = true;
+
+    struct unary_minus_string {
+        using result_type = double;
+
+        std::string_view serialize() const {
+            return "-";
+        }
+    };
+
+    /**
+     *  Result of unary minus - operator
+     */
+    template<class T>
+    struct unary_minus_t : unary_minus_string, arithmetic_t, negatable_t {
+        using argument_type = T;
+
+        argument_type argument;
+
+        unary_minus_t(argument_type argument_) : argument(std::move(argument_)) {}
+    };
+
+    struct add_string {
+        using result_type = double;
+
+        std::string_view serialize() const {
+            return "+";
+        }
+    };
+
+    /**
+     *  Result of addition + operator
+     */
+    template<class L, class R>
+    using add_t = binary_operator<L, R, add_string, arithmetic_t, negatable_t>;
+
+    struct sub_string {
+        using result_type = double;
+
+        std::string_view serialize() const {
+            return "-";
+        }
+    };
+
+    /**
+     *  Result of substraction - operator
+     */
+    template<class L, class R>
+    using sub_t = binary_operator<L, R, sub_string, arithmetic_t, negatable_t>;
+
+    struct mul_string {
+        using result_type = double;
+
+        std::string_view serialize() const {
+            return "*";
+        }
+    };
+
+    /**
+     *  Result of multiply * operator
+     */
+    template<class L, class R>
+    using mul_t = binary_operator<L, R, mul_string, arithmetic_t, negatable_t>;
+
+    struct div_string {
+        using result_type = double;
+
+        std::string_view serialize() const {
+            return "/";
+        }
+    };
+
+    /**
+     *  Result of divide / operator
+     */
+    template<class L, class R>
+    using div_t = binary_operator<L, R, div_string, arithmetic_t, negatable_t>;
+
+    struct mod_operator_string {
+        using result_type = double;
+
+        std::string_view serialize() const {
+            return "%";
+        }
+    };
+
+    /**
+     *  Result of mod % operator
+     */
+    template<class L, class R>
+    using mod_t = binary_operator<L, R, mod_operator_string, arithmetic_t, negatable_t>;
+
+    struct bitwise_shift_left_string {
+        using result_type = int;
+
+        std::string_view serialize() const {
+            return "<<";
+        }
+    };
+
+    /**
+     *  Result of bitwise shift left << operator
+     */
+    template<class L, class R>
+    using bitwise_shift_left_t = binary_operator<L, R, bitwise_shift_left_string, arithmetic_t, negatable_t>;
+
+    struct bitwise_shift_right_string {
+        using result_type = int;
+
+        std::string_view serialize() const {
+            return ">>";
+        }
+    };
+
+    /**
+     *  Result of bitwise shift right >> operator
+     */
+    template<class L, class R>
+    using bitwise_shift_right_t = binary_operator<L, R, bitwise_shift_right_string, arithmetic_t, negatable_t>;
+
+    struct bitwise_and_string {
+        using result_type = int;
+
+        std::string_view serialize() const {
+            return "&";
+        }
+    };
+
+    /**
+     *  Result of bitwise and & operator
+     */
+    template<class L, class R>
+    using bitwise_and_t = binary_operator<L, R, bitwise_and_string, arithmetic_t, negatable_t>;
+
+    struct bitwise_or_string {
+        using result_type = int;
+
+        std::string_view serialize() const {
+            return "|";
+        }
+    };
+
+    /**
+     *  Result of bitwise or | operator
+     */
+    template<class L, class R>
+    using bitwise_or_t = binary_operator<L, R, bitwise_or_string, arithmetic_t, negatable_t>;
+
+    struct bitwise_not_string {
+        using result_type = int;
+
+        std::string_view serialize() const {
+            return "~";
+        }
+    };
+
+    /**
+     *  Result of bitwise not ~ operator
+     */
+    template<class T>
+    struct bitwise_not_t : bitwise_not_string, arithmetic_t, negatable_t {
+        using argument_type = T;
+
+        argument_type argument;
+
+        bitwise_not_t(argument_type argument_) : argument(std::move(argument_)) {}
+    };
+
+    template<class T>
+    constexpr bool is_unary_operator_v = std::disjunction<polyfill::is_specialization_of<T, unary_minus_t>,
+                                                          polyfill::is_specialization_of<T, bitwise_not_t>>::value;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Public interface for || concatenation operator. Example: `select(conc(&User::name, "@gmail.com"));` => SELECT
+     *  name || '@gmail.com' FROM users
+     */
+    template<class L, class R>
+    constexpr internal::conc_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>> conc(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "conc() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
+        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
+    }
+
+    template<class T>
+    constexpr internal::unary_minus_t<internal::unwrap_expression_t<T>> minus(T expression) {
+        static_assert(internal::is_operand_or_bindable<T>::value,
+                      "minus() argument must be a bindable value or one of sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
+        return {internal::unwrap_expression(std::move(expression))};
+    }
+
+    /**
+     *  Public interface for + operator. Example: `select(add(&User::age, 100));` => SELECT age + 100 FROM users
+     */
+    template<class L, class R>
+    constexpr internal::add_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>> add(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "add() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
+        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
+    }
+
+    /**
+     *  Public interface for - operator. Example: `select(sub(&User::age, 1));` => SELECT age - 1 FROM users
+     */
+    template<class L, class R>
+    constexpr internal::sub_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>> sub(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "sub() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
+        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
+    }
+
+    /**
+     *  Public interface for * operator. Example: `select(mul(&User::salary, 2));` => SELECT salary * 2 FROM users
+     */
+    template<class L, class R>
+    constexpr internal::mul_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>> mul(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "mul() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
+        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
+    }
+
+    /**
+     *  Public interface for / operator. Example: `select(div(&User::salary, 3));` => SELECT salary / 3 FROM users
+     *  @note Please notice that ::div function already exists in pure C standard library inside <cstdlib> header.
+     *  If you use `using namespace sqlite_orm` directive you an specify which `div` you call explicitly using  `::div` or `sqlite_orm::div` statements.
+     */
+    template<class L, class R>
+    constexpr internal::div_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>> div(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "div() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
+        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
+    }
+
+    /**
+     *  Public interface for % operator. Example: `select(mod(&User::age, 5));` => SELECT age % 5 FROM users
+     */
+    template<class L, class R>
+    constexpr internal::mod_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>> mod(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "mod() arguments must be bindable values or sqlite_orm-recognized operands: member pointers, "
+                      "column pointers, c()-wrapped values, aliases or expressions");
+        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
+    }
+
+    template<class L, class R>
+    constexpr internal::bitwise_shift_left_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>>
+    bitwise_shift_left(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "bitwise_shift_left() arguments must be bindable values or sqlite_orm-recognized operands: "
+                      "member pointers, column pointers, c()-wrapped values, aliases or expressions");
+        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
+    }
+
+    template<class L, class R>
+    constexpr internal::bitwise_shift_right_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>>
+    bitwise_shift_right(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "bitwise_shift_right() arguments must be bindable values or sqlite_orm-recognized operands: "
+                      "member pointers, column pointers, c()-wrapped values, aliases or expressions");
+        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
+    }
+
+    template<class L, class R>
+    constexpr internal::bitwise_and_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>>
+    bitwise_and(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "bitwise_and() arguments must be bindable values or sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
+        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
+    }
+
+    template<class L, class R>
+    constexpr internal::bitwise_or_t<internal::unwrap_expression_t<L>, internal::unwrap_expression_t<R>>
+    bitwise_or(L lhs, R rhs) {
+        static_assert(internal::are_valid_operands<L, R>::value,
+                      "bitwise_or() arguments must be bindable values or sqlite_orm-recognized operands: member "
+                      "pointers, column pointers, c()-wrapped values, aliases or expressions");
+        return {internal::unwrap_expression(std::move(lhs)), internal::unwrap_expression(std::move(rhs))};
+    }
+
+    template<class T>
+    constexpr internal::bitwise_not_t<internal::unwrap_expression_t<T>> bitwise_not(T expression) {
+        static_assert(internal::is_operand_or_bindable<T>::value,
+                      "bitwise_not() argument must be a bindable value or one of sqlite_orm-recognized operands: "
+                      "member pointers, column pointers, c()-wrapped values, aliases or expressions");
+        return {internal::unwrap_expression(std::move(expression))};
+    }
+
+    // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
+    // to facilitate ADL (Argument Dependent Lookup)
+    namespace internal {
+        template<
+            class T,
+            std::enable_if_t<std::disjunction<is_arithmetic_operand<T>, is_operator_argument<T>>::value, bool> = true>
+        constexpr unary_minus_t<unwrap_expression_t<T>> operator-(T arg) {
+            return {unwrap_expression(std::forward<T>(arg))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr add_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator+(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr sub_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator-(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr mul_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator*(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr div_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator/(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr mod_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator%(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+
+        template<
+            class T,
+            std::enable_if_t<std::disjunction<is_arithmetic_operand<T>, is_operator_argument<T>>::value, bool> = true>
+        constexpr bitwise_not_t<unwrap_expression_t<T>> operator~(T arg) {
+            return {unwrap_expression(std::forward<T>(arg))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr bitwise_shift_left_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<<(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr bitwise_shift_right_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>>(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr bitwise_and_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator&(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<std::disjunction<is_arithmetic_operand<L>,
+                                                   is_arithmetic_operand<R>,
+                                                   is_operator_argument<L>,
+                                                   is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr bitwise_or_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator|(L l, R r) {
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
+        }
+    }
+}

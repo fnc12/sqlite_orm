@@ -1,0 +1,35 @@
+{
+  "project": "SQLite ORM",
+  "_comment": "The sources are ordered like the includes of not_single_header_include/sqlite_orm/sqlite_orm.h, which explains why the order matters.",
+  "target": "include/sqlite_orm/sqlite_orm.h",
+  "sources": [
+    "dev/config/prologue.h",
+    "dev/config/config.h",
+    "dev/config/internal_macros.h",
+    "dev/functional/cxx_universal.h",
+
+    "dev/sqlite3_interface.h",
+
+    "dev/error_code.h",
+    "dev/serialization/quoting.h",
+    "dev/marshaling/pointer_passing.h",
+    "dev/marshaling/carray_pointer_passing.h",
+
+    "dev/node_definitions.h",
+    "dev/node_algorithm_definitions.h",
+
+    "dev/execution/storage.h",
+    "dev/interface_definitions.h",
+    "dev/execution/get_prepared_statement.h",
+
+    "dev/builtin/collations.h",
+    "dev/builtin/vfs.h",
+    "dev/builtin/functions.h",
+    "dev/builtin/dbos.h",
+
+    "dev/async.h",
+
+    "dev/config/epilogue.h"
+  ],
+  "include_paths": [ "dev" ]
+}

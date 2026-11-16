@@ -1,14 +1,24 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the IN condition.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <initializer_list>  //  std::initializer_list
 #include <tuple>  //  std::tuple
+#include <type_traits>  //  std::disjunction
 #include <utility>  //  std::move
 #include <vector>  //  std::vector
 #endif
 
-#include "../tags.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../vocabulary/node_algorithms.h"  // is_operand_or_bindable
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "operand_tags.h"
 
 namespace sqlite_orm::internal {
 
@@ -21,22 +31,39 @@ namespace sqlite_orm::internal {
      */
     template<class L, class A>
     struct dynamic_in_t : condition_t, in_base, negatable_t {
-        L left;  //  left expression
-        A argument;  //  in arg
+        using left_type = L;
+        using argument_type = A;
 
-        dynamic_in_t(L left_, A argument_, bool negative_) :
+        left_type left;  //  left expression
+        argument_type argument;  //  in arg
+
+        dynamic_in_t(left_type left_, argument_type argument_, bool negative_) :
             in_base{negative_}, left(std::move(left_)), argument(std::move(argument_)) {}
     };
 
+    template<class T>
+    constexpr bool is_dynamic_in_v = polyfill::is_specialization_of_v<T, dynamic_in_t>;
+
+    /**
+     *  The IN condition against a list of operands given one by one.
+     */
     template<class L, class... Args>
     struct in_t : condition_t, in_base, negatable_t {
-        L left;
-        std::tuple<Args...> argument;
+        using left_type = L;
+        using argument_type = std::tuple<Args...>;
 
-        in_t(L left_, decltype(argument) argument_, bool negative_) :
+        left_type left;
+        argument_type argument;
+
+        in_t(left_type left_, argument_type argument_, bool negative_) :
             in_base{negative_}, left(std::move(left_)), argument(std::move(argument_)) {}
     };
 
+    template<class T>
+    constexpr bool is_in_v = polyfill::is_specialization_of_v<T, in_t>;
+
+    template<class T>
+    constexpr bool is_any_in_v = std::disjunction<is_in<T>, is_dynamic_in<T>>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -48,11 +75,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  @return dynamic_in_t instance representing IN clause.
      */
     template<class L, class E>
-    internal::dynamic_in_t<L, std::vector<E>> in(L left, std::vector<E> values) {
+    internal::dynamic_in_t<internal::unwrap_expression_t<L>, std::vector<E>> in(L left, std::vector<E> values) {
         static_assert(internal::is_operand_or_bindable<L>::value,
                       "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
                       "pointers, column pointers, c()-wrapped values, aliases or expressions");
-        return {std::move(left), std::move(values), false};
+        return {internal::unwrap_expression(std::move(left)), std::move(values), false};
     }
 
     /**
@@ -63,11 +90,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  @return dynamic_in_t instance representing IN clause.
      */
     template<class L, class E>
-    internal::dynamic_in_t<L, std::vector<E>> in(L left, std::initializer_list<E> values) {
+    internal::dynamic_in_t<internal::unwrap_expression_t<L>, std::vector<E>> in(L left,
+                                                                                std::initializer_list<E> values) {
         static_assert(internal::is_operand_or_bindable<L>::value,
                       "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
                       "pointers, column pointers, c()-wrapped values, aliases or expressions");
-        return {std::move(left), std::move(values), false};
+        return {internal::unwrap_expression(std::move(left)), std::move(values), false};
     }
 
     /**
@@ -78,11 +106,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  @return dynamic_in_t instance representing IN clause.
      */
     template<class L, class A>
-    internal::dynamic_in_t<L, A> in(L left, A argument) {
+    internal::dynamic_in_t<internal::unwrap_expression_t<L>, A> in(L left, A argument) {
         static_assert(internal::is_operand_or_bindable<L>::value,
                       "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
                       "pointers, column pointers, c()-wrapped values, aliases or expressions");
-        return {std::move(left), std::move(argument), false};
+        return {internal::unwrap_expression(std::move(left)), std::move(argument), false};
     }
 
     /**
@@ -93,11 +121,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  @return dynamic_in_t instance representing NOT IN clause.
      */
     template<class L, class E>
-    internal::dynamic_in_t<L, std::vector<E>> not_in(L left, std::vector<E> values) {
+    internal::dynamic_in_t<internal::unwrap_expression_t<L>, std::vector<E>> not_in(L left, std::vector<E> values) {
         static_assert(internal::is_operand_or_bindable<L>::value,
                       "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
                       "pointers, column pointers, c()-wrapped values, aliases or expressions");
-        return {std::move(left), std::move(values), true};
+        return {internal::unwrap_expression(std::move(left)), std::move(values), true};
     }
 
     /**
@@ -108,11 +136,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  @return dynamic_in_t instance representing NOT IN clause.
      */
     template<class L, class E>
-    internal::dynamic_in_t<L, std::vector<E>> not_in(L left, std::initializer_list<E> values) {
+    internal::dynamic_in_t<internal::unwrap_expression_t<L>, std::vector<E>> not_in(L left,
+                                                                                    std::initializer_list<E> values) {
         static_assert(internal::is_operand_or_bindable<L>::value,
                       "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
                       "pointers, column pointers, c()-wrapped values, aliases or expressions");
-        return {std::move(left), std::move(values), true};
+        return {internal::unwrap_expression(std::move(left)), std::move(values), true};
     }
 
     /**
@@ -123,10 +152,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  @return dynamic_in_t instance representing NOT IN clause.
      */
     template<class L, class A>
-    internal::dynamic_in_t<L, A> not_in(L left, A argument) {
+    internal::dynamic_in_t<internal::unwrap_expression_t<L>, A> not_in(L left, A argument) {
         static_assert(internal::is_operand_or_bindable<L>::value,
                       "the tested expression must be a bindable value or one of sqlite_orm-recognized operands: member "
                       "pointers, column pointers, c()-wrapped values, aliases or expressions");
-        return {std::move(left), std::move(argument), true};
+        return {internal::unwrap_expression(std::move(left)), std::move(argument), true};
     }
 }

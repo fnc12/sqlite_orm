@@ -1,0 +1,132 @@
+#pragma once
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>  //  std::get
+#include <type_traits>  //  std::is_same, std::remove_reference, std::remove_cvref
+#endif
+
+#include "../functional/cxx_polyfill/type_traits.h"  //  polyfill::remove_cvref_t
+#include "../functional/index_sequence_util.h"  //  index_sequence_value_at
+#include "../functional/ref_unwrapping.h"  //  forward_lvalue_ref
+#include "../traversal/ast_iterator.h"  //  iterate_ast
+#include "../traversal/node_tuple.h"  //  node_tuple_t
+#include "../vocabulary/node_algorithms.h"  //  is_bindable, bindable_index_sequence_of, access_dml_object
+#include "../vocabulary/node_traits.h"  //  traits, projections
+#include "prepared_statement.h"  //  prepared_statement_t
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    template<
+        int N,
+        class E,
+        std::enable_if_t<std::disjunction_v<internal::is_insert_range<E>, internal::is_replace_range<E>>, bool> = true>
+    auto& get(internal::prepared_statement_t<E>& statement) {
+        return std::get<N>(statement.expression.range);
+    }
+
+    template<
+        int N,
+        class E,
+        std::enable_if_t<std::disjunction_v<internal::is_insert_range<E>, internal::is_replace_range<E>>, bool> = true>
+    const auto& get(const internal::prepared_statement_t<E>& statement) {
+        return std::get<N>(statement.expression.range);
+    }
+
+    //  get and remove by primary key: the primary key values are the bound values
+    template<int N,
+             class E,
+             std::enable_if_t<std::disjunction_v<internal::is_any_get_by_id<E>, internal::is_remove<E>>, bool> = true>
+    auto& get(internal::prepared_statement_t<E>& statement) {
+        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
+    }
+
+    template<int N,
+             class E,
+             std::enable_if_t<std::disjunction_v<internal::is_any_get_by_id<E>, internal::is_remove<E>>, bool> = true>
+    const auto& get(const internal::prepared_statement_t<E>& statement) {
+        return internal::forward_lvalue_ref(std::get<N>(statement.expression.ids));
+    }
+
+    //  insert, insert explicit, replace, update: the object is the only bound value
+    template<int N,
+             class E,
+             std::enable_if_t<
+                 std::conjunction_v<internal::is_object_dml_expression<E>, std::negation<internal::is_remove<E>>>,
+                 bool> = true>
+    auto& get(internal::prepared_statement_t<E>& statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert, replace and update statements");
+        return internal::access_dml_object(statement);
+    }
+
+    template<int N,
+             class E,
+             std::enable_if_t<
+                 std::conjunction_v<internal::is_object_dml_expression<E>, std::negation<internal::is_remove<E>>>,
+                 bool> = true>
+    const auto& get(const internal::prepared_statement_t<E>& statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert, replace and update statements");
+        return internal::access_dml_object(statement);
+    }
+
+    //  note: the statements above bind their values in a way of their own, hence the exclusion
+    template<int N,
+             class T,
+             std::enable_if_t<std::negation_v<std::disjunction<internal::is_object_dml_expression<T>,
+                                                               internal::is_any_get_by_id<T>,
+                                                               internal::is_insert_range<T>,
+                                                               internal::is_replace_range<T>>>,
+                              bool> = true>
+    const auto& get(const internal::prepared_statement_t<T>& statement) {
+        using namespace ::sqlite_orm::internal;
+        using statement_type = polyfill::remove_cvref_t<decltype(statement)>;
+        using expression_type = expression_type_t<statement_type>;
+        using node_tuple = node_tuple_t<expression_type>;
+        constexpr size_t nodeIndex =
+            index_sequence_value_at<static_cast<size_t>(N)>(bindable_index_sequence_of<node_tuple>{});
+        using result_type = std::tuple_element_t<nodeIndex, node_tuple>;
+        const result_type* result = nullptr;
+        iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
+            using node_type = polyfill::remove_cvref_t<decltype(node)>;
+            if constexpr (is_bindable<node_type>::value) {
+                ++index;
+                if constexpr (std::is_same<result_type, node_type>::value) {
+                    if (index == N) {
+                        result = &node;
+                    }
+                }
+            }
+        });
+        return forward_lvalue_ref(*result);
+    }
+
+    template<int N,
+             class T,
+             std::enable_if_t<std::negation_v<std::disjunction<internal::is_object_dml_expression<T>,
+                                                               internal::is_any_get_by_id<T>,
+                                                               internal::is_insert_range<T>,
+                                                               internal::is_replace_range<T>>>,
+                              bool> = true>
+    auto& get(internal::prepared_statement_t<T>& statement) {
+        using namespace ::sqlite_orm::internal;
+        using statement_type = std::remove_reference_t<decltype(statement)>;
+        using expression_type = expression_type_t<statement_type>;
+        using node_tuple = node_tuple_t<expression_type>;
+        constexpr size_t nodeIndex =
+            index_sequence_value_at<static_cast<size_t>(N)>(bindable_index_sequence_of<node_tuple>{});
+        using result_type = std::tuple_element_t<nodeIndex, node_tuple>;
+        result_type* result = nullptr;
+
+        iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
+            using node_type = polyfill::remove_cvref_t<decltype(node)>;
+            if constexpr (is_bindable<node_type>::value) {
+                ++index;
+                if constexpr (std::is_same<result_type, node_type>::value) {
+                    if (index == N) {
+                        result = const_cast<result_type*>(&node);
+                    }
+                }
+            }
+        });
+        return forward_lvalue_ref(*result);
+    }
+}

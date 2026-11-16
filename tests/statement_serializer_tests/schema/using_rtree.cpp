@@ -1,9 +1,9 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 
 using namespace sqlite_orm;
 
-#ifdef SQLITE_ENABLE_RTREE
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
 TEST_CASE("statement_serializer rtree") {
     struct DemoIndex {
         int64 id;

@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: submit file I/O to io_uring and collect its completions.
+ *
+ *  Intention: realizes the I/O engine of `scheduler.h` on the raw io_uring system calls, without liburing;
+ *  publishes `io_uring_available()` for applications that have to check before creating an `io_context`.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <algorithm>  //  std::max
 #include <atomic>  //  std::atomic, memory orders
@@ -19,9 +27,11 @@
 #include <sys/mman.h>  //  mmap, munmap
 #include <sys/syscall.h>  //  __NR_io_uring_setup, __NR_io_uring_enter
 #include <unistd.h>  //  syscall, read, write, close
+#endif
 
 #include "io_operation.h"
 
+#ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
 
     /**
@@ -193,6 +203,13 @@ namespace sqlite_orm::internal {
         }
 
         /**
+         *  True when entries are queued that the kernel has not been told about yet.
+         */
+        bool has_unsubmitted() const noexcept {
+            return this->localTail != this->submissionHead->load(std::memory_order_acquire);
+        }
+
+        /**
          *  Collect finished operations. Blocks when `block` is true and nothing has
          *  completed yet. Returns the number of completions appended to `completed`.
          */
@@ -296,3 +313,4 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
     }
 }
+#endif

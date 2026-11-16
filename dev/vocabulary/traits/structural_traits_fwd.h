@@ -1,15 +1,13 @@
 #pragma once
 
-/** @file Closed classifier traits of DSL-only nodes with no SQL grammar counterpart.
- *        E.g. ad-hoc column-selection structs, mapped result objects, quoting nodes.
+/** @file
+ *  Purpose: declare the traits classifying the DSL nodes that have no SQL grammar counterpart.
  *
- *        Quoting nodes - literals, pointer-to-member wrappers, anything lifting a foreign C++ value
- *        into the DSL - are structural traits and belong here.
- *        Should their volume or coupling ever justify it, they may be split out into a dedicated
- *        `quoting_traits_fwd.h`; that would be a subdivision of the structural axis, not a new axis.
+ *  Intention: the structural axis of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md`
+ *  holds; the traits are defined in the corresponding header files of the nodes.
  */
 
-#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/cxx_polyfill/type_traits.h"
 
 // Structural traits
 namespace sqlite_orm::internal {
@@ -60,4 +58,22 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_quoted_expression = std::bool_constant<is_quoted_expression_v<T>>;
+
+    /**
+     *  Nodes protecting an otherwise bindable value, so that it is serialized as a literal.
+     */
+    template<class T>
+    extern const bool is_literal_v;
+
+    template<class T>
+    using is_literal = std::bool_constant<is_literal_v<T>>;
+
+    /**
+     *  Nodes lifting a struct mapped as a table or view into the DSL, enabling `->*`: `c<Object>()`.
+     */
+    template<class T>
+    extern const bool is_table_reference_v;
+
+    template<class T>
+    using is_table_reference = std::bool_constant<is_table_reference_v<T>>;
 }

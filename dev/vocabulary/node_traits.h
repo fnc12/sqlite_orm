@@ -1,16 +1,17 @@
 #pragma once
 
-/**	@file Umbrella header for the single-node vocabulary: the open classification traits,
- *        and the projections they are read with.
+/** @file
+ *  Purpose: gather what a node is and what it carries.
  *
- *  It deliberately spans two folders, because both answer a question about a node already in
- *  hand - what it is, and what it carries - whereas `node_algorithms.h` covers the composed
- *  judgments that follow from them.
+ *  Intention: the umbrella of `traits/` and `projections/` in the vocabulary layer, whose rules
+ *  `docs/internals/vocabulary-layer.md` holds; the consumers in `dev/` include it in place of the files behind
+ *  it, and the algorithms behind `node_algorithms.h` build on it.
  */
 
-#include "traits/grammar_traits_fwd.h"
-#include "traits/structural_traits_fwd.h"
-#include "traits/semantic_traits_fwd.h"
-#include "traits/operand_traits_fwd.h"
-#include "projections/nested_types.h"
 #include "projections/mapped_types.h"
+#include "projections/nested_types.h"
+#include "traits/grammar_traits_fwd.h"
+#include "traits/operand_traits_fwd.h"
+#include "traits/recordset_concepts.h"
+#include "traits/semantic_traits_fwd.h"
+#include "traits/structural_traits_fwd.h"

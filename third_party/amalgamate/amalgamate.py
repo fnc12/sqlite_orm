@@ -90,6 +90,11 @@ class Amalgamation(object):
             print(" include_paths = {0}".format(self.include_paths))
         print("Creating amalgamation:")
         for file_path in self.sources:
+            # A source may already have been included by a previous one;
+            # like any included file, it is emitted only once.
+            if file_path in self.included_files:
+                print(" - skipping \"{0}\", already included".format(file_path))
+                continue
             # Do not check the include paths while processing the source
             # list, all given source paths must be correct.
             # actual_path = self.actual_path(file_path)

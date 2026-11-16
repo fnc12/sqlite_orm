@@ -1,18 +1,18 @@
 #pragma once
 
-/** @file Closed predicates for checking the validity of the elements of a DDL statement.
+/** @file
+ *  Purpose: decide what holds of the nodes of a schema definition.
  *
- *  These answer whether a node is an admissible member of a column, table or index definition -
- *  the classification questions specific to a single DDL node, as opposed to the
- *  type-and-order questions about statement clauses in `clause_predicates.h`.
+ *  Intention: an algorithm of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; composes
+ *  the grammar and field traits into the element checks of the schema definitions of `schema/`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same
 #endif
 
-#include "../../functional/cxx_type_traits_polyfill.h"
-#include "../../functional/mpl.h"
+#include "../../functional/cxx_polyfill/type_traits.h"
+#include "../../functional/mpl/convenience.h"
 #include "../node_traits.h"
 #include "field_predicates_fwd.h"  // is_rowid_alias_capable
 
@@ -57,7 +57,7 @@ namespace sqlite_orm::internal {
     using is_base_table_element_or_constraint =
         mpl::invoke_t<mpl::disjunction<check_if<is_column>, check_if<is_base_table_constraint>>, T>;
 
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
     template<class T>
     using is_fts5_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
                                                                                check_if<is_prefix>,
@@ -65,6 +65,11 @@ namespace sqlite_orm::internal {
                                                                                check_if<is_content>,
                                                                                check_if<is_table_content>>,
                                                               T>;
+#endif
+
+#ifdef SQLITE_ORM_RTREE_SUPPORTED
+    template<class T>
+    using is_rtree_table_element_or_constraint = is_column<T>;
 #endif
 
     /**

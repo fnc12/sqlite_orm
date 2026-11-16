@@ -1,0 +1,128 @@
+name: VS 2017 (v141)
+
+# The GitHub-hosted Windows images carry only the v143 and v142 toolsets. v141 was dropped when the
+# multi-version build tools were removed in May 2024, and actions/runner-images#12764 reports that adding
+# `Microsoft.VisualStudio.Component.VC.v141.x86.x64` to the installed VS 2022 fails with
+# "Toolset directory for version '14.16' was not found".
+#
+# This workflow therefore installs the standalone VS 2017 Build Tools on windows-2022 (roughly 9 minutes
+# in all) and builds and tests with the v141 toolset, which nothing else in CI covers. It lives apart from
+# the Windows matrix in ci.yaml, because the install, the toolset check and the overlay triplet are needed
+# for this entry alone.
+#
+# The job gates like any other. Mind that it downloads a legacy installer from aka.ms: a failure in the
+# install step can come from upstream rather than from the code. The steps are deliberately fine-grained,
+# so that a failure says which part gave out: the installer, the toolset layout, vcpkg's VS 2017
+# discovery, or the compile itself.
+#
+# v141 must be compiled without `/permissive-`. With it, the 14.16 front end instantiates but never emits
+# the `std::forward_as_tuple` specializations behind `streaming_serialized(std::vector<std::string>)` and
+# `streaming_identifiers(std::vector<std::reference_wrapper<const std::string>>)`, and the link fails with
+# two unresolved externals from every translation unit that serializes a statement. This job passes only
+# because CMake never adds the switch (see the MSVC block in the top-level CMakeLists.txt); a local build
+# that turns on conformance mode for the v141 toolset, as Visual Studio projects do by default, breaks.
+#
+# Caching the toolset was considered and rejected: restoring only the install directory leaves out the
+# registry and installer state that `vswhere` reads, which is what vcpkg needs to find the toolset at all.
+
+on:
+  # `workflow_dispatch` is only offered for workflows that already live on the default branch, which is
+  # master, while pull requests here target dev -- so the manual button does not appear when the PR lands,
+  # only once this file reaches master. The triggers otherwise mirror ci.yaml's, including its
+  # `paths-ignore`, so that a change touching only documentation runs neither.
+  workflow_dispatch:
+  push:
+    branches: [dev, master]
+    paths-ignore:
+      - '.git*'
+      - '_config.yml'
+      - 'LICENSE'
+      - '**/*.md'
+      - '*.png'
+      - '*.sh'
+  pull_request:
+    paths-ignore:
+      - '.git*'
+      - '_config.yml'
+      - 'LICENSE'
+      - '**/*.md'
+      - '*.png'
+      - '*.sh'
+
+env:
+  VCPKG_COMMIT: 4334d8b4c8916018600212ab4dd4bbdc343065d1  # 2025.09.17
+  VS2017_PATH: C:\BuildTools2017
+
+jobs:
+  vs2017:
+    name: VS 2017 (v141), x64, C++17
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install VS 2017 Build Tools
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri https://aka.ms/vs/15/release/vs_buildtools.exe -OutFile vs_buildtools.exe
+          $proc = Start-Process -Wait -PassThru -FilePath .\vs_buildtools.exe -ArgumentList @(
+            '--quiet', '--wait', '--norestart', '--nocache',
+            '--installPath', $env:VS2017_PATH,
+            '--add', 'Microsoft.VisualStudio.Workload.VCTools',
+            '--add', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64',
+            # VS 2017's vcvars does not recognise the newer SDKs already on the image
+            '--add', 'Microsoft.VisualStudio.Component.Windows10SDK.17763'
+          )
+          Write-Host "installer exit code: $($proc.ExitCode)"
+          # 0 = success, 3010 = success with a reboot pending; anything else is a real failure
+          if ($proc.ExitCode -notin 0, 3010) { exit $proc.ExitCode }
+
+      - name: Report the installed toolset
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:VS2017_PATH 'VC\Tools\MSVC'
+          if (-not (Test-Path $root)) { throw "no MSVC toolset directory under $root" }
+          $version = (Get-ChildItem $root | Sort-Object Name | Select-Object -Last 1).Name
+          Write-Host "toolset: $version"
+          & (Join-Path $root "$version\bin\Hostx64\x64\cl.exe") 2>&1 | Select-Object -First 1
+          # 14.16.x is what v141 should report; anything else means we did not get what we asked for
+          if (-not $version.StartsWith('14.16')) { throw "expected a 14.16 toolset, got $version" }
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+          vcpkgDirectory: ${{ runner.temp }}/vcpkg
+
+      - name: Write the v141 overlay triplet
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path .vcpkg-triplets | Out-Null
+          @'
+          set(VCPKG_TARGET_ARCHITECTURE x64)
+          set(VCPKG_CRT_LINKAGE dynamic)
+          set(VCPKG_LIBRARY_LINKAGE dynamic)
+          set(VCPKG_PLATFORM_TOOLSET v141)
+          '@ | Set-Content .vcpkg-triplets/x64-windows-v141.cmake
+          Get-Content .vcpkg-triplets/x64-windows-v141.cmake
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          # vcpkg has to discover the standalone Build Tools instance; the triplet's toolset selects it
+          vcpkg install sqlite3[core,dbstat,math,json1,fts5,rtree,soundex] catch2 `
+            --triplet x64-windows-v141 --overlay-triplets=${{ github.workspace }}/.vcpkg-triplets
+
+      - name: Build and test
+        shell: cmd
+        run: |
+          where ninja || choco install ninja -y --no-progress
+          call "%VS2017_PATH%\VC\Auxiliary\Build\vcvars64.bat" || exit /b 1
+          cl 2>&1 | findstr /C:"Version"
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release ^
+            -DSQLITE_ORM_ENABLE_CXX_17=ON ^
+            -DVCPKG_TARGET_TRIPLET=x64-windows-v141 ^
+            -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake || exit /b 1
+          cmake --build build --parallel || exit /b 1
+          ctest --test-dir build --output-on-failure

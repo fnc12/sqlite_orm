@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: give a synchronous call a stack of its own, so that it can be suspended in the middle and resumed later.
+ *
+ *  Intention: realizes the stackful coroutine SQLite's synchronous VFS callbacks suspend on inside `sqlite3_step()`;
+ *  uses `context_switch.h`, is run by `scheduler.h`.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <cstddef>  //  std::size_t
 #include <cstdint>  //  std::uintptr_t
@@ -11,9 +19,11 @@
 #endif
 #include <sys/mman.h>  //  mmap, mprotect, munmap
 #include <unistd.h>  //  sysconf
+#endif
 
 #include "context_switch.h"
 
+#ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
 
     /**
@@ -25,10 +35,9 @@ namespace sqlite_orm::internal {
       public:
         static constexpr std::size_t defaultStackSize = 512 * 1024;
 
-        explicit fiber(std::function<void()> function_, std::size_t stackSize_ = defaultStackSize) :
-            function(std::move(function_)) {
+        explicit fiber(std::function<void()> function_, std::size_t stackSize_ = defaultStackSize) {
             const std::size_t pageSize = fiber::page_size();
-            this->stackSize = (stackSize_ + pageSize - 1) / pageSize * pageSize;
+            this->stackSize = fiber::rounded_stack_size(stackSize_);
             const std::size_t totalSize = this->stackSize + pageSize;  //  plus a guard page at the bottom
             void* memory = ::mmap(nullptr, totalSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
             if (memory == MAP_FAILED) {
@@ -36,7 +45,7 @@ namespace sqlite_orm::internal {
             }
             ::mprotect(memory, pageSize, PROT_NONE);
             this->stack = memory;
-            this->stackPointer = fiber::make_initial_frame(static_cast<char*>(memory) + totalSize, &fiber::entry, this);
+            this->restart(std::move(function_));
         }
 
         ~fiber() {
@@ -47,6 +56,28 @@ namespace sqlite_orm::internal {
 
         fiber(const fiber&) = delete;
         fiber& operator=(const fiber&) = delete;
+
+        /**
+         *  Give a finished fiber a new function to run, on the stack it already has.
+         */
+        void restart(std::function<void()> function_) {
+            this->function = std::move(function_);
+            this->done = false;
+            char* stackTop = static_cast<char*>(this->stack) + this->stackSize + fiber::page_size();
+            this->stackPointer = fiber::make_initial_frame(stackTop, &fiber::entry, this);
+        }
+
+        /**
+         *  The usable size of a stack requested with `stackSize`: rounded up to whole pages.
+         */
+        static std::size_t rounded_stack_size(std::size_t stackSize) {
+            const std::size_t pageSize = fiber::page_size();
+            return (stackSize + pageSize - 1) / pageSize * pageSize;
+        }
+
+        std::size_t stack_size() const noexcept {
+            return this->stackSize;
+        }
 
         /**
          *  Switch from the caller (the scheduler) into this fiber. Returns when the
@@ -122,6 +153,7 @@ namespace sqlite_orm::internal {
             auto* thisFiber = static_cast<fiber*>(self);
             try {
                 thisFiber->function();
+                thisFiber->function = nullptr;
             } catch (...) {
                 //  A fiber body must handle its own exceptions; there is no stack to
                 //  propagate them through.
@@ -141,3 +173,4 @@ namespace sqlite_orm::internal {
         bool done = false;
     };
 }
+#endif

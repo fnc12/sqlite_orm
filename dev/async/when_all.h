@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: await several tasks concurrently.
+ *
+ *  Intention: a convenience on top of `task.h` for applications, which the storage itself does not need.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <coroutine>  //  std::coroutine_handle, std::suspend_never
 #include <cstddef>  //  std::size_t
@@ -8,9 +15,11 @@
 #include <utility>  //  std::move
 #include <vector>  //  std::vector
 #endif
+#endif
 
 #include "task.h"
 
+#ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
 
     struct count_down {
@@ -99,3 +108,4 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         co_return output;
     }
 }
+#endif

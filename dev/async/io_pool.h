@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: spread work over several threads, each with its own `io_context`.
+ *
+ *  Intention: a convenience on top of `io_context.h` for applications that want I/O parallelism across storages.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <atomic>  //  std::atomic
 #include <coroutine>  //  std::coroutine_handle
@@ -12,9 +19,11 @@
 #include <utility>  //  std::move
 #include <vector>  //  std::vector
 #endif
+#endif
 
 #include "io_context.h"
 
+#ifdef SQLITE_ORM_WITH_ASYNC
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
@@ -147,3 +156,4 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         std::atomic<std::size_t> next{0};
     };
 }
+#endif

@@ -1,0 +1,59 @@
+#pragma once
+
+/** @file
+ *  Purpose: represent the VALUES row list.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ *
+ *  Note: this header sits outside `ast/crud/`, unlike the other clause nodes a raw INSERT or
+ *  REPLACE takes, because a VALUES row list is written both as an INSERT's rows and as the
+ *  operand of an IN - in either spelling.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>  //  std::tuple
+#include <utility>  //  std::forward, std::move
+#include <vector>  //  std::vector
+#endif
+
+#include "../functional/cxx_polyfill/type_traits.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+
+namespace sqlite_orm::internal {
+    template<class... Args>
+    struct values_t {
+        using args_tuple = std::tuple<Args...>;
+
+        args_tuple tuple;
+    };
+
+    template<class T>
+    constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
+
+    /**
+     *  A VALUES row list assembled at runtime.
+     */
+    template<class T>
+    struct dynamic_values_t {
+        std::vector<T> vector;
+    };
+
+    template<class T>
+    constexpr bool is_dynamic_values_v = polyfill::is_specialization_of<T, dynamic_values_t>::value;
+
+    template<class T>
+    constexpr bool is_any_values_v = std::disjunction<is_values<T>, is_dynamic_values<T>>::value;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    template<class... Args>
+    internal::values_t<Args...> values(Args... args) {
+        return {{std::forward<Args>(args)...}};
+    }
+
+    template<class T>
+    internal::dynamic_values_t<T> values(std::vector<T> vector) {
+        return {{std::move(vector)}};
+    }
+}

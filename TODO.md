@@ -5,7 +5,6 @@
 ## SQL language
 
 * `RETURNING` clause for INSERT/UPDATE/DELETE https://sqlite.org/lang_returning.html
-* `RIGHT JOIN` / `FULL OUTER JOIN` (3.39)
 * `IS DISTINCT FROM` / `IS NOT DISTINCT FROM` binary operators (3.39), and the bare `IS` / `IS NOT` spellings
 * `NULLS FIRST` / `NULLS LAST` in ORDER BY (3.30)
 * ORDER BY inside aggregate function calls (3.44), e.g. `string_agg(x, ',' ORDER BY y)`
@@ -16,20 +15,30 @@
 * strict tables https://sqlite.org/stricttables.html
 * TEMP schema objects: TEMP tables, triggers and views
 * named constraints: constraint can have name `CREATE TABLE heroes(id INTEGER CONSTRAINT pk PRIMARY KEY)`
-* `FOREIGN KEY ... DEFERRABLE INITIALLY DEFERRED`
 * `INDEXED BY` / `NOT INDEXED` (3.6.4)
 * `RAISE` with an arbitrary expression as the error message (3.47) — the `raise_*` factories take only strings
 * `VACUUM INTO` (3.27), `ANALYZE` (with an optional index argument), `REINDEX` / `REINDEX EXPRESSIONS` (3.53), `EXPLAIN` / `EXPLAIN QUERY PLAN`
 * `ATTACH`
+* `VALUES` as a select of its own, e.g. the operand of IN in `x IN (VALUES (1), (2))` - `values()` builds the rows of a raw INSERT or REPLACE so far
 
 ## Functions
 
-* JSON: `->` and `->>` operators (3.38), JSONB function family (3.45+: `jsonb`, `jsonb_extract`, `jsonb_set`, `jsonb_insert`, `jsonb_replace`, `jsonb_remove`, `jsonb_patch`, `jsonb_object`, `jsonb_array`, `jsonb_group_array`, `jsonb_group_object`), `json_pretty` (3.46), `json_error_position` (3.42), `json_valid` flags argument (3.45), `json_array_insert`/`jsonb_array_insert` (3.53)
+* JSON: `->` and `->>` operators (3.38), JSONB function family (3.45+: `jsonb`, `jsonb_extract`, `jsonb_set`, `jsonb_insert`, `jsonb_replace`, `jsonb_remove`, `jsonb_patch`, `jsonb_object`, `jsonb_array`, `jsonb_group_array`, `jsonb_group_object`, `jsonb_array_insert` 3.53)
 * `json_each` and `json_tree` (and `jsonb_each`/`jsonb_tree`, 3.51) table-valued functions
+* the `carray()` table-valued function — its definition goes to `dev/builtin/dbos/carray.h`; it consumes the `"carray"` pointer type of `dev/marshaling/carray_pointer_passing.h`, which stays there, as application-defined functions use it as well
 * planner-hint functions: `likely()`, `unlikely()`, `likelihood()`
 * introspection functions: `sqlite_version()`, `sqlite_source_id()`, `sqlite_compileoption_used()`, `sqlite_compileoption_get()`, `sqlite_offset()`
 * `substring()` alias for `substr()` (3.34)
-* FTS5 auxiliary functions `bm25()` and `snippet()` (only `highlight()` is wrapped); the `fts5vocab` virtual table
+* the `fts5vocab` virtual table
+* the remaining PRAGMA table-valued functions with rowsets (`index_list`, `index_info`/`index_xinfo`, `foreign_key_list`, `foreign_key_check`, `table_list`, `database_list`, `collation_list`, `function_list`, ...), C++26 reflection only: the module tag of a reflected eponymous table could be a generic `reflected_eponymous_module<O>`, its `name()` taken from a `static constexpr` copy of the row type's `orm_name` annotation, so that each pragma needs only its annotated row type and its entry in `make_pragma_tables()`; `table_info`/`table_xinfo` would then need their annotation conditionally, as their row types exist before C++26
+
+* `as_result<R>(expr)`: a result type override for any expression (generalizing `as_optional`), as the successor of the built-in functions' `R` template parameters
+* checking the arguments of a built-in function call against its nominal parameter types
+
+## Reflection
+
+* reflection-based `make_table<T>()`: getter/setter columns, per-field opt-out (`[[= transient]]`), column renaming by annotation, `check()` as an annotation
+* foreign keys as annotations: needs constexpr ON UPDATE/ON DELETE actions, whose mutators reach the enclosing foreign key through `addressof_enclosing` today
 
 ## Schema synchronisation
 
@@ -46,8 +55,15 @@
 * URI filenames (`SQLITE_OPEN_URI`): `file:...?mode=...&cache=shared`, shared in-memory databases, `immutable=1`
 * small C API wrappers: `sqlite3_changes64`/`sqlite3_total_changes64` (3.37), `sqlite3_txn_state` (3.34), `sqlite3_error_offset` (3.38), `sqlite3_is_interrupted` (3.41) and `interrupt()`, `sqlite3_db_name` (3.39), `sqlite3_db_readonly` (3.7.11), `sqlite3_stmt_readonly`/`sqlite3_stmt_busy`/`sqlite3_stmt_isexplain`, `sqlite3_setlk_timeout` (3.50)
 * PRAGMA wrappers: `foreign_key_check`, `foreign_key_list`, `table_list` (3.37), `index_list`/`index_info`/`index_xinfo`, `database_list`, `optimize` (3.18), `wal_checkpoint` (incl. `NOOP`, 3.51), `data_version`, `freelist_count`, `page_count`/`page_size`, `cache_size`, `mmap_size`, `temp_store`, `secure_delete`, `defer_foreign_keys`, `query_only`, `incremental_vacuum`, `analysis_limit` (3.32), `trusted_schema` (3.31), `hard_heap_limit` (3.31), `threads`, `case_sensitive_like`, `reverse_unordered_selects`
-* extension loading: `sqlite3_load_extension` / `sqlite3_enable_load_extension`, the `load_extension()` SQL function, and the `SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION` option that enables the C API while keeping the SQL function disabled (recommended for security)
 * session extension (changesets/patchsets, `sqlite3_changegroup`) — large
 * encryption support via the [SQLite Encryption Extension (SEE)](https://sqlite.org/com/see.html) (`sqlite3_key`/`sqlite3_rekey`), incl. compatible implementations like SQLCipher (`PRAGMA key`) — see #1445
+
+## Internals
+
+* retire the legacy built-in function nodes with the C++17 baseline: delete the `#ifndef SQLITE_ORM_WITH_CPP20_ALIASES` branches — `builtin_function_t` and its kin in `ast/builtin_function.h`, and the `*_string` tags and factories in `builtin/functions/*.h`.
+* `optional_container` (once #1550 is merged): it is the compile-time optional sub-expression slot of the `case_t`, `limit_t`, `like_t` and trigger nodes, not a generic helper — `node_tuple` pattern-matches it, `ast_iterator` and `statement_serializer` reach into it via `apply()`, and it leaks into constructor signatures. `std::optional` is no replacement, as presence must stay part of the node's type. Candidate: store the sub-expression directly with an empty `absent_t`-like tag for "not present", asked about by a trait (`if constexpr`), `node_tuple<absent_t>` being empty.
+* operand normalization in every factory taking operands: validate the operands (`is_operand_or_bindable`, `are_valid_operands`) and unwrap `c()`-quoted ones (`unwrap_expression`), as the operator factories (comparison, arithmetic, bitwise, logical, IS, LIKE/GLOB, BETWEEN, IN, MATCH, assignment, NOT) already do. Remaining: the built-in function factories (`length()`, `abs()`, ...), `cast<T>()`, `collate`, and the other operand-taking factories; preferably through one helper doing both steps, so that each factory needs a single call. `match()`'s field also wants a field check rather than an operand check. Today `length(c(x))` fails only when serialized, with a missing `statement_serializer<quoted_expression_t<...>>`.
+* `dynamic_set_t`: an AST node whose type carries the serializer context (`dynamic_set(storage)`), and which serializes each assignment eagerly as it is pushed back - its assignments are of different types, so they cannot be kept as a tuple. Keeping them instead, type-erased, would let a dynamic SET be serialized and bound like any other node, and drop the context from its type.
+* `get<N>(prepared_statement)` addresses the N-th bindable node of `node_tuple`, but locates it at runtime by counting the bindable nodes `iterate_ast` visits, and the two disagree on dynamic lists: `node_tuple` sees a `std::vector<T>` (e.g. of `in()`) as one non-bindable node, `iterate_ast` visits each of its elements. A dynamic list preceding the requested node thus yields one of its elements, or a null dereference if the types differ.
 
 Please feel free to add any feature that isn't listed here and not implemented yet.

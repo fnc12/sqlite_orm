@@ -1,6 +1,6 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 #include <memory>  // std::default_delete
+#include <sqlite_orm/sqlite_orm.h>
 #include <stdlib.h>  // free()
 
 using namespace sqlite_orm;
@@ -10,7 +10,7 @@ using std::unique_ptr;
 // Wrap std::default_delete in a function
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 template<typename T>
-void delete_default(mpl::conditional_t<std::is_array<T>::value, std::decay_t<T>, T*> o) noexcept(
+void delete_default(mpl::ternary_t<std::is_array<T>, std::decay_t<T>, T*> o) noexcept(
     noexcept(std::default_delete<T>{}(o))) {
     std::default_delete<T>{}(o);
 }

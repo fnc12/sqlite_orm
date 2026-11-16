@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: perform the file I/O of a connection through io_uring instead of blocking system calls.
+ *
+ *  Intention: realizes a VFS, SQLite's OS interface layer, registered next to the built-in ones of `builtin/vfs.h` and wrapping
+ *  the default one; uses `scheduler.h`, and is selected for a storage by `make_async_storage()` through `connection_control`.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <cerrno>  //  errno, EINTR, ENOSPC
 #include <cstddef>  //  std::size_t
@@ -13,9 +21,11 @@
 #include <sqlite3.h>
 #include <sys/stat.h>  //  stat, fstat
 #include <unistd.h>  //  close
+#endif
 
 #include "scheduler.h"
 
+#ifdef SQLITE_ORM_WITH_ASYNC
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
@@ -502,3 +512,4 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         internal::async_vfs::statistics = async_vfs_statistics{};
     }
 }
+#endif

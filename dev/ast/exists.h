@@ -1,12 +1,20 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the EXISTS condition over a subquery.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
-#include "../tags.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../vocabulary/node_traits.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "operand_tags.h"
 
 namespace sqlite_orm::internal {
     template<class T>
@@ -17,6 +25,9 @@ namespace sqlite_orm::internal {
 
         exists_t(expression_type expression_) : expression(std::move(expression_)) {}
     };
+
+    template<class T>
+    constexpr bool is_exists_v = polyfill::is_specialization_of_v<T, exists_t>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

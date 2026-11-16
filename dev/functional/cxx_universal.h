@@ -4,9 +4,7 @@
  *  This header makes central C++ functionality on which sqlite_orm depends universally available:
  *  - alternative operator representations
  *  - ::size_t, ::ptrdiff_t, std::nullptr_t
- *  - C++ core language feature macros
- *  - macros for dealing with compiler quirks
- *  - macros for exporting symbols from the C++ named module
+ *  - the inline namespace `sqlite_orm::literals`
  */
 
 #include <iso646.h>  //  alternative operator representations
@@ -20,6 +18,7 @@ using std::nullptr_t;
 // Hence, sqlite_orm is internally using `std::nullptr_t` instead.
 #endif
 
-#include "cxx_check_prerequisites.h"
-#include "cxx_core_features.h"
-#include "cxx_compiler_quirks.h"
+// define the inline namespace "literals" so that it is available even if it was not introduced by a feature
+namespace sqlite_orm {
+    inline namespace literals {}
+}

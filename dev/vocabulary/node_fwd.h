@@ -1,8 +1,13 @@
 #pragma once
 
-/** @file Forward-declarations of concrete nodes that have to be used directly in template programming,
- *        e.g. for base-class overloads, partial specializations or metafunctions.
+/** @file
+ *  Purpose: declare the nodes that are named before their definitions are in scope.
+ *
+ *  Intention: part of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; the definitions
+ *  arrive through `node_definitions.h`.
  */
+
+SQLITE_ORM_EXPORT namespace sqlite_orm { struct alias_tag; }
 
 namespace sqlite_orm::internal {
     template<class... Cs>
@@ -19,11 +24,11 @@ namespace sqlite_orm::internal {
     template<class T, class F>
     struct column_pointer;
 
+    template<class O>
+    struct table_reference;
+
     template<class C>
     struct indexed_column_t;
 
     struct order_by_base;
-
-    template<class O>
-    struct order_by_t;
 }

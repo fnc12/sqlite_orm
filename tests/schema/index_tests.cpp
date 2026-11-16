@@ -1,5 +1,5 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 #include "../catch_matchers.h"
 
 using namespace sqlite_orm;
@@ -33,6 +33,10 @@ TEST_CASE("index") {
     }
     SECTION("explicit name") {
         auto storage = make_storage({}, make_index("name_index", indexed_column(&User::name)), table);
+        REQUIRE_NOTHROW(storage.sync_schema());
+    }
+    SECTION("unique expression") {
+        auto storage = make_storage({}, make_unique_index<User>("name_index", lower(&User::name)), table);
         REQUIRE_NOTHROW(storage.sync_schema());
     }
 #ifdef SQLITE_ORM_JSON_SUPPORTED

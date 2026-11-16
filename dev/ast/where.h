@@ -1,13 +1,20 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the WHERE clause.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <utility>  //  std::move
 #include <string_view>  //  std::string_view
+#include <utility>  //  std::move
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
-#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     struct where_string {

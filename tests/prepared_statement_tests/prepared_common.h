@@ -1,9 +1,9 @@
 #pragma once
 
+#include <ostream>  //  std::ostream
+#include <sqlite_orm/sqlite_orm.h>
 #include <string>  //  std::string
 #include <tuple>  //  std::ignore
-#include <sqlite_orm/sqlite_orm.h>
-#include <ostream>  //  std::ostream
 
 namespace PreparedStatementTests {
     struct User {
@@ -42,7 +42,7 @@ namespace PreparedStatementTests {
         auto expanded = statement.expanded_sql();
         std::ignore = expanded;
 #endif
-#if SQLITE_VERSION_NUMBER >= 3026000 and defined(SQLITE_ENABLE_NORMALIZE)
+#ifdef SQLITE_ORM_NORMALIZE_SUPPORTED
         auto normalized = statement.normalized_sql();
         std::ignore = normalized;
 #endif

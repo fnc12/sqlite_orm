@@ -1,5 +1,5 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 #include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
@@ -7,6 +7,9 @@ using internal::alias_holder;
 using internal::column_alias;
 using internal::column_pointer;
 using internal::literal_holder;
+
+template<class Tpl>
+using bindable_filter_t = internal::tuple_from_index_sequence_t<Tpl, internal::bindable_index_sequence_of<Tpl>>;
 
 template<class T>
 struct is_pair : std::false_type {};
@@ -21,7 +24,6 @@ template<class... Args>
 struct is_tuple<std::tuple<Args...>> : std::true_type {};
 
 TEST_CASE("Node tuple") {
-    using internal::bindable_filter_t;
     using internal::node_tuple;
     using internal::node_tuple_t;
     using std::is_same;
@@ -574,6 +576,21 @@ TEST_CASE("Node tuple") {
         static_assert(is_same<Tuple, tuple<decltype(&User::id), decltype(&User::name)>>::value,
                       "select(columns(cast<int>(&User::id), cast<int>(&User::name)))");
     }
+    SECTION("window function") {
+        //  a built-in window function call contributes its call arguments, like any built-in function call
+        using RowNumber = decltype(row_number().over(order_by(&User::id)));
+        static_assert(is_same<node_tuple_t<RowNumber>, tuple<decltype(&User::id)>>::value,
+                      "row_number().over(order_by(&User::id))");
+        using Rank = decltype(rank().over(order_by(&User::id)));
+        static_assert(is_same<node_tuple_t<Rank>, tuple<decltype(&User::id)>>::value,
+                      "rank().over(order_by(&User::id))");
+        using Lag = decltype(lag(&User::name, 1).over(partition_by(&User::id)));
+        static_assert(is_same<node_tuple_t<Lag>, tuple<decltype(&User::name), int, decltype(&User::id)>>::value,
+                      "lag(&User::name, 1).over(partition_by(&User::id))");
+        //  an aggregate function applied by an OVER clause stays a node of its own
+        using Count = decltype(count(&User::id).over());
+        static_assert(is_same<node_tuple_t<Count>, tuple<decltype(&User::id)>>::value, "count(&User::id).over()");
+    }
     SECTION("optional_container") {
         using namespace internal;
         SECTION("int") {
@@ -751,7 +768,7 @@ TEST_CASE("Node tuple") {
             auto f = upper("hi");
             using Fun = decltype(f);
             using Tuple = node_tuple_t<Fun>;
-            using ArgType = std::tuple_element_t<0, Fun::args_type>;
+            using ArgType = std::tuple_element_t<0, Fun::args_tuple>;
             static_assert(is_same<ArgType, const char*>::value, "upper arg[0]");
             using Expected = tuple<const char*>;
             static_assert(is_same<Tuple, Expected>::value, "upper");
@@ -957,7 +974,7 @@ TEST_CASE("Node tuple") {
         using ExpectedTuple = tuple<decltype(&User::name)>;
         STATIC_REQUIRE(is_same<Tuple, ExpectedTuple>::value);
     }
-    SECTION("function_call") {
+    SECTION("app_function_call") {
         struct Func {
             static const char* name();
             bool operator()(int value) const {
@@ -1045,11 +1062,91 @@ TEST_CASE("Node tuple") {
         STATIC_REQUIRE(std::is_same_v<Tuple, ExpectedTuple>);
     }
 #endif
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
     SECTION("table-valued") {
         auto expression = from(dbstat_table, dbstat_table("main", true));
         using Tuple = typename node_tuple<decltype(expression)>::type;
         STATIC_REQUIRE(is_same<Tuple, tuple<const char*, bool>>::value);
+    }
+#endif
+}
+
+/*
+ *  Every join is constrained - explicitly by ON or USING, or implicitly as CROSS JOIN and NATURAL JOIN are.
+ *  An implicit constraint has no nodes of its own.
+ */
+TEST_CASE("Node tuple of joins") {
+    using internal::node_tuple_t;
+    using internal::on_type_t;
+    using std::is_same;
+    using std::tuple;
+
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    using s = alias_s<User>;
+
+    SECTION("every join carries a constraint") {
+        STATIC_REQUIRE(polyfill::is_detected_v<on_type_t, decltype(cross_join<User>())>);
+        STATIC_REQUIRE(polyfill::is_detected_v<on_type_t, decltype(natural_join<User>())>);
+        STATIC_REQUIRE(polyfill::is_detected_v<on_type_t, decltype(join<User>(on(is_equal(&User::id, 1))))>);
+        STATIC_REQUIRE(polyfill::is_detected_v<on_type_t, decltype(left_join<User>(on(is_equal(&User::id, 1))))>);
+        STATIC_REQUIRE(polyfill::is_detected_v<on_type_t, decltype(left_outer_join<User>(on(is_equal(&User::id, 1))))>);
+        STATIC_REQUIRE(polyfill::is_detected_v<on_type_t, decltype(inner_join<User>(on(is_equal(&User::id, 1))))>);
+    }
+    SECTION("implicit constraint") {
+        STATIC_REQUIRE(is_same<node_tuple_t<decltype(cross_join<User>())>, tuple<>>::value);
+        STATIC_REQUIRE(is_same<node_tuple_t<decltype(natural_join<s>())>, tuple<>>::value);
+    }
+    SECTION("explicit constraint") {
+        using Join = decltype(left_join<s>(on(is_equal(&User::id, 5))));
+        STATIC_REQUIRE(is_same<node_tuple_t<Join>, tuple<decltype(&User::id), int>>::value);
+    }
+}
+
+/*
+ *  Every join operator, constrained explicitly or implicitly, is the one join node.
+ */
+TEST_CASE("Join operators are joins") {
+    using internal::implicit_join_constraint;
+    using internal::is_any_join_v;
+    using internal::node_tuple_t;
+    using internal::on_type_t;
+    using std::is_same;
+    using std::tuple;
+
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+
+    SECTION("implicit constraint") {
+        STATIC_REQUIRE(is_any_join_v<decltype(join<User>())>);
+        STATIC_REQUIRE(is_same<on_type_t<decltype(join<User>())>, implicit_join_constraint>::value);
+        STATIC_REQUIRE(is_same<on_type_t<decltype(inner_join<User>())>, implicit_join_constraint>::value);
+        STATIC_REQUIRE(is_same<on_type_t<decltype(left_join<User>())>, implicit_join_constraint>::value);
+        STATIC_REQUIRE(is_same<on_type_t<decltype(left_outer_join<User>())>, implicit_join_constraint>::value);
+        STATIC_REQUIRE(is_same<node_tuple_t<decltype(left_join<User>())>, tuple<>>::value);
+        STATIC_REQUIRE(
+            is_same<decltype(left_join<User>()), internal::left_join_t<User, implicit_join_constraint>>::value);
+    }
+    SECTION("NATURAL") {
+        STATIC_REQUIRE(is_any_join_v<decltype(natural_inner_join<User>())>);
+        STATIC_REQUIRE(is_any_join_v<decltype(natural_left_join<User>())>);
+        STATIC_REQUIRE(is_any_join_v<decltype(natural_left_outer_join<User>())>);
+        STATIC_REQUIRE(is_same<on_type_t<decltype(natural_left_join<User>())>, implicit_join_constraint>::value);
+    }
+#if SQLITE_VERSION_NUMBER >= 3039000
+    SECTION("RIGHT and FULL") {
+        STATIC_REQUIRE(is_any_join_v<decltype(right_join<User>(using_(&User::id)))>);
+        STATIC_REQUIRE(is_any_join_v<decltype(right_outer_join<User>())>);
+        STATIC_REQUIRE(is_any_join_v<decltype(full_join<User>(using_(&User::id)))>);
+        STATIC_REQUIRE(is_any_join_v<decltype(full_outer_join<User>())>);
+        STATIC_REQUIRE(is_any_join_v<decltype(natural_right_join<User>())>);
+        STATIC_REQUIRE(is_any_join_v<decltype(natural_full_outer_join<User>())>);
+        STATIC_REQUIRE(is_same<node_tuple_t<decltype(full_join<User>(on(is_equal(&User::id, 1))))>,
+                               tuple<decltype(&User::id), int>>::value);
     }
 #endif
 }

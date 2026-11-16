@@ -1,15 +1,21 @@
 #include <sqlite_orm/sqlite_orm.h>
-#ifdef SQLITE_ORM_ASYNC_SUPPORTED
-#include <catch2/catch_all.hpp>
+#ifdef SQLITE_ORM_WITH_ASYNC
 #include <algorithm>  //  std::find
+#include <atomic>  //  std::atomic
+#include <catch2/catch_all.hpp>
+#include <cerrno>  //  errno, EINTR
+#include <chrono>  //  std::chrono::milliseconds, std::chrono::steady_clock
 #include <cstdint>  //  std::uint64_t
 #include <filesystem>  //  std::filesystem::path, temp_directory_path
 #include <memory>  //  std::unique_ptr
 #include <optional>  //  std::optional
 #include <random>  //  std::mt19937, std::random_device
 #include <string>  //  std::string
+#include <sys/epoll.h>  //  epoll_create1, epoll_ctl, epoll_wait
 #include <system_error>  //  std::system_error
-#include <thread>  //  std::this_thread
+#include <thread>  //  std::thread, std::this_thread
+#include <tuple>  //  std::tuple, std::get
+#include <unistd.h>  //  close
 #include <utility>  //  std::move
 #include <vector>  //  std::vector
 
@@ -75,7 +81,8 @@ namespace {
         REQUIRE(done);
     }
 
-    task<void> fill_users(Storage& storage, int count) {
+    template<class S>
+    task<void> fill_users(S& storage, int count) {
         co_await storage.sync_schema();
         co_await storage.transaction([count](auto& storage) {
             for (int index = 1; index <= count; ++index) {
@@ -526,5 +533,251 @@ TEST_CASE("async storage: io_pool spreads work over threads and resumes on the o
         return 7;
     }) == 7);
     pool.shutdown();
+}
+
+TEST_CASE("async storage: iterate fetches row by row") {
+    require_io_uring();
+    temp_database database;
+    io_context io;
+    sqlite3* connection = nullptr;
+    auto storage = make_async_storage(io, database.path, users_table(), on_open([&connection](sqlite3* handle) {
+                                          connection = handle;
+                                      }));
+    using storage_type = decltype(storage);
+
+    SECTION("objects of a mapped type") {
+        auto body = [&storage, &connection]() -> task<void> {
+            co_await fill_users(storage, 500);
+            std::vector<User> expected = co_await storage.get_all<User>(where(c(&User::age) > 30), order_by(&User::id));
+            REQUIRE_FALSE(expected.empty());
+
+            auto users = storage.iterate<User>(where(c(&User::age) > 30), order_by(&User::id));
+            REQUIRE(sqlite3_next_stmt(connection, nullptr) == nullptr);
+            std::vector<User> fetched;
+            for (;;) {
+                std::optional<User> user = co_await users.next();
+                if (!user) {
+                    break;
+                }
+                //  the connection is free between two rows
+                REQUIRE_FALSE(storage.is_busy());
+                if (fetched.size() % 100 == 0) {
+                    const int count = co_await storage.count<User>();
+                    REQUIRE(count == 500);
+                }
+                fetched.push_back(std::move(*user));
+            }
+            REQUIRE(fetched.size() == expected.size());
+            for (std::size_t index = 0; index < fetched.size(); ++index) {
+                REQUIRE(fetched[index].id == expected[index].id);
+                REQUIRE(fetched[index].name == expected[index].name);
+            }
+            //  exhausted: the statement is finalized, and further calls keep answering "no more rows"
+            REQUIRE(sqlite3_next_stmt(connection, nullptr) == nullptr);
+            std::optional<User> afterTheEnd = co_await users.next();
+            REQUIRE_FALSE(afterTheEnd);
+        };
+        run_test(io, body());
+    }
+    SECTION("rows of a select statement") {
+        auto body = [&storage]() -> task<void> {
+            co_await fill_users(storage, 50);
+            auto rows = storage.iterate(select(columns(&User::id, &User::name), order_by(&User::id)));
+            int expectedId = 0;
+            for (;;) {
+                std::optional<std::tuple<int, std::string>> row = co_await rows.next();
+                if (!row) {
+                    break;
+                }
+                ++expectedId;
+                REQUIRE(std::get<0>(*row) == expectedId);
+                REQUIRE(std::get<1>(*row) == "user-" + std::to_string(expectedId));
+            }
+            REQUIRE(expectedId == 50);
+        };
+        run_test(io, body());
+    }
+    SECTION("two cursors interleave on one connection") {
+        auto body = [&storage]() -> task<void> {
+            co_await fill_users(storage, 20);
+            auto ascending = storage.iterate<User>(order_by(&User::id));
+            auto descending = storage.iterate<User>(order_by(&User::id).desc());
+            for (int index = 1; index <= 20; ++index) {
+                std::optional<User> low = co_await ascending.next();
+                std::optional<User> high = co_await descending.next();
+                REQUIRE(low.has_value());
+                REQUIRE(high.has_value());
+                REQUIRE(low->id == index);
+                REQUIRE(high->id == 21 - index);
+            }
+        };
+        run_test(io, body());
+    }
+    SECTION("a cursor abandoned while the connection is free finalizes its statement at once") {
+        auto body = [&storage, &connection]() -> task<void> {
+            co_await fill_users(storage, 50);
+            {
+                auto users = storage.iterate<User>();
+                std::optional<User> first = co_await users.next();
+                REQUIRE(first.has_value());
+                REQUIRE(sqlite3_next_stmt(connection, nullptr) != nullptr);
+            }
+            REQUIRE(sqlite3_next_stmt(connection, nullptr) == nullptr);
+            co_await storage.remove_all<User>();
+        };
+        run_test(io, body());
+    }
+    SECTION("a cursor abandoned while an operation is executing finalizes its statement after it") {
+        auto body = [&storage, &connection]() -> task<void> {
+            co_await fill_users(storage, 50);
+            auto users = storage.iterate<User>();
+            std::optional<User> first = co_await users.next();
+            REQUIRE(first.has_value());
+
+            auto countUsers = [](storage_type& storage) -> task<int> {
+                co_return co_await storage.template count<User>();
+            };
+            auto abandon = [](storage_type& storage, sqlite3* connection, decltype(users) users) -> task<int> {
+                REQUIRE(storage.is_busy());
+                users.close();
+                //  the statement outlives the cursor for as long as the other operation is executing
+                REQUIRE(sqlite3_next_stmt(connection, nullptr) != nullptr);
+                co_return 0;
+            };
+            std::vector<task<int>> tasks;
+            tasks.push_back(countUsers(storage));
+            tasks.push_back(abandon(storage, connection, std::move(users)));
+            std::vector<int> results = co_await when_all(std::move(tasks));
+            REQUIRE(results[0] == 50);
+            REQUIRE(sqlite3_next_stmt(connection, nullptr) == nullptr);
+        };
+        run_test(io, body());
+    }
+    SECTION("an error ends the iteration") {
+        auto body = [&storage]() -> task<void> {
+            //  no sync_schema(): the table does not exist
+            auto users = storage.iterate<User>();
+            bool thrown = false;
+            try {
+                co_await users.next();
+            } catch (const std::system_error&) {
+                thrown = true;
+            }
+            REQUIRE(thrown);
+            std::optional<User> afterTheError = co_await users.next();
+            REQUIRE_FALSE(afterTheError);
+        };
+        run_test(io, body());
+    }
+}
+
+namespace {
+    /**
+     *  The smallest event loop an io_context can be embedded into: it watches descriptors for readability.
+     */
+    struct epoll_loop {
+        int descriptor = ::epoll_create1(EPOLL_CLOEXEC);
+
+        ~epoll_loop() {
+            ::close(this->descriptor);
+        }
+
+        void watch_readable(int watched) {
+            epoll_event event{};
+            event.events = EPOLLIN;
+            event.data.fd = watched;
+            REQUIRE(::epoll_ctl(this->descriptor, EPOLL_CTL_ADD, watched, &event) == 0);
+        }
+
+        /**
+         *  Wait until a watched descriptor is readable; false when none became readable in time.
+         *  As in every event loop the wait is repeated when a signal interrupts it, which is how the kernel
+         *  gets the thread to deliver a completion.
+         */
+        bool wait(std::chrono::milliseconds timeout) {
+            const auto deadline = std::chrono::steady_clock::now() + timeout;
+            for (;;) {
+                const auto remaining =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now());
+                epoll_event event{};
+                const int ready = ::epoll_wait(this->descriptor, &event, 1, static_cast<int>(remaining.count()));
+                if (ready == 1) {
+                    return true;
+                }
+                if (ready == 0 || errno != EINTR || remaining.count() <= 0) {
+                    return false;
+                }
+            }
+        }
+    };
+}
+
+TEST_CASE("async storage: io_context embedded into another event loop") {
+    require_io_uring();
+    temp_database database;
+    io_context io;
+    auto storage = make_async_storage(io, database.path, users_table());
+    epoll_loop loop;
+    loop.watch_readable(io.native_handle());
+    const std::chrono::milliseconds timeout{10000};
+
+    SECTION("the descriptor is readable whenever poll() has work to do") {
+        bool done = false;
+        int turns = 0;
+        auto body = [&storage, &io, &done]() -> task<void> {
+            co_await fill_users(storage, 300);
+            //  a call from inside poll() returns at once
+            REQUIRE(io.poll());
+            std::vector<User> users = co_await storage.get_all<User>();
+            REQUIRE(users.size() == 300);
+            REQUIRE(io_context::current() == &io);
+            done = true;
+        };
+        io.spawn(body());
+        bool working = io.poll();
+        while (working) {
+            REQUIRE(loop.wait(timeout));
+            working = io.poll();
+            ++turns;
+        }
+        REQUIRE(done);
+        //  the commit alone waits for the disk several times
+        REQUIRE(turns > 0);
+        //  nothing is left that would make the descriptor readable
+        REQUIRE_FALSE(loop.wait(std::chrono::milliseconds{0}));
+    }
+    SECTION("a post() from another thread shows on the descriptor, before the first poll() as well") {
+        std::atomic<bool> posted{false};
+        const std::thread::id loopThread = std::this_thread::get_id();
+        std::thread::id ranOn;
+        std::thread other([&io, &posted, &ranOn] {
+            io.post([&posted, &ranOn] {
+                ranOn = std::this_thread::get_id();
+                posted = true;
+            });
+        });
+        while (!posted) {
+            REQUIRE(loop.wait(timeout));
+            io.poll();
+        }
+        other.join();
+        REQUIRE(ranOn == loopThread);
+        REQUIRE_FALSE(io.poll());
+    }
+    SECTION("an exception escaping a root coroutine is rethrown by poll()") {
+        auto body = [&storage]() -> task<void> {
+            co_await storage.get<User>(1);  //  no such table
+        };
+        io.spawn(body());
+        bool thrown = false;
+        try {
+            while (io.poll()) {
+                REQUIRE(loop.wait(timeout));
+            }
+        } catch (const std::system_error&) {
+            thrown = true;
+        }
+        REQUIRE(thrown);
+    }
 }
 #endif

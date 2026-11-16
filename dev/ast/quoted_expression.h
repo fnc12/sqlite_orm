@@ -1,16 +1,25 @@
 #pragma once
 
+/** @file
+ *  Purpose: lift an expression into the DSL.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if
-#include <utility>  //  std::move, std::forward, std::declval, std::forward_like
+#include <utility>  //  std::move, std::forward, std::declval
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
-#include "in.h"
-#include "../conditions.h"
-#include "../operators.h"
-#include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
+#include "../functional/cxx_polyfill/type_traits.h"
+#include "../functional/cxx_polyfill/utility.h"  //  polyfill::forward_like
+#include "../vocabulary/node_algorithms.h"  // unwrap_expression_t
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
+#include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
+#include "assignment.h"  //  assign_t
+#include "binary_condition.h"  //  and_condition_t, or_condition_t
+#include "in.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -20,30 +29,30 @@ namespace sqlite_orm::internal {
     struct quoted_expression_t {
         T _value;
 
-#if defined(SQLITE_ORM_DEDUCING_THIS_SUPPORTED) && __cpp_lib_forward_like >= 202207L
+#ifdef SQLITE_ORM_DEDUCING_THIS_SUPPORTED
         template<class Self, class R>
         assign_t<T, R> operator=(this Self&& self, R right) {
-            return {std::forward_like<Self>(self._value), std::move(right)};
+            return {polyfill::forward_like<Self>(self._value), std::move(right)};
         }
 
         template<class Self, class... Args>
         in_t<T, Args...> in(this Self&& self, Args... args) {
-            return {std::forward_like<Self>(self._value), {std::forward<Args>(args)...}, false};
+            return {polyfill::forward_like<Self>(self._value), {std::forward<Args>(args)...}, false};
         }
 
         template<class Self, class... Args>
         in_t<T, Args...> not_in(this Self&& self, Args... args) {
-            return {std::forward_like<Self>(self._value), {std::forward<Args>(args)...}, true};
+            return {polyfill::forward_like<Self>(self._value), {std::forward<Args>(args)...}, true};
         }
 
         template<class Self, class R>
         and_condition_t<T, R> and_(this Self&& self, R right) {
-            return {std::forward_like<Self>(self._value), std::move(right)};
+            return {polyfill::forward_like<Self>(self._value), std::move(right)};
         }
 
         template<class Self, class R>
         or_condition_t<T, R> or_(this Self&& self, R right) {
-            return {std::forward_like<Self>(self._value), std::move(right)};
+            return {polyfill::forward_like<Self>(self._value), std::move(right)};
         }
 #else
         template<class R>
@@ -77,15 +86,25 @@ namespace sqlite_orm::internal {
     constexpr bool is_quoted_expression_v = polyfill::is_specialization_of<T, quoted_expression_t>::value;
 
     template<class T>
-    constexpr bool
-        is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, quoted_expression_t>::value>> =
-            true;
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_quoted_expression_v<T>>> = true;
+
+    /**
+     *  A quoted condition is a condition: the node built from it holds the condition it quotes.
+     */
+    template<class T>
+    constexpr bool is_conditional_operand_v<T, std::enable_if_t<is_quoted_expression_v<T>>> =
+        is_conditional_operand_v<unwrap_expression_t<T>>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Public interface for syntax sugar for columns. Example: `where(c(&User::id) == 5)` or
      *  `storage.update(set(c(&User::name) = "Dua Lipa"));
+     *
+     *  `c()` lifts an expression into sqlite_orm's DSL, which is what lets the overloaded operators and the
+     *  member notation (`=`, `in()`, `and_()`, ...) apply to it. A named factory accepts the lifted expression just
+     *  as well and builds the very node it builds from the expression itself, so a quoted operand can be defined
+     *  once, e.g. `constexpr auto id = c(&User::id);`, and passed to `id <= 5` as well as to `between(id, 1, 9)`.
      */
     template<class T>
     constexpr internal::quoted_expression_t<T> c(T value) {

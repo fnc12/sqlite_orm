@@ -1,0 +1,178 @@
+name: Named module
+
+on:
+  push:
+    branches: [dev, master]
+    paths-ignore:
+      - '.git*'
+      - '_config.yml'
+      - 'LICENSE'
+      - '**/*.md'
+      - '*.png'
+      - '*.sh'
+  pull_request:
+    paths-ignore:
+      - '.git*'
+      - '_config.yml'
+      - 'LICENSE'
+      - '**/*.md'
+      - '*.png'
+      - '*.sh'
+
+env:
+  VCPKG_COMMIT: 4334d8b4c8916018600212ab4dd4bbdc343065d1  # 2025.09.17
+  CMAKE_VERSION: 4.5.0-rc1
+  NINJA_VERSION: 1.13.1
+
+# Builds and runs only the named module tests.
+jobs:
+  # ===================
+  # Windows builds, with the standard library modules provided by MSBuild (Visual Studio generator) or by CMake 4.5 (Ninja)
+  # ===================
+  windows:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "VS 2022, x64, C++23, Visual Studio generator"
+            generator: "-A x64"
+
+          - name: "VS 2022, x64, C++23, Ninja"
+            generator: "-G Ninja -DCMAKE_BUILD_TYPE=Release"
+            ninja: true
+
+    name: Windows - ${{ matrix.name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+          vcpkgDirectory: ${{ runner.temp }}/vcpkg
+
+      - name: Install dependencies
+        run: |
+          vcpkg install sqlite3 --triplet x64-windows
+
+      - name: Setup MSVC environment
+        if: matrix.ninja
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # after the MSVC environment, whose PATH includes the CMake shipped with Visual Studio
+      - name: Install CMake ${{ env.CMAKE_VERSION }} and Ninja ${{ env.NINJA_VERSION }}
+        if: matrix.ninja
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/Kitware/CMake/releases/download/v$env:CMAKE_VERSION/cmake-$env:CMAKE_VERSION-windows-x86_64.zip" -OutFile cmake.zip
+          Expand-Archive cmake.zip -DestinationPath "$env:RUNNER_TEMP"
+          Invoke-WebRequest -Uri "https://github.com/ninja-build/ninja/releases/download/v$env:NINJA_VERSION/ninja-win.zip" -OutFile ninja.zip
+          Expand-Archive ninja.zip -DestinationPath "$env:RUNNER_TEMP\cmake-$env:CMAKE_VERSION-windows-x86_64\bin"
+          "$env:RUNNER_TEMP\cmake-$env:CMAKE_VERSION-windows-x86_64\bin" >> $env:GITHUB_PATH
+
+      # note: the toolchain file is named by the vcpkg directory, since the MSVC environment sets `VCPKG_ROOT` to Visual Studio's own vcpkg
+      - name: Configure CMake
+        run: |
+          cmake --version
+          cmake -S . -B build ${{ matrix.generator }} -DSQLITE_ORM_ENABLE_CXX_23=ON -DVCPKG_TARGET_TRIPLET=x64-windows "-DCMAKE_TOOLCHAIN_FILE=${{ runner.temp }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Build
+        run: cmake --build build --config Release --target module_tests
+
+      - name: Test
+        run: ctest --test-dir build --verbose --output-on-failure --build-config Release --no-tests=error -R module_tests
+
+  # ===================
+  # Linux builds, with the standard library modules provided by CMake 4.5 (Ninja)
+  # ===================
+  linux:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "gcc-16, C++26"
+            cc: gcc-16
+            cxx: g++-16
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_26=ON"
+            compiler_packages: g++-16
+            compiler_ppa: ppa:ubuntu-toolchain-r/test
+            # Ubuntu prior to 26.04 ships a libstdc++.modules.json with wrong source paths
+            stdlib_modules_json: libstdc++.modules.json
+
+          - name: "clang-21, libc++, C++23"
+            cc: clang-21
+            cxx: clang++-21
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
+            cxx_flags: "-stdlib=libc++"
+            compiler_packages: clang-21 libc++-21-dev libc++abi-21-dev
+            llvm_repo: "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-21 main"
+            # apt.llvm.org's libc++.modules.json, as found by the compiler, resolves to missing source files
+            stdlib_modules_json: libc++.modules.json
+
+    name: Linux - ${{ matrix.name }}
+
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install compiler, Ninja and SQLite
+        run: |
+          if [ -n "${{ matrix.compiler_ppa }}" ]; then
+            sudo add-apt-repository -y ${{ matrix.compiler_ppa }}
+          fi
+          if [ -n "${{ matrix.llvm_repo }}" ]; then
+            wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+            sudo add-apt-repository -y "${{ matrix.llvm_repo }}"
+          fi
+          sudo apt-get update
+          sudo apt-get install -y ${{ matrix.compiler_packages }} ninja-build libsqlite3-dev
+
+      - name: Install CMake ${{ env.CMAKE_VERSION }}
+        run: |
+          curl -sL https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz | tar -xz -C ${{ runner.temp }}
+          echo "${{ runner.temp }}/cmake-${CMAKE_VERSION}-linux-x86_64/bin" >> $GITHUB_PATH
+
+      # Rewrites the module source paths of the standard library's module manifest to existing absolute paths:
+      # relative to the manifest, to its symlink target, or else found by the path below the leading `..` components.
+      - name: Fix ${{ matrix.stdlib_modules_json }}
+        if: matrix.stdlib_modules_json
+        run: |
+          python3 - "$($CXX ${{ matrix.cxx_flags }} -print-file-name=${{ matrix.stdlib_modules_json }})" "${{ runner.temp }}/${{ matrix.stdlib_modules_json }}" <<'EOF'
+          import json, os, sys
+          manifest, fixed = sys.argv[1], sys.argv[2]
+          print(manifest, "->", os.path.realpath(manifest))
+          with open(manifest) as f:
+              data = json.load(f)
+          for module in data["modules"]:
+              source = module["source-path"]
+              candidates = [os.path.normpath(os.path.join(os.path.dirname(m), source)) for m in (manifest, os.path.realpath(manifest))]
+              path = next((c for c in candidates if os.path.exists(c)), None)
+              if path is None:
+                  suffix = "/" + "/".join(part for part in source.split("/") if part not in ("", ".", ".."))
+                  path = next(os.path.join(d, f) for root in ("/usr/include", "/usr/lib", "/usr/share") for d, _, files in os.walk(root) for f in files if os.path.join(d, f).endswith(suffix))
+              module["source-path"] = path
+          with open(fixed, "w") as f:
+              json.dump(data, f, indent=2)
+          print(json.dumps(data, indent=2))
+          EOF
+          echo "STDLIB_MODULES_JSON=-DCMAKE_CXX_STDLIB_MODULES_JSON=${{ runner.temp }}/${{ matrix.stdlib_modules_json }}" >> $GITHUB_ENV
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build -G Ninja ${{ matrix.cxx_standard }} -DCMAKE_CXX_FLAGS="${{ matrix.cxx_flags }}" $STDLIB_MODULES_JSON
+
+      - name: Build
+        run: cmake --build build --target module_tests
+
+      - name: Test
+        run: ctest --test-dir build --verbose --output-on-failure --no-tests=error -R module_tests
+

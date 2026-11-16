@@ -1,6 +1,6 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 #include <cstdio>  //  std::remove
+#include <sqlite_orm/sqlite_orm.h>
 #include "catch_matchers.h"
 
 using namespace sqlite_orm;
@@ -61,6 +61,48 @@ TEST_CASE("begin_transaction") {
 
     std::vector<Object> expected{{1, "Leony"}};
     REQUIRE(storage.get_all<Object>() == expected);
+}
+
+TEST_CASE("transaction does not leak the connection") {
+    auto filename = "transaction_leak.sqlite";
+    std::remove(filename);
+    auto storage = make_storage(
+        filename,
+        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
+    storage.sync_schema();
+    REQUIRE_FALSE(storage.is_opened());
+
+    SECTION("a nested transaction guard fails cleanly") {
+        auto outer = storage.transaction_guard();
+        REQUIRE_THROWS_AS(storage.transaction_guard(), std::system_error);
+    }
+    SECTION("a nested manual begin fails cleanly") {
+        storage.begin_transaction();
+        REQUIRE_THROWS_AS(storage.begin_transaction(), std::system_error);
+        storage.rollback();
+    }
+    SECTION("manual begin and commit") {
+        storage.begin_transaction();
+        storage.replace(Object{1, "Leony"});
+        storage.commit();
+    }
+    SECTION("manual begin and rollback") {
+        storage.begin_transaction();
+        storage.rollback();
+    }
+    SECTION("a savepoint released") {
+        storage.savepoint("point");
+        storage.release_savepoint("point");
+    }
+    SECTION("a savepoint rolled back to and released") {
+        storage.savepoint("point");
+        storage.rollback_to_savepoint("point");
+        storage.release_savepoint("point");
+    }
+    //  in every scenario every transaction reference must have been dropped by now,
+    //  closing the connection [#1539]
+    REQUIRE_FALSE(storage.is_opened());
+    std::remove(filename);
 }
 
 TEST_CASE("Transaction guard") {

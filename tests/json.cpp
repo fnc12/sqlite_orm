@@ -1,5 +1,6 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
+#include "catch_matchers.h"
 
 using namespace sqlite_orm;
 
@@ -70,39 +71,33 @@ TEST_CASE("json_array_length") {
 TEST_CASE("json_array_length nullable") {
     auto storage = make_storage("");
     using Type = std::unique_ptr<int>;
-    Type expected;
-    Type value;
     std::vector<Type> rows;
+    std::vector<std::optional<int>> expected;
     SECTION("1") {
         rows = storage.select(json_array_length<Type>("[1,2,3,4]"));
-        expected = std::make_unique<int>(4);
+        expected = {4};
     }
     SECTION("2") {
         rows = storage.select(json_array_length<Type>("[1,2,3,4]", "$"));
-        expected = std::make_unique<int>(4);
+        expected = {4};
     }
     SECTION("3") {
         rows = storage.select(json_array_length<Type>("[1,2,3,4]", "$[2]"));
-        expected = std::make_unique<int>(0);
+        expected = {0};
     }
     SECTION("4") {
         rows = storage.select(json_array_length<Type>("{\"one\":[1,2,3]}"));
-        expected = std::make_unique<int>(0);
+        expected = {0};
     }
     SECTION("5") {
         rows = storage.select(json_array_length<Type>("{\"one\":[1,2,3]}", "$.one"));
-        expected = std::make_unique<int>(3);
+        expected = {3};
     }
     SECTION("6") {
         rows = storage.select(json_array_length<Type>("{\"one\":[1,2,3]}", "$.two"));
-        expected = nullptr;
+        expected = {std::nullopt};
     }
-    value = std::move(rows[0]);
-    REQUIRE(rows.size() == 1);
-    REQUIRE(bool(expected) == bool(value));
-    if (expected) {
-        REQUIRE(*expected == *value);
-    }
+    REQUIRE_THAT(rows, PointeesEqual(expected));
 }
 
 TEST_CASE("json_extract") {
@@ -145,8 +140,7 @@ TEST_CASE("json_extract") {
     }
     SECTION("7") {
         auto rows = storage.select(json_extract<std::unique_ptr<std::string>>(R"({"a":2,"c":[4,5,{"f":7}]})", "$.x"));
-        REQUIRE(rows.size() == 1);
-        REQUIRE_FALSE(rows[0]);
+        REQUIRE_THAT(rows, PointeesEqual<std::string>({std::nullopt}));
     }
     SECTION("8") {
         auto rows = storage.select(json_extract<std::string>(R"({"a":2,"c":[4,5,{"f":7}]})", "$.x", "$.a"));
@@ -183,6 +177,23 @@ TEST_CASE("json_insert") {
         REQUIRE(expected == rows);
     }
 }
+
+#if SQLITE_VERSION_NUMBER >= 3053000
+TEST_CASE("json_array_insert") {
+    auto storage = make_storage("");
+    std::vector<std::string> rows;
+    decltype(rows) expected;
+    SECTION("a single insertion shifts the elements to the right") {
+        rows = storage.select(json_array_insert("[1,2,3]", "$[1]", 9));
+        expected.push_back("[1,9,2,3]");
+    }
+    SECTION("multiple insertions are applied left to right") {
+        rows = storage.select(json_array_insert("[1,2,3]", "$[0]", 9, "$[4]", 99));
+        expected.push_back("[9,1,2,3,99]");
+    }
+    REQUIRE(expected == rows);
+}
+#endif
 
 TEST_CASE("json_replace") {
     auto storage = make_storage("");
@@ -336,8 +347,7 @@ TEST_CASE("json_remove") {
     }
     SECTION("8") {
         auto rows = storage.select(json_remove<std::unique_ptr<std::string>>(R"({"x":25,"y":42})", "$"));
-        REQUIRE(rows.size() == 1);
-        REQUIRE_FALSE(bool(rows[0]));
+        REQUIRE_THAT(rows, PointeesEqual<std::string>({std::nullopt}));
     }
 }
 
@@ -354,9 +364,7 @@ TEST_CASE("json_type") {
         }
         SECTION("null") {
             auto rows = storage.select(json_type<std::unique_ptr<std::string>>(argument));
-            REQUIRE(rows.size() == 1);
-            REQUIRE(rows[0]);
-            REQUIRE(*rows[0] == result);
+            REQUIRE_THAT(rows, PointeesEqual<std::string>({result}));
         }
     }
     SECTION("2") {
@@ -385,13 +393,9 @@ TEST_CASE("json_type") {
             {
                 auto rows =
                     storage.select(json_type<std::unique_ptr<std::string>>(testCase.argument, testCase.secondArgument));
-                REQUIRE(rows.size() == 1);
-                if (!testCase.result.empty()) {
-                    REQUIRE(rows[0]);
-                    REQUIRE(*rows[0] == testCase.result);
-                } else {
-                    REQUIRE_FALSE(rows[0]);
-                }
+                REQUIRE_THAT(rows,
+                             PointeesEqual<std::string>(
+                                 {testCase.result.empty() ? std::nullopt : std::optional(testCase.result)}));
             }
         }
     }
@@ -414,6 +418,41 @@ TEST_CASE("json_valid") {
     }
 }
 
+#if SQLITE_VERSION_NUMBER >= 3045000
+TEST_CASE("json_valid with flags") {
+    auto storage = make_storage("");
+    std::vector<bool> rows;
+    decltype(rows) expected;
+    //  the JSON5 object below is no strict JSON; flag 1 demands strict JSON, flag 2 admits JSON5
+    SECTION("JSON5 against the strict flag") {
+        rows = storage.select(json_valid("{a:1}", 1));
+        expected.push_back(false);
+    }
+    SECTION("JSON5 against the JSON5 flag") {
+        rows = storage.select(json_valid("{a:1}", 2));
+        expected.push_back(true);
+    }
+    REQUIRE(expected == rows);
+}
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3042000
+TEST_CASE("json_error_position") {
+    auto storage = make_storage("");
+    std::vector<int> rows;
+    decltype(rows) expected;
+    SECTION("well-formed") {
+        rows = storage.select(json_error_position(R"({"x":35})"));
+        expected.push_back(0);
+    }
+    SECTION("malformed") {
+        rows = storage.select(json_error_position(R"({"x":35)"));
+        expected.push_back(8);
+    }
+    REQUIRE(expected == rows);
+}
+#endif
+
 TEST_CASE("json_quote") {
     auto storage = make_storage("");
     {
@@ -429,6 +468,23 @@ TEST_CASE("json_quote") {
         REQUIRE(rows == expected);
     }
 }
+
+#if SQLITE_VERSION_NUMBER >= 3046000
+TEST_CASE("json_pretty") {
+    auto storage = make_storage("");
+    std::vector<std::string> rows;
+    decltype(rows) expected;
+    SECTION("four spaces by default") {
+        rows = storage.select(json_pretty("[1,2]"));
+        expected.push_back("[\n    1,\n    2\n]");
+    }
+    SECTION("a custom indentation string") {
+        rows = storage.select(json_pretty("[1,2]", "\t"));
+        expected.push_back("[\n\t1,\n\t2\n]");
+    }
+    REQUIRE(expected == rows);
+}
+#endif
 
 TEST_CASE("json_group_array && json_group_object") {
     struct User {

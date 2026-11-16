@@ -2,8 +2,8 @@
  *  Thanks to that nice website https://database.guide/how-to-create-a-computed-column-in-sqlite/ for this example.
  */
 
-#include <sqlite_orm/sqlite_orm.h>
 #include <iostream>
+#include <sqlite_orm/sqlite_orm.h>
 
 #if SQLITE_VERSION_NUMBER >= 3031000
 #define ENABLE_THIS_EXAMPLE

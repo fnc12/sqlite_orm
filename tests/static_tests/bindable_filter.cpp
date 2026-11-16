@@ -1,9 +1,12 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
-#include <type_traits>  //  std::is_same
 #include <optional>
+#include <sqlite_orm/sqlite_orm.h>
+#include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
+
+template<class Tpl>
+using bindable_filter_t = internal::tuple_from_index_sequence_t<Tpl, internal::bindable_index_sequence_of<Tpl>>;
 
 namespace {
     struct Custom {};
@@ -22,7 +25,6 @@ TEST_CASE("bindable_filter") {
         std::string name;
     };
 
-    using internal::bindable_filter_t;
     using std::is_same;
     {
         using Tuple = std::tuple<bool,

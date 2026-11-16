@@ -1,0 +1,111 @@
+#pragma once
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <functional>  //  std::reference_wrapper
+#include <string>  //  std::string
+#include <system_error>
+#include <type_traits>  //  std::is_base_of
+#include <utility>  //  std::move
+#include <vector>  //  std::vector
+#endif
+
+#include "../functional/mpl/convenience.h"
+#include "../functional/tuple_helper/tuple_iteration.h"
+#include "../functional/type_traits.h"
+#include "../error_code.h"
+#include "../schema/algorithms/table_lookup.h"  //  pick_table
+#include "../schema/column_identifier.h"
+#include "../schema/table_identifier.h"
+#include "../vocabulary/node_algorithms.h"  // access_column_expression, mapped_type_of_t
+#include "../vocabulary/node_traits.h"
+#include "quoting.h"
+
+namespace sqlite_orm::internal {
+    template<class T, class Ctx>
+    auto serialize(const T& t, const Ctx& context);
+
+    template<class T, class Ctx>
+    std::vector<std::string>& collect_table_column_expressions(std::vector<std::string>& collectedExpressions,
+                                                               bool definedOrder,
+                                                               const Ctx& context) {
+        if (definedOrder) {
+            auto& table = pick_table<mapped_type_of_t<T>>(context.db_objects);
+            collectedExpressions.reserve(collectedExpressions.size() + table.template count_of<is_column>());
+            table.for_each_column([qualified = !context.omit_table_name,
+                                   &tableName = table.name,
+                                   &collectedExpressions](const column_identifier& column) {
+                if constexpr (is_alias_v<T>) {
+                    collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + "." +
+                                                   quote_identifier(column.name));
+                } else if (qualified) {
+                    collectedExpressions.push_back(quote_identifier(tableName) + "." + quote_identifier(column.name));
+                } else {
+                    collectedExpressions.push_back(quote_identifier(column.name));
+                }
+            });
+        } else {
+            collectedExpressions.reserve(collectedExpressions.size() + 1);
+            if constexpr (is_alias_v<T>) {
+                collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + ".*");
+            } else if (!context.omit_table_name) {
+                const table_identifier& table = pick_table<mapped_type_of_t<T>>(context.db_objects);
+                collectedExpressions.push_back(quote_identifier(table.name) + ".*");
+            } else {
+                collectedExpressions.emplace_back("*");
+            }
+        }
+
+        return collectedExpressions;
+    }
+
+    /** @short Column expression collector.
+     */
+    struct column_expressions_collector {
+        /** 
+         *  The default implementation simply serializes the passed argument.
+         */
+        template<class E, class Ctx>
+        std::vector<std::string>& operator()(const E& expression, const Ctx& context) {
+            // ...
+            if constexpr (polyfill::is_specialization_of_v<E, std::reference_wrapper>) {
+                return (*this)(expression.get(), context);
+            }
+            // ...
+            else if constexpr (is_asterisk_v<E> || is_object_node_v<E>) {
+                return collect_table_column_expressions<type_t<E>>(this->collectedExpressions,
+                                                                   expression.defined_order,
+                                                                   context);
+            }
+            // ...
+            else if constexpr (is_columns_v<E> || is_struct_v<E>) {
+                this->collectedExpressions.reserve(this->collectedExpressions.size() + expression.count);
+                iterate_tuple(expression.columns, [this, &context](auto& colExpr) {
+                    (*this)(colExpr, context);
+                });
+                // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
+                if constexpr (tuple_has<columns_type_t<E>, is_asterisk>::value) {
+                    this->collectedExpressions.shrink_to_fit();
+                }
+                return this->collectedExpressions;
+            }
+            // ...
+            else {
+                std::string columnExpression = serialize(expression, context);
+                if (columnExpression.empty()) {
+                    throw std::system_error{orm_error_code::column_not_found};
+                }
+                this->collectedExpressions.reserve(this->collectedExpressions.size() + 1);
+                this->collectedExpressions.push_back(std::move(columnExpression));
+                return this->collectedExpressions;
+            }
+        }
+
+        std::vector<std::string> collectedExpressions;
+    };
+
+    template<class T, class Ctx>
+    std::vector<std::string> collect_column_expressions(const T& expression, const Ctx& context) {
+        column_expressions_collector collector;
+        return collector(access_column_expression(expression), context);
+    }
+}

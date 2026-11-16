@@ -1,9 +1,9 @@
 #include <sqlite_orm/sqlite_orm.h>
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <type_traits>  //  std::is_same, std::is_constructible
-#include <tuple>  //  std::ignore
-#include <string>  //  std::string
 #include <catch2/catch_all.hpp>
+#include <string>  //  std::string
+#include <tuple>  //  std::ignore
+#include <type_traits>  //  std::is_same, std::is_constructible
 
 using namespace sqlite_orm;
 using internal::alias_holder, internal::column_alias;
@@ -21,7 +21,7 @@ void do_assert() {
 
 template<class E, class ColRef>
 void runDecay(ColRef /*colRef*/) {
-    do_assert<internal::transform_tuple_t<tuple<ColRef>, internal::decay_explicit_column_t>, E>();
+    do_assert<internal::transform_tuple<tuple<ColRef>, internal::decay_explicit_column_t>, E>();
 }
 
 template<class E, class T>
@@ -97,6 +97,39 @@ TEST_CASE("CTE storage") {
         STATIC_REQUIRE(is_same<decltype(dbObjects2),
                                tuple<decltype(cteTable), decltype(idx1), decltype(idx2), decltype(table)>>::value);
     }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    SECTION("asterisk of a record set alias") {
+        struct Org {
+            int64 id = 0;
+            std::string name;
+        };
+
+        auto table = make_table("org", make_column("id", &Org::id), make_column("name", &Org::name));
+        auto dbObjects = tuple{table};
+        constexpr orm_table_alias auto org = "o"_alias.for_<Org>();
+        constexpr orm_cte_moniker auto cte1 = "c1"_cte;
+        constexpr orm_cte_moniker auto cte2 = "c2"_cte;
+        constexpr orm_recordset_alias auto cte1Alias = "a"_alias.for_<cte1>();
+
+        // table alias -> the mapped object's fields
+        auto cteTable1 = internal::make_cte_db_object(dbObjects, cte1().as(select(asterisk<org>())));
+        using mapper1_type = internal::cte_mapper_type_t<decltype(cteTable1)>;
+        STATIC_REQUIRE(is_same<mapper1_type::final_colrefs_tuple, tuple<int64 Org::*, std::string Org::*>>::value);
+        STATIC_REQUIRE(is_same<mapper1_type::fields_type, tuple<int64, std::string>>::value);
+        REQUIRE(std::get<0>(cteTable1.elements).name == "id");
+        REQUIRE(std::get<1>(cteTable1.elements).name == "name");
+
+        // alias of a CTE moniker -> the CTE's fields
+        auto dbObjects2 =
+            internal::db_objects_cat(dbObjects, internal::make_cte_db_object(dbObjects, cte1().as(select(1))));
+        auto cteTable2 = internal::make_cte_db_object(dbObjects2, cte2().as(select(asterisk<cte1Alias>())));
+        using mapper2_type = internal::cte_mapper_type_t<decltype(cteTable2)>;
+        STATIC_REQUIRE(is_same<mapper2_type::final_colrefs_tuple,
+                               tuple<int internal::aliased_field<column_alias<'1'>, int>::*>>::value);
+        STATIC_REQUIRE(is_same<mapper2_type::fields_type, tuple<int>>::value);
+        REQUIRE(std::get<0>(cteTable2.elements).name == "1");
+    }
+#endif
 }
 
 TEST_CASE("CTE expressions") {

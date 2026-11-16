@@ -1,19 +1,18 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_same
+#include <functional>  //  std::ref
 #include <ostream>  //  std::ostream
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple, std::tuple_size
-#include <functional>  //  std::ref
+#include <type_traits>  //  std::is_same
 #include <utility>  //  std::forward, std::move
 #endif
 
-#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/cxx_polyfill/type_traits.h"
 #include "../../functional/addressof.h"
-#include "../../tuple_helper/same_or_void.h"
-#include "../../member_traits/field_of.h"
-#include "../../alias_traits.h"
+#include "../../functional/field_of.h"
+#include "../../functional/type_traits.h"
 #include "../../vocabulary/node_traits.h"
 #include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
@@ -112,6 +111,8 @@ namespace sqlite_orm::internal {
         }
 
       private:
+        //  not constexpr, as `addressof_enclosing` reinterpret_casts; hence a foreign key with actions
+        //  cannot be an annotation value
         foreign_key_type copy_fk(foreign_key_action newAction) const {
             const foreign_key_type* thisFk;
             if constexpr (forUpdate) {
@@ -128,6 +129,29 @@ namespace sqlite_orm::internal {
             }
             return fk2;
         }
+    };
+
+    enum class foreign_key_enforcement {
+        not_specified,  //  clause absent, which SQLite treats as NOT DEFERRABLE
+        deferred,  //  DEFERRABLE INITIALLY DEFERRED
+        immediate,  //  DEFERRABLE INITIALLY IMMEDIATE
+        not_deferrable,  //  NOT DEFERRABLE
+    };
+
+    struct fk_enforcement_state {
+        foreign_key_enforcement _enforcement = foreign_key_enforcement::not_specified;
+
+        explicit operator bool() const {
+            return _enforcement != foreign_key_enforcement::not_specified;
+        }
+
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        friend bool operator==(const fk_enforcement_state&, const fk_enforcement_state&) = default;
+#else
+        friend bool operator==(const fk_enforcement_state& lhs, const fk_enforcement_state& rhs) {
+            return lhs._enforcement == rhs._enforcement;
+        }
+#endif
     };
 
     template<class... Cs, class... Rs>
@@ -147,15 +171,46 @@ namespace sqlite_orm::internal {
 
         columns_type _columns;
         references_type _references;
-        on_fk_update_delete<foreign_key_t, true> on_update;
-        on_fk_update_delete<foreign_key_t, false> on_delete;
+        on_fk_update_delete<foreign_key_t, true> on_update{};
+        on_fk_update_delete<foreign_key_t, false> on_delete{};
+        fk_enforcement_state _deferrable{};
 
         static_assert(!std::is_same<source_type, void>::value, "All columns must have the same mapped type");
         static_assert(!std::is_same<target_type, void>::value, "All references must have the same mapped type");
 
+        /**
+         *  `DEFERRABLE INITIALLY DEFERRED`: the constraint is checked at `COMMIT`
+         *  instead of at the end of each statement.
+         */
+        foreign_key_t initially_deferred() const {
+            return this->copy_with_enforcement(foreign_key_enforcement::deferred);
+        }
+
+        /**
+         *  `DEFERRABLE INITIALLY IMMEDIATE`: the default per-statement enforcement, spelled out.
+         */
+        foreign_key_t initially_immediate() const {
+            return this->copy_with_enforcement(foreign_key_enforcement::immediate);
+        }
+
+        /**
+         *  `NOT DEFERRABLE`: the default per-statement enforcement, spelled out.
+         */
+        foreign_key_t not_deferrable() const {
+            return this->copy_with_enforcement(foreign_key_enforcement::not_deferrable);
+        }
+
         friend bool operator==(const foreign_key_t& lhs, const foreign_key_t& rhs) {
             return lhs._columns == rhs._columns && lhs._references == rhs._references &&
-                   lhs.on_update == rhs.on_update && lhs.on_delete == rhs.on_delete;
+                   lhs.on_update == rhs.on_update && lhs.on_delete == rhs.on_delete &&
+                   lhs._deferrable == rhs._deferrable;
+        }
+
+      private:
+        foreign_key_t copy_with_enforcement(foreign_key_enforcement newEnforcement) const {
+            foreign_key_t fk2 = *this;
+            fk2._deferrable._enforcement = newEnforcement;
+            return fk2;
         }
     };
 

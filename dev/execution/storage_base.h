@@ -1,0 +1,1525 @@
+#pragma once
+
+#include <sqlite3.h>
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <algorithm>  //  std::find_if, std::ranges::find
+#include <cstdlib>  // atoi
+#include <functional>  //  std::function, std::bind, std::bind_front
+#include <list>  //  std::list
+#include <map>  //  std::map
+#include <memory>  //  std::allocator, std::unique_ptr, std::make_unique
+#include <optional>  //  std::optional
+#include <ostream>  //  std::flush
+#include <sstream>  //  std::ostringstream
+#include <string>  //  std::string
+#include <string_view>  //  std::string_view
+#include <system_error>  //  std::system_error
+#include <tuple>  //  std::apply
+#include <type_traits>  //  std::is_same, std::is_aggregate
+#include <utility>  //  std::move
+#include <vector>  //  std::vector
+#endif
+
+#include "../functional/tuple_helper/tuple_iteration.h"
+#include "../ast/app_function.h"
+#include "../builtin/dbos/pragma_tables.h"
+#include "../error_code.h"
+#include "../marshaling/arg_values.h"
+#include "../marshaling/row_extractor.h"
+#include "../marshaling/values_to_tuple.h"
+#include "../serialization/quoting.h"
+#include "../serialization/serializing_util.h"
+#include "../sqlite3/sqlite3_errors.h"
+#include "../sqlite3/sqlite3_statements.h"
+#include "../sqlite3/sqlite3_types.h"  //  int64
+#include "../sqlite3/sqlite3_xdestroy.h"
+#include "../vocabulary/node_traits.h"  // projections
+#include "backup.h"
+#include "connection_holder.h"
+#include "limit_accessor.h"
+#include "pragma.h"
+#include "savepoint.h"
+#include "storage_options.h"
+#include "transaction_guard.h"
+#include "transaction_state.h"
+#include "udf_proxy.h"
+
+namespace sqlite_orm::internal {
+    /**
+     *  Checks whether a serialized default value allows the column to be added with
+     *  `ALTER TABLE ... ADD COLUMN`: SQLite only permits constant default values there,
+     *  i.e. no CURRENT_TIME/CURRENT_DATE/CURRENT_TIMESTAMP and no expressions.
+     */
+    inline bool is_default_value_addable(const std::string& dfltValue) {
+        constexpr char quoteChar = '\'';
+
+        if (dfltValue.empty()) {
+            return true;
+        }
+        //  a string literal is always a constant
+        if (dfltValue.front() == quoteChar) {
+            return true;
+        }
+        if (dfltValue == "CURRENT_TIME" || dfltValue == "CURRENT_DATE" || dfltValue == "CURRENT_TIMESTAMP") {
+            return false;
+        }
+        //  everything containing an opening parenthesis is a function call or a parenthesized expression
+        if (dfltValue.find('(') != std::string::npos) {
+            return false;
+        }
+        return true;
+    }
+
+    struct storage_base {
+      public:
+        using collating_function = std::function<int(int, const void*, int, const void*)>;
+
+      protected:
+        const bool inMemory;
+        bool isOpenedForever = false;
+        std::unique_ptr<connection_holder> connection;
+        std::map<std::string, collating_function> collatingFunctions;
+        const int cachedForeignKeysCount;
+        std::function<int(int)> _busy_handler;
+#ifdef SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
+        std::optional<bool> _loadExtensionEnabled;
+#endif
+        std::list<udf_proxy> scalarFunctions;
+        std::list<udf_proxy> aggregateFunctions;
+        const sqlite_executor executor;
+
+      public:
+        /** 
+         *  Attention: You must ensure that to set this function only from a single-threaded context.
+         */
+        std::function<void(sqlite3*)> on_open;
+        pragma_t pragma;
+        /** 
+         *  Attention: You must ensure that to set database limit only from a single-threaded context.
+         */
+        limit_accessor limit;
+
+        transaction_guard_t transaction_guard() {
+            auto connection = this->get_connection();
+            sqlite3* db = connection.get();
+            this->executor.perform_void_exec(db, "BEGIN TRANSACTION");
+            return {std::move(connection),
+                    std::bind(&sqlite_executor::perform_void_exec, &executor, db, "COMMIT"),
+                    std::bind(&sqlite_executor::perform_void_exec, &executor, db, "ROLLBACK")};
+        }
+
+        transaction_guard_t deferred_transaction_guard() {
+            auto connection = this->get_connection();
+            sqlite3* db = connection.get();
+            this->executor.perform_void_exec(db, "BEGIN DEFERRED TRANSACTION");
+            return {std::move(connection),
+                    std::bind(&sqlite_executor::perform_void_exec, &executor, db, "COMMIT"),
+                    std::bind(&sqlite_executor::perform_void_exec, &executor, db, "ROLLBACK")};
+        }
+
+        transaction_guard_t immediate_transaction_guard() {
+            auto connection = this->get_connection();
+            sqlite3* db = connection.get();
+            this->executor.perform_void_exec(db, "BEGIN IMMEDIATE TRANSACTION");
+            return {std::move(connection),
+                    std::bind(&sqlite_executor::perform_void_exec, &executor, db, "COMMIT"),
+                    std::bind(&sqlite_executor::perform_void_exec, &executor, db, "ROLLBACK")};
+        }
+
+        transaction_guard_t exclusive_transaction_guard() {
+            auto connection = this->get_connection();
+            sqlite3* db = connection.get();
+            this->executor.perform_void_exec(db, "BEGIN EXCLUSIVE TRANSACTION");
+            return {std::move(connection),
+                    std::bind(&sqlite_executor::perform_void_exec, &executor, db, "COMMIT"),
+                    std::bind(&sqlite_executor::perform_void_exec, &executor, db, "ROLLBACK")};
+        }
+
+        /**
+         *  Executes `SAVEPOINT savepointName` and returns a guard object.
+         *  The guard executes `ROLLBACK TO SAVEPOINT` + `RELEASE SAVEPOINT` in its destructor,
+         *  unless `release()` was called or `release_on_destroy` is set to true.
+         *  More info: https://www.sqlite.org/lang_savepoint.html
+         */
+        savepoint_t savepoint_guard(const std::string& savepointName) {
+            auto connection = this->get_connection();
+            sqlite3* db = connection.get();
+            this->executor.perform_void_exec(db, this->savepoint_sql("SAVEPOINT ", savepointName).c_str());
+            return {
+                std::move(connection),
+                [&executor = this->executor, db, sql = this->savepoint_sql("RELEASE SAVEPOINT ", savepointName)] {
+                    executor.perform_void_exec(db, sql.c_str());
+                },
+                [&executor = this->executor, db, sql = this->savepoint_sql("ROLLBACK TO SAVEPOINT ", savepointName)] {
+                    executor.perform_void_exec(db, sql.c_str());
+                }};
+        }
+
+        /**
+         *  Drops index with given name. 
+         *  Calls `DROP INDEX indexName`.
+         *  More info: https://www.sqlite.org/lang_dropindex.html
+         */
+        void drop_index(const std::string& indexName) {
+            auto connection = this->get_connection();
+            this->drop_dbo_internal(connection.get(), "INDEX", indexName, false);
+        }
+
+        /**
+         *  Drops trigger with given name if trigger exists. 
+         *  Calls `DROP INDEX IF EXISTS indexName`.
+         *  More info: https://www.sqlite.org/lang_dropindex.html
+         */
+        void drop_index_if_exists(const std::string& indexName) {
+            auto connection = this->get_connection();
+            this->drop_dbo_internal(connection.get(), "INDEX", indexName, true);
+        }
+
+        /**
+         *  Drops trigger with given name. 
+         *  Calls `DROP TRIGGER triggerName`.
+         *  More info: https://www.sqlite.org/lang_droptrigger.html
+         */
+        void drop_trigger(const std::string& triggerName) {
+            auto connection = this->get_connection();
+            this->drop_dbo_internal(connection.get(), "TRIGGER", triggerName, false);
+        }
+
+        /**
+         *  Drops trigger with given name if trigger exists. 
+         *  Calls `DROP TRIGGER IF EXISTS triggerName`.
+         *  More info: https://www.sqlite.org/lang_droptrigger.html
+         */
+        void drop_trigger_if_exists(const std::string& triggerName) {
+            auto connection = this->get_connection();
+            this->drop_dbo_internal(connection.get(), "TRIGGER", triggerName, true);
+        }
+
+        /**
+         *  Drops table with given name. 
+         *  Calls `DROP TABLE tableName`.
+         *  More info: https://www.sqlite.org/lang_droptable.html
+         */
+        void drop_table(const std::string& tableName) {
+            auto connection = this->get_connection();
+            this->drop_dbo_internal(connection.get(), "TABLE", tableName, false);
+        }
+
+        /**
+         *  Drops table with given name if table exists. 
+         *  Calls `DROP TABLE IF EXISTS tableName`.
+         *  More info: https://www.sqlite.org/lang_droptable.html
+         */
+        void drop_table_if_exists(const std::string& tableName) {
+            auto connection = this->get_connection();
+            this->drop_dbo_internal(connection.get(), "TABLE", tableName, true);
+        }
+
+        /**
+         *  Drops the view with the specified name.
+         *  Calls `DROP VIEW "viewName"`.
+         *  More info: https://www.sqlite.org/lang_droptable.html
+         */
+        void drop_view(std::string_view viewName) {
+            auto connection = this->get_connection();
+            this->drop_dbo_internal(connection.get(), "VIEW", viewName, false);
+        }
+
+        /**
+         *  Drops the view with the specified name if it exists. 
+         *  Calls `DROP VIEW IF EXISTS "viewName"`.
+         *  More info: https://www.sqlite.org/lang_droptable.html
+         */
+        void drop_view_if_exists(std::string_view viewName) {
+            auto connection = this->get_connection();
+            this->drop_dbo_internal(connection.get(), "VIEW", viewName, true);
+        }
+
+        /**
+         *  Rename table named `from` to `to`.
+         */
+        void rename_table(const std::string& from, const std::string& to) {
+            auto connection = this->get_connection();
+            this->rename_table_internal(connection.get(), from, to);
+        }
+
+        /**
+         *  `VACUUM` query.
+         *  More info: https://www.sqlite.org/lang_vacuum.html
+         */
+        void vacuum() {
+            auto connection = this->get_connection();
+            this->executor.perform_void_exec(connection.get(), "VACUUM");
+        }
+
+#if SQLITE_VERSION_NUMBER >= 3027000
+        /**
+         *  `VACUUM INTO` query: writes a vacuumed, transactionally consistent copy of the database
+         *  into a new file, leaving the database itself untouched. The file must not exist yet.
+         *  More info: https://www.sqlite.org/lang_vacuum.html#vacuuminto
+         */
+        void vacuum_into(std::string_view filename) {
+            std::ostringstream ss;
+            ss << "VACUUM INTO " << quote_string_literal(std::string{filename}) << std::flush;
+            auto connection = this->get_connection();
+            this->executor.perform_void_exec(connection.get(), ss.str().c_str());
+        }
+#endif
+
+        /**
+         *  `ANALYZE` query: gathers statistics about tables and indexes for the query planner.
+         *  More info: https://www.sqlite.org/lang_analyze.html
+         */
+        void analyze() {
+            auto connection = this->get_connection();
+            this->executor.perform_void_exec(connection.get(), "ANALYZE");
+        }
+
+        /**
+         *  `ANALYZE` query limited to a single schema, table or index.
+         *  More info: https://www.sqlite.org/lang_analyze.html
+         */
+        void analyze(std::string_view name) {
+            std::ostringstream ss;
+            ss << "ANALYZE " << streaming_identifier(name) << std::flush;
+            auto connection = this->get_connection();
+            this->executor.perform_void_exec(connection.get(), ss.str().c_str());
+        }
+
+        /**
+         *  `REINDEX` query: rebuilds all indexes.
+         *  More info: https://www.sqlite.org/lang_reindex.html
+         */
+        void reindex() {
+            auto connection = this->get_connection();
+            this->executor.perform_void_exec(connection.get(), "REINDEX");
+        }
+
+        /**
+         *  `REINDEX` query limited to a collation, table or index.
+         *  More info: https://www.sqlite.org/lang_reindex.html
+         */
+        void reindex(std::string_view name) {
+            std::ostringstream ss;
+            ss << "REINDEX " << streaming_identifier(name) << std::flush;
+            auto connection = this->get_connection();
+            this->executor.perform_void_exec(connection.get(), ss.str().c_str());
+        }
+
+#if SQLITE_VERSION_NUMBER >= 3053000
+        /**
+         *  `REINDEX EXPRESSIONS` query: rebuilds indexes on expressions, repairing stale ones.
+         *  More info: https://www.sqlite.org/lang_reindex.html
+         */
+        void reindex_expressions() {
+            auto connection = this->get_connection();
+            this->executor.perform_void_exec(connection.get(), "REINDEX EXPRESSIONS");
+        }
+#endif
+
+        /**
+         *  Checks whether table exists in db. Doesn't check storage itself - works only with actual database.
+         *  Note: table can be not mapped to a storage
+         *  @return true if table with a given name exists in db, false otherwise.
+         */
+        bool table_exists(const std::string& tableName) {
+            auto connection = this->get_connection();
+            return this->object_exists(connection.get(), "table", tableName);
+        }
+
+        /**
+         *  Directly checks the actual database whether the specified view exists, bypassing the library's 'storage' mapping.
+         *  @return true if view with the specified name exists in the database, false otherwise.
+         */
+        bool view_exists(std::string_view viewName) {
+            auto connection = this->get_connection();
+            return this->object_exists(connection.get(), "view", viewName);
+        }
+
+      protected:
+        void rename_table_internal(sqlite3* db, std::string_view oldName, std::string_view newName) const {
+            std::string sql;
+            {
+                std::ostringstream ss;
+                ss << "ALTER TABLE " << streaming_identifier(oldName) << " RENAME TO " << streaming_identifier(newName)
+                   << std::flush;
+                sql = ss.str();
+            }
+            this->executor.perform_void_exec(db, sql.c_str());
+        }
+
+        static std::string savepoint_sql(std::string_view statementPrefix, const std::string& savepointName) {
+            std::ostringstream ss;
+            ss << statementPrefix << streaming_identifier(savepointName);
+            return ss.str();
+        }
+
+        /*
+         *  Exception-safe kickoff shared by the manual transaction and savepoint methods.
+         *  The connection reference that the open transaction owns until the matching
+         *  `commit()`/`rollback()`/`release_savepoint()` is only retained once the `BEGIN` or
+         *  `SAVEPOINT` statement has succeeded, so that a failing one - e.g. a nested
+         *  `BEGIN` - cannot leak the connection [#1539].
+         */
+        void begin_transaction_internal(const char* sql) {
+            const connection_ref connection = this->get_connection();
+            this->executor.perform_void_exec(connection.get(), sql);
+            this->connection->retain();
+        }
+
+        void add_generated_cols(std::vector<const table_xinfo*>& columnsToAdd,
+                                const std::vector<table_xinfo>& storageTableInfo) {
+            //  iterate through storage columns
+            for (const table_xinfo& storageColumnInfo: storageTableInfo) {
+                if (storageColumnInfo.hidden) {
+                    columnsToAdd.push_back(&storageColumnInfo);
+                }
+            }
+        }
+
+      public:
+        /**
+         *  sqlite3_changes function.
+         */
+        int changes() {
+            auto connection = this->get_connection();
+            return sqlite3_changes(connection.get());
+        }
+
+        /**
+         *  sqlite3_total_changes function.
+         */
+        int total_changes() {
+            auto connection = this->get_connection();
+            return sqlite3_total_changes(connection.get());
+        }
+
+        int64 last_insert_rowid() {
+            auto connection = this->get_connection();
+            return sqlite3_last_insert_rowid(connection.get());
+        }
+
+#if SQLITE_VERSION_NUMBER >= 3037000
+        /**
+         *  sqlite3_changes64 function.
+         */
+        int64 changes64() {
+            auto connection = this->get_connection();
+            return sqlite3_changes64(connection.get());
+        }
+
+        /**
+         *  sqlite3_total_changes64 function.
+         */
+        int64 total_changes64() {
+            auto connection = this->get_connection();
+            return sqlite3_total_changes64(connection.get());
+        }
+#endif
+
+        /**
+         *  sqlite3_interrupt function: causes any pending database operation on this connection
+         *  to abort and return at its earliest opportunity.
+         */
+        void interrupt() {
+            auto connection = this->get_connection();
+            sqlite3_interrupt(connection.get());
+        }
+
+#if SQLITE_VERSION_NUMBER >= 3041000
+        /**
+         *  sqlite3_is_interrupted function: whether an interrupt is currently in effect
+         *  on this connection.
+         */
+        int is_interrupted() {
+            auto connection = this->get_connection();
+            return sqlite3_is_interrupted(connection.get());
+        }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3034000
+        /**
+         *  sqlite3_txn_state function: the transaction state across all schemas of this connection.
+         */
+        transaction_state txn_state() {
+            auto connection = this->get_connection();
+            return static_cast<transaction_state>(sqlite3_txn_state(connection.get(), nullptr));
+        }
+
+        /**
+         *  sqlite3_txn_state function limited to a single schema.
+         *  Returns an empty optional if no schema with the given name is attached.
+         */
+        std::optional<transaction_state> txn_state(std::string_view schema) {
+            auto connection = this->get_connection();
+            const int state = sqlite3_txn_state(connection.get(), std::string{schema}.c_str());
+            if (state < 0) {
+                return std::nullopt;
+            }
+            return static_cast<transaction_state>(state);
+        }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3038000
+        /**
+         *  sqlite3_error_offset function: the byte offset of the token the most recent error
+         *  relates to within its SQL text, or -1 if not applicable.
+         */
+        int error_offset() {
+            auto connection = this->get_connection();
+            return sqlite3_error_offset(connection.get());
+        }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3039000
+        /**
+         *  sqlite3_db_name function: the name of the schema at the given index.
+         *  Returns an empty optional if the index is out of range.
+         */
+        std::optional<std::string> db_name(int index) {
+            auto connection = this->get_connection();
+            if (orm_gsl::czstring name = sqlite3_db_name(connection.get(), index)) {
+                return name;
+            }
+            return std::nullopt;
+        }
+#endif
+
+        /**
+         *  sqlite3_db_readonly function: whether the schema with the given name is read-only.
+         *  Returns an empty optional if no schema with the given name is attached.
+         *  The parameterless overload below reports on the main schema.
+         */
+        std::optional<bool> db_readonly(std::string_view schema) {
+            auto connection = this->get_connection();
+            const int result = sqlite3_db_readonly(connection.get(), std::string{schema}.c_str());
+            if (result < 0) {
+                return std::nullopt;
+            }
+            return result != 0;
+        }
+
+#if SQLITE_VERSION_NUMBER >= 3050000
+        /**
+         *  sqlite3_setlk_timeout function: a separate timeout, distinct from the busy timeout,
+         *  for blocking locks on builds that support them. A no-op returning SQLITE_OK elsewhere.
+         */
+        int setlk_timeout(int ms, bool blockOnConnect = false) {
+            auto connection = this->get_connection();
+            return sqlite3_setlk_timeout(connection.get(), ms, blockOnConnect ? SQLITE_SETLK_BLOCK_ON_CONNECT : 0);
+        }
+#endif
+
+        int busy_timeout(int ms) {
+            auto connection = this->get_connection();
+            return sqlite3_busy_timeout(connection.get(), ms);
+        }
+
+#ifdef SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
+        /**
+         *  sqlite3_db_config function with the SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION option:
+         *  turns extension loading via `load_extension()` below on or off. Extension loading is off by default.
+         *  Deliberately leaves the `load_extension()` SQL function disabled, as recommended for security reasons.
+         *  Like the journal mode, the setting is remembered and applied anew to every connection the storage opens.
+         *  More info: https://www.sqlite.org/c3ref/c_dbconfig_defensive.html#sqlitedbconfigenableloadextension
+         */
+        int enable_load_extension(bool onoff) {
+            auto connection = this->get_connection();
+            const int rc = sqlite3_db_config(connection.get(),
+                                             SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION,
+                                             int(onoff),
+                                             static_cast<int*>(nullptr));
+            if (rc == SQLITE_OK) {
+                _loadExtensionEnabled = onoff;
+            }
+            return rc;
+        }
+
+        /**
+         *  sqlite3_load_extension function: loads a run-time loadable extension from a shared library file.
+         *  `entryPoint` names the extension's initialization function;
+         *  if empty, SQLite derives the name from the file name.
+         *  Extension loading must have been turned on with `enable_load_extension()` beforehand.
+         *  More info: https://www.sqlite.org/c3ref/load_extension.html
+         */
+        void load_extension(const std::string& file, const std::string& entryPoint = {}) {
+            auto connection = this->get_connection();
+            orm_gsl::zstring errorMessage = nullptr;
+            const int rc = sqlite3_load_extension(connection.get(),
+                                                  file.c_str(),
+                                                  entryPoint.empty() ? nullptr : entryPoint.c_str(),
+                                                  &errorMessage);
+            if (rc != SQLITE_OK) {
+                const scope_guard freeErrorMessageGuard{[errorMessage] {
+                    sqlite3_free(errorMessage);
+                }};
+                throw std::system_error{sqlite_errc(rc), errorMessage ? errorMessage : ""};
+            }
+        }
+#endif
+
+        /**
+         *  Returns libsqlite3 version, not sqlite_orm
+         */
+        std::string libversion() {
+            return sqlite3_libversion();
+        }
+
+        bool transaction(const std::function<bool()>& function) {
+            if (!function) {
+                return false;
+            }
+            auto guard = this->transaction_guard();
+            return guard.commit_on_destroy = function();
+        }
+
+        /**
+         *  Executes the passed function within a savepoint.
+         *  If the function returns true the savepoint is released (keeping the changes),
+         *  otherwise (false or an exception) the changes are rolled back.
+         *  More info: https://www.sqlite.org/lang_savepoint.html
+         */
+        bool savepoint(const std::string& savepointName, const std::function<bool()>& function) {
+            if (!function) {
+                return false;
+            }
+            auto guard = this->savepoint_guard(savepointName);
+            return guard.release_on_destroy = function();
+        }
+
+        std::string current_time() {
+            auto connection = this->get_connection();
+            return this->current_time(connection.get());
+        }
+
+        std::string current_date() {
+            auto connection = this->get_connection();
+            return this->current_date(connection.get());
+        }
+
+        std::string current_timestamp() {
+            auto connection = this->get_connection();
+            return this->current_timestamp(connection.get());
+        }
+
+#if SQLITE_VERSION_NUMBER >= 3007010
+        /**
+         *  \fn db_release_memory
+         *  \brief Releases freeable memory of database. It is function can/should be called periodically by
+         *  application, if application has less memory usage constraint. \note sqlite3_db_release_memory added
+         *  in 3.7.10 https://sqlite.org/changes.html
+         */
+        int db_release_memory() {
+            auto connection = this->get_connection();
+            return sqlite3_db_release_memory(connection.get());
+        }
+#endif
+
+        /**
+         *  Returns the names of existing permanent views in the database. Doesn't check storage itself - works only with
+         *  actual database.
+         *  @return Returns a list of views in the database.
+         */
+        std::vector<std::string> view_names() {
+            return this->object_names("view");
+        }
+
+        /**
+         *  Returns the names of existing permanent tables in the database. Doesn't check storage itself - works only with
+         *  actual database.
+         *  @return Returns a list of tables in the database.
+         */
+        std::vector<std::string> table_names() {
+            return this->object_names("table");
+        }
+
+        /**
+         *  Returns the names of existing permanent triggers in the database. Doesn't check storage itself - works only with
+         *  actual database.
+         *  @return Returns a list of triggers in the database.
+         */
+        std::vector<std::string> trigger_names() {
+            return this->object_names("trigger");
+        }
+
+        /**
+         *  Call it once during storage lifetime to make it keeping its connection opened till dtor call.
+         *  By default if storage is not in-memory it calls `sqlite3_open` only when the connection is really
+         *  needed and closes when it is not needed. This function establishes a permanent connection.
+         *  In-memory storage always establishes a permanent connection, so calling this method is a no-op.
+         *  
+         *  Attention: You must ensure to call this method only in a single-threaded context.
+         *  An alternative way to establish a permanent connection is to specify control options to `make_storage()`.
+         */
+        void open_forever() {
+            if (!this->isOpenedForever) {
+                this->isOpenedForever = true;
+                this->connection = std::make_unique<connection_holder>(*this->connection, std::true_type{});
+                this->connection->open();
+            }
+        }
+
+        /**
+         *  Create an application-defined scalar SQL function.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         *  
+         *  Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
+         *  together with a copy of the passed initialization arguments.
+         *  If `F` is a stateless function object, an instance of the function object is created once, otherwise
+         *  an instance of the function object is repeatedly recreated for each result row,
+         *  ensuring that the calculations always start with freshly initialized values.
+         *  
+         *  T - function class. T must have a single call operator and static name function like this:
+         *  ```
+         *  struct SqrtFunction {
+         *    double operator()(double arg) const {
+         *      return std::sqrt(arg);
+         *    }
+         *    
+         *    static const char* name() {
+         *      return "SQRT";
+         *    }
+         *  };
+         *  ```
+         */
+        template<class F, class... Args>
+        void create_scalar_function(Args&&... constructorArgs) {
+            static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
+
+            this->create_scalar_function_impl(
+                udf_holder<F>{},
+#ifdef SQLITE_ORM_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
+                /* constructAt */ [... constructorArgs = std::move(constructorArgs)](void* location) {
+#else
+                /* constructAt */
+                [constructorArgs...](void* location) {
+#endif
+                    std::allocator<F> allocator;
+                    using traits = std::allocator_traits<decltype(allocator)>;
+                    traits::construct(allocator, (F*)location, constructorArgs...);
+                });
+        }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        /**
+         *  Create an application-defined scalar function.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         *  
+         *  Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
+         *  together with a copy of the passed initialization arguments.
+         *  If `F` is a stateless function object, an instance of the function object is created once, otherwise
+         *  an instance of the function object is repeatedly recreated for each result row,
+         *  ensuring that the calculations always start with freshly initialized values.
+         */
+        template<orm_scalar_function auto f, std::copy_constructible... Args>
+        void create_scalar_function(Args&&... constructorArgs) {
+            return this->create_scalar_function<auto_udf_type_t<f>>(std::forward<Args>(constructorArgs)...);
+        }
+
+        /**
+         *  Create an application-defined scalar function.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         *  
+         *  If `quotedF` contains a freestanding function, stateless lambda or stateless function object,
+         *  `quoted_scalar_function::_callable()` uses the original function object, assuming it is free of side effects;
+         *  otherwise, it repeatedly uses a copy of the contained function object, assuming possible side effects.
+         */
+        template<decltype(auto) quotedF>
+            requires (orm_quoted_scalar_function<decltype(quotedF)>)
+        void create_scalar_function() {
+            using signature_type = auto_udf_type_t<(quotedF)>;
+            using args_tuple = typename callable_arguments<signature_type>::args_tuple;
+            using return_type = typename callable_arguments<signature_type>::return_type;
+            constexpr int argsCount =
+                std::is_same<args_tuple, std::tuple<arg_values>>::value ? -1 : int(std::tuple_size<args_tuple>::value);
+            this->scalarFunctions.emplace_back(
+                std::string{quotedF.name()},
+                argsCount,
+                /* constructAt = */
+                nullptr,
+                /* destroy = */
+                nullptr,
+                /* call = */
+                [](sqlite3_context* context, int nValues, sqlite3_value** values) {
+                    proxy_assert_args_count(context, nValues);
+                    args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, nValues);
+                    auto result = std::apply(quotedF._callable(), std::move(argsTuple));
+                    statement_binder<return_type>().result(context, result);
+                },
+                /* finalCall = */
+                nullptr,
+                std::pair{nullptr, null_xdestroy_f});
+
+            if (connection_ptr maybeConnection = *this->connection) {
+                try_to_create_scalar_function(maybeConnection.get(), this->scalarFunctions.back());
+            }
+        }
+#endif
+
+        /**
+         *  Create an application-defined aggregate SQL function.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         *  
+         *  Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
+         *  together with a copy of the passed initialization arguments.
+         *  An instance of the function object is repeatedly recreated for each result row,
+         *  ensuring that the calculations always start with freshly initialized values.
+         *  
+         *  T - function class. T must have step member function, fin member function and static name function like this:
+         *  ```
+         *  struct MeanFunction {
+         *    double total = 0;
+         *    int count = 0;
+         *    
+         *    void step(double value) {
+         *      total += value;
+         *      ++count;
+         *    }
+         *    
+         *    int fin() const {
+         *      return total / count;
+         *    }
+         *    
+         *    static std::string name() {
+         *      return "MEAN";
+         *    }
+         *  };
+         *  ```
+         */
+        template<class F, class... Args>
+        void create_aggregate_function(Args&&... constructorArgs) {
+            static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
+
+            this->create_aggregate_function_impl(
+                udf_holder<F>{}, /* constructAt = */
+#ifdef SQLITE_ORM_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
+                /* constructAt */ [... constructorArgs = std::move(constructorArgs)](void* location) {
+#else
+                /* constructAt */
+                [constructorArgs...](void* location) {
+#endif
+                    std::allocator<F> allocator;
+                    using traits = std::allocator_traits<decltype(allocator)>;
+                    traits::construct(allocator, (F*)location, constructorArgs...);
+                });
+        }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        /**
+         *  Create an application-defined aggregate function.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         *  
+         *  Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
+         *  together with a copy of the passed initialization arguments.
+         *  An instance of the function object is repeatedly recreated for each result row,
+         *  ensuring that the calculations always start with freshly initialized values.
+         */
+        template<orm_aggregate_function auto f, std::copy_constructible... Args>
+        void create_aggregate_function(Args&&... constructorArgs) {
+            return this->create_aggregate_function<auto_udf_type_t<f>>(std::forward<Args>(constructorArgs)...);
+        }
+#endif
+
+        /**
+         *  Delete a scalar function you created before.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
+        template<class F>
+        void delete_scalar_function() {
+            static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
+            udf_holder<F> udfName;
+            this->delete_function_impl(udfName(), this->scalarFunctions);
+        }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        /**
+         *  Delete a scalar function you created before.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
+        template<orm_scalar_function auto f>
+        void delete_scalar_function() {
+            this->delete_function_impl(f.name(), this->scalarFunctions);
+        }
+
+        /**
+         *  Delete a quoted scalar function you created before.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
+        template<decltype(auto) quotedF>
+            requires (orm_quoted_scalar_function<decltype(quotedF)>)
+        void delete_scalar_function() {
+            this->delete_function_impl(quotedF.name(), this->scalarFunctions);
+        }
+#endif
+
+        /**
+         *  Delete aggregate function you created before.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
+        template<class F>
+        void delete_aggregate_function() {
+            static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
+            udf_holder<F> udfName;
+            this->delete_function_impl(udfName(), this->aggregateFunctions);
+        }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        /**
+         *  Delete aggregate function you created before.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
+        template<orm_aggregate_function auto f>
+        void delete_aggregate_function() {
+            this->delete_function_impl(f.name(), this->aggregateFunctions);
+        }
+#endif
+
+        /** 
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
+        template<class C>
+        void create_collation() {
+            collating_function func = [](int leftLength, const void* lhs, int rightLength, const void* rhs)
+                                          SQLITE_ORM_STATIC_CALLOP {
+                                              C collatingObject;
+                                              return collatingObject(leftLength, lhs, rightLength, rhs);
+                                          };
+            std::ostringstream ss;
+            ss << C::name() << std::flush;
+            this->create_collation(ss.str(), std::move(func));
+        }
+
+        /** 
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
+        void create_collation(const std::string& name, collating_function f) {
+            const auto functionExists = bool(f);
+            collating_function* function = nullptr;
+            if (functionExists) {
+                function = &(collatingFunctions[name] = std::move(f));
+            }
+
+            //  create collations if db is open
+            if (connection_ptr maybeConnection = *this->connection) {
+                const int rc = sqlite3_create_collation(maybeConnection.get(),
+                                                        name.c_str(),
+                                                        SQLITE_UTF8,
+                                                        function,
+                                                        functionExists ? collate_callback : nullptr);
+                if (rc != SQLITE_OK) {
+                    throw_translated_sqlite_error(rc);
+                }
+            }
+
+            if (!functionExists) {
+                collatingFunctions.erase(name);
+            }
+        }
+
+        /** 
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
+        template<class C>
+        void delete_collation() {
+            std::ostringstream ss;
+            ss << C::name() << std::flush;
+            this->create_collation(ss.str(), {});
+        }
+
+        void begin_transaction() {
+            this->begin_transaction_internal("BEGIN TRANSACTION");
+        }
+
+        void begin_deferred_transaction() {
+            this->begin_transaction_internal("BEGIN DEFERRED TRANSACTION");
+        }
+
+        void begin_immediate_transaction() {
+            this->begin_transaction_internal("BEGIN IMMEDIATE TRANSACTION");
+        }
+
+        void begin_exclusive_transaction() {
+            this->begin_transaction_internal("BEGIN EXCLUSIVE TRANSACTION");
+        }
+
+        /**
+         *  Executes `SAVEPOINT savepointName`.
+         *  A savepoint started outside of a transaction behaves like `BEGIN DEFERRED TRANSACTION`.
+         *  More info: https://www.sqlite.org/lang_savepoint.html
+         */
+        void savepoint(const std::string& savepointName) {
+            this->begin_transaction_internal(this->savepoint_sql("SAVEPOINT ", savepointName).c_str());
+        }
+
+        /**
+         *  Executes `RELEASE SAVEPOINT savepointName`, which works like a `COMMIT` for a savepoint:
+         *  it removes all savepoints back to and including the most recent one with the matching name.
+         *  If it empties the whole transaction stack the changes are committed.
+         */
+        void release_savepoint(const std::string& savepointName) {
+            if (connection_ptr maybeConnection = *this->connection) {
+                //  drop the reference owned by the savepoint since `savepoint()` first -
+                //  `maybeConnection` keeps the connection alive through the statement -
+                //  so that a failing statement cannot leak it
+                this->connection->release();
+                this->executor.perform_void_exec(maybeConnection.get(),
+                                                 this->savepoint_sql("RELEASE SAVEPOINT ", savepointName).c_str());
+            }
+            // check for programming error on user's side not having called `savepoint()` before
+            else {
+                throw std::system_error{orm_error_code::no_active_transaction};
+            }
+        }
+
+        /**
+         *  Executes `ROLLBACK TO SAVEPOINT savepointName`, which reverts the database back to the state
+         *  it was in right after the matching `SAVEPOINT`. Unlike a plain `ROLLBACK` the savepoint
+         *  remains on the transaction stack, so the transaction continues.
+         */
+        void rollback_to_savepoint(const std::string& savepointName) {
+            if (connection_ptr maybeConnection = *this->connection) {
+                this->executor.perform_void_exec(maybeConnection.get(),
+                                                 this->savepoint_sql("ROLLBACK TO SAVEPOINT ", savepointName).c_str());
+            }
+            // check for programming error on user's side not having called `savepoint()` before
+            else {
+                throw std::system_error{orm_error_code::no_active_transaction};
+            }
+        }
+
+        void commit() {
+            if (connection_ptr maybeConnection = *this->connection) {
+                //  drop the reference owned by the transaction since `begin_transaction()` first -
+                //  `maybeConnection` keeps the connection alive through the statement -
+                //  so that a failing COMMIT cannot leak it
+                this->connection->release();
+                this->executor.perform_void_exec(maybeConnection.get(), "COMMIT");
+            }
+            // check for programming error on user's side not having called `begin_transaction()` before
+            else {
+                throw std::system_error{orm_error_code::no_active_transaction};
+            }
+        }
+
+        void rollback() {
+            if (connection_ptr maybeConnection = *this->connection) {
+                //  drop the reference owned by the transaction since `begin_transaction()` first -
+                //  `maybeConnection` keeps the connection alive through the statement -
+                //  so that a failing ROLLBACK cannot leak it
+                this->connection->release();
+                this->executor.perform_void_exec(maybeConnection.get(), "ROLLBACK");
+            }
+            // check for programming error on user's side not having called `begin_transaction()` before
+            else {
+                throw std::system_error{orm_error_code::no_active_transaction};
+            }
+        }
+
+        void backup_to(const std::string& filename) {
+            auto backup = this->make_backup_to(filename);
+            backup.step(-1);
+        }
+
+        void backup_to(storage_base& other) {
+            auto backup = this->make_backup_to(other);
+            backup.step(-1);
+        }
+
+        void backup_from(const std::string& filename) {
+            auto backup = this->make_backup_from(filename);
+            backup.step(-1);
+        }
+
+        void backup_from(storage_base& other) {
+            auto backup = this->make_backup_from(other);
+            backup.step(-1);
+        }
+
+        backup_t make_backup_to(const std::string& filename) {
+            auto connection = std::make_unique<connection_holder>(false, db_arguments{filename}, nullptr);
+            connection_ref conRef{*connection};
+            return {std::move(conRef), "main", this->get_connection(), "main", std::move(connection)};
+        }
+
+        backup_t make_backup_to(storage_base& other) {
+            return {other.get_connection(), "main", this->get_connection(), "main", {}};
+        }
+
+        backup_t make_backup_from(const std::string& filename) {
+            auto connection = std::make_unique<connection_holder>(false, db_arguments{filename}, nullptr);
+            connection_ref conRef{*connection};
+            return {this->get_connection(), "main", std::move(conRef), "main", std::move(connection)};
+        }
+
+        backup_t make_backup_from(storage_base& other) {
+            return {this->get_connection(), "main", other.get_connection(), "main", {}};
+        }
+
+        const std::string& filename() const {
+            return this->connection->dbArgs.filename;
+        }
+
+        /** 
+         *  Checks whether connection to database is opened right now.
+         *  Returns always `true` for in memory databases.
+         *  @attention While retrieving the reference count value is atomic it makes only sense in single-threaded contexts.
+         */
+        bool is_opened() const {
+            connection_ptr maybeConnection = *this->connection;
+            return maybeConnection || false;
+        }
+
+        /**
+         *  Return the name of the VFS object used by the database connection.
+         */
+        const std::string& vfs_name() const {
+            return this->connection->dbArgs.vfs_name;
+        }
+
+        /**
+         *  Return the current open_mode for this storage object. 
+         */
+        db_open_mode open_mode() const {
+            return this->connection->dbArgs.open_mode;
+        }
+
+        /**
+         *  Return true if this database object is opened in a readonly state. 
+         */
+        bool db_readonly() {
+            auto connection = this->get_connection();
+            return static_cast<bool>(sqlite3_db_readonly(connection.get(), "main"));
+        }
+
+        /* 
+         *  returning false when there is a transaction in place
+         *  otherwise true; function is not const because it has to call get_connection()
+         */
+        bool get_autocommit() {
+            auto connection = this->get_connection();
+            return sqlite3_get_autocommit(connection.get());
+        }
+
+        int busy_handler(std::function<int(int)> handler) {
+            _busy_handler = std::move(handler);
+            if (connection_ptr maybeConnection = *this->connection) {
+                if (_busy_handler) {
+                    return sqlite3_busy_handler(maybeConnection.get(), busy_handler_callback, this);
+                } else {
+                    return sqlite3_busy_handler(maybeConnection.get(), nullptr, nullptr);
+                }
+            } else {
+                return SQLITE_OK;
+            }
+        }
+
+      protected:
+        storage_base(std::string filename,
+                     connection_control connectionCtrl,
+                     on_open_spec onOpenSpec,
+                     will_run_query_spec willRunQuerySpec,
+                     did_run_query_spec didRunQuerySpec,
+                     int foreignKeysCount) :
+            inMemory{filename.empty() || filename == ":memory:"},
+            isOpenedForever{connectionCtrl.open_forever || this->inMemory},
+            connection{std::make_unique<connection_holder>(
+                this->isOpenedForever,
+                db_arguments{std::move(filename), connectionCtrl},
+                std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))},
+            cachedForeignKeysCount(foreignKeysCount),
+            executor{std::move(willRunQuerySpec.willRunQuery), std::move(didRunQuerySpec.didRunQuery)},
+            on_open{std::move(onOpenSpec.onOpen)}, pragma(std::bind(&storage_base::get_connection, this), executor),
+            limit{std::ref(storage_base::connection)} {
+            if (this->isOpenedForever) {
+                this->connection->open();
+            }
+        }
+
+        storage_base(const storage_base& other) :
+            inMemory{other.inMemory}, isOpenedForever{other.isOpenedForever},
+            connection{std::make_unique<connection_holder>(
+                *other.connection,
+                std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))},
+            cachedForeignKeysCount(other.cachedForeignKeysCount),
+            executor{other.executor.will_run_query, other.executor.did_run_query}, on_open(other.on_open),
+            pragma(std::bind(&storage_base::get_connection, this), executor),
+            limit{std::ref(storage_base::connection)} {
+            if (this->isOpenedForever) {
+                this->connection->open();
+            }
+        }
+
+        ~storage_base() {
+            if (this->isOpenedForever) {
+                this->connection->close();
+            }
+        }
+
+        connection_ref get_connection() {
+            return {*this->connection};
+        }
+
+        std::vector<std::string> object_names(std::string_view type) {
+            using data_t = std::vector<std::string>;
+
+            auto connection = this->get_connection();
+            data_t objectNames;
+            std::ostringstream ss;
+            ss << "SELECT name FROM sqlite_master WHERE type=" << quote_string_literal(std::string(type)) << std::flush;
+            this->executor.perform_exec(
+                connection.get(),
+                ss.str(),
+                [](void* userData, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*columnName*/) -> int {
+                    auto& objectNames = *(data_t*)userData;
+                    objectNames.emplace_back(argv[0]);
+                    return 0;
+                },
+                &objectNames);
+            objectNames.shrink_to_fit();
+            return objectNames;
+        }
+
+#if SQLITE_VERSION_NUMBER >= 3006019
+        void foreign_keys(sqlite3* db, bool value) {
+            std::string sql;
+            {
+                std::ostringstream ss;
+                ss << "PRAGMA foreign_keys = " << value << std::flush;
+                sql = ss.str();
+            }
+            this->executor.perform_void_exec(db, sql.c_str());
+        }
+
+        bool foreign_keys(sqlite3* db) {
+            bool result = false;
+            this->executor.perform_exec(db, "PRAGMA foreign_keys", extract_single_value<bool>, &result);
+            return result;
+        }
+#endif
+
+        void on_open_internal(sqlite3* db) {
+#if SQLITE_VERSION_NUMBER >= 3006019
+            if (this->cachedForeignKeysCount) {
+                this->foreign_keys(db, true);
+            }
+#endif
+
+            if (this->pragma.synchronous_ != -1) {
+                this->pragma.set_pragma("synchronous", this->pragma.synchronous_, db);
+            }
+
+            if (this->pragma.journal_mode_ != -1) {
+                this->pragma.set_pragma("journal_mode", static_cast<journal_mode>(this->pragma.journal_mode_), db);
+            }
+
+            for (auto& [name, collatingFunction]: this->collatingFunctions) {
+                const int rc =
+                    sqlite3_create_collation(db, name.c_str(), SQLITE_UTF8, &collatingFunction, collate_callback);
+                if (rc != SQLITE_OK) {
+                    throw_translated_sqlite_error(rc);
+                }
+            }
+
+            for (auto [id, value]: this->limit.limits) {
+                sqlite3_limit(db, id, value);
+            }
+
+#ifdef SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
+            if (_loadExtensionEnabled.has_value()) {
+                sqlite3_db_config(db,
+                                  SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION,
+                                  int(*_loadExtensionEnabled),
+                                  static_cast<int*>(nullptr));
+            }
+#endif
+
+            if (_busy_handler) {
+                sqlite3_busy_handler(db, busy_handler_callback, this);
+            }
+
+            for (auto& udfProxy: this->scalarFunctions) {
+                try_to_create_scalar_function(db, udfProxy);
+            }
+
+            for (auto& udfProxy: this->aggregateFunctions) {
+                try_to_create_aggregate_function(db, udfProxy);
+            }
+
+            if (this->on_open) {
+                this->on_open(db);
+            }
+        }
+
+        template<class F>
+        void create_scalar_function_impl(udf_holder<F> udfName, std::function<void(void* location)> constructAt) {
+            using args_tuple = typename callable_arguments<F>::args_tuple;
+            using return_type = typename callable_arguments<F>::return_type;
+            constexpr int argsCount =
+                std::is_same<args_tuple, std::tuple<arg_values>>::value ? -1 : int(std::tuple_size<args_tuple>::value);
+            using is_stateless = std::is_empty<F>;
+            auto udfMemorySpace = preallocate_udf_memory<F>();
+            if constexpr (is_stateless::value) {
+                constructAt(udfMemorySpace.first);
+            }
+            this->scalarFunctions.emplace_back(
+                udfName(),
+                argsCount,
+                is_stateless::value ? nullptr : std::move(constructAt),
+                /* destroy = */
+                obtain_xdestroy_for<F>(udf_destruct_only_deleter{}),
+                /* call = */
+                [](sqlite3_context* context, int nValues, sqlite3_value** values) {
+                    auto udfPointer = proxy_get_scalar_udf<F>(is_stateless{}, context, nValues);
+                    args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, nValues);
+                    auto result = std::apply(*udfPointer, std::move(argsTuple));
+                    statement_binder<return_type>().result(context, result);
+                },
+                udfMemorySpace);
+
+            if (connection_ptr maybeConnection = *this->connection) {
+                try_to_create_scalar_function(maybeConnection.get(), this->scalarFunctions.back());
+            }
+        }
+
+        template<class F>
+        void create_aggregate_function_impl(udf_holder<F> udfName, std::function<void(void* location)> constructAt) {
+            using args_tuple = typename callable_arguments<F>::args_tuple;
+            using return_type = typename callable_arguments<F>::return_type;
+            constexpr int argsCount =
+                std::is_same<args_tuple, std::tuple<arg_values>>::value ? -1 : int(std::tuple_size<args_tuple>::value);
+            this->aggregateFunctions.emplace_back(
+                udfName(),
+                argsCount,
+                std::move(constructAt),
+                /* destroy = */
+                obtain_xdestroy_for<F>(udf_destruct_only_deleter{}),
+                /* step = */
+                [](sqlite3_context* context, int nValues, sqlite3_value** values) {
+                    F* udfPointer;
+                    try {
+                        udfPointer = proxy_get_aggregate_step_udf<F>(context, nValues);
+                    } catch (const std::bad_alloc&) {
+                        sqlite3_result_error_nomem(context);
+                        return;
+                    }
+                    args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, nValues);
+#if __cpp_lib_bind_front >= 201907L
+                    std::apply(std::bind_front(&F::step, udfPointer), std::move(argsTuple));
+#else
+                    std::apply(
+                        [udfPointer](auto&&... args) {
+                            udfPointer->step(std::forward<decltype(args)>(args)...);
+                        },
+                        std::move(argsTuple));
+#endif
+                },
+                /* finalCall = */
+                [](void* udfHandle, sqlite3_context* context) {
+                    F& udf = *static_cast<F*>(udfHandle);
+                    auto result = udf.fin();
+                    statement_binder<return_type>().result(context, result);
+                },
+                obtain_udf_allocator<F>());
+
+            if (connection_ptr maybeConnection = *this->connection) {
+                try_to_create_aggregate_function(maybeConnection.get(), this->aggregateFunctions.back());
+            }
+        }
+
+        void delete_function_impl(const std::string& name, std::list<udf_proxy>& functions) const {
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+            auto it = std::ranges::find(functions, name, &udf_proxy::name);
+#else
+            auto it = std::find_if(functions.begin(), functions.end(), [&name](const udf_proxy& udfProxy) {
+                return udfProxy.name == name;
+            });
+#endif
+            if (it == functions.end()) {
+                throw std::system_error{orm_error_code::function_not_found};
+            }
+
+            if (connection_ptr maybeConnection = *this->connection) {
+                const int rc = sqlite3_create_function_v2(maybeConnection.get(),
+                                                          name.c_str(),
+                                                          it->argumentsCount,
+                                                          SQLITE_UTF8,
+                                                          nullptr,
+                                                          nullptr,
+                                                          nullptr,
+                                                          nullptr,
+                                                          nullptr);
+                if (rc != SQLITE_OK) {
+                    throw_translated_sqlite_error(rc);
+                }
+            }
+            it = functions.erase(it);
+        }
+
+        static void try_to_create_scalar_function(sqlite3* db, udf_proxy& udfProxy) {
+            const int rc = sqlite3_create_function_v2(db,
+                                                      udfProxy.name.c_str(),
+                                                      udfProxy.argumentsCount,
+                                                      SQLITE_UTF8,
+                                                      &udfProxy,
+                                                      udfProxy.func,
+                                                      nullptr,
+                                                      nullptr,
+                                                      nullptr);
+            if (rc != SQLITE_OK) {
+                throw_translated_sqlite_error(rc);
+            }
+        }
+
+        static void try_to_create_aggregate_function(sqlite3* db, udf_proxy& udfProxy) {
+            const int rc = sqlite3_create_function(db,
+                                                   udfProxy.name.c_str(),
+                                                   udfProxy.argumentsCount,
+                                                   SQLITE_UTF8,
+                                                   &udfProxy,
+                                                   nullptr,
+                                                   udfProxy.func,
+                                                   aggregate_function_final_callback);
+            if (rc != SQLITE_OK) {
+                throw_translated_sqlite_error(rc);
+            }
+        }
+
+        std::string current_time(sqlite3* db) const {
+            std::string result;
+            this->executor.perform_exec(db, "SELECT CURRENT_TIME", extract_single_value<std::string>, &result);
+            return result;
+        }
+
+        std::string current_date(sqlite3* db) const {
+            std::string result;
+            this->executor.perform_exec(db, "SELECT CURRENT_DATE", extract_single_value<std::string>, &result);
+            return result;
+        }
+
+        std::string current_timestamp(sqlite3* db) const {
+            std::string result;
+            this->executor.perform_exec(db, "SELECT CURRENT_TIMESTAMP", extract_single_value<std::string>, &result);
+            return result;
+        }
+
+        void drop_dbo_internal(sqlite3* db, orm_gsl::czstring dboKeyword, std::string_view dboName, bool ifExists) {
+            std::ostringstream ss;
+            ss << "DROP " << dboKeyword;
+            if (ifExists) {
+                ss << " IF EXISTS";
+            }
+            ss << ' ' << streaming_identifier(dboName) << std::flush;
+            this->executor.perform_void_exec(db, ss.str().c_str());
+        }
+
+        bool object_exists(sqlite3* db, std::string_view type, std::string_view dboName) const {
+            bool result = false;
+            std::ostringstream ss;
+            ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal(std::string{type})
+               << " AND name = " << quote_string_literal(std::string{dboName}) << std::flush;
+            this->executor.perform_exec(
+                db,
+                ss.str(),
+                [](void* userData, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*azColName*/) -> int {
+                    auto& res = *(bool*)userData;
+                    res = !!atoi(argv[0]);
+                    return 0;
+                },
+                &result);
+            return result;
+        }
+
+        std::string retrieve_object_sql(sqlite3* db, std::string_view type, std::string_view dboName) const {
+            std::string result;
+            std::ostringstream ss;
+            ss << "SELECT sql FROM sqlite_master WHERE type = " << quote_string_literal(std::string{type})
+               << " AND name = " << quote_string_literal(std::string{dboName}) << std::flush;
+            this->executor.perform_exec(
+                db,
+                ss.str(),
+                [](void* userData, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*columnName*/) -> int {
+                    *static_cast<std::string*>(userData) = argv[0];
+                    return 0;
+                },
+                &result);
+            return result;
+        }
+
+        static int collate_callback(void* argument, int leftLength, const void* lhs, int rightLength, const void* rhs) {
+            auto& function = *(collating_function*)argument;
+            return function(leftLength, lhs, rightLength, rhs);
+        }
+
+        static int busy_handler_callback(void* selfPointer, int triesCount) {
+            auto& storage = *static_cast<storage_base*>(selfPointer);
+#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+            // `sqlite3_busy_handler()` was called properly before so `busy_handler_callback()` will not be called.
+            contract_assert(storage._busy_handler);
+#endif
+            return storage._busy_handler(triesCount);
+        }
+
+        bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
+                                          std::vector<table_xinfo>& storageTableInfo,
+                                          std::vector<table_xinfo>& dbTableInfo) const {
+            bool notEqual = false;
+
+            //  iterate through storage columns
+            for (size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
+                 ++storageColumnInfoIndex) {
+
+                //  get storage's column info
+                table_xinfo& storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
+                const std::string& columnName = storageColumnInfo.name;
+
+                //  search for a column in db with the same name
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+                auto dbColumnInfoIt = std::ranges::find(dbTableInfo, columnName, &table_xinfo::name);
+#else
+                auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(), dbTableInfo.end(), [&columnName](auto& ti) {
+                    return ti.name == columnName;
+                });
+#endif
+                if (dbColumnInfoIt != dbTableInfo.end()) {
+                    table_xinfo& dbColumnInfo = *dbColumnInfoIt;
+                    bool columnsAreEqual =
+                        dbColumnInfo.name == storageColumnInfo.name &&
+                        dbColumnInfo.notnull == storageColumnInfo.notnull &&
+                        (!dbColumnInfo.dflt_value.empty()) == (!storageColumnInfo.dflt_value.empty()) &&
+                        dbColumnInfo.pk == storageColumnInfo.pk &&
+                        (dbColumnInfo.hidden == 0) == (storageColumnInfo.hidden == 0);
+                    if (!columnsAreEqual) {
+                        notEqual = true;
+                    } else {
+                        dbTableInfo.erase(dbColumnInfoIt);
+                        storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
+                        --storageColumnInfoIndex;
+                    }
+                } else {
+                    columnsToAdd.push_back(&storageColumnInfo);
+                }
+            }
+            return notEqual;
+        }
+    };
+}

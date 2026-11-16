@@ -1,5 +1,9 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <memory>  //  std::unique_ptr
+#include <optional>  //  std::optional
+#include <sqlite_orm/sqlite_orm.h>
+#include <tuple>  //  std::tuple
+#include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
 using internal::expression_object_type_t;
@@ -31,5 +35,89 @@ TEST_CASE("statements") {
         runExpressionTest<Object>(update(obj));
         runExpressionTest<Object>(update(std::cref(obj)));
         runExpressionTest<Object>(remove<Object>(0));
+    }
+
+    SECTION("grammar classification") {
+        //  every DSL spelling of a DML statement is classified as itself, ...
+        STATIC_REQUIRE(internal::is_insert_v<decltype(insert(obj))>);
+        STATIC_REQUIRE(internal::is_insert_explicit_v<decltype(insert(obj, columns(&Object::id)))>);
+        STATIC_REQUIRE(internal::is_insert_range_v<decltype(insert_range(objs.cbegin(), objs.cend()))>);
+        STATIC_REQUIRE(internal::is_insert_raw_v<decltype(insert(into<Object>(), default_values()))>);
+        STATIC_REQUIRE(internal::is_replace_v<decltype(replace(obj))>);
+        STATIC_REQUIRE(internal::is_replace_range_v<decltype(replace_range(objs.cbegin(), objs.cend()))>);
+        STATIC_REQUIRE(internal::is_replace_raw_v<decltype(replace(into<Object>(), default_values()))>);
+        STATIC_REQUIRE(internal::is_update_v<decltype(update(obj))>);
+        STATIC_REQUIRE(internal::is_update_all_v<decltype(update_all(set(c(&Object::id) = 0)))>);
+        STATIC_REQUIRE(internal::is_remove_v<decltype(remove<Object>(0))>);
+        STATIC_REQUIRE(internal::is_remove_all_v<decltype(remove_all<Object>())>);
+        STATIC_REQUIRE(internal::is_insert_constraint_v<decltype(or_abort())>);
+        STATIC_REQUIRE(internal::is_default_values_v<decltype(default_values())>);
+
+        //  ... and as nothing else - the spellings of one SQL production stay distinguishable
+        STATIC_REQUIRE_FALSE(internal::is_insert_v<decltype(insert(obj, columns(&Object::id)))>);
+        STATIC_REQUIRE_FALSE(internal::is_insert_v<decltype(insert(into<Object>(), default_values()))>);
+        STATIC_REQUIRE_FALSE(internal::is_insert_raw_v<decltype(insert(obj))>);
+        STATIC_REQUIRE_FALSE(internal::is_replace_v<decltype(replace(into<Object>(), default_values()))>);
+        STATIC_REQUIRE_FALSE(internal::is_remove_v<decltype(remove_all<Object>())>);
+        STATIC_REQUIRE_FALSE(internal::is_remove_all_v<decltype(remove<Object>(0))>);
+        STATIC_REQUIRE_FALSE(internal::is_update_v<decltype(update_all(set(c(&Object::id) = 0)))>);
+        STATIC_REQUIRE_FALSE(internal::is_update_all_v<decltype(update(obj))>);
+        STATIC_REQUIRE_FALSE(internal::is_insert_v<int>);
+        STATIC_REQUIRE_FALSE(internal::is_insert_constraint_v<decltype(default_values())>);
+        STATIC_REQUIRE_FALSE(internal::is_default_values_v<decltype(or_abort())>);
+
+        //  the clauses only a DML statement takes are classified alongside the statements
+        STATIC_REQUIRE(internal::is_into_v<decltype(into<Object>())>);
+        STATIC_REQUIRE(internal::is_values_v<decltype(values(std::make_tuple(0)))>);
+        STATIC_REQUIRE(internal::is_dynamic_values_v<decltype(values(std::vector<int>{}))>);
+        STATIC_REQUIRE_FALSE(internal::is_values_v<decltype(values(std::vector<int>{}))>);
+        //  ... but both are the one VALUES production, which is what a raw INSERT accepts
+        STATIC_REQUIRE(internal::is_any_values_v<decltype(values(std::make_tuple(0)))>);
+        STATIC_REQUIRE(internal::is_any_values_v<decltype(values(std::vector<int>{}))>);
+        STATIC_REQUIRE(internal::is_set_v<decltype(set(c(&Object::id) = 0))>);
+        STATIC_REQUIRE(internal::is_any_set_v<decltype(set(c(&Object::id) = 0))>);
+        STATIC_REQUIRE_FALSE(internal::is_dynamic_set_v<decltype(set(c(&Object::id) = 0))>);
+        STATIC_REQUIRE_FALSE(internal::is_into_v<decltype(values(std::make_tuple(0)))>);
+        STATIC_REQUIRE_FALSE(internal::is_upsert_clause_v<decltype(into<Object>())>);
+    }
+
+    SECTION("get statements") {
+        using internal::result_type_t;
+
+        //  the spellings of one SELECT by primary key, ...
+        STATIC_REQUIRE(internal::is_any_get_by_id_v<decltype(get<Object>(0))>);
+        STATIC_REQUIRE(internal::is_any_get_by_id_v<decltype(get_pointer<Object>(0))>);
+        STATIC_REQUIRE(internal::is_any_get_by_id_v<decltype(get_optional<Object>(0))>);
+        //  ... and of one SELECT of all objects
+        STATIC_REQUIRE(internal::is_any_get_all_v<decltype(get_all<Object>())>);
+        STATIC_REQUIRE(internal::is_any_get_all_v<decltype(get_all_pointer<Object>())>);
+        STATIC_REQUIRE(internal::is_any_get_all_v<decltype(get_all_optional<Object>())>);
+        STATIC_REQUIRE_FALSE(internal::is_any_get_by_id_v<decltype(get_all<Object>())>);
+        STATIC_REQUIRE_FALSE(internal::is_any_get_all_v<decltype(get<Object>(0))>);
+        STATIC_REQUIRE_FALSE(internal::is_any_get_by_id_v<decltype(remove<Object>(0))>);
+
+        //  they differ only in how an object is handed out
+        STATIC_REQUIRE(std::is_same<result_type_t<decltype(get<Object>(0))>, Object>::value);
+        STATIC_REQUIRE(std::is_same<result_type_t<decltype(get_pointer<Object>(0))>, std::unique_ptr<Object>>::value);
+        STATIC_REQUIRE(std::is_same<result_type_t<decltype(get_optional<Object>(0))>, std::optional<Object>>::value);
+        STATIC_REQUIRE(std::is_same<result_type_t<decltype(get_all<Object>())>, Object>::value);
+        STATIC_REQUIRE(
+            std::is_same<result_type_t<decltype(get_all_pointer<Object>())>, std::unique_ptr<Object>>::value);
+        STATIC_REQUIRE(std::is_same<result_type_t<decltype(get_all_optional<Object>())>, std::optional<Object>>::value);
+
+        //  the container type is not a condition
+        using GetAllPointer = decltype(get_all_pointer<Object>(where(is_equal(&Object::id, 1))));
+        STATIC_REQUIRE(
+            std::is_same<internal::node_tuple_t<GetAllPointer>, std::tuple<decltype(&Object::id), int>>::value);
+    }
+
+    SECTION("semantic classification") {
+        //  an INSERT with an explicit column list operates on an object, just like the other object spellings
+        STATIC_REQUIRE(internal::is_object_dml_expression_v<decltype(insert(obj, columns(&Object::id)))>);
+        //  the range spellings are not - they carry no single object to reach through `access_dml_object()`
+        STATIC_REQUIRE_FALSE(internal::is_object_dml_expression_v<decltype(insert_range(objs.cbegin(), objs.cend()))>);
+        STATIC_REQUIRE_FALSE(internal::is_object_dml_expression_v<decltype(replace_range(objs.cbegin(), objs.cend()))>);
+        STATIC_REQUIRE(internal::is_raw_dml_expression_v<decltype(insert(into<Object>(), default_values()))>);
+        STATIC_REQUIRE(internal::is_raw_dml_expression_v<decltype(replace(into<Object>(), default_values()))>);
     }
 }

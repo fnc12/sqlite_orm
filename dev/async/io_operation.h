@@ -1,9 +1,18 @@
 #pragma once
 
+/** @file
+ *  Purpose: describe one asynchronous I/O request in flight.
+ *
+ *  Intention: the record shared by `io_uring_engine.h`, which submits and completes it, and `scheduler.h`, which parks a fiber on it.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <cstdint>  //  std::int32_t
 #endif
+#endif
 
+#ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
 
     class fiber;
@@ -20,3 +29,4 @@ namespace sqlite_orm::internal {
         bool completed = false;
     };
 }
+#endif

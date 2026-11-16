@@ -1,8 +1,8 @@
 /**
  *  This example was taken from here http://souptonuts.sourceforge.net/readme_sqlite_tutorial.html
  */
-#include <sqlite_orm/sqlite_orm.h>
 #include <cstdint>
+#include <sqlite_orm/sqlite_orm.h>
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #if __cpp_lib_bit_cast >= 201806L
 #include <bit>
@@ -78,7 +78,7 @@ struct AcceleratedSumFunction {
     }
 
     std::string fin() const {
-        std::stringstream ss;
+        std::ostringstream ss;
         ss << "(";
         for (size_t i = 0; i < this->list.size(); ++i) {
             ss << this->list[i];

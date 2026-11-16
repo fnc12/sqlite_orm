@@ -22,7 +22,6 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 #if SQLITE_VERSION_NUMBER >= 3024000
     /**
      *  Auxiliary virtual table column
@@ -30,6 +29,5 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     constexpr internal::auxiliary_t auxiliary() {
         return {};
     }
-#endif
 #endif
 }

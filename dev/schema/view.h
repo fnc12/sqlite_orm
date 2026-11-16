@@ -3,19 +3,19 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_VIEW
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-#include <utility>  // std::forward, std::move, std::index_sequence, std::make_index_sequence
 #include <meta>  // std::meta::info, std::meta::identifier_of
+#include <utility>  // std::forward, std::move, std::index_sequence, std::make_index_sequence
 #endif
 #endif
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/meta_util.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "column.h"  // sqlite_orm::make_column
-#include "table_base.h"
 #include "dbo_name.h"
+#include "table_base.h"
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_WITH_VIEW
@@ -68,7 +68,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a view definition.
      *
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
-     *  The object type must be an aggregate. The optional `[[="…"_orm_name]]` class-scope annotation overrides
+     *  The object type must be an aggregate. The optional `[[="..."_orm_name]]` class-scope annotation overrides
      *  the view name (otherwise the type's reflected identifier is used).
      */
     template<class O, class Select>
@@ -87,7 +87,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a view definition.
      *
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
-     *  The object type must be an aggregate. The optional `[[="…"_orm_name]]` class-scope annotation overrides
+     *  The object type must be an aggregate. The optional `[[="..."_orm_name]]` class-scope annotation overrides
      *  the view name (otherwise the type's reflected identifier is used).
      */
     template<orm_table_reference auto table, class Select>

@@ -1,5 +1,5 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 
 using namespace sqlite_orm;
 
@@ -49,6 +49,11 @@ TEST_CASE("statement_serializer index") {
         auto index = make_index("idx", &User::id, where(is_not_null(&User::id)));
         value = internal::serialize(index, context);
         expected = R"(CREATE INDEX "idx" ON "users" ("id") WHERE ("id" IS NOT NULL))";
+    }
+    SECTION("unique expression") {
+        auto index = make_unique_index<User>("idx_name", lower(&User::name));
+        value = internal::serialize(index, context);
+        expected = R"(CREATE UNIQUE INDEX "idx_name" ON "users" (LOWER("name")))";
     }
 #ifdef SQLITE_ORM_JSON_SUPPORTED
     SECTION("json") {

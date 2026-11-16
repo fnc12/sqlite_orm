@@ -18,7 +18,7 @@
 #include <utility>  //  std::index_sequence
 #endif
 
-#include "../../functional/cxx_type_traits_polyfill.h"  //  polyfill::detected_or_t
+#include "../../functional/cxx_polyfill/type_traits.h"  //  polyfill::detected_or_t
 #include "../../vocabulary/node_traits.h"  //  object_type_t, table_mapped_type_t
 
 namespace sqlite_orm::internal {

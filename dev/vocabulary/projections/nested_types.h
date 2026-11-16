@@ -1,26 +1,40 @@
 #pragma once
 
-/** @file Projections reading the type names a node declares, as alias templates for syntactic sugar.
+/** @file
+ *  Purpose: read the nested types a node declares.
+ *
+ *  Intention: a projection of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_reference
 #endif
 
-#include "../../functional/cxx_type_traits_polyfill.h"
-#include "../../type_traits.h"
-#include "../../member_traits/member_traits.h"
+#include "../../functional/cxx_polyfill/type_traits.h"
+#include "../../functional/type_traits.h"
 
 // Plain accessors
 namespace sqlite_orm::internal {
     template<typename T>
     using field_type_t = typename T::field_type;
 
+    /**
+     *  The member pointer a column is mapped by: a pointer to data member, or a getter.
+     */
+    template<typename T>
+    using member_pointer_type_t = typename T::member_pointer_t;
+
     template<typename T>
     using constraints_type_t = typename T::constraints_type;
 
     template<typename T>
     using columns_type_t = typename T::columns_type;
+
+    /**
+     *  The type of the single column a node refers to, e.g. that of a USING join constraint.
+     */
+    template<typename T>
+    using column_type_t = typename T::column_type;
 
     template<typename T>
     using columns_tuple_t = typename T::columns_tuple;
@@ -72,6 +86,43 @@ namespace sqlite_orm::internal {
     using expression_type_t = typename T::expression_type;
 
     /**
+     *  The operand a node tests or applies to, other than its primary expression:
+     *  e.g. the right-hand side of an IN or a MATCH, the tested expression of IS [NOT] NULL.
+     */
+    template<typename T>
+    using argument_type_t = typename T::argument_type;
+
+    /**
+     *  The types of the bounds of a BETWEEN range.
+     */
+    template<typename T>
+    using lower_type_t = typename T::lower_type;
+
+    template<typename T>
+    using upper_type_t = typename T::upper_type;
+
+    /**
+     *  The types of the pattern of a LIKE or GLOB, and of the escape character of a LIKE (`void` if there is none).
+     */
+    template<typename T>
+    using pattern_type_t = typename T::pattern_type;
+
+    template<typename T>
+    using escape_type_t = typename T::escape_type;
+
+    /**
+     *  The C++ type a CAST converts to.
+     */
+    template<typename T>
+    using to_type_t = typename T::to_type;
+
+    /**
+     *  The mapped object type a node names directly, e.g. the table of a table-wide MATCH.
+     */
+    template<typename T>
+    using mapped_type_t = typename T::mapped_type;
+
+    /**
      *  The types of the operand a CASE expression is tested against, and of its ELSE result.
      */
     template<typename T>
@@ -84,16 +135,30 @@ namespace sqlite_orm::internal {
     using args_type_t = typename T::args_type;
 
     /**
+     *  The tuple of arguments a node assembled from a variadic argument list carries,
+     *  e.g. a VALUES row or the parts of a raw INSERT.
+     */
+    template<typename T>
+    using args_tuple_t = typename T::args_tuple;
+
+    /**
      *  The tuple of table expressions a FROM clause names.
      */
     template<typename T>
     using tuple_type_t = typename T::tuple_type;
 
     /**
-     *  The function a window function application applies over a window.
+     *  The function a window function application applies over a window,
+     *  or an aggregate function call's FILTER clause is attached to.
      */
     template<typename T>
     using function_type_t = typename T::function_type;
+
+    /**
+     *  The expression of an aggregate function call's FILTER (WHERE ...) clause.
+     */
+    template<typename T>
+    using where_expression_t = typename T::where_expression;
 
     template<typename T>
     using offset_expression_type_t = typename T::offset_expression_type;
@@ -104,11 +169,35 @@ namespace sqlite_orm::internal {
     template<typename T>
     using conditions_type_t = typename T::conditions_type;
 
+    /**
+     *  The SET clause of an UPDATE statement, in either its static or its dynamic spelling.
+     */
+    template<typename T>
+    using set_type_t = typename T::set_type;
+
+    /**
+     *  The tuple of assignments a SET clause spells out.
+     */
+    template<typename T>
+    using assigns_type_t = typename T::assigns_type;
+
+    /**
+     *  The tuple of actions an upsert clause resolves a conflict with.
+     */
+    template<typename T>
+    using actions_tuple_t = typename T::actions_tuple;
+
+    /**
+     *  The tuple of primary key values a statement addresses a single record by.
+     */
+    template<typename T>
+    using ids_type_t = typename T::ids_type;
+
     template<typename T>
     using return_type_t = typename T::return_type;
 
     /**
-     *  The C++ type a condition yields.
+     *  The C++ type a node yields: e.g. that of a condition, or how a get statement hands out an object it reads.
      */
     template<typename T>
     using result_type_t = typename T::result_type;
@@ -122,10 +211,10 @@ namespace sqlite_orm::internal {
     template<class T, class O>
     using enclosing_type_of_t = typename T::template _of<O>::enclosing_type;
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<class T>
     using udf_type_t = typename T::udf_type;
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<decltype(auto) a>
     using auto_udf_type_t = typename std::remove_reference_t<decltype(a)>::udf_type;
 #endif
@@ -153,9 +242,6 @@ namespace sqlite_orm::internal {
 
 // Detected-or-fallback accessors
 namespace sqlite_orm::internal {
-    template<class T>
-    using field_type_or_type_t = polyfill::detected_or_t<T, type_t, member_field_type<T>>;
-
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     template<class T>
     using alias_holder_type_or_none_t = polyfill::detected_t<type_t, T>;

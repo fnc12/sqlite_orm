@@ -1,6 +1,6 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 #include <functional>  //  std::reference_wrapper
+#include <sqlite_orm/sqlite_orm.h>
 #include <tuple>  //  std::tuple
 #include <vector>  //  std::vector
 

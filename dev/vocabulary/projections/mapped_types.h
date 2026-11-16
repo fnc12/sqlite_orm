@@ -1,13 +1,17 @@
 #pragma once
 
-/** @file Projections yielding the mapped type a node stands for.
+/** @file
+ *  Purpose: yield the mapped type a node stands for.
  *
- *  Unlike the projections reading a declared type name in `nested_types.h`, these destructure
- *  the node to the type it captured, so they name the concrete nodes they match. Whether the
- *  type they yield is actually mapped by a schema is not their question - that is answered one
- *  tier up, by the lookup algorithms in `schema/algorithms/table_lookup.h`.
+ *  Intention: a projection of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; whether a
+ *  schema maps that type is decided one tier up, by the lookup algorithms of `schema/algorithms/`.
  */
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::remove_const
+#endif
+
+#include "../../functional/cxx_polyfill/type_traits.h"
 #include "../node_fwd.h"
 
 namespace sqlite_orm::internal {
@@ -52,4 +56,21 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using table_type_of_t = typename table_type_of<T>::type;
+
+    /**
+     *  The mapped object a table reference stands for; any other record set stays as it is.
+     */
+    template<class RecordSet>
+    struct decay_table_ref : std::remove_const<RecordSet> {};
+    template<class O>
+    struct decay_table_ref<table_reference<O>> : polyfill::type_identity<O> {};
+    template<class O>
+    struct decay_table_ref<const table_reference<O>> : polyfill::type_identity<O> {};
+
+    template<class RecordSet>
+    using decay_table_ref_t = typename decay_table_ref<RecordSet>::type;
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<auto recordset>
+    using auto_decay_table_ref_t = typename decay_table_ref<decltype(recordset)>::type;
+#endif
 }

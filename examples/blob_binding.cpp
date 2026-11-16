@@ -1,6 +1,6 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <cstdint>
 #include <iostream>
+#include <sqlite_orm/sqlite_orm.h>
 
 using namespace sqlite_orm;
 using std::cout;
@@ -80,7 +80,7 @@ namespace sqlite_orm {
     template<>
     struct field_printer<Rect> {
         std::string operator()(const Rect& value) const {
-            std::stringstream ss;
+            std::ostringstream ss;
             ss << "{ x = " << value.x << ", y = " << value.y << ", width = " << value.width
                << ", height = " << value.height << " }";
             return ss.str();

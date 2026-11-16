@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: drive the asynchronous storages of one thread: their I/O, their fibers and the coroutines awaiting them.
+ *
+ *  Intention: realizes the event loop applications either run themselves or embed into the event loop they already have;
+ *  uses `scheduler.h` and `task.h`.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <coroutine>  //  std::coroutine_handle, std::suspend_never
 #include <cstddef>  //  std::size_t
@@ -9,27 +17,40 @@
 #include <type_traits>  //  std::invoke_result_t, std::is_void_v
 #include <utility>  //  std::exchange, std::move
 #endif
+#endif
 
 #include "scheduler.h"
 #include "task.h"
 
+#ifdef SQLITE_ORM_WITH_ASYNC
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
-     *  Event loop of the asynchronous storage: one per thread, drives io_uring,
-     *  runs fibers and resumes coroutines. Coroutines (stackless) never run on a
-     *  fiber stack: a fiber hands the continuation back to the io_context, which
-     *  resumes it on the native stack.
+     *  Event loop of the asynchronous storage: one per thread. It submits the file I/O of its storages to io_uring,
+     *  runs the fibers their operations execute on, and resumes the coroutines awaiting them.
      *
-     *      io_context io;
-     *      io.spawn([&]() -> task<void> {
-     *          auto count = co_await io.async([&storage] { return storage.count<User>(); });   // runs on a fiber
-     *      }());
-     *      io.run();
+     *  It is not a general-purpose executor, and an application needs no second event loop because of it.
+     *  There are three ways to drive it:
      *
-     *  Integration with another event loop: either give the io_context a thread
-     *  of its own (run_forever / stop, post from other threads), or embed it:
-     *  watch native_handle() for readability in the host loop and call poll().
+     *  1. The application has no event loop of its own: `run()`.
+     *
+     *         io_context io;
+     *         io.spawn(work(storage));    //  task<void> work(...)
+     *         io.run();                   //  returns when everything spawned has finished
+     *
+     *  2. The application already runs an event loop (asio, libhv, libuv, Qt, a hand-written epoll loop):
+     *     embed the io_context into it. `native_handle()` is a descriptor that becomes readable whenever
+     *     the io_context has something to do; the host loop watches it and calls `poll()`, which never blocks.
+     *     Coroutines are then resumed on the host loop's thread, from inside `poll()`.
+     *
+     *         host.watch_readable(io.native_handle(), [&io] { io.poll(); });
+     *         io.spawn(work(storage));
+     *         io.poll();                  //  starts what was spawned
+     *
+     *  3. The io_context gets a thread of its own: `run_forever()` there, `post()` and `stop()` from any thread.
+     *
+     *  Coroutines (stackless) never run on a fiber stack: a fiber hands the continuation back to the io_context,
+     *  which resumes it on the native stack.
      */
     class io_context {
       public:
@@ -37,6 +58,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             this->scheduler_.set_external_ready([this] {
                 return !this->ready.empty() || !this->pendingRoots.empty();
             });
+            //  From here on a post() from another thread wakes run() and shows on native_handle().
+            this->scheduler_.enable_wake();
+            this->scheduler_.poll();
         }
 
         io_context(const io_context&) = delete;
@@ -55,8 +79,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
-         *  Pollable descriptor (readable when completions are waiting) for
-         *  embedding into an external event loop together with poll().
+         *  A descriptor for embedding into another event loop: it is readable whenever `poll()` has work to do
+         *  that arrived from outside, i.e. completed I/O or a `post()` from another thread.
+         *  Level-triggered; watch it for readability only, and never read from it or close it.
          */
         int native_handle() const noexcept {
             return this->scheduler_.native_handle();
@@ -127,8 +152,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
-         *  Register a root coroutine. It starts on the next turn of run()/poll()
-         *  (never inline), so io_context::current() is set while it executes.
+         *  Register a root coroutine. It starts on the next turn of `run()`/`poll()`/`run_forever()`, never inline,
+         *  so `io_context::current()` is set while it executes. Same-thread; when the io_context is embedded
+         *  into another event loop, call `poll()` afterwards.
          */
         void spawn(task<void> rootTask) {
             ++this->live;
@@ -141,7 +167,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
          */
         void run() {
             current_guard guard(this);
-            this->scheduler_.enable_wake();  //  so that run_one() can block on cross-thread posts
             for (;;) {
                 this->drain();
                 this->rethrow_if_failed();
@@ -155,14 +180,26 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
-         *  One non-blocking turn; returns true if there is still work.
+         *  Run everything that can run without waiting, then return: never blocks. For embedding into another
+         *  event loop, which calls it whenever `native_handle()` is readable and after handing over new work
+         *  with `spawn()`.
+         *
+         *  Returns true while work is in progress. Rethrows the first exception that escaped a root coroutine.
+         *  A call made from inside `poll()` itself, e.g. from a coroutine it resumed, returns at once; the
+         *  outer call picks up the work.
          */
         bool poll() {
+            if (this->polling) {
+                return true;
+            }
             current_guard guard(this);
-            this->drain();
-            this->scheduler_.poll();
-            this->drain();
-            return !(this->ready.empty() && this->scheduler_.is_idle() && this->live == 0);
+            polling_guard pollingGuard{this};
+            do {
+                this->drain();
+                this->scheduler_.poll();
+            } while (this->has_runnable());
+            this->rethrow_if_failed();
+            return !(this->scheduler_.is_idle() && this->live == 0);
         }
 
         /**
@@ -171,7 +208,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         void run_forever() {
             current_guard guard(this);
             this->stopped = false;
-            this->scheduler_.enable_wake();
             while (!this->stopped) {
                 this->drain();
                 this->rethrow_if_failed();
@@ -211,6 +247,22 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                 io_context::current_slot() = this->previous;
             }
         };
+
+        struct polling_guard {
+            io_context* context;
+
+            explicit polling_guard(io_context* context_) : context(context_) {
+                this->context->polling = true;
+            }
+
+            ~polling_guard() {
+                this->context->polling = false;
+            }
+        };
+
+        bool has_runnable() const noexcept {
+            return !this->ready.empty() || !this->pendingRoots.empty() || this->scheduler_.has_runnable();
+        }
 
         struct detached {
             struct promise_type {
@@ -275,7 +327,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         std::size_t live = 0;
         std::exception_ptr error;
         bool stopped = false;
+        bool polling = false;
 
         friend class io_pool;
     };
 }
+#endif

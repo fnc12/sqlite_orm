@@ -1,14 +1,21 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the compound operators that combine the result rows of several selects.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
 #include "../functional/is_base_template_of.h"
-#include "../tuple_helper/tuple_iteration.h"
+#include "../functional/tuple_helper/tuple_iteration.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {

@@ -1,8 +1,8 @@
 
+#include <iostream>
+#include <memory>
 #include <sqlite_orm/sqlite_orm.h>
 #include <string>
-#include <memory>
-#include <iostream>
 
 using std::cerr;
 using std::cout;

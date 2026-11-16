@@ -1,0 +1,128 @@
+#pragma once
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <functional>  //  std::invoke
+#include <tuple>  //  std::tuple_size, std::get
+#include <type_traits>  //  std::remove_reference, std::common_type, std::index_sequence, std::make_index_sequence, std::forward, std::move, std::integral_constant, std::declval
+#endif
+
+#include "../cxx_polyfill/functional.h"  //  polyfill::identity
+#include "../cxx_polyfill/type_traits.h"
+#include "../cxx_polyfill/utility.h"  //  polyfill::forward_like
+
+namespace sqlite_orm::internal {
+    /*
+     *  Apply a projection to a tuple's elements filtered by the specified indexes, and combine the results.
+     *  
+     *  @note It's a glorified version of `std::apply()` and a variant of `std::accumulate()`.
+     *  It combines filtering the tuple (indexes), transforming the elements (projection) and finally applying the callable (combine).
+     *  
+     *  @note `project` is called using `std::invoke`, which is `constexpr` since C++20.
+     */
+    template<class CombineOp, class Tpl, size_t... Idx, class Projector, class Init>
+    SQLITE_ORM_CONSTEXPR_CPP20 auto
+    recombine_tuple(CombineOp combine, const Tpl& tpl, std::index_sequence<Idx...>, Projector project, Init initial) {
+        return combine(initial, std::invoke(project, std::get<Idx>(tpl))...);
+    }
+
+    /*
+     *  Apply a projection to a tuple's elements, and combine the results.
+     *  
+     *  @note It's a glorified version of `std::apply()` and a variant of `std::accumulate()`.
+     *  It combines filtering the tuple (indexes), transforming the elements (projection) and finally applying the callable (combine).
+     *  
+     *  @note `project` is called using `std::invoke`, which is `constexpr` since C++20.
+     */
+    template<class CombineOp, class Tpl, class Projector, class Init>
+    SQLITE_ORM_CONSTEXPR_CPP20 auto
+    recombine_tuple(CombineOp combine, const Tpl& tpl, Projector project, Init initial) {
+        return recombine_tuple(std::move(combine),
+                               std::forward<decltype(tpl)>(tpl),
+                               std::make_index_sequence<std::tuple_size<Tpl>::value>{},
+                               std::move(project),
+                               std::move(initial));
+    }
+
+    /*
+     *  Function object that takes integral constants and returns the sum of their values as an integral constant.
+     *  Because it's a "transparent" functor, it must be called with at least one argument, otherwise it cannot deduce the integral constant type.
+     */
+    struct plus_fold_integrals {
+        template<class... Integrals>
+        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(const Integrals&...) SQLITE_ORM_OR_CONST_CALLOP {
+            using integral_type = std::common_type_t<typename Integrals::value_type...>;
+            return std::integral_constant<integral_type, (Integrals::value + ...)>{};
+        }
+    };
+
+    /*
+     *  Function object that takes a type, applies a projection on it, and returns the tuple size of the projected type (as an integral constant).
+     *  The projection is applied on the argument type, not the argument value/object.
+     */
+    template<template<class...> class NestedProject>
+    struct project_nested_tuple_size {
+        template<class T>
+        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {
+            return typename std::tuple_size<NestedProject<T>>::type{};
+        }
+    };
+
+    template<template<class...> class NestedProject, class Tpl, class IdxSeq>
+    using nested_tuple_size_for_t = decltype(recombine_tuple(plus_fold_integrals{},
+                                                             std::declval<Tpl>(),
+                                                             IdxSeq{},
+                                                             project_nested_tuple_size<NestedProject>{},
+                                                             std::integral_constant<size_t, 0u>{}));
+
+    template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
+    constexpr R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, [[maybe_unused]] Projection project = {}) {
+        return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
+    }
+
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+    /*
+     *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
+     */
+    template<class R, class Tpl, class Projection = polyfill::identity>
+    constexpr R create_from_tuple(Tpl&& tpl, [[maybe_unused]] Projection project = {}) {
+        auto& [... elements] = tpl;
+        return R{std::invoke(project, polyfill::forward_like<Tpl>(elements))...};
+    }
+#else
+    /*
+     *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
+     */
+    template<class R, class Tpl, class Projection = polyfill::identity>
+    constexpr R create_from_tuple(Tpl&& tpl, Projection project = {}) {
+        return create_from_tuple<R>(std::forward<Tpl>(tpl),
+                                    std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
+                                    std::forward<Projection>(project));
+    }
+#endif
+
+    template<template<typename...> class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
+    constexpr auto create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, [[maybe_unused]] Projection project = {}) {
+        return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
+    }
+
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+    /*
+     *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
+     */
+    template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
+    constexpr auto create_from_tuple(Tpl&& tpl, [[maybe_unused]] Projection project = {}) {
+        auto& [... elements] = tpl;
+        return R{std::invoke(project, polyfill::forward_like<Tpl>(elements))...};
+    }
+#else
+    /*
+     *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
+     */
+    template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
+    constexpr auto create_from_tuple(Tpl&& tpl, Projection project = {}) {
+        return create_from_tuple<R>(std::forward<Tpl>(tpl),
+                                    std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
+                                    std::forward<Projection>(project));
+    }
+#endif
+}

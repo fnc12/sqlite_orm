@@ -2,9 +2,9 @@
  *  Example implemented from here https://www.tutorialspoint.com/sqlite/sqlite_update_query.htm
  */
 
-#include <sqlite_orm/sqlite_orm.h>
 #include <iostream>
 #include <memory>
+#include <sqlite_orm/sqlite_orm.h>
 
 using std::cout;
 using std::endl;

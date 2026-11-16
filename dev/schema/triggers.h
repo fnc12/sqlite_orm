@@ -6,9 +6,9 @@
 #include <type_traits>  //  std::is_member_pointer_v, std::is_same, std::is_base_of
 #endif
 
-#include "../optional_container.h"
-#include "../vocabulary/node_traits.h"
+#include "../functional/optional_container.h"
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause
+#include "../vocabulary/node_traits.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 

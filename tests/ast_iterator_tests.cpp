@@ -1,11 +1,11 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 
 #include <typeindex>  //  std::type_index
 
 using namespace sqlite_orm;
-using internal::alias_column_t;
 using internal::alias_holder;
+using internal::alias_qualified_column_t;
 using internal::column_alias;
 using internal::column_pointer;
 using internal::iterate_ast;
@@ -26,7 +26,7 @@ TEST_CASE("ast_iterator") {
         int id = 0;
         std::string name;
     };
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
     constexpr auto user_table = c<User>();
     using user_hidden = fts5::hidden_fields_of<User>;
 #endif
@@ -39,15 +39,26 @@ TEST_CASE("ast_iterator") {
 #ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
     const auto nodeLambda = overloaded{
         [&typeIndexes]<class UDF, class... CallArgs>(std::true_type,
-                                                     const internal::function_call<UDF, CallArgs...>& udfCall) {
+                                                     const internal::app_function_call<UDF, CallArgs...>& udfCall) {
             typeIndexes.push_back(typeid(udfCall.name));
         },
         [&typeIndexes](std::true_type, const internal::named_collate_base& collateCall) {
             typeIndexes.push_back(typeid(collateCall));
         },
-        [&typeIndexes]<class T, class X, class Y, class Z>(std::true_type, const internal::highlight_t<T, X, Y, Z>&) {
-            typeIndexes.push_back(typeid(T));
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        [&typeIndexes]<class Sig, class CP, class X, class Y, class Z>(
+            std::true_type,
+            const internal::
+                builtin_function_call<std::remove_const_t<decltype(internal::highlight)>, Sig, CP, X, Y, Z>&) {
+            typeIndexes.push_back(typeid(internal::table_type_of_t<CP>));
         },
+#else
+        [&typeIndexes]<class R, class CP, class X, class Y, class Z>(
+            std::true_type,
+            const internal::builtin_function_t<R, internal::highlight_string, CP, X, Y, Z>&) {
+            typeIndexes.push_back(typeid(internal::table_type_of_t<CP>));
+        },
+#endif
         // swallow leaf expressions
         [](auto&) {}};
 #endif
@@ -56,6 +67,18 @@ TEST_CASE("ast_iterator") {
         auto node = select(1);
         expected.push_back(typeid(int));
         iterate_ast(node, lambda);
+    }
+    SECTION("unary operators") {
+        SECTION("unary minus") {
+            auto node = minus(&User::id);
+            expected.push_back(typeid(&User::id));
+            iterate_ast(node, lambda);
+        }
+        SECTION("bitwise not") {
+            auto node = bitwise_not(5);
+            expected.push_back(typeid(int));
+            iterate_ast(node, lambda);
+        }
     }
     SECTION("aggregate functions") {
         SECTION("avg") {
@@ -272,7 +295,7 @@ TEST_CASE("ast_iterator") {
         expected.push_back(typeid(const char*));
         iterate_ast(node, lambda);
     }
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
     SECTION("match any column") {
         constexpr auto node = match(user_table->*&fts5::hidden::any, "Plazma");
         expected.push_back(typeid(const char*));
@@ -337,7 +360,7 @@ TEST_CASE("ast_iterator") {
             iterate_ast(node, lambda);
         }
     }
-    SECTION("function_call") {
+    SECTION("app_function_call") {
         struct Func {
             static const char* name();
             bool operator()(int value) const {
@@ -372,26 +395,26 @@ TEST_CASE("ast_iterator") {
     SECTION("aliased regular column") {
         using als = alias_z<User>;
         auto expression = alias_column<als>(&User::id);
-        expected.push_back(typeid(alias_column_t<alias_z<User>, decltype(&User::id)>));
+        expected.push_back(typeid(alias_qualified_column_t<alias_z<User>, decltype(&User::id)>));
         iterate_ast(expression, lambda);
     }
     SECTION("aliased regular column pointer") {
         using als = alias_z<User>;
         auto expression = alias_column<als>(column<User>(&User::id));
-        expected.push_back(typeid(alias_column_t<alias_z<User>, column_pointer<User, decltype(&User::id)>>));
+        expected.push_back(typeid(alias_qualified_column_t<alias_z<User>, column_pointer<User, decltype(&User::id)>>));
         iterate_ast(expression, lambda);
     }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("aliased regular column 2") {
         constexpr auto z_alias = "z"_alias.for_<User>();
         auto expression = z_alias->*&User::id;
-        expected.push_back(typeid(alias_column_t<alias_z<User>, decltype(&User::id)>));
+        expected.push_back(typeid(alias_qualified_column_t<alias_z<User>, decltype(&User::id)>));
         iterate_ast(expression, lambda);
     }
     SECTION("aliased regular column pointer 2") {
         constexpr auto z_alias = "z"_alias.for_<User>();
         auto expression = z_alias->*column<User>(&User::id);
-        expected.push_back(typeid(alias_column_t<alias_z<User>, column_pointer<User, decltype(&User::id)>>));
+        expected.push_back(typeid(alias_qualified_column_t<alias_z<User>, column_pointer<User, decltype(&User::id)>>));
         iterate_ast(expression, lambda);
     }
 #endif
@@ -444,7 +467,8 @@ TEST_CASE("ast_iterator") {
         using cte_1 = decltype("1"_cte);
         constexpr auto z_alias = "z"_alias.for_<c>();
         auto expression = z_alias->*&User::id;
-        expected.push_back(typeid(alias_column_t<alias_z<cte_1>, column_pointer<cte_1, decltype(&User::id)>>));
+        expected.push_back(
+            typeid(alias_qualified_column_t<alias_z<cte_1>, column_pointer<cte_1, decltype(&User::id)>>));
         iterate_ast(expression, lambda);
     }
     SECTION("aliased CTE column alias") {
@@ -453,14 +477,15 @@ TEST_CASE("ast_iterator") {
         constexpr auto z_alias = "z"_alias.for_<c>();
         auto expression = z_alias->*1_colalias;
         expected.push_back(
-            typeid(alias_column_t<alias_z<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'1'>>>>));
+            typeid(alias_qualified_column_t<alias_z<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'1'>>>>));
         iterate_ast(expression, lambda);
     }
 #endif
 #endif
-#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+#ifdef SQLITE_ORM_FTS5_SUPPORTED
     SECTION("highlight using explicit template parameter") {
         auto expression = highlight<User>(0, std::string("<b>"), std::string("</b>"));
+        expected.push_back(typeid(user_table->*&fts5::hidden::any));
         expected.push_back(typeid(int));
         expected.push_back(typeid(std::string));
         expected.push_back(typeid(std::string));
@@ -468,6 +493,7 @@ TEST_CASE("ast_iterator") {
     }
     SECTION("highlight using the any column") {
         auto expression = highlight(user_table->*&fts5::hidden::any, 0, std::string("<b>"), std::string("</b>"));
+        expected.push_back(typeid(user_table->*&fts5::hidden::any));
         expected.push_back(typeid(int));
         expected.push_back(typeid(std::string));
         expected.push_back(typeid(std::string));
@@ -475,6 +501,7 @@ TEST_CASE("ast_iterator") {
     }
     SECTION("highlight using the any column, rebound") {
         auto expression = highlight(user_hidden::any_field, 0, std::string("<b>"), std::string("</b>"));
+        expected.push_back(typeid(user_hidden::any_field));
         expected.push_back(typeid(int));
         expected.push_back(typeid(std::string));
         expected.push_back(typeid(std::string));
@@ -496,7 +523,7 @@ TEST_CASE("ast_iterator") {
     }
 #endif
 #endif
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#ifdef SQLITE_ORM_DBSTAT_SUPPORTED
     SECTION("table-valued") {
         auto expression = from(dbstat_table("main"));
         expected.push_back(typeid(const char*));

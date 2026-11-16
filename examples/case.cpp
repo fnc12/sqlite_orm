@@ -1,8 +1,8 @@
 /**
  *  Got it from here https://www.tutlane.com/tutorial/sqlite/sqlite-case-statement
  */
-#include <sqlite_orm/sqlite_orm.h>
 #include <iostream>
+#include <sqlite_orm/sqlite_orm.h>
 
 using namespace sqlite_orm;
 

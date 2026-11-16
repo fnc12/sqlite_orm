@@ -1,13 +1,20 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the SELECT statement.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if
 #include <tuple>  //  std::tuple, std::tuple_size
+#include <type_traits>  //  std::enable_if
 #include <utility>  //  std::forward, std::move
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
-#include "../tuple_helper/tuple_traits.h"
+#include "../functional/cxx_polyfill/type_traits.h"
+#include "../functional/mpl/convenience.h"
 #include "../vocabulary/node_algorithms.h"  // clause predicates
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/semantic_traits_fwd.h"  // Included to specialize traits

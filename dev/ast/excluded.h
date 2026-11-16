@@ -1,10 +1,19 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the `excluded.` qualifier through which the DO UPDATE action of an upsert reads the row that
+ *  failed to insert.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_polyfill/type_traits.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "../vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
@@ -16,8 +25,10 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, excluded_t>::value>> =
-        true;
+    constexpr bool is_excluded_v = polyfill::is_specialization_of_v<T, excluded_t>;
+
+    template<class T>
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_excluded_v<T>>> = true;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

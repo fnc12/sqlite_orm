@@ -1,8 +1,8 @@
 #include <sqlite_orm/sqlite_orm.h>
 
-#include <string>
-#include <iostream>
 #include <assert.h>
+#include <iostream>
+#include <string>
 
 using namespace sqlite_orm;
 

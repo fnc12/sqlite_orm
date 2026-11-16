@@ -1,12 +1,14 @@
 #pragma once
 
-/** @file Declarations of closed classifier/leaf traits + structural grouping traits.
- *        E.g. compound-statement, DML-statement, CTE-binding, ...
- *  
- *        Definitions of these traits are in the corresponding header files of the grammar nodes.
+/** @file
+ *  Purpose: declare the traits classifying the types a DSL expression is built from by the SQL grammar production each
+ *  belongs to.
+ *
+ *  Intention: the grammar axis of the vocabulary layer, whose rules `docs/internals/vocabulary-layer.md` holds; the
+ *  traits are defined in the corresponding header files of the grammar nodes.
  */
 
-#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../functional/cxx_polyfill/type_traits.h"
 
 // Schema classifier traits
 namespace sqlite_orm::internal {
@@ -169,6 +171,207 @@ namespace sqlite_orm::internal {
     using is_tokenize = std::bool_constant<is_tokenize_v<T>>;
 }
 
+// CRUD classifier traits
+namespace sqlite_orm::internal {
+    /**
+     *  Nodes representing a DML statement - INSERT, REPLACE, UPDATE, DELETE -, one trait per DSL spelling.
+     *
+     *  SQLite knows four DML productions, but sqlite_orm spells several of them more than once: an INSERT
+     *  is written against a mapped object, against a range of them, against an explicit column list, or
+     *  raw; a DELETE is written as `remove` against a primary key or as `remove_all` against conditions.
+     *  Which spellings share a role across those productions is the subject of the semantic traits
+     *  `is_object_dml_expression_v` and `is_raw_dml_expression_v`.
+     */
+    template<class T>
+    extern const bool is_insert_v;
+
+    template<class T>
+    using is_insert = std::bool_constant<is_insert_v<T>>;
+
+    template<class T>
+    extern const bool is_insert_explicit_v;
+
+    template<class T>
+    using is_insert_explicit = std::bool_constant<is_insert_explicit_v<T>>;
+
+    template<class T>
+    extern const bool is_insert_range_v;
+
+    template<class T>
+    using is_insert_range = std::bool_constant<is_insert_range_v<T>>;
+
+    template<class T>
+    extern const bool is_insert_raw_v;
+
+    template<class T>
+    using is_insert_raw = std::bool_constant<is_insert_raw_v<T>>;
+
+    template<class T>
+    extern const bool is_replace_v;
+
+    template<class T>
+    using is_replace = std::bool_constant<is_replace_v<T>>;
+
+    template<class T>
+    extern const bool is_replace_range_v;
+
+    template<class T>
+    using is_replace_range = std::bool_constant<is_replace_range_v<T>>;
+
+    template<class T>
+    extern const bool is_replace_raw_v;
+
+    template<class T>
+    using is_replace_raw = std::bool_constant<is_replace_raw_v<T>>;
+
+    template<class T>
+    extern const bool is_update_v;
+
+    template<class T>
+    using is_update = std::bool_constant<is_update_v<T>>;
+
+    template<class T>
+    extern const bool is_update_all_v;
+
+    template<class T>
+    using is_update_all = std::bool_constant<is_update_all_v<T>>;
+
+    template<class T>
+    extern const bool is_remove_v;
+
+    template<class T>
+    using is_remove = std::bool_constant<is_remove_v<T>>;
+
+    template<class T>
+    extern const bool is_remove_all_v;
+
+    template<class T>
+    using is_remove_all = std::bool_constant<is_remove_all_v<T>>;
+
+    /**
+     *  Nodes naming the table a raw INSERT or REPLACE targets: INTO table.
+     */
+    template<class T>
+    extern const bool is_into_v;
+
+    template<class T>
+    using is_into = std::bool_constant<is_into_v<T>>;
+
+    /**
+     *  Nodes carrying the rows a raw INSERT or REPLACE supplies: VALUES (...), (...).
+     */
+    template<class T>
+    extern const bool is_values_v;
+
+    template<class T>
+    using is_values = std::bool_constant<is_values_v<T>>;
+
+    /**
+     *  Nodes carrying a VALUES row list assembled at runtime.
+     */
+    template<class T>
+    extern const bool is_dynamic_values_v;
+
+    template<class T>
+    using is_dynamic_values = std::bool_constant<is_dynamic_values_v<T>>;
+
+    //  the two above are DSL spellings of the one VALUES production,
+    //  hence grouping them is what corresponds to the SQL grammar
+    template<class T>
+    extern const bool is_any_values_v;
+
+    template<class T>
+    using is_any_values = std::bool_constant<is_any_values_v<T>>;
+
+    /**
+     *  Nodes carrying the assignments of an UPDATE: SET column = expression, ...
+     */
+    template<class T>
+    extern const bool is_set_v;
+
+    template<class T>
+    using is_set = std::bool_constant<is_set_v<T>>;
+
+    /**
+     *  Nodes carrying a SET assembled at runtime.
+     */
+    template<class T>
+    extern const bool is_dynamic_set_v;
+
+    template<class T>
+    using is_dynamic_set = std::bool_constant<is_dynamic_set_v<T>>;
+
+    //  the two above are DSL spellings of the one SET clause production,
+    //  hence grouping them is what corresponds to the SQL grammar
+    template<class T>
+    extern const bool is_any_set_v;
+
+    template<class T>
+    using is_any_set = std::bool_constant<is_any_set_v<T>>;
+
+    /**
+     *  Nodes carrying the upsert clause of a raw INSERT:
+     *  ON CONFLICT (...) DO NOTHING, ON CONFLICT (...) DO UPDATE SET ...
+     */
+    template<class T>
+    extern const bool is_upsert_clause_v;
+
+    template<class T>
+    using is_upsert_clause = std::bool_constant<is_upsert_clause_v<T>>;
+
+    /**
+     *  Nodes referencing a column of the row an upsert clause failed to insert: excluded.column.
+     */
+    template<class T>
+    extern const bool is_excluded_v;
+
+    template<class T>
+    using is_excluded = std::bool_constant<is_excluded_v<T>>;
+
+    /**
+     *  Nodes carrying the conflict resolution modifier of a raw INSERT:
+     *  OR ABORT, OR FAIL, OR IGNORE, OR REPLACE, OR ROLLBACK.
+     */
+    template<class T>
+    extern const bool is_insert_constraint_v;
+
+    template<class T>
+    using is_insert_constraint = std::bool_constant<is_insert_constraint_v<T>>;
+
+    /**
+     *  Nodes representing the DEFAULT VALUES modifier of a raw INSERT or REPLACE.
+     */
+    template<class T>
+    extern const bool is_default_values_v;
+
+    template<class T>
+    using is_default_values = std::bool_constant<is_default_values_v<T>>;
+
+    /**
+     *  Nodes reading a mapped object by its primary key: get, get_pointer, get_optional.
+     *
+     *  The three are DSL spellings of the one SELECT by primary key; they differ only in how the object is
+     *  handed out, which each declares as its `result_type`.
+     */
+    template<class T>
+    extern const bool is_any_get_by_id_v;
+
+    template<class T>
+    using is_any_get_by_id = std::bool_constant<is_any_get_by_id_v<T>>;
+
+    /**
+     *  Nodes reading all mapped objects satisfying the given conditions: get_all, get_all_pointer, get_all_optional.
+     *
+     *  The three are DSL spellings of the one SELECT; they differ only in how the objects are handed out,
+     *  which each declares as its `result_type`.
+     */
+    template<class T>
+    extern const bool is_any_get_all_v;
+
+    template<class T>
+    using is_any_get_all = std::bool_constant<is_any_get_all_v<T>>;
+}
+
 // Classifier traits
 namespace sqlite_orm::internal {
     template<class T>
@@ -203,6 +406,172 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_case_expression = std::bool_constant<is_case_expression_v<T>>;
+
+    /**
+     *  Nodes testing an expression against a range: expr BETWEEN lower AND upper.
+     */
+    template<class T>
+    extern const bool is_between_v;
+
+    template<class T>
+    using is_between = std::bool_constant<is_between_v<T>>;
+
+    /**
+     *  Nodes testing an expression for membership in a list of expressions: expr [NOT] IN (...).
+     */
+    template<class T>
+    extern const bool is_in_v;
+
+    template<class T>
+    using is_in = std::bool_constant<is_in_v<T>>;
+
+    /**
+     *  Nodes testing an expression for membership in a container assembled at runtime or in a subselect.
+     */
+    template<class T>
+    extern const bool is_dynamic_in_v;
+
+    template<class T>
+    using is_dynamic_in = std::bool_constant<is_dynamic_in_v<T>>;
+
+    //  the two above are DSL spellings of the one IN production,
+    //  hence grouping them is what corresponds to the SQL grammar
+    template<class T>
+    extern const bool is_any_in_v;
+
+    template<class T>
+    using is_any_in = std::bool_constant<is_any_in_v<T>>;
+
+    /**
+     *  Nodes testing an expression for NULL: expr IS NULL, expr IS NOT NULL.
+     */
+    template<class T>
+    extern const bool is_is_null_v;
+
+    template<class T>
+    using is_is_null = std::bool_constant<is_is_null_v<T>>;
+
+    template<class T>
+    extern const bool is_is_not_null_v;
+
+    template<class T>
+    using is_is_not_null = std::bool_constant<is_is_not_null_v<T>>;
+
+    /**
+     *  Nodes testing a subselect for rows: EXISTS (select-stmt).
+     */
+    template<class T>
+    extern const bool is_exists_v;
+
+    template<class T>
+    using is_exists = std::bool_constant<is_exists_v<T>>;
+
+    /**
+     *  Nodes converting an expression to a storage class: CAST (expr AS type-name).
+     */
+    template<class T>
+    extern const bool is_cast_v;
+
+    template<class T>
+    using is_cast = std::bool_constant<is_cast_v<T>>;
+
+    /**
+     *  Nodes matching a full-text search query against a column or a whole table: expr MATCH query.
+     */
+    template<class T>
+    extern const bool is_match_v;
+
+    template<class T>
+    using is_match = std::bool_constant<is_match_v<T>>;
+
+    template<class T>
+    extern const bool is_match_with_table_v;
+
+    template<class T>
+    using is_match_with_table = std::bool_constant<is_match_with_table_v<T>>;
+
+    /**
+     *  Nodes matching an expression against a pattern: expr LIKE pattern [ESCAPE escape], expr GLOB pattern.
+     */
+    template<class T>
+    extern const bool is_like_v;
+
+    template<class T>
+    using is_like = std::bool_constant<is_like_v<T>>;
+
+    template<class T>
+    extern const bool is_glob_v;
+
+    template<class T>
+    using is_glob = std::bool_constant<is_glob_v<T>>;
+
+    /**
+     *  Nodes applying a collating sequence to an expression: expr COLLATE collation-name,
+     *  with a built-in collation or a named, application-defined one.
+     */
+    template<class T>
+    extern const bool is_collate_v;
+
+    template<class T>
+    using is_collate = std::bool_constant<is_collate_v<T>>;
+
+    template<class T>
+    extern const bool is_named_collate_v;
+
+    template<class T>
+    using is_named_collate = std::bool_constant<is_named_collate_v<T>>;
+
+    /**
+     *  Nodes negating a condition: NOT expr.
+     */
+    template<class T>
+    extern const bool is_negated_condition_v;
+
+    template<class T>
+    using is_negated_condition = std::bool_constant<is_negated_condition_v<T>>;
+
+    /**
+     *  Nodes comparing a whole FTS5 table with an expression, of the deprecated `is_equal<Table>(expression)` spelling.
+     */
+    template<class T>
+    extern const bool is_equal_with_table_v;
+
+    template<class T>
+    using is_equal_with_table = std::bool_constant<is_equal_with_table_v<T>>;
+
+    /**
+     *  Nodes representing the special keywords yielding the current UTC date/time:
+     *  CURRENT_TIME, CURRENT_DATE, CURRENT_TIMESTAMP.
+     */
+    template<class T>
+    extern const bool is_current_time_v;
+
+    template<class T>
+    using is_current_time = std::bool_constant<is_current_time_v<T>>;
+
+    template<class T>
+    extern const bool is_current_date_v;
+
+    template<class T>
+    using is_current_date = std::bool_constant<is_current_date_v<T>>;
+
+    template<class T>
+    extern const bool is_current_timestamp_v;
+
+    template<class T>
+    using is_current_timestamp = std::bool_constant<is_current_timestamp_v<T>>;
+
+    /**
+     *  Nodes referencing the rowid of a table: ROWID, OID, _ROWID_, each unqualified or qualified by the table.
+     *
+     *  All of them are DSL spellings of the one rowid reference; the table-qualified ones carry the table as their
+     *  `type`, and every node its own spelling.
+     */
+    template<class T>
+    extern const bool is_any_rowid_v;
+
+    template<class T>
+    using is_any_rowid = std::bool_constant<is_any_rowid_v<T>>;
 
     template<class T>
     extern const bool is_with_clause_v;
@@ -276,11 +645,42 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_any_from = std::bool_constant<is_any_from_v<T>>;
 
+    /**
+     *  Nodes joining a table: CROSS JOIN, NATURAL JOIN, JOIN, LEFT JOIN, LEFT OUTER JOIN, INNER JOIN.
+     *
+     *  All of them are DSL spellings of the one join-operator production; each carries its keyword, and every one
+     *  carries its constraint as its `on_type`: ON or USING spelled out, or the implicit constraint of CROSS JOIN
+     *  and NATURAL JOIN.
+     */
     template<class T>
     extern const bool is_any_join_v;
 
     template<class T>
     using is_any_join = std::bool_constant<is_any_join_v<T>>;
+
+    /**
+     *  Nodes constraining a join: ON expr, USING (column).
+     */
+    template<class T>
+    extern const bool is_on_v;
+
+    template<class T>
+    using is_on = std::bool_constant<is_on_v<T>>;
+
+    template<class T>
+    extern const bool is_using_v;
+
+    template<class T>
+    using is_using = std::bool_constant<is_using_v<T>>;
+
+    /**
+     *  The constraint of a join that spells none out: CROSS JOIN and NATURAL JOIN.
+     */
+    template<class T>
+    extern const bool is_implicit_join_constraint_v;
+
+    template<class T>
+    using is_implicit_join_constraint = std::bool_constant<is_implicit_join_constraint_v<T>>;
 
     template<class T>
     extern const bool is_window_defn_v;
@@ -373,8 +773,11 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_unbounded_following = std::bool_constant<is_unbounded_following_v<T>>;
 
+    /**
+     *  Nodes assigning an expression to a column in a SET clause: column = expression.
+     */
     template<class T>
-    constexpr bool is_assign_v = false;
+    extern const bool is_assign_v;
 
     template<class T>
     using is_assign = std::bool_constant<is_assign_v<T>>;
@@ -493,6 +896,82 @@ namespace sqlite_orm::internal {
     using is_trigger_spec = std::bool_constant<is_trigger_spec_v<T>>;
 }
 
+// Alias traits
+namespace sqlite_orm::internal {
+    /**
+     *  Types naming something by an alias - a record set, a column or an expression -, i.e. derived from `alias_tag`.
+     *  Aliases are user-definable, hence classified by their capabilities rather than by a sqlite_orm node.
+     */
+    template<class T>
+    extern const bool is_alias_v;
+
+    template<class T>
+    using is_alias = std::bool_constant<is_alias_v<T>>;
+
+    /**
+     *  Aliases of a column in a record set, see `orm_column_alias`.
+     */
+    template<class T>
+    extern const bool is_column_alias_v;
+
+    template<class T>
+    using is_column_alias = std::bool_constant<is_column_alias_v<T>>;
+
+    /**
+     *  Aliases of any type of record set, see `orm_recordset_alias`.
+     */
+    template<class T>
+    extern const bool is_recordset_alias_v;
+
+    template<class T>
+    using is_recordset_alias = std::bool_constant<is_recordset_alias_v<T>>;
+
+    /**
+     *  Aliases of a concrete table, see `orm_table_alias`.
+     */
+    template<class T>
+    extern const bool is_table_alias_v;
+
+    template<class T>
+    using is_table_alias = std::bool_constant<is_table_alias_v<T>>;
+
+    /**
+     *  Monikers of a CTE, see `orm_cte_moniker`.
+     */
+    template<class T>
+    extern const bool is_cte_moniker_v;
+
+    template<class T>
+    using is_cte_moniker = std::bool_constant<is_cte_moniker_v<T>>;
+
+    /**
+     *  Nodes referring to a column alias defined elsewhere in a statement: `get<colalias_a>()`.
+     */
+    template<class T>
+    extern const bool is_alias_holder_v;
+
+    template<class T>
+    using is_alias_holder = std::bool_constant<is_alias_holder_v<T>>;
+
+    /**
+     *  Column references qualified by a record set alias: `alias.column`, see `alias_column()`.
+     */
+    template<class T>
+    extern const bool is_alias_qualified_column_v;
+
+    template<class T>
+    using is_alias_qualified_column = std::bool_constant<is_alias_qualified_column_v<T>>;
+
+    /**
+     *  Nodes calling an eponymous virtual table as a table-valued function: table(arguments...).
+     */
+    template<class T>
+    extern const bool is_table_valued_expression_v;
+
+    template<class T>
+    using is_table_valued_expression = std::bool_constant<is_table_valued_expression_v<T>>;
+}
+
 // Role-based grammar traits
 namespace sqlite_orm::internal {
     /**
@@ -513,11 +992,33 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_compound_operator = std::bool_constant<is_compound_operator_v<T>>;
 
+    /**
+     *  Nodes representing a binary operator: ||, +, -, *, /, %, <<, >>, &, |, and the assignment of a SET clause.
+     *  Each declares the C++ type it yields as its `result_type` - except the assignment, which yields nothing.
+     */
     template<class T>
     extern const bool is_binary_operator_v;
 
     template<class T>
     using is_binary_operator = std::bool_constant<is_binary_operator_v<T>>;
+
+    /**
+     *  Nodes representing the string concatenation operator: expr || expr.
+     */
+    template<class T>
+    extern const bool is_conc_v;
+
+    template<class T>
+    using is_conc = std::bool_constant<is_conc_v<T>>;
+
+    /**
+     *  Nodes representing a unary operator: -expr, ~expr. Each declares the C++ type it yields as its `result_type`.
+     */
+    template<class T>
+    extern const bool is_unary_operator_v;
+
+    template<class T>
+    using is_unary_operator = std::bool_constant<is_unary_operator_v<T>>;
 
     template<class T>
     extern const bool is_binary_condition_v;
@@ -526,8 +1027,35 @@ namespace sqlite_orm::internal {
     using is_binary_condition = std::bool_constant<is_binary_condition_v<T>>;
 
     template<class T>
-    extern const bool is_built_in_function_v;
+    extern const bool is_builtin_function_call_v;
 
     template<class T>
-    using is_built_in_function = std::bool_constant<is_built_in_function_v<T>>;
+    using is_builtin_function_call = std::bool_constant<is_builtin_function_call_v<T>>;
+
+    /**
+     *  Node representing a call of an application-defined function.
+     */
+    template<class T>
+    extern const bool is_app_function_call_v;
+
+    template<class T>
+    using is_app_function_call = std::bool_constant<is_app_function_call_v<T>>;
+
+    /**
+     *  Node representing an aggregate function call with a FILTER clause.
+     */
+    template<class T>
+    extern const bool is_filtered_aggregate_function_v;
+
+    template<class T>
+    using is_filtered_aggregate_function = std::bool_constant<is_filtered_aggregate_function_v<T>>;
+
+    /**
+     *  Nodes representing COUNT(*), with or without a table to count the rows of.
+     */
+    template<class T>
+    extern const bool is_count_asterisk_v;
+
+    template<class T>
+    using is_count_asterisk = std::bool_constant<is_count_asterisk_v<T>>;
 }

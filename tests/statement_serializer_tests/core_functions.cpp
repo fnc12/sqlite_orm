@@ -1,5 +1,5 @@
-#include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <sqlite_orm/sqlite_orm.h>
 
 using namespace sqlite_orm;
 
@@ -56,6 +56,27 @@ TEST_CASE("statement_serializer core functions") {
         }
         value = serialize(expression, context);
     }
+    SECTION("MAX(X,Y,...)") {
+        constexpr auto expression = max(1, 2, 3, 4);
+        context.use_parentheses = false;
+        expected = "MAX(1, 2, 3, 4)";
+        value = serialize(expression, context);
+    }
+#ifdef SQLITE_ORM_MATH_FUNCTIONS_SUPPORTED
+    SECTION("ACOS") {
+        context.use_parentheses = false;
+        SECTION("default return type") {
+            constexpr auto expression = sqlite_orm::acos(1);
+            expected = "ACOS(1)";
+            value = serialize(expression, context);
+        }
+        SECTION("explicit return type") {
+            constexpr auto expression = sqlite_orm::acos<std::optional<double>>(1);
+            expected = "ACOS(1)";
+            value = serialize(expression, context);
+        }
+    }
+#endif
     SECTION("UPPER") {
         constexpr auto expression = upper("call");
         SECTION("use_parentheses") {
@@ -299,7 +320,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("TIME") {
-        constexpr auto expression = time("12:00", "localtime");
+        constexpr auto expression = sqlite_orm::time("12:00", "localtime");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "TIME('12:00', 'localtime')";
@@ -335,7 +356,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("STRFTIME") {
-        constexpr auto expression = strftime("%s", "2014-10-07 02:34:56");
+        constexpr auto expression = sqlite_orm::strftime("%s", "2014-10-07 02:34:56");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "STRFTIME('%s', '2014-10-07 02:34:56')";
@@ -395,7 +416,7 @@ TEST_CASE("statement_serializer core functions") {
     }
 #endif
     SECTION("SOUNDEX") {
-#ifdef SQLITE_SOUNDEX
+#ifdef SQLITE_ORM_SOUNDEX_SUPPORTED
         constexpr auto expression = soundex("Vaso");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
@@ -547,7 +568,7 @@ TEST_CASE("statement_serializer newer core functions") {
         value = serialize(expression, context);
     }
 #endif
-#ifdef SQLITE_ENABLE_PERCENTILE
+#ifdef SQLITE_ORM_PERCENTILE_SUPPORTED
     SECTION("MEDIAN") {
         auto expression = median(1);
         expected = "MEDIAN(1)";

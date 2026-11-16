@@ -1,0 +1,76 @@
+#pragma once
+
+/** @file
+ *  Purpose: lift a struct mapped as a table or view into the DSL.
+ *
+ *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>
+#include <type_traits>  //  std::enable_if, std::remove_const, std::type_identity
+#include <utility>  // std::move
+#endif
+
+#include "../functional/cxx_polyfill/type_traits.h"
+#include "../vocabulary/node_traits.h"  //  orm_recordset_alias
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
+
+namespace sqlite_orm::internal {
+    /*
+     *  Bound input arguments for eponymous virtual tables used in table-valued function calls.
+     */
+    template<class Table, class... Args>
+    struct table_valued_expression {
+        using type = Table;
+        using constraints_type = std::tuple<Args...>;
+
+        constraints_type table_values;
+    };
+
+    template<class T>
+    constexpr bool is_table_valued_expression_v = polyfill::is_specialization_of_v<T, table_valued_expression>;
+
+    /*
+     *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions and virtual tables usable as table-valued functions.
+     */
+    template<class O>
+    struct table_reference : polyfill::type_identity<O> {
+        /** 
+         *  Make a table-valued function call.
+         */
+        template<class... Args>
+        constexpr SQLITE_ORM_STATIC_CALLOP table_valued_expression<O, Args...>
+        operator()(Args... arguments) SQLITE_ORM_OR_CONST_CALLOP {
+            return {{{std::move(arguments)}...}};
+        }
+    };
+
+    template<class T>
+    constexpr bool is_table_reference_v = polyfill::is_specialization_of_v<std::remove_const_t<T>, table_reference>;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    /**
+     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
+     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
+     */
+    template<class O>
+        requires (!orm_recordset_alias<O>)
+    consteval internal::table_reference<O> c() {
+        return {};
+    }
+#else
+    /**
+     *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
+     *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
+     */
+    template<class O, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
+    constexpr internal::table_reference<O> c() {
+        return {};
+    }
+#endif
+}
