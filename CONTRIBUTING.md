@@ -24,7 +24,7 @@ Instructions:
 
     * Remember to provide *tests* for all submitted changes!
     * Use test-driven development (TDD): add a test that will isolate the bug *before* applying the change that fixes it.
-    * Verify that you follow current code style on sqlite_orm.
+    * Follow the code style in the ["Code style" section of `AGENTS.md`](AGENTS.md#code-style).
     * [*optional*] Verify that your change works on other platforms by enabling [GitHub Actions](https://docs.github.com/en/actions) in your fork, and opening a pull request from your branch to your fork's `dev` branch.  You can use this technique to run the sqlite_orm CI jobs in your account to check your changes before they are made public.  Every GitHub pull request into sqlite_orm will run the full CI build and test suite on your changes.
 
  1. Commit and push changes to your branch.

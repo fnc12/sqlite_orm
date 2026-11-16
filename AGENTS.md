@@ -97,6 +97,8 @@ from anywhere else.
   (`node_tuple_for`). No names like "proxy" for plain type computations.
 - Prefer `std::ranges` algorithms, with projections, wherever the code's C++ standard has
   them.
+- Each declaration statement declares one variable or data member, on a line of its own:
+  `float minX;` and `float maxX;` rather than `float minX, maxX;`.
 - Weigh internal design alternatives by what library consumers can observe: their types, call
   sites and diagnostics.
 

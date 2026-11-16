@@ -24,8 +24,10 @@ using std::cout, std::endl;
 void sqlite_office() {
     struct DemoIndex {
         int64 id;
-        float minX, maxX;
-        float minY, maxY;
+        float minX;
+        float maxX;
+        float minY;
+        float maxY;
     };
     constexpr orm_table_reference auto demo_index = c<DemoIndex>();
 

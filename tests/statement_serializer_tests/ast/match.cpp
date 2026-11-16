@@ -93,8 +93,10 @@ using namespace sqlite_orm;
 TEST_CASE("statement_serializer match rtree") {
     struct DemoIndex {
         int64 id;
-        float minX, maxX;
-        float minY, maxY;
+        float minX;
+        float maxX;
+        float minY;
+        float maxY;
     };
     // stands in for a geometry callback, which SQLite registers through sqlite3_rtree_geometry_callback()
     struct Circle {
