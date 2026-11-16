@@ -1,0 +1,18 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-16: the second of #1623's two
+pull requests, stacked on the rule (5fe1057f).
+
+# Decided
+- The 21 declarations naming several variables are split, one statement
+  per variable, keeping each line's indentation and type: 18 in tests/
+  (virtual_table.cpp 7, virtual_tables.cpp 6, using_rtree.cpp 2, and
+  `std::string value, expected;` in select.cpp, bindables.cpp and
+  conditions.cpp), 3 in examples/ (rtree.cpp 2, pointer_passing_interface.cpp 1).
+- The four for inits in dev/serialization/ stay (trueqbit, 1 a).
+
+# Discussed
+- Found by a regex over dev/, tests/ and examples/; split by a script
+  from that listing. A looser regex afterwards matched 14 lines, each a
+  single declaration whose initializer holds commas.
+- Checks: pre-commit.sh exit 0, the dev/ token streams identical,
+  clang-format 20 unchanged, no "on purpose:".
