@@ -8985,7 +8985,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/alias.h"
 
 /** @file
- *  Purpose: represent the aliases by which a statement refers to what it reads.
+ *  Purpose: represent the aliases a statement gives to what it reads and what it returns.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -12833,7 +12833,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/crud/default_values.h"
 
 /** @file
- *  Purpose: represent the DEFAULT VALUES modifier.
+ *  Purpose: represent the DEFAULT VALUES form of an INSERT.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -12855,7 +12855,7 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
-     *  Use this function to add `DEFAULT VALUES` modifier to raw `INSERT`.
+     *  Use this function to write a raw `INSERT` or `REPLACE` in its `DEFAULT VALUES` form.
      *
      *  @example
      *  ```
@@ -13693,7 +13693,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/crud/into.h"
 
 /** @file
- *  Purpose: represent the INTO clause.
+ *  Purpose: represent the table an INSERT or REPLACE writes into.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -14065,7 +14065,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/crud/set.h"
 
 /** @file
- *  Purpose: represent the SET clause of an UPDATE.
+ *  Purpose: represent the SET clause.
  *
  *  Intention: a node header of `ast/crud/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary
  *  axes in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -16174,7 +16174,7 @@ namespace sqlite_orm::internal {
 // #include "ast/match.h"
 
 /** @file
- *  Purpose: represent the MATCH condition of a full-text search.
+ *  Purpose: represent the MATCH operator.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
@@ -17069,13 +17069,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/values.h"
 
 /** @file
- *  Purpose: represent the VALUES row list.
+ *  Purpose: represent the VALUES clause.
  *
  *  Intention: a node header of `ast/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
  *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
  *
  *  Note: this header sits outside `ast/crud/`, unlike the other clause nodes a raw INSERT or
- *  REPLACE takes, because a VALUES row list is written both as an INSERT's rows and as the
+ *  REPLACE takes, because a VALUES clause is written both as an INSERT's rows and as the
  *  operand of an IN - in either spelling.
  */
 
@@ -17102,7 +17102,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
 
     /**
-     *  A VALUES row list assembled at runtime.
+     *  A VALUES clause assembled at runtime.
      */
     template<class T>
     struct dynamic_values_t {
