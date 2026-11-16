@@ -176,7 +176,8 @@ int main() {
     // function comparing two error_code objects
     struct equal_error_code_fn {
         bool operator()(ecode_arg pv1, ecode_arg pv2) const {
-            const error_code *ec1 = pv1, *ec2 = pv2;
+            const error_code* ec1 = pv1;
+            const error_code* ec2 = pv2;
             if (ec1 && ec2) {
                 return *ec1 == *ec2;
             }
