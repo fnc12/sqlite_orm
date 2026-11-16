@@ -1,0 +1,21 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-16: issue #1623, from fnc12's
+review comment on #1612 (discussion_r4581558226). Two pull requests from
+dev (trueqbit, 1 a): this rule, then the split declarations stacked on it.
+
+# Decided
+- The bullet goes to AGENTS.md "Code style", after the std::ranges one:
+  "Each declaration statement declares one variable or data member, on a
+  line of its own".
+- trueqbit (1 a): a for loop's init keeps its index and bound together;
+  the four in dev/serialization/ stay.
+- trueqbit: the rule names neither structured bindings nor for inits -
+  each has its own syntax, and the rule's words never reach them. Claude
+  had drafted a clause for each, guarding against a misreading nobody
+  made; the correction went to ontocratic-feedback (a wording.md bullet
+  and an eval), deferred by trueqbit to the feedback hand-over.
+- Weighed: clang-format cannot split a statement; clang-tidy's
+  readability-isolate-declaration in CI was left out of #1623.
+
+# Discussed
+- Checks: pre-commit.sh exit 0, the amalgamation unchanged.
