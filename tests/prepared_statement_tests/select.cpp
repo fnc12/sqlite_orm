@@ -413,7 +413,8 @@ TEST_CASE("Prepared select") {
 TEST_CASE("dumping") {
     auto storage = make_storage("");
 
-    std::string value, expected;
+    std::string value;
+    std::string expected;
 
     SECTION("expression") {
         auto expression = select(1);

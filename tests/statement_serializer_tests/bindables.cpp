@@ -245,7 +245,8 @@ TEST_CASE("bindables") {
 
 #if SQLITE_VERSION_NUMBER >= 3020000
     SECTION("bindable_pointer") {
-        string value, expected;
+        string value;
+        string expected;
         context.replace_bindable_with_question = false;
 
         SECTION("null by itself") {
