@@ -1,0 +1,25 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-16: fnc12 approved #1612 with one
+inline comment on the R*Tree test (discussion_r4581558226): he dislikes
+more than one variable per declaration statement, and remembers writing
+it as a rule in a code style doc.
+
+# Decided
+- trueqbit: the test's own struct is fixed here, in a commit of its own
+  (2 a); the rule goes to issue #1623, carried by two pull requests from
+  dev - the rule in AGENTS.md "Code style", then the split declarations
+  stacked on it (1 a); clang-tidy in CI left out (3).
+- The rule is written nowhere in the tree: AGENTS.md and CONTRIBUTING.md
+  hold no such line.
+
+# Discussed
+- clang-format cannot split a statement; clang-tidy's
+  readability-isolate-declaration can, untried here (no .clang-tidy, not
+  installed in WSL).
+- A regex finds 21 such declarations, 18 in tests/, 3 in examples/, none
+  in dev/; a lower bound.
+- Checks: pre-commit.sh exit 0, token streams identical, clang-format 20
+  unchanged, no "on purpose:".
+
+# Later
+- #1623's two pull requests.
