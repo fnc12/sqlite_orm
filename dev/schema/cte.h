@@ -34,7 +34,7 @@ namespace sqlite_orm::internal {
 
     /**
      *  This class captures various properties and aspects of a subselect's column expression,
-     *  and is used as a proxy in base_table<>.
+     *  and is used as a proxy in ordinary_table<>.
      *
      *  Named after CTEs, the only subselects mapped as a table so far.
      */

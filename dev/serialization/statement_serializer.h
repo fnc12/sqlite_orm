@@ -135,7 +135,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class Table>
-    struct statement_serializer<Table, std::enable_if_t<is_base_table_v<Table>>> {
+    struct statement_serializer<Table, std::enable_if_t<is_ordinary_table_v<Table>>> {
         using statement_type = Table;
 
         template<class Ctx>

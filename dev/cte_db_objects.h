@@ -20,7 +20,7 @@
 #include "result_set/column_expression.h"
 #include "result_set/column_reference.h"
 #include "result_set/column_result.h"
-#include "schema/cte_mapping.h"
+#include "schema/cte.h"
 #include "schema/db_objects.h"
 #include "serialization/cte_column_names_collector.h"
 #include "serialization/serializer_context.h"

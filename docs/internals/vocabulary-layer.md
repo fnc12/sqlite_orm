@@ -146,7 +146,7 @@ concepts that are the faces of single grammar or structural traits (`orm_alias` 
 `orm_cte_moniker`, `orm_table_reference`, `orm_table_valued_expression`); see
 [Concepts](#concepts-a-hard-constraint-on-splitting).
 
-- **Grammar** — membership in a real SQL production: `is_column`, `is_base_table`,
+- **Grammar** — membership in a real SQL production: `is_column`, `is_ordinary_table`,
   `is_compound_operator`, `is_builtin_function_call`, `is_binary_condition`, ...
 - **Semantic** — a role shared by nodes of *different* productions: `is_select_expression_v`
   covers `WITH` and `SELECT`, `is_raw_dml_expression_v` raw and with-wrapped DML. Grammar if
@@ -214,7 +214,7 @@ algorithms, in `algorithms/recordset_predicates.h`.
 collection**. They consume vocabulary, which is why they are easily misfiled. The reference
 example is `sync_order.h`: a topological sort of the `db_objects_tuple`, relating its members
 rather than classifying a node in hand. `table_lookup.h` finds the database object mapping a
-lookup type ("table" in the wide sense: base tables, views and virtual tables) and feeds it
+lookup type ("table" in the wide sense: ordinary tables, views and virtual tables) and feeds it
 into the vocabulary algorithms of `column_field_types.h`,
 `column_lookup.h` a column across the schema, and `table_filters.h` selects tables or views.
 

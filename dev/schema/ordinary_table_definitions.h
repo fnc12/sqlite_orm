@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file Out-of-class definitions of table members, which need the column type printer (`type_printer.h`)
- *  that `schema/table.h` stays free of.
+ *  that `schema/ordinary_table.h` stays free of.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -15,11 +15,11 @@
 #include "../type_mapping/type_printer.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_traits.h"
-#include "table.h"
+#include "ordinary_table.h"
 
 namespace sqlite_orm::internal {
     template<class T, class WithoutRowId, class... Cs>
-    std::vector<table_xinfo> base_table<T, WithoutRowId, Cs...>::get_table_info() const {
+    std::vector<table_xinfo> ordinary_table<T, WithoutRowId, Cs...>::get_table_info() const {
         std::vector<table_xinfo> res;
         res.reserve(col_index_sequence_of<elements_type>::size());
         this->for_each_column([&res](auto& column) {

@@ -1,6 +1,6 @@
 #pragma once
 
-/** @file Out-of-class definitions of the storage members synchronizing a base table's schema, which need the
+/** @file Out-of-class definitions of the storage members synchronizing an ordinary table's schema, which need the
  *  schema table (`builtin/dbos/sqlite_schema.h`); they also keep the lengthy schema synchronization apart from
  *  the storage interface in `storage.h`.
  */
@@ -25,20 +25,20 @@
 
 namespace sqlite_orm::internal {
     template<class... DBO>
-    template<class Table, satisfies<is_base_table, Table>>
+    template<class Table, satisfies<is_ordinary_table, Table>>
     sync_schema_result storage_t<DBO...>::sync_dbo([[maybe_unused]] const Table& table,
                                                    [[maybe_unused]] sqlite3* db,
                                                    [[maybe_unused]] bool preserve) {
         if constexpr (std::is_same<object_type_t<Table>, sqlite_master>::value) {
             return sync_schema_result::already_in_sync;
         } else {
-            return this->sync_regular_base_table(table, db, preserve);
+            return this->sync_ordinary_table(table, db, preserve);
         }
     }
 
     template<class... DBO>
-    template<class Table, satisfies<is_base_table, Table>>
-    sync_schema_result storage_t<DBO...>::sync_regular_base_table(const Table& table, sqlite3* db, bool preserve) {
+    template<class Table, satisfies<is_ordinary_table, Table>>
+    sync_schema_result storage_t<DBO...>::sync_ordinary_table(const Table& table, sqlite3* db, bool preserve) {
         auto res = sync_schema_result::already_in_sync;
         bool attempt_to_preserve = true;
 

@@ -7,7 +7,7 @@
 #include "../../ast/alias.h"
 #include "../../ast/table_reference.h"
 #include "../../schema/column.h"
-#include "../../schema/table.h"
+#include "../../schema/ordinary_table.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 

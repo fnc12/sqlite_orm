@@ -6,7 +6,7 @@
  *  to locate the one mapping a given lookup type, as opposed to classifying a node already in hand,
  *  which is what the vocabulary layer does. They consume the vocabulary layer to do so.
  *
- *  "Table" is meant in the wide SQL table sense here, covering base tables, views
+ *  "Table" is meant in the wide SQL table sense here, covering ordinary tables, views
  *  and virtual tables alike. Indexes and triggers are deliberately not covered:
  *  their `object_type` is void, which `object_type_matches` filters out, so a lookup
  *  answers whether a type is mapped as a table - not whether it occurs in the schema at all.
@@ -29,7 +29,7 @@ namespace sqlite_orm::internal {
     /**
      *  `std::true_type` if given object is mapped, `std::false_type` otherwise.
      *
-     *  Note: unlike base_table<>, index_t<>::object_type and trigger_t<>::object_type is always void.
+     *  Note: unlike ordinary_table<>, index_t<>::object_type and trigger_t<>::object_type is always void.
      */
     template<typename DBO, typename Lookup>
     struct object_type_matches
@@ -53,7 +53,7 @@ namespace sqlite_orm::internal {
     struct enable_found_table : std::enable_if<lookup_type_matches<DBO, Lookup>::value, DBO> {};
 
     /**
-     *  SFINAE friendly facility to pick a table definition (`base_table`) from a tuple of database objects.
+     *  SFINAE friendly facility to pick a table definition (`ordinary_table`) from a tuple of database objects.
      *
      *  Lookup - mapped data type
      *  Seq - index sequence matching the number of DBOs
@@ -67,7 +67,7 @@ namespace sqlite_orm::internal {
         : enable_found_table<Lookup, Ix, DBO>... {};
 
     /**
-     *  SFINAE friendly facility to pick a table definition (`base_table`) from a tuple of database objects.
+     *  SFINAE friendly facility to pick a table definition (`ordinary_table`) from a tuple of database objects.
      *
      *  Lookup - 'table' type, mapped data type
      *  DBOs - db_objects_tuple type, possibly const-qualified
@@ -78,7 +78,7 @@ namespace sqlite_orm::internal {
                                                            std::remove_const_t<DBOs>>::type;
 
     /**
-     *  Find a table definition (`base_table`) from a tuple of database objects;
+     *  Find a table definition (`ordinary_table`) from a tuple of database objects;
      *  `std::nonesuch` if not found.
      *
      *  DBOs - db_objects_tuple type
@@ -88,7 +88,7 @@ namespace sqlite_orm::internal {
     struct schema_find_table : polyfill::detected<schema_pick_table_t, Lookup, DBOs> {};
 
     /**
-     *  Find a table definition (`base_table`) from a tuple of database objects;
+     *  Find a table definition (`ordinary_table`) from a tuple of database objects;
      *  `std::nonesuch` if not found.
      *
      *  DBOs - db_objects_tuple type, possibly const-qualified
