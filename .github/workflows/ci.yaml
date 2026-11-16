@@ -183,6 +183,14 @@ jobs:
         run: |
           vcpkg install sqlite3[core,dbstat,math,json1,fts5,rtree,soundex] catch2 --overlay-triplets=${{ github.workspace }}/vcpkg/triplets
 
+      # libhv, which an example of the asynchronous storage is built against: its sources and object files
+      - name: Cache the dependencies of the examples
+        if: matrix.build_examples
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: examples-deps-${{ matrix.os }}-${{ matrix.cxx }}-${{ hashFiles('examples/async_event_loops/CMakeLists.txt') }}
+
       - name: Configure CMake
         run: |
           cmake -S . -B build ${{ matrix.cxx_standard }} ${{ matrix.build_examples }} --toolchain ${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake

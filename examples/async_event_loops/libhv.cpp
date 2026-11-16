@@ -12,12 +12,15 @@
  *      curl http://127.0.0.1:8080/users
  */
 
+#include <iostream>
+#include <sqlite_orm/sqlite_orm.h>
+
+#ifdef SQLITE_ORM_WITH_ASYNC
 #include <exception>
 #include <hv/HttpServer.h>
 #include <hv/hloop.h>
 #include <memory>
 #include <optional>
-#include <sqlite_orm/sqlite_orm.h>
 #include <string>
 #include <utility>
 
@@ -60,7 +63,6 @@ struct database {
         //  the event loops share the database file: a connection finding it locked by another one waits,
         //  and that wait does not block its thread either
         this->start(this->storage.busy_timeout(5000));
-        this->start(this->storage.sync_schema());
     }
 
     /**
@@ -90,6 +92,10 @@ struct database {
     }
 };
 
+task<void> create_schema(Storage& storage) {
+    co_await storage.sync_schema();
+}
+
 void send_error(const HttpContextPtr& context, const std::exception& error) {
     context->setStatus(HTTP_STATUS_INTERNAL_SERVER_ERROR);
     context->send(error.what(), TEXT_PLAIN);
@@ -118,11 +124,23 @@ task<void> add_user(database& database, HttpContextPtr context) {
     }
 }
 
+#endif
+
 int main(int argc, char** argv) {
+#ifdef SQLITE_ORM_WITH_ASYNC
     const int port = argc > 1 ? std::stoi(argv[1]) : 8080;
     if (!io_uring_available()) {
         printf("io_uring is not available in this environment\n");
         return 0;
+    }
+
+    //  the schema is synchronized once, before the event loops open their connections: two of them doing it
+    //  at the same time would both try to create the table
+    {
+        io_context io;
+        Storage storage = open_storage(io, "async_libhv.sqlite");
+        io.spawn(create_schema(storage));
+        io.run();
     }
 
     HttpService router;
@@ -143,5 +161,10 @@ int main(int argc, char** argv) {
     server.setThreadNum(2);
     printf("listening on http://127.0.0.1:%d, stop with Ctrl-C\n", port);
     server.run();
+#else
+    (void)argc;
+    (void)argv;
+    std::cout << "the asynchronous storage is not available with this platform, compiler or C++ standard" << std::endl;
+#endif
     return 0;
 }

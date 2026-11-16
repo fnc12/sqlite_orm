@@ -200,6 +200,43 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
 #endif
 
+// #include "toolchain/platform.h"
+
+#if defined(_WIN32)
+#define SQLITE_ORM_WIN
+
+#elif defined(__APPLE__)
+#include <TargetConditionals.h>
+#if TARGET_IPHONE_SIMULATOR == 1 || TARGET_OS_IPHONE == 1
+#define SQLITE_ORM_IOS
+#elif TARGET_OS_OSX == 1
+#define SQLITE_ORM_MACOS
+#endif
+#define SQLITE_ORM_APPLE
+#define SQLITE_ORM_UNIX
+
+#elif defined(__linux__)
+#if defined(__ANDROID__)
+#define SQLITE_ORM_ANDROID
+#endif
+#define SQLITE_ORM_LINUX
+#define SQLITE_ORM_UNIX
+
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
+#define SQLITE_ORM_BSD
+#define SQLITE_ORM_UNIX
+
+#elif defined(__RTP__) || defined(_WRS_KERNEL)
+#define SQLITE_ORM_VXWORKS
+#define SQLITE_ORM_UNIX
+
+#elif defined(__unix__) || defined(__unix)
+#define SQLITE_ORM_UNIX
+
+#else
+#error "Unknown target platform detected"
+#endif
+
 // #include "toolchain/stdlib_features.h"
 
 /*
@@ -367,43 +404,6 @@ __pragma(push_macro("max"))
 #if (__cplusplus >= 202002L) &&                                                                                        \
     ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
 #define SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
-#endif
-
-// #include "toolchain/platform.h"
-
-#if defined(_WIN32)
-#define SQLITE_ORM_WIN
-
-#elif defined(__APPLE__)
-#include <TargetConditionals.h>
-#if TARGET_IPHONE_SIMULATOR == 1 || TARGET_OS_IPHONE == 1
-#define SQLITE_ORM_IOS
-#elif TARGET_OS_OSX == 1
-#define SQLITE_ORM_MACOS
-#endif
-#define SQLITE_ORM_APPLE
-#define SQLITE_ORM_UNIX
-
-#elif defined(__linux__)
-#if defined(__ANDROID__)
-#define SQLITE_ORM_ANDROID
-#endif
-#define SQLITE_ORM_LINUX
-#define SQLITE_ORM_UNIX
-
-#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
-#define SQLITE_ORM_BSD
-#define SQLITE_ORM_UNIX
-
-#elif defined(__RTP__) || defined(_WRS_KERNEL)
-#define SQLITE_ORM_VXWORKS
-#define SQLITE_ORM_UNIX
-
-#elif defined(__unix__) || defined(__unix)
-#define SQLITE_ORM_UNIX
-
-#else
-#error "Unknown target platform detected"
 #endif
 
 #if (defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&              \
@@ -35831,7 +35831,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <deque>  //  std::deque
 #include <functional>  //  std::function
 #include <memory>  //  std::unique_ptr, std::make_unique, std::shared_ptr
-#include <stdexcept>  //  std::runtime_error
+#include <stdexcept>  //  std::logic_error, std::runtime_error
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
 #include <tuple>  //  std::tuple, std::make_tuple, std::apply
@@ -38695,17 +38695,23 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return this->storage.libversion();
         }
 
+      private:
+        template<class AsyncStorage, class MakeView>
+        friend class async_cursor;
+
         /**
-         *  Destroy `resource`, something that owns a statement of this connection, as soon as no operation is
-         *  executing on it. Used by `async_cursor`.
+         *  Take over the statement of a cursor destroyed before its rows were exhausted.
+         *
+         *  A statement must not be finalized while another operation is executing on the connection: that
+         *  operation is suspended on its fiber in the middle of a call into SQLite. So the statement is destroyed
+         *  right here if the connection is free, and otherwise kept until the running operation releases it.
          */
-        void retire(std::shared_ptr<void> resource) noexcept {
+        void retire(std::shared_ptr<void> statementOwner) noexcept {
             if (this->turnstile.busy) {
-                this->retired.push_back(std::move(resource));
+                this->retired.push_back(std::move(statementOwner));
             }
         }
 
-      private:
         template<class MakeView>
         async_cursor<async_storage, MakeView> make_cursor(MakeView makeView) {
             return {*this, std::move(makeView)};
@@ -38714,6 +38720,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         template<class F>
         auto run_on_fiber(std::unique_ptr<F> function) -> task<std::invoke_result_t<F&, Storage&>> {
             using result_type = std::invoke_result_t<F&, Storage&>;
+            if (!function) {
+                throw std::logic_error("sqlite_orm async: no function to run");
+            }
             co_await this->acquire();
             release_guard guard{this};
             Storage& storage = this->storage;
