@@ -25,7 +25,7 @@ using std::cout;
 using std::endl;
 using std::string;
 
-// Base tables
+// Ordinary tables
 struct[[= "employee"_orm_name]] Employee {
     [[= primary_key()]] int64 id;
     [[= collate_nocase()]] std::string name;
@@ -73,7 +73,7 @@ inline constexpr orm_table_reference auto employee_detail = c<EmployeeDetail>();
 inline auto initStorage(const std::string& path) {
     return make_storage(
         path,
-        // Define base tables
+        // Define ordinary tables
         make_table<department>(),
         make_table<employee>(foreign_key(&Employee::department_id).references(&Department::id)),
 

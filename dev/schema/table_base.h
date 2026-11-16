@@ -107,7 +107,7 @@ namespace sqlite_orm::internal {
     };
 
     /** 
-     *  Encapsulates table elements, i.e. columns and constraints for a type of table that can have a primary key - base tables and usually virtual tables -,
+     *  Encapsulates table elements, i.e. columns and constraints for a type of table that can have a primary key - ordinary tables and usually virtual tables -,
      *  and provides additional methods to those of a generic table definition in order to deal with primary key columns.
      */
     template<class... Cs>
@@ -121,7 +121,7 @@ namespace sqlite_orm::internal {
         template<class L>
         void visit_table_primary_key(L&& lambda) const {
             using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
-            // note: already checked in `validate_base_table_definition()`
+            // note: already checked in `validate_ordinary_table_definition()`
             static_assert(pk_index_sequence::size() <= 1);
             // note: we use the tuple iteration function for simplicity, even if we know there is at most one primary key
             iterate_tuple(this->elements, pk_index_sequence{}, lambda);
@@ -224,7 +224,7 @@ namespace sqlite_orm::internal {
     }
 
     /**
-     *  Mixin for a base table, providing methods used to access a mapped object's member variables for insertion.
+     *  Mixin for an ordinary table, providing methods used to access a mapped object's member variables for insertion.
      *  
      *  Implementation note: it is provided as a mixin to reduce the number of involved template parameters,
      *  which is possible in C++23 mode for 'getters'.

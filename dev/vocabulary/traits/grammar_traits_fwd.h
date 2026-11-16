@@ -25,10 +25,10 @@ namespace sqlite_orm::internal {
     using is_hidden_column = std::bool_constant<is_hidden_column_v<T>>;
 
     template<class T>
-    extern const bool is_base_table_v;
+    extern const bool is_ordinary_table_v;
 
     template<class T>
-    using is_base_table = std::bool_constant<is_base_table_v<T>>;
+    using is_ordinary_table = std::bool_constant<is_ordinary_table_v<T>>;
 
     template<class T>
     extern const bool is_view_v;
@@ -65,7 +65,7 @@ namespace sqlite_orm::internal {
      *
      *  Note: there is deliberately no `is_table_primary_key` counterpart. A table-level PRIMARY KEY is
      *  `is_primary_key_v` and not `is_column_primary_key_v`, and the asymmetry is load-bearing: admitting a
-     *  column PRIMARY KEY among the table elements is what lets `validate_base_table_definition()` diagnose it
+     *  column PRIMARY KEY among the table elements is what lets `validate_ordinary_table_definition()` diagnose it
      *  as an empty table primary key rather than as an unrecognized table element.
      */
     template<class T>

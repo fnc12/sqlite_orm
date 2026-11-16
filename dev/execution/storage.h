@@ -1187,7 +1187,7 @@ namespace sqlite_orm::internal {
         }
 #endif
 
-        template<class Table, satisfies<is_base_table, Table> = true>
+        template<class Table, satisfies<is_ordinary_table, Table> = true>
         sync_schema_result schema_status(const Table& table, sqlite3* db, bool preserve, bool* attempt_to_preserve) {
             if (attempt_to_preserve) {
                 *attempt_to_preserve = true;
@@ -1359,11 +1359,11 @@ namespace sqlite_orm::internal {
         }
 #endif
 
-        template<class Table, satisfies<is_base_table, Table> = true>
+        template<class Table, satisfies<is_ordinary_table, Table> = true>
         sync_schema_result sync_dbo(const Table& table, sqlite3* db, bool preserve);
 
-        template<class Table, satisfies<is_base_table, Table> = true>
-        sync_schema_result sync_regular_base_table(const Table& table, sqlite3* db, bool preserve);
+        template<class Table, satisfies<is_ordinary_table, Table> = true>
+        sync_schema_result sync_ordinary_table(const Table& table, sqlite3* db, bool preserve);
 
         template<class C>
         void add_column(sqlite3* db, const std::string& tableName, const C& column) const {

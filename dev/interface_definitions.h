@@ -10,4 +10,4 @@
 #include "ast/crud/set_definitions.h"
 #include "execution/storage_definitions.h"
 #include "schema/column_definitions.h"
-#include "schema/table_definitions.h"
+#include "schema/ordinary_table_definitions.h"
