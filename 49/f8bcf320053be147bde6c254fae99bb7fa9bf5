@@ -1,0 +1,15 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-16: "Merge latest origin/dev ->
+#1616 -> #1617 -> #1619 -> #1622". First step: dev at e40b9778 into
+#1616's branch (06a82c33). #1612 and #1613 are merged into dev (#1613
+through b20b013d, "Merge #1613 into dev"), so #1616's base is dev now.
+
+# Decided
+- Merged without conflicts; dev brings 12 files, none under dev/:
+  AGENTS.md, CONTRIBUTING.md, docs/internals/home.md, tests/,
+  examples/. The amalgamation pre-commit.sh regenerates equals the
+  merged one.
+
+# Discussed
+Green: pre-commit.sh 0, run twice; token streams of dev/ identical;
+clang-format 20 unchanged; no "on purpose:".
