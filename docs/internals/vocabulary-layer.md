@@ -23,7 +23,7 @@ From the bottom up:
 | Language mechanics | `dev/functional/` | General-purpose C++ utilities, among them pointer-to-member mechanics. Not SQL, not DSL. |
 | DSL vocabulary | `dev/vocabulary/` | Classification of, and computation over, a **single** node or type. |
 | Node definitions | `dev/schema/`, `dev/ast/` | The concrete node structs, each specializing the vocabulary axes in place. |
-| Schema-level algorithms | `dev/schema/algorithms/` | Search/traversal **across a collection** of nodes. Consumes vocabulary; is not vocabulary. |
+| Schema-level algorithms | `dev/schema/algorithms/` | Answers about an element that depend on **other elements of a collection**, or on the collection as a whole. Consumes vocabulary; is not vocabulary. |
 
 ### Pointer-to-member mechanics — one tier below the DSL
 
@@ -69,8 +69,13 @@ accessors extracting a type from a single node.
 composing several traits and projections into a compound answer — a bool, an index sequence,
 a sub-object, a type tuple. One complete definition, never specialized.
 
-Algorithms that search or relate nodes *across a collection* are **not vocabulary**; see
-[Schema-level algorithms](#schema-level-algorithms).
+One test separates them from the schema-level algorithms: **does the answer about an element
+depend on that element alone?** Then it is classification, and vocabulary - a trait, or a
+filter keeping the elements a trait answers yes for (`index_filters.h`). Does it depend on other
+elements of a collection, or on the collection as a whole? Then it is a
+[schema-level algorithm](#schema-level-algorithms): finding the one object that maps a lookup
+type (`table_lookup.h`), ordering objects by their dependencies (`sync_order.h`), summing over
+the tables, or relating a column to the constraints of its table (`table_facts.h`).
 
 ## Deciding where something goes
 
@@ -81,8 +86,12 @@ Algorithms that search or relate nodes *across a collection* are **not vocabular
 > have a node, tell me something about it"?
 > → `vocabulary/algorithms/`
 >
-> **Does it search or traverse across a collection** to locate or relate nodes?
-> → **not vocabulary.** `dev/schema/algorithms/`, possibly feeding a vocabulary algorithm.
+> A node that is itself a collection, such as a table of columns and constraints, counts as a
+> collection: a question that relates its elements to each other is schema-level.
+>
+> **Does the answer about an element depend on other elements of a collection**, or on the
+> collection as a whole?
+> → a schema-level algorithm, in `dev/schema/algorithms/`, possibly feeding a vocabulary algorithm.
 
 - **Complexity never determines the tier.** `is_raw_dml_expression_v` composes grammar
   traits and a projection and is still an open semantic trait; `alias_holder_type_or_none_t`
@@ -121,9 +130,9 @@ The other algorithms files are chosen by what they compute:
 | File | Holds |
 |---|---|
 | `operand_predicates.h` | Whether a type may be an operand of a named expression factory (`are_valid_operands`). |
-| `index_filters.h` | Index sequences of the matching positions in a tuple of nodes — table elements or a flattened expression — not filtered tuples. |
+| `index_filters.h` | Index sequences of the matching positions in a tuple of nodes — table elements, the database objects of a schema or a flattened expression — not filtered tuples. |
 | `accessors.h` | Uniform access to a node's relevant sub-part across dissimilar grammar families (`access_main_select`); the payoff of the semantic traits. Also `mapped_type_of_t`, the mapped object a record set stands for. |
-| `column_field_types.h` | Type tuples over the columns of a single table definition. |
+| `column_fields.h` | The fields of the columns of a single table definition, and the type tuples that go with them. |
 | `argument_placeholders.h` | The return type placeholders of the built-in functions and their structural substitution. |
 | `field_predicates_fwd.h` | Declarations of the field-level predicates; their definitions are spread as described there. |
 | `field_predicates.h` | Definitions of the derived field predicates, reached only through the manifest. |
@@ -210,13 +219,15 @@ algorithms, in `algorithms/recordset_predicates.h`.
 
 ## Schema-level algorithms
 
-`dev/schema/algorithms/` holds algorithms that search or relate nodes **across a
-collection**. They consume vocabulary, which is why they are easily misfiled. The reference
+`dev/schema/algorithms/` holds the algorithms whose answer about an element depends on **other
+elements of a collection**, or on the collection as a whole. They consume vocabulary, which is
+why they are easily misfiled. The reference
 example is `sync_order.h`: a topological sort of the `db_objects_tuple`, relating its members
 rather than classifying a node in hand. `table_lookup.h` finds the database object mapping a
 lookup type ("table" in the wide sense: ordinary tables, views and virtual tables) and feeds it
-into the vocabulary algorithms of `column_field_types.h`,
-`column_lookup.h` a column across the schema, and `table_filters.h` selects tables or views.
+into the vocabulary algorithms of `column_fields.h`,
+`column_lookup.h` a column across the schema, and `table_facts.h` states facts of its tables: how many
+foreign keys they hold, whether a column belongs to a primary key or is unique.
 
 They operate on the **schema**, not on `storage_t`, so they are named `schema_*`, never
 `storage_*`. The facilities for the tuple itself (`db_objects_tuple`, `db_objects_cat`,

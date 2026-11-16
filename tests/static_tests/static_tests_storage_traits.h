@@ -100,7 +100,7 @@ namespace sqlite_orm {
                 using namespace sqlite_orm::internal;
 
                 int res = 0;
-                iterate_tuple<DBOs>(tables_index_sequence<DBOs>{}, [&res](const auto* dummy) {
+                iterate_tuple<DBOs>(ordinary_tables_index_sequence<DBOs>{}, [&res](const auto* dummy) {
                     using table_type = std::remove_pointer_t<decltype(dummy)>;
                     res += table_foreign_keys_target_count<table_type, Target>();
                 });

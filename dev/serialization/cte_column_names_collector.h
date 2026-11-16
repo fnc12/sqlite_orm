@@ -16,6 +16,7 @@
 #include "../functional/type_traits.h"
 #include "../ast/alias.h"
 #include "../error_code.h"
+#include "../schema/algorithms/column_lookup.h"  //  find_column_name, pick_table
 #include "../schema/column_identifier.h"
 #include "../vocabulary/node_algorithms.h"  // access_column_expression, mapped_type_of_t
 #include "../vocabulary/node_traits.h"
