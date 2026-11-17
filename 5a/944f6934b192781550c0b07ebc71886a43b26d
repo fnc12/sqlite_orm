@@ -1,0 +1,11 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-17: #1622 (1d16d924) into
+#1620's branch (304053e9), since #1622 is in review and will be merged
+soon. #1620 was on #1619, now merged into dev; GitHub retargeted it to dev.
+
+# Decided
+- Merged without conflicts; the amalgamation merged on its own, and
+  pre-commit.sh, run twice, regenerates it unchanged (exit 0 both runs,
+  no drift left).
+- The merge brings #1622's renames under dev/serialization/ and dev's
+  merges of #1616, #1617, #1619; none touches #1620's json changes.
