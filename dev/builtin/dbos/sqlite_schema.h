@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the schema table.
+ *
+ *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
+ *  the nodes of `schema/`, gathered by `builtin/dbos.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #endif
@@ -18,6 +25,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  One can infer this fact from the following SQL statement:
      *  It qualifies the set of columns, but bails out with error "no such table: sqlite_schema": `SELECT sqlite_schema.* from sqlite_schema`.
      *  Hence we keep its previous table name `sqlite_master`, and provide `sqlite_schema` as a table alias in sqlite_orm.
+     *
+     *  https://www.sqlite.org/schematab.html
      */
     struct sqlite_master {
         std::string type;
@@ -31,6 +40,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
     };
 
+    /**
+     *  https://www.sqlite.org/schematab.html
+     */
     inline auto make_sqlite_schema_table() {
         return make_table("sqlite_master",
                           make_column("type", &sqlite_master::type),

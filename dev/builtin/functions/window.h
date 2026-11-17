@@ -1,15 +1,12 @@
 #pragma once
 
-/** @file The built-in window functions: ROW_NUMBER(), RANK(), DENSE_RANK(), PERCENT_RANK(), CUME_DIST(),
- *        NTILE(N), LAG(expr), LEAD(expr), FIRST_VALUE(expr), LAST_VALUE(expr) and NTH_VALUE(expr, N).
+/** @file
+ *  Purpose: define the built-in SQL window functions.
  *
- *        They are built-in functions of the window kind, applied by an OVER clause: in C++20 builds definition
- *        objects of `ast/builtin_function.h` (`"ROW_NUMBER"_builtin.window<int()>()`), in C++17 builds legacy
- *        factories over `builtin_window_function_t`. Either way their call nodes are built-in function calls,
- *        classified by `is_builtin_function_call` like those of the scalar and aggregate functions.
- *
- *        Like the headers of the scalar and aggregate functions, this header holds definitions, not nodes, hence it
- *        lives outside `ast/`.
+ *  Intention: a family of built-in SQL functions, as SQLite documents them at
+ *  https://www.sqlite.org/windowfunctions.html#builtins, placed by `docs/internals/source-layout.md`; its functions are
+ *  called through `ast/builtin_function.h`, gathered by `builtin/functions.h`, and
+ *  `.claude/skills/add-builtin-function/SKILL.md` adds to it.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

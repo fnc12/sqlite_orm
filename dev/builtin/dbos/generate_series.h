@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the generate_series table-valued function.
+ *
+ *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
+ *  the nodes of `schema/`, gathered by `builtin/dbos.h`, and `.claude/skills/add-virtual-table/SKILL.md` adds others of
+ *  its kind.
+ */
+
 #include "../../functional/gsl.h"
 #include "../../ast/table_reference.h"
 #include "../../schema/virtual_table.h"
@@ -19,6 +27,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
      *  Data structure for the `generate_series` eponymous virtual table.
+     *
+     *  https://www.sqlite.org/series.html
      */
     struct generate_series {
         int value = 0;
@@ -64,6 +74,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for the `generate_series` default eponymous virtual table.
+     *
+     *  https://www.sqlite.org/series.html
      */
     inline auto make_generate_series_table() {
         return make_virtual_table<generate_series>(internal::generate_series_module_tag::name(),

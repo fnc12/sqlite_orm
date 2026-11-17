@@ -3,7 +3,7 @@
 /** @file
  *  Purpose: define the members of an ordinary table whose bodies need what `schema/ordinary_table.h` stays free of.
  *
- *  Intention: keeps `schema/ordinary_table.h` free of the type printer and of `builtin/dbos/pragma_table_info.h`;
+ *  Intention: keeps `schema/ordinary_table.h` free of the type printer and of `builtin/dbos/pragma_tables.h`;
  *  gathered by `interface_definitions.h`.
  */
 

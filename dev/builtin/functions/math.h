@@ -1,7 +1,12 @@
 #pragma once
 
-/** @file The built-in mathematical functions https://www.sqlite.org/lang_mathfunc.html,
- *        available as of SQLite 3.35.0 [see `SQLITE_ORM_MATH_FUNCTIONS_SUPPORTED` in sqlite3/sqlite3_config.h].
+/** @file
+ *  Purpose: define the built-in mathematical SQL functions.
+ *
+ *  Intention: a family of built-in SQL functions, as SQLite documents them at
+ *  https://www.sqlite.org/lang_mathfunc.html, placed by `docs/internals/source-layout.md`; its functions are called
+ *  through `ast/builtin_function.h`, gathered by `builtin/functions.h`, and
+ *  `.claude/skills/add-builtin-function/SKILL.md` adds to it.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

@@ -1,8 +1,11 @@
 #pragma once
 
-/** @file The rows of `PRAGMA table_info` and `PRAGMA table_xinfo`, and the eponymous virtual tables
- *        `pragma_table_info` and `pragma_table_xinfo` of their PRAGMA functions (C++26 reflection),
- *        bundled by `make_pragma_tables()`.
+/** @file
+ *  Purpose: represent the rows of the PRAGMAs SQLite offers as table-valued functions.
+ *
+ *  Intention: a database object SQLite or an extension provides, placed by `docs/internals/source-layout.md`; built on
+ *  the nodes of `schema/`, gathered by `builtin/dbos.h`, and `.claude/skills/add-virtual-table/SKILL.md` adds others of
+ *  its kind. The storage reads its rows when it syncs the schema.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -19,6 +22,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  A row of `PRAGMA table_info`, and data structure for the `pragma_table_info` eponymous virtual table.
+     *
+     *  https://www.sqlite.org/pragma.html#pragma_table_info
      */
     struct table_info {
         int cid = 0;
@@ -52,6 +57,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  A row of `PRAGMA table_xinfo`, and data structure for the `pragma_table_xinfo` eponymous virtual table.
+     *
+     *  https://www.sqlite.org/pragma.html#pragma_table_xinfo
      */
     struct table_xinfo {
         int cid = 0;
@@ -150,6 +157,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  E.g.
      *  auto storage = make_storage("", make_pragma_tables(), make_table<User>());
+     *
+     *  https://www.sqlite.org/pragma.html#pragfunc
      */
     inline auto make_pragma_tables() {
         return std::tuple{

@@ -1,12 +1,13 @@
 #pragma once
 
-/** @file The FTS5 auxiliary functions `highlight()`, `bm25()` and `snippet()`.
+/** @file
+ *  Purpose: define the FTS5 auxiliary functions.
  *
- *  An FTS5 auxiliary function is an ordinary built-in function whose first argument is the FTS5 table's
- *  hidden column named like the table (`fts5::hidden::any`), which is how SQLite refers to the table
- *  in `bm25(posts)`: `posts` is a column reference. The factories accept that column alone as the first
- *  argument, and the general built-in function machinery does the rest - the column serializes like any
- *  other column and names its table for the FROM clause.
+ *  Intention: a family of built-in SQL functions, as SQLite documents them at
+ *  https://www.sqlite.org/fts5.html#auxiliary_functions, placed by `docs/internals/source-layout.md`; its functions are
+ *  called through `ast/builtin_function.h`, gathered by `builtin/functions.h`, and
+ *  `.claude/skills/add-builtin-function/SKILL.md` adds to it. They take their table through the hidden column of
+ *  `dbos/fts5.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
