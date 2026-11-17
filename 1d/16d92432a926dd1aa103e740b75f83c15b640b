@@ -1,0 +1,10 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-17: dev at 11521abb into #1622's
+branch (e3e365de), after #1616, #1617 and #1619 were merged into dev.
+
+# Decided
+- The merge changes no file: dev's new commits are the three merge
+  commits of the stack below, whose commits this branch already
+  carried; the tree equals e3e365de's.
+- GitHub retargeted #1622 to dev; its body still opens with "Stacked on
+  #1619" and its notes command names origin/docs/purpose-intention-builtin.
