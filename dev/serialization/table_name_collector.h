@@ -18,6 +18,13 @@ namespace sqlite_orm::internal {
         table_name_set table_names;
     };
 
+    /**
+     *  Purpose: find the tables an expression refers to.
+     *
+     *  Intention: a callable for `traversal/ast_iterator.h`, placed by `docs/internals/source-layout.md`; serves the
+     *  statement serializer where a statement leaves its tables implicit, and the dynamic SET of
+     *  `ast/crud/set_definitions.h`.
+     */
     template<class DBOs>
     struct table_name_collector : table_name_collector_base {
         using db_objects_type = DBOs;

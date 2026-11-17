@@ -22,7 +22,7 @@
 #include "result_set/column_result.h"
 #include "schema/cte.h"
 #include "schema/db_objects.h"
-#include "serialization/cte_column_names_collector.h"
+#include "serialization/cte_column_names.h"
 #include "serialization/serializer_context.h"
 #include "vocabulary/node_algorithms.h"  //  access_leftmost_select
 #include "vocabulary/node_traits.h"

@@ -14,6 +14,12 @@
 #include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
+    /**
+     *  Purpose: write the ordering terms of an ORDER BY clause as SQL text.
+     *
+     *  Intention: a part of the statement serializer, which alone includes it, placed by
+     *  `docs/internals/source-layout.md`; `streaming.h` streams a list of ordering terms through it.
+     */
     template<class T, class SFINAE = void>
     struct order_by_serializer;
 
@@ -72,7 +78,6 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
                                                         const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             std::ostringstream ss;
-            ss << static_cast<std::string>(orderBy) << " ";
             static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
 #ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             for (bool first = true; const dynamic_order_by_entry_t& entry: orderBy) {

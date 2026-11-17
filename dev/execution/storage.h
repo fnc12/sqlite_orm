@@ -55,8 +55,8 @@
 #include "../schema/algorithms/table_facts.h"
 #include "../schema/constraints/generated_always.h"  // basic_generated_always
 #include "../serialization/serializer_context.h"
-#include "../serialization/serializing_util.h"
 #include "../serialization/statement_serializer.h"
+#include "../serialization/streaming.h"
 #include "../sqlite3/sqlite3_statements.h"
 #include "../sqlite3/sqlite3_types.h"  //  int64
 #include "../traversal/ast_iterator.h"

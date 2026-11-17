@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: stream pieces of SQL text into the statement being written.
+ *
+ *  Intention: placed by `docs/internals/source-layout.md`; used by the statement serializer and by `execution/`, whose
+ *  storage and PRAGMAs write some statements directly.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <array>
 #include <functional>  //  std::invoke

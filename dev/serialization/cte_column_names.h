@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: name the columns of a CTE.
+ *
+ *  Intention: placed by `docs/internals/source-layout.md`; serves `cte_db_objects.h`, which maps a CTE as a table, and
+ *  the statement serializer, which writes the column list of a CTE; built where CTEs are, from SQLite 3.8.3 with
+ *  `SQLITE_ORM_WITH_CTE`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <functional>  //  std::reference_wrapper

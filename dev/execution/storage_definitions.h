@@ -17,7 +17,7 @@
 #include "../functional/type_traits.h"
 #include "../builtin/dbos/sqlite_schema.h"
 #include "../schema/column_identifier.h"
-#include "../serialization/serializing_util.h"
+#include "../serialization/streaming.h"
 #include "../sqlite3/sqlite3_errors.h"
 #include "../sqlite3/sqlite3_statements.h"
 #include "../vocabulary/node_traits.h"

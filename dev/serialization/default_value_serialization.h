@@ -13,7 +13,11 @@ namespace sqlite_orm::internal {
     auto serialize(const T& t, const Ctx& context);
 
     /**
-     *  Serialize a column's default value.
+     *  Purpose: write a column's default value as SQL text, apart from a statement.
+     *
+     *  Intention: serves `schema/column_definitions.h`: a column's default as the storage compares it with the
+     *  database's when it syncs the schema; declares the serializer's entry point, which `statement_serializer.h`
+     *  defines.
      */
     template<class T>
     std::string serialize_default_value(const default_t<T>& dft) {
