@@ -28,7 +28,7 @@
 #include "../marshaling/row_extractor.h"
 #include "../marshaling/values_to_tuple.h"
 #include "../serialization/quoting.h"
-#include "../serialization/serializing_util.h"
+#include "../serialization/streaming.h"
 #include "../sqlite3/sqlite3_errors.h"
 #include "../sqlite3/sqlite3_statements.h"
 #include "../sqlite3/sqlite3_types.h"  //  int64

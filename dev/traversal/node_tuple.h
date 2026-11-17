@@ -15,6 +15,15 @@
 #include "../vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
+    /**
+     *  Purpose: flatten an expression tree into the types of its leaves.
+     *
+     *  Intention: a customization point a node specializes, grammar-matching it as `docs/internals/vocabulary-layer.md`
+     *  "How consumers match a node" holds, and `.claude/skills/add-dsl-node/SKILL.md` adds to it; placed by
+     *  `docs/internals/source-layout.md` "Vocabulary and traversal"; `execution/get_prepared_statement.h` finds the
+     *  type of a bound value through it and the value itself through `ast_iterator.h`, so the two keep a node's
+     *  children in the same order.
+     */
     template<class T, class SFINAE = void>
     struct node_tuple {
         using type = std::tuple<T>;

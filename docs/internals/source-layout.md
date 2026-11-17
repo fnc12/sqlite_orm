@@ -36,10 +36,11 @@ which takes precedence where both apply.
 
 ## From expressions to SQL and values
 
-- `dev/serialization/` - The statement serializer, its context, and the helpers only it uses:
-  quoting (`quoting.h`), streaming utilities, and the collectors walking an expression for what
-  serialization needs (`table_name_collector.h`). The customization points it calls are not
-  its own; they are type mapping and marshaling.
+- `dev/serialization/` - Writing SQL text: the statement serializer, its context, quoting
+  (`quoting.h`), the streaming of SQL text (`streaming.h`), and the collectors walking an
+  expression for what serialization needs (`table_name_collector.h`). The storage and the nodes
+  that serialize their own entries use them too. The customization points it calls belong to
+  type mapping and marshaling.
 - `dev/type_mapping/` - The type-level mapping of C++ types onto SQLite's, as public
   customization points: the declared SQLite type (`type_printer.h`), nullability
   (`type_is_nullable.h`, `is_std_ptr.h`). Converting values is not type mapping but marshaling.

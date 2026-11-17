@@ -45,13 +45,21 @@
 #include "../vocabulary/node_fwd.h"  // column_constraints
 #include "../vocabulary/node_traits.h"
 #include "column_expressions_collector.h"
-#include "cte_column_names_collector.h"
+#include "cte_column_names.h"
 #include "order_by_serializer.h"
 #include "quoting.h"
-#include "serializing_util.h"
+#include "streaming.h"
 #include "table_name_collector.h"
 
 namespace sqlite_orm::internal {
+    /**
+     *  Purpose: write a node of the DSL or of the schema as SQL text.
+     *
+     *  Intention: a customization point a node specializes, grammar-matching it as `docs/internals/vocabulary-layer.md`
+     *  "How consumers match a node" holds, and `.claude/skills/add-dsl-node/SKILL.md` adds to it; placed by
+     *  `docs/internals/source-layout.md`; draws on the helpers of `serialization/`, and on `type_mapping/` and
+     *  `marshaling/` for the types and values it writes; the storage runs the SQL it writes.
+     */
     template<class T, class SFINAE = void>
     struct statement_serializer;
 
@@ -2254,8 +2262,7 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::ostringstream ss;
-            ss << static_cast<std::string>(orderBy) << " ";
-            ss << serialize_order_by(orderBy, context);
+            ss << "ORDER BY " << serialize_order_by(orderBy, context);
             return ss.str();
         }
     };
@@ -2267,7 +2274,7 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize_order_by(orderBy, context);
+            return "ORDER BY " + serialize_order_by(orderBy, context);
         }
     };
 
@@ -2279,7 +2286,7 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::ostringstream ss;
-            ss << static_cast<std::string>(orderBy) << " " << streaming_expressions_tuple(orderBy.args, context);
+            ss << "ORDER BY " << streaming_expressions_tuple(orderBy.args, context);
             return ss.str();
         }
     };

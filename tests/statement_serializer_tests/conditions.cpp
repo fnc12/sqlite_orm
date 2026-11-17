@@ -4,7 +4,8 @@
 using namespace sqlite_orm;
 
 TEST_CASE("statement_serializer conditions") {
-    std::string value, expected;
+    std::string value;
+    std::string expected;
 
     struct User {
         int64 id;

@@ -32,17 +32,11 @@ namespace sqlite_orm::internal {
         int _nulls = 0;  //  1 = nulls first, -1 = nulls last, 0 = unspecified
     };
 
-    struct order_by_string {
-        operator std::string() const {
-            return "ORDER BY";
-        }
-    };
-
     /**
      *  ORDER BY argument holder.
      */
     template<class O>
-    struct order_by_t : order_by_base, order_by_string {
+    struct order_by_t : order_by_base {
         using expression_type = O;
 
         expression_type _expression;
@@ -114,12 +108,10 @@ namespace sqlite_orm::internal {
      *  ORDER BY pack holder.
      */
     template<class... Args>
-    struct multi_order_by_t : order_by_string {
+    struct multi_order_by_t {
         using args_type = std::tuple<Args...>;
 
         args_type args;
-
-        multi_order_by_t(args_type args_) : args{std::move(args_)} {}
     };
 
     template<class T>
@@ -136,7 +128,7 @@ namespace sqlite_orm::internal {
      *  C - serializer context class
      */
     template<class C>
-    struct dynamic_order_by_t : order_by_string {
+    struct dynamic_order_by_t {
         using context_t = C;
         using entry_t = dynamic_order_by_entry_t;
         using const_iterator = typename std::vector<entry_t>::const_iterator;
@@ -166,7 +158,7 @@ namespace sqlite_orm::internal {
             this->entries.clear();
         }
 
-      protected:
+      private:
         std::vector<entry_t> entries;
         context_t context;
     };

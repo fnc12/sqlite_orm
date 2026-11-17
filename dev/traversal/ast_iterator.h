@@ -15,20 +15,17 @@
 
 namespace sqlite_orm::internal {
     /**
-     *  ast_iterator accepts any expression and a callable object
-     *  which will be called for any node of provided expression.
-     *  E.g. if we pass `where(is_equal(5, max(&User::id, 10))` then
-     *  callable object will be called with 5, &User::id and 10.
-     *  ast_iterator is used in finding literals to be bound to
-     *  a statement, and to collect table names.
-     *  
-     *  Note that not all leaves of the expression tree are visited:
-     *  Column expressions can be more complex, but are passed as a whole to the callable.
-     *  Examples are `column_pointer<>` and `alias_qualified_column_t<>`.
-     *  
-     *  To use `ast_iterator` call `iterate_ast(object, callable);`
-     *  
-     *  `T` is an ast element, e.g. where_t
+     *  Purpose: traverse the nodes of an expression tree.
+     *
+     *  Intention: a customization point a node specializes, grammar-matching it as `docs/internals/vocabulary-layer.md`
+     *  "How consumers match a node" holds, and `.claude/skills/add-dsl-node/SKILL.md` adds to it; placed by
+     *  `docs/internals/source-layout.md` "Vocabulary and traversal"; the binding of parameters in `execution/` and
+     *  `result_set/`, the collection of table names and the lookup of a bound value in
+     *  `execution/get_prepared_statement.h` walk through it.
+     *
+     *  The callable handed to `iterate_ast` is called with each leaf: `where(is_equal(5, max(&User::id, 10)))` calls it
+     *  with 5, `&User::id` and 10. Column expressions such as `column_pointer<>` and `alias_qualified_column_t<>` reach
+     *  the callable whole, rather than leaf by leaf.
      */
     template<class T, class SFINAE = void>
     struct ast_iterator {
