@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent a virtual table.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>  // std::convertible_to
@@ -86,7 +93,6 @@ namespace sqlite_orm::internal {
      *  Encapsulates the intermediary (and temporary) `using_module(...)` expression.
      *  
      *  Implementation note: When making the virtual table this virtual table definition is unpacked into the virtual table type itself.
-     *  If desired or necessary one day, derive `virtual_table` from it, similar to `ordinary_table` deriving from `ordinary_table_definition`.
      */
     template<class M, class... Cs>
     struct virtual_table_definition : virtual_table_traits<M, Cs...>::definition_type {
@@ -126,6 +132,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *  
      *  [Deprecation notice] This factory function is deprecated and will be removed in v1.11.
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<class O, class M, class... Cs>
     internal::virtual_table<O, M, Cs...>
@@ -137,6 +145,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *  
      *  The mapped object type is explicitly specified.
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<class O, class M, class... Cs>
     internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
@@ -148,6 +158,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *  
      *  The mapped object type is determined implicitly from the first column definition.
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
@@ -160,6 +172,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a virtual table.
      *  
      *  The mapped object type is explicitly specified.
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<orm_table_reference auto table, class M, class... Cs>
     auto make_virtual_table(std::string name, internal::virtual_table_definition<M, Cs...> definition) {
@@ -196,6 +210,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  annotation of the mapped object type supplies the table name (otherwise the type's reflected identifier is used).
      *
      *  Example: `make_virtual_table(using_fts5<Post>(tokenize("porter")))`
+     *
+     *  https://www.sqlite.org/lang_createvtab.html
      */
     template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     auto make_virtual_table(internal::virtual_table_definition<M, Cs...> definition) {

@@ -1,7 +1,9 @@
 #pragma once
 
-/** @file Out-of-class definitions of column members, which need the statement serializer's machinery
- *  (`default_value_extractor.h`) that `schema/column.h` stays free of.
+/** @file
+ *  Purpose: define the members of a column whose bodies need the statement serializer.
+ *
+ *  Intention: keeps `schema/column.h` free of the serializer; gathered by `interface_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

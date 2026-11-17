@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the FOREIGN KEY constraint.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <functional>  //  std::ref
 #include <ostream>  //  std::ostream
@@ -274,6 +281,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  FOREIGN KEY constraint factory function taking one or more fields, which can either be pointers to class members or column pointers.
      *  Available since SQLite 3.6.19
+     *
+     *  https://www.sqlite.org/foreignkeys.html
      */
     template<class... Cs>
     constexpr internal::foreign_key_intermediate_t<Cs...> foreign_key(Cs... columns) {
@@ -284,6 +293,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  FOREIGN KEY constraint factory function taking one or more fields that are member pointers of base classes,
      *  specifying the derived class as an explicit template argument.
      *  Available since SQLite 3.6.19
+     *
+     *  https://www.sqlite.org/foreignkeys.html
      */
     template<class O, class... Base, class... F>
     constexpr internal::foreign_key_intermediate_t<F O::*...> foreign_key(F Base::*... columns) {
@@ -297,6 +308,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  FOREIGN KEY constraint factory function taking one or more fields that are member pointers of base classes,
      *  specifying the derived class as an explicit template argument.
      *  Available since SQLite 3.6.19
+     *
+     *  https://www.sqlite.org/foreignkeys.html
      */
     template<orm_table_reference auto table, class... Base, class... F>
     constexpr auto foreign_key(F Base::*... columns) {

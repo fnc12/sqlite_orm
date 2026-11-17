@@ -1,7 +1,10 @@
 #pragma once
 
-/** @file Out-of-class definitions of table members, which need the column type printer (`type_printer.h`)
- *  that `schema/ordinary_table.h` stays free of.
+/** @file
+ *  Purpose: define the members of an ordinary table whose bodies need what `schema/ordinary_table.h` stays free of.
+ *
+ *  Intention: keeps `schema/ordinary_table.h` free of the type printer and of `builtin/dbos/pragma_table_info.h`;
+ *  gathered by `interface_definitions.h`.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

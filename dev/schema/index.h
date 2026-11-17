@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent an index.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple, std::declval, std::tuple_element_t
@@ -10,6 +17,7 @@
 #include "../functional/mpl/convenience.h"
 #include "../vocabulary/node_algorithms.h"  // is_statement_clause, is_index_element_of_v
 #include "../vocabulary/node_traits.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "indexed_column.h"  // make_indexed_column
 
 namespace sqlite_orm::internal {
@@ -42,6 +50,9 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  https://www.sqlite.org/lang_createindex.html
+     */
     template<class T, class... Cols>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {
@@ -50,6 +61,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createindex.html
+     */
     template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {
@@ -58,6 +72,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), false, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createindex.html#uniqueidx
+     */
     template<class T, class... Cols>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_unique_index(std::string name, Cols... cols) {
@@ -66,6 +83,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(name), true, std::tuple{make_indexed_column(std::move(cols))...}};
     }
 
+    /**
+     *  https://www.sqlite.org/lang_createindex.html#uniqueidx
+     */
     template<class... Cols, class T = internal::table_type_of_t<std::tuple_element_t<0, std::tuple<Cols...>>>>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_unique_index(std::string name, Cols... cols) {

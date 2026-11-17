@@ -1,15 +1,10 @@
 #pragma once
 
-/** @file Compile-time computation of the database object synchronization order.
+/** @file
+ *  Purpose: order the database objects of a schema so that each is synced after those SQLite needs before it.
  *
- *  `sync_schema()` must sync database objects in dependency order, not in declaration order:
- *  SQLite refuses to create an index or a trigger whose target table (or view) doesn't exist yet,
- *  and recreating a table (or a view) destroys its dependent indexes and triggers,
- *  which therefore must be synced afterwards in order to be recreated.
- *
- *  These are the only hard creation-time dependencies in SQLite -
- *  foreign keys, view selects, trigger bodies and fts5 external content are validated lazily
- *  at DML time and don't constrain the order.
+ *  Intention: a schema-level algorithm, placed by `docs/internals/vocabulary-layer.md` "Schema-level algorithms";
+ *  consumes the vocabulary layer.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -43,6 +38,12 @@ namespace sqlite_orm::internal {
      *  until after their target table or view.
      *  The dependency graph is trivially acyclic since indexes and triggers depend on tables and views only,
      *  which in turn depend on nothing.
+     *
+     *  `sync_schema()` syncs the database objects in this order: SQLite creates an index or a trigger
+     *  once its target table or view exists, and recreating a table or a view drops its indexes and triggers,
+     *  which are synced after it and so recreated.
+     *  These are SQLite's creation-time dependencies; foreign keys, view selects, trigger bodies
+     *  and the external content of an FTS5 table are resolved when a statement runs, and leave the order free.
      */
     template<class... DBO>
     constexpr std::array<size_t, sizeof...(DBO)> compute_sync_order() {

@@ -1,11 +1,10 @@
 #pragma once
 
-/** @file The tuple of database objects making up a schema.
+/** @file
+ *  Purpose: represent a schema as the tuple of its database objects.
  *
- *  A schema is represented as a tuple of database objects - tables, views, virtual tables,
- *  indexes and triggers. These are the generic facilities for recognizing and passing around
- *  such a tuple, and unpacking the tuples of database objects passed to `make_storage()`;
- *  locating an individual database object within one is the subject of `algorithms/table_lookup.h`.
+ *  Intention: set apart from the algorithms in `algorithms/` by `docs/internals/vocabulary-layer.md` "Schema-level
+ *  algorithms"; its tuple is what those algorithms and `make_storage()` take.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE

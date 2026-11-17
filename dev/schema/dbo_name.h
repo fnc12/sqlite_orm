@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: name a database object by an annotation on its mapped class.
+ *
+ *  Intention: read through C++26 reflection by the reflecting factories of the table, view and virtual table headers in
+ *  `schema/`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 #include <string_view>  //  std::string_view

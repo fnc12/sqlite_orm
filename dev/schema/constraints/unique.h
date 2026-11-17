@@ -1,5 +1,12 @@
 #pragma once
 
+/** @file
+ *  Purpose: represent the UNIQUE constraint.
+ *
+ *  Intention: a node header of `schema/`, placed by `docs/internals/source-layout.md`; specializes the vocabulary axes
+ *  in place, as `docs/internals/vocabulary-layer.md` holds, and is gathered by `node_definitions.h`.
+ */
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple
@@ -35,6 +42,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  UNIQUE table constraint factory function.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#uniqueconst
      */
     template<class... Args>
     constexpr internal::unique_t<Args...> unique(Args... args) {
@@ -43,6 +52,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  UNIQUE column constraint factory function.
+     *
+     *  https://www.sqlite.org/lang_createtable.html#uniqueconst
      */
     constexpr internal::unique_t<> unique() {
         return {{}};
