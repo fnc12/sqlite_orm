@@ -35808,14 +35808,33 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #pragma once
 
-/** @file Umbrella header for the asynchronous storage:
- *        `async_storage` and `make_async_storage()`, the `task` its operations return, the `io_context` driving
- *        them and the conveniences `when_all()` and `io_pool`.
+/** @file
+ *  Purpose: offer the storage's interface to coroutines, without blocking the thread on file I/O.
  *
- *        Their contents exist only where `SQLITE_ORM_WITH_ASYNC` is defined.
+ *  Intention: realizes `async_storage` and `make_async_storage()` over the unchanged synchronous storage of
+ *  `execution/storage.h`, each operation running on a fiber of the storage's `io_context`; uses `async_vfs.h`.
  */
 
-// #include "functional/coroutines/task.h"
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <coroutine>  //  std::coroutine_handle
+#include <cstddef>  //  std::size_t
+#include <deque>  //  std::deque
+#include <functional>  //  std::function
+#include <memory>  //  std::unique_ptr, std::make_unique, std::shared_ptr
+#include <stdexcept>  //  std::logic_error, std::runtime_error
+#include <string>  //  std::string
+#include <string_view>  //  std::string_view
+#include <tuple>  //  std::tuple, std::make_tuple, std::apply
+#include <type_traits>  //  std::invoke_result_t, std::is_void_v, std::is_same_v, std::decay_t
+#include <utility>  //  std::forward, std::move
+#include <vector>  //  std::vector
+#endif
+#endif
+
+// #include "../functional/cxx_polyfill/functional.h"
+//  polyfill::identity
+// #include "../functional/coroutines/task.h"
 
 /** @file
  *  Purpose: be the coroutine type an asynchronous storage operation returns.
@@ -36027,119 +36046,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
-// #include "functional/coroutines/when_all.h"
-
-/** @file
- *  Purpose: await several tasks concurrently.
- *
- *  Intention: a convenience on top of `task.h` for applications, which the storage itself does not need.
- */
-
-#ifdef SQLITE_ORM_WITH_ASYNC
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <coroutine>  //  std::coroutine_handle, std::suspend_never
-#include <cstddef>  //  std::size_t
-#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception, std::terminate
-#include <optional>  //  std::optional
-#include <utility>  //  std::move
-#include <vector>  //  std::vector
-#endif
-#endif
-
-// #include "task.h"
-
-#ifdef SQLITE_ORM_WITH_ASYNC
-namespace sqlite_orm::internal {
-
-    struct count_down {
-        std::size_t remaining;
-        std::coroutine_handle<> waiter;
-    };
-
-    struct fire_and_forget {
-        struct promise_type {
-            fire_and_forget get_return_object() noexcept {
-                return {};
-            }
-
-            std::suspend_never initial_suspend() noexcept {
-                return {};
-            }
-
-            std::suspend_never final_suspend() noexcept {
-                return {};
-            }
-
-            void return_void() noexcept {}
-
-            void unhandled_exception() noexcept {
-                std::terminate();
-            }
-        };
-    };
-
-    template<class T>
-    fire_and_forget
-    start_one(task<T>& oneTask, count_down& countDown, std::optional<T>& result, std::exception_ptr& error) {
-        try {
-            result.emplace(co_await oneTask);
-        } catch (...) {
-            error = std::current_exception();
-        }
-        if (--countDown.remaining == 0) {
-            countDown.waiter.resume();
-        }
-    }
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-
-    /**
-     *  Start every task, run them concurrently, return all results in order.
-     *  Rethrows the first exception after all tasks have finished.
-     */
-    template<class T>
-    task<std::vector<T>> when_all(std::vector<task<T>> tasks) {
-        std::vector<std::optional<T>> results(tasks.size());
-        std::vector<std::exception_ptr> errors(tasks.size());
-        internal::count_down countDown{tasks.size() + 1, {}};  //  +1: held while starting
-        struct joiner {
-            internal::count_down& countDown;
-            std::vector<task<T>>& tasks;
-            std::vector<std::optional<T>>& results;
-            std::vector<std::exception_ptr>& errors;
-
-            bool await_ready() const noexcept {
-                return this->tasks.empty();
-            }
-
-            bool await_suspend(std::coroutine_handle<> handle) {
-                this->countDown.waiter = handle;
-                for (std::size_t index = 0; index < this->tasks.size(); ++index) {
-                    internal::start_one(this->tasks[index], this->countDown, this->results[index], this->errors[index]);
-                }
-                return --this->countDown.remaining != 0;  //  false: everything finished synchronously
-            }
-
-            void await_resume() noexcept {}
-        };
-        co_await joiner{countDown, tasks, results, errors};
-        for (std::exception_ptr& error: errors) {
-            if (error) {
-                std::rethrow_exception(error);
-            }
-        }
-        std::vector<T> output;
-        output.reserve(results.size());
-        for (std::optional<T>& result: results) {
-            output.push_back(std::move(*result));
-        }
-        co_return output;
-    }
-}
-#endif
-
-// #include "async/io_context.h"
+// #include "../async/io_context.h"
 
 /** @file
  *  Purpose: drive the asynchronous storages of one thread: their I/O, their fibers and the coroutines awaiting them.
@@ -37444,198 +37351,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     };
 }
 #endif
-
-// #include "async/io_pool.h"
-
-/** @file
- *  Purpose: spread work over several threads, each with its own `io_context`.
- *
- *  Intention: a convenience on top of `io_context.h` for applications that want I/O parallelism across storages.
- */
-
-#ifdef SQLITE_ORM_WITH_ASYNC
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <atomic>  //  std::atomic
-#include <coroutine>  //  std::coroutine_handle
-#include <cstddef>  //  std::size_t
-#include <exception>  //  std::current_exception, std::terminate
-#include <future>  //  std::promise, std::future
-#include <memory>  //  std::unique_ptr, std::shared_ptr, std::make_shared
-#include <thread>  //  std::thread
-#include <type_traits>  //  std::invoke_result_t, std::is_void_v
-#include <utility>  //  std::move
-#include <vector>  //  std::vector
-#endif
-#endif
-
-// #include "io_context.h"
-
-#ifdef SQLITE_ORM_WITH_ASYNC
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-
-    /**
-     *  M:N: `size` worker threads, each running its own io_context. Work is
-     *  spread round-robin; a coroutine that awaits pool.async(function) is resumed
-     *  back on the io_context it was running on.
-     */
-    class io_pool {
-      public:
-        explicit io_pool(unsigned size, unsigned queueDepth = 256) {
-            for (unsigned index = 0; index < size; ++index) {
-                this->workers.push_back(std::make_unique<io_context>(queueDepth));
-            }
-            for (auto& worker: this->workers) {
-                this->threads.emplace_back([&worker] {
-                    worker->run_forever();
-                });
-            }
-        }
-
-        ~io_pool() {
-            this->shutdown();
-        }
-
-        io_pool(const io_pool&) = delete;
-        io_pool& operator=(const io_pool&) = delete;
-
-        std::size_t size() const noexcept {
-            return this->workers.size();
-        }
-
-        io_context& worker(std::size_t index) noexcept {
-            return *this->workers[index];
-        }
-
-        void shutdown() {
-            if (this->threads.empty()) {
-                return;
-            }
-            for (auto& worker: this->workers) {
-                worker->stop();
-            }
-            for (auto& thread: this->threads) {
-                thread.join();
-            }
-            this->threads.clear();
-        }
-
-        /**
-         *  Awaitable from a coroutine running on any io_context (pool worker or an
-         *  external one): run `function` on a fiber of some worker, resume the
-         *  awaiting coroutine on its own io_context.
-         */
-        template<class F>
-        auto async(F function) {
-            using result_type = std::invoke_result_t<F&>;
-            struct awaitable {
-                io_pool* pool;
-                F function;
-                internal::result_box<result_type> box;
-
-                bool await_ready() const noexcept {
-                    return false;
-                }
-
-                void await_suspend(std::coroutine_handle<> handle) {
-                    io_context* origin = io_context::current();
-                    if (!origin) {
-                        std::terminate();  //  must be awaited from an io_context
-                    }
-                    io_context* worker = this->pool->pick();
-                    worker->post([this, handle, origin, worker] {
-                        worker->scheduler_.spawn([this, handle, origin] {
-                            try {
-                                if constexpr (std::is_void_v<result_type>) {
-                                    this->function();
-                                } else {
-                                    this->box.set(this->function());
-                                }
-                            } catch (...) {
-                                this->box.error = std::current_exception();
-                            }
-                            origin->resume_here(handle);
-                        });
-                    });
-                }
-
-                result_type await_resume() {
-                    return this->box.take();
-                }
-            };
-            return awaitable{this, std::move(function), {}};
-        }
-
-        /**
-         *  Blocking variant for plain (non-coroutine) callers on any thread.
-         */
-        template<class F>
-        auto run_blocking(F function) -> std::invoke_result_t<F&> {
-            using result_type = std::invoke_result_t<F&>;
-            auto promise = std::make_shared<std::promise<result_type>>();
-            std::future<result_type> future = promise->get_future();
-            auto sharedFunction = std::make_shared<F>(std::move(function));
-            io_context* worker = this->pick();
-            worker->post([worker, sharedFunction, promise] {
-                worker->scheduler_.spawn([sharedFunction, promise] {
-                    try {
-                        if constexpr (std::is_void_v<result_type>) {
-                            (*sharedFunction)();
-                            promise->set_value();
-                        } else {
-                            promise->set_value((*sharedFunction)());
-                        }
-                    } catch (...) {
-                        promise->set_exception(std::current_exception());
-                    }
-                });
-            });
-            return future.get();
-        }
-
-      private:
-        io_context* pick() {
-            const std::size_t index = this->next.fetch_add(1, std::memory_order_relaxed) % this->workers.size();
-            return this->workers[index].get();
-        }
-
-        std::vector<std::unique_ptr<io_context>> workers;
-        std::vector<std::thread> threads;
-        std::atomic<std::size_t> next{0};
-    };
-}
-#endif
-
-// #include "execution/async_storage.h"
-
-/** @file
- *  Purpose: offer the storage's interface to coroutines, without blocking the thread on file I/O.
- *
- *  Intention: realizes `async_storage` and `make_async_storage()` over the unchanged synchronous storage of
- *  `execution/storage.h`, each operation running on a fiber of the storage's `io_context`; uses `async_vfs.h`.
- */
-
-#ifdef SQLITE_ORM_WITH_ASYNC
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <coroutine>  //  std::coroutine_handle
-#include <cstddef>  //  std::size_t
-#include <deque>  //  std::deque
-#include <functional>  //  std::function
-#include <memory>  //  std::unique_ptr, std::make_unique, std::shared_ptr
-#include <stdexcept>  //  std::logic_error, std::runtime_error
-#include <string>  //  std::string
-#include <string_view>  //  std::string_view
-#include <tuple>  //  std::tuple, std::make_tuple, std::apply
-#include <type_traits>  //  std::invoke_result_t, std::is_void_v, std::is_same_v, std::decay_t
-#include <utility>  //  std::forward, std::move
-#include <vector>  //  std::vector
-#endif
-#endif
-
-// #include "../functional/cxx_polyfill/functional.h"
-//  polyfill::identity
-// #include "../functional/coroutines/task.h"
-
-// #include "../async/io_context.h"
 
 // #include "../result_set/async_cursor.h"
 
@@ -39119,7 +38834,276 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 #endif
+#pragma once
 
+/** @file
+ *  Purpose: spread work over several threads, each with its own `io_context`.
+ *
+ *  Intention: a convenience on top of `io_context.h` for applications that want I/O parallelism across storages.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <atomic>  //  std::atomic
+#include <coroutine>  //  std::coroutine_handle
+#include <cstddef>  //  std::size_t
+#include <exception>  //  std::current_exception, std::terminate
+#include <future>  //  std::promise, std::future
+#include <memory>  //  std::unique_ptr, std::shared_ptr, std::make_shared
+#include <thread>  //  std::thread
+#include <type_traits>  //  std::invoke_result_t, std::is_void_v
+#include <utility>  //  std::move
+#include <vector>  //  std::vector
+#endif
+#endif
+
+// #include "io_context.h"
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  M:N: `size` worker threads, each running its own io_context. Work is
+     *  spread round-robin; a coroutine that awaits pool.async(function) is resumed
+     *  back on the io_context it was running on.
+     */
+    class io_pool {
+      public:
+        explicit io_pool(unsigned size, unsigned queueDepth = 256) {
+            for (unsigned index = 0; index < size; ++index) {
+                this->workers.push_back(std::make_unique<io_context>(queueDepth));
+            }
+            for (auto& worker: this->workers) {
+                this->threads.emplace_back([&worker] {
+                    worker->run_forever();
+                });
+            }
+        }
+
+        ~io_pool() {
+            this->shutdown();
+        }
+
+        io_pool(const io_pool&) = delete;
+        io_pool& operator=(const io_pool&) = delete;
+
+        std::size_t size() const noexcept {
+            return this->workers.size();
+        }
+
+        io_context& worker(std::size_t index) noexcept {
+            return *this->workers[index];
+        }
+
+        void shutdown() {
+            if (this->threads.empty()) {
+                return;
+            }
+            for (auto& worker: this->workers) {
+                worker->stop();
+            }
+            for (auto& thread: this->threads) {
+                thread.join();
+            }
+            this->threads.clear();
+        }
+
+        /**
+         *  Awaitable from a coroutine running on any io_context (pool worker or an
+         *  external one): run `function` on a fiber of some worker, resume the
+         *  awaiting coroutine on its own io_context.
+         */
+        template<class F>
+        auto async(F function) {
+            using result_type = std::invoke_result_t<F&>;
+            struct awaitable {
+                io_pool* pool;
+                F function;
+                internal::result_box<result_type> box;
+
+                bool await_ready() const noexcept {
+                    return false;
+                }
+
+                void await_suspend(std::coroutine_handle<> handle) {
+                    io_context* origin = io_context::current();
+                    if (!origin) {
+                        std::terminate();  //  must be awaited from an io_context
+                    }
+                    io_context* worker = this->pool->pick();
+                    worker->post([this, handle, origin, worker] {
+                        worker->scheduler_.spawn([this, handle, origin] {
+                            try {
+                                if constexpr (std::is_void_v<result_type>) {
+                                    this->function();
+                                } else {
+                                    this->box.set(this->function());
+                                }
+                            } catch (...) {
+                                this->box.error = std::current_exception();
+                            }
+                            origin->resume_here(handle);
+                        });
+                    });
+                }
+
+                result_type await_resume() {
+                    return this->box.take();
+                }
+            };
+            return awaitable{this, std::move(function), {}};
+        }
+
+        /**
+         *  Blocking variant for plain (non-coroutine) callers on any thread.
+         */
+        template<class F>
+        auto run_blocking(F function) -> std::invoke_result_t<F&> {
+            using result_type = std::invoke_result_t<F&>;
+            auto promise = std::make_shared<std::promise<result_type>>();
+            std::future<result_type> future = promise->get_future();
+            auto sharedFunction = std::make_shared<F>(std::move(function));
+            io_context* worker = this->pick();
+            worker->post([worker, sharedFunction, promise] {
+                worker->scheduler_.spawn([sharedFunction, promise] {
+                    try {
+                        if constexpr (std::is_void_v<result_type>) {
+                            (*sharedFunction)();
+                            promise->set_value();
+                        } else {
+                            promise->set_value((*sharedFunction)());
+                        }
+                    } catch (...) {
+                        promise->set_exception(std::current_exception());
+                    }
+                });
+            });
+            return future.get();
+        }
+
+      private:
+        io_context* pick() {
+            const std::size_t index = this->next.fetch_add(1, std::memory_order_relaxed) % this->workers.size();
+            return this->workers[index].get();
+        }
+
+        std::vector<std::unique_ptr<io_context>> workers;
+        std::vector<std::thread> threads;
+        std::atomic<std::size_t> next{0};
+    };
+}
+#endif
+#pragma once
+
+/** @file
+ *  Purpose: await several tasks concurrently.
+ *
+ *  Intention: a convenience on top of `task.h` for applications, which the storage itself does not need.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <coroutine>  //  std::coroutine_handle, std::suspend_never
+#include <cstddef>  //  std::size_t
+#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception, std::terminate
+#include <optional>  //  std::optional
+#include <utility>  //  std::move
+#include <vector>  //  std::vector
+#endif
+#endif
+
+// #include "task.h"
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+namespace sqlite_orm::internal {
+
+    struct count_down {
+        std::size_t remaining;
+        std::coroutine_handle<> waiter;
+    };
+
+    struct fire_and_forget {
+        struct promise_type {
+            fire_and_forget get_return_object() noexcept {
+                return {};
+            }
+
+            std::suspend_never initial_suspend() noexcept {
+                return {};
+            }
+
+            std::suspend_never final_suspend() noexcept {
+                return {};
+            }
+
+            void return_void() noexcept {}
+
+            void unhandled_exception() noexcept {
+                std::terminate();
+            }
+        };
+    };
+
+    template<class T>
+    fire_and_forget
+    start_one(task<T>& oneTask, count_down& countDown, std::optional<T>& result, std::exception_ptr& error) {
+        try {
+            result.emplace(co_await oneTask);
+        } catch (...) {
+            error = std::current_exception();
+        }
+        if (--countDown.remaining == 0) {
+            countDown.waiter.resume();
+        }
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  Start every task, run them concurrently, return all results in order.
+     *  Rethrows the first exception after all tasks have finished.
+     */
+    template<class T>
+    task<std::vector<T>> when_all(std::vector<task<T>> tasks) {
+        std::vector<std::optional<T>> results(tasks.size());
+        std::vector<std::exception_ptr> errors(tasks.size());
+        internal::count_down countDown{tasks.size() + 1, {}};  //  +1: held while starting
+        struct joiner {
+            internal::count_down& countDown;
+            std::vector<task<T>>& tasks;
+            std::vector<std::optional<T>>& results;
+            std::vector<std::exception_ptr>& errors;
+
+            bool await_ready() const noexcept {
+                return this->tasks.empty();
+            }
+
+            bool await_suspend(std::coroutine_handle<> handle) {
+                this->countDown.waiter = handle;
+                for (std::size_t index = 0; index < this->tasks.size(); ++index) {
+                    internal::start_one(this->tasks[index], this->countDown, this->results[index], this->errors[index]);
+                }
+                return --this->countDown.remaining != 0;  //  false: everything finished synchronously
+            }
+
+            void await_resume() noexcept {}
+        };
+        co_await joiner{countDown, tasks, results, errors};
+        for (std::exception_ptr& error: errors) {
+            if (error) {
+                std::rethrow_exception(error);
+            }
+        }
+        std::vector<T> output;
+        output.reserve(results.size());
+        for (std::optional<T>& result: results) {
+            output.push_back(std::move(*result));
+        }
+        co_return output;
+    }
+}
+#endif
 #pragma once
 
 #ifdef __clang__

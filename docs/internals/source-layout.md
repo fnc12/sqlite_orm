@@ -60,8 +60,8 @@ which takes precedence where both apply.
   of a connection: the connection and its options (`connection_holder.h`), transactions
   (`transaction_guard.h`), PRAGMAs and their values (`pragma.h`), prepared statements
   (`prepared_statement.h`), the function runtime (`udf_proxy.h`), the storage on top
-  (`storage.h`, `storage_base.h`), and the asynchronous storage over it (`async_storage.h`, under
-  the umbrella `dev/async.h`). The VFSes sqlite_orm implements go in `vfs/`: the one routing a
+  (`storage.h`, `storage_base.h`), and the asynchronous storage over it
+  (`async_storage.h`). The VFSes sqlite_orm implements go in `vfs/`: the one routing a
   connection's file I/O through the asynchronous runtime (`async_vfs.h`); SQLite's own
   VFSes are named in `dev/builtin/vfs.h`. Converting values and iterating result rows also happen at
   runtime, but are marshaling and result sets.
