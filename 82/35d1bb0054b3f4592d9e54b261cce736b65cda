@@ -23,3 +23,29 @@ async-storage-sanity-findings.md. Stacked on #1627.
 - The public blocks are merged into the internal ones beside them; the
   moved code keeps its `internal::` qualifiers. pre-commit.sh exits 0;
   not compiled.
+
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-18: end of the first day on
+#1524 (fnc12's asynchronous storage). The chain so far: #1627 placement
+(refactor/async-placement, worktree C:/projects/wt-async-placement,
+review requested from fnc12), #1628 internal names
+(refactor/async-internal, worktree C:/projects/wt-async-internal, draft,
+stacked on #1627). Findings and the review of #1524 are in trueqbit's
+C:/Users/klaus/Jottacloud/programming/sqlite_orm/async-storage-sanity-findings.md.
+
+# Later
+- fnc12's GitHub review of #1627; it merges on trueqbit's yes, with a
+  merge commit, then #1628 is retargeted onto feature/async-storage.
+- After #1627 merges: the findings file's section 8 (the verified code
+  review of #1524) and sanity findings 1-3 become a GitHub review on
+  #1524, anchored on the new paths; finding 7's namespace question goes
+  into it with options a-e, for fnc12 to decide with trueqbit.
+- Then: the pull request for sqlite_orm::async (finding 7, once decided),
+  then the P+I+A round over the moved headers, docs/async.md, the tests
+  and examples (finding 6, review finding 10).
+- Fixes for the review's bugs: fnc12's to decide, as review comments or
+  as pull requests in the chain.
+- Plugin feedback: the ninth entry of handover-feedback-domain-sources.md
+  (deleting as its own commit) waits for trueqbit's yes to its wording.
+- In WSL, pre-commit.sh in a worktree needs GIT_DIR and GIT_WORK_TREE set
+  to the /mnt/c paths.
