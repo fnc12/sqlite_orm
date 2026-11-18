@@ -19,8 +19,8 @@
 #endif
 #endif
 
+#include "../functional/coroutines/task.h"
 #include "scheduler.h"
-#include "task.h"
 
 #ifdef SQLITE_ORM_WITH_ASYNC
 SQLITE_ORM_EXPORT namespace sqlite_orm {

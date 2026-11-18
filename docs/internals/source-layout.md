@@ -50,28 +50,21 @@ which takes precedence where both apply.
   `carray_pointer_passing.h`), which exist only to be bound and extracted.
 - `dev/result_set/` - What a query yields and how it is iterated: the C++ result type of an
   expression (`column_result.h`), the column expressions of a select (`column_expression.h`)
-  and the references to them (`column_reference.h`), and the lazy views over a select or the
-  objects of a table (`result_set_view.h`, `mapped_view.h`).
+  and the references to them (`column_reference.h`), the lazy views over a select or the
+  objects of a table (`result_set_view.h`, `mapped_view.h`), and the cursor that fetches the rows
+  of such a view one at a time from a coroutine (`async_cursor.h`).
 
 ## Execution
 
 - `dev/execution/` - Running SQL against a live database, i.e. what holds or drives the state
   of a connection: the connection and its options (`connection_holder.h`), transactions
   (`transaction_guard.h`), PRAGMAs and their values (`pragma.h`), prepared statements
-  (`prepared_statement.h`), the function runtime (`udf_proxy.h`), and the storage on top
-  (`storage.h`, `storage_base.h`). Converting values and iterating result rows also happen at
+  (`prepared_statement.h`), the function runtime (`udf_proxy.h`), the storage on top
+  (`storage.h`, `storage_base.h`), and the asynchronous storage over it (`async_storage.h`, under
+  the umbrella `dev/async.h`). The VFSes sqlite_orm implements go in `vfs/`: the one routing a
+  connection's file I/O through the asynchronous runtime (`async_vfs.h`); SQLite's own
+  VFSes are named in `dev/builtin/vfs.h`. Converting values and iterating result rows also happen at
   runtime, but are marshaling and result sets.
-
-## Asynchronous execution
-
-- `dev/async/` - The asynchronous storage, under the umbrella `dev/async.h`: `async_storage` and
-  its cursor on top of the unchanged synchronous storage (`async_storage.h`, `async_cursor.h`),
-  the coroutine type its operations return (`task.h`), the event loop driving them
-  (`io_context.h`) and what that is built from - fibers (`fiber.h`, `context_switch.h`), their
-  scheduler (`scheduler.h`), the io_uring engine (`io_uring_engine.h`) and the VFS routing a
-  connection's file I/O through it (`async_vfs.h`). Everything that exists only for
-  `SQLITE_ORM_WITH_ASYNC` belongs here; each header guards its contents with that macro, never
-  its includes. The user documentation is [`docs/async.md`](../async.md).
 
 ## Foundations
 
@@ -94,5 +87,9 @@ which takes precedence where both apply.
   `cxx_universal.h` that the umbrella header includes after the configuration,
   stand-ins in `cxx_polyfill/` for standard library facilities the C++ version in use lacks,
   metaprogramming in `mpl/`, reflection helpers (`meta_util.h`), pointer-to-member mechanics
-  (`member_traits.h`, `field_of.h`), and in `tuple_helper/` type- and value-level operations on
-  `std::tuple`.
+  (`member_traits.h`, `field_of.h`), in `tuple_helper/` type- and value-level operations on
+  `std::tuple`, and in `coroutines/` coroutine types (`task.h`, `when_all.h`).
+- `dev/async/` - The asynchronous runtime, with no SQL or storage meaning: the event loop of a
+  thread (`io_context.h`) and of several threads (`io_pool.h`), the scheduler running fibers on
+  one thread (`scheduler.h`), the I/O requests they wait for (`io_operation.h`) and the engine
+  submitting them (`io_uring_engine.h`), and the fibers in `fiber/`.

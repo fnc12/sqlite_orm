@@ -2,7 +2,7 @@
 
 > Purpose: tell users of sqlite_orm how to use a storage from C++20 coroutines without blocking a thread on file I/O.
 >
-> Intention: the user documentation of `dev/async/`: what it requires, its interface, how its `io_context` is run or
+> Intention: the user documentation of the asynchronous storage: what it requires, its interface, how its `io_context` is run or
 > embedded into the event loop an application already has, and its limits. The examples it refers to are
 > `examples/async_storage.cpp` and `examples/async_event_loops/`.
 

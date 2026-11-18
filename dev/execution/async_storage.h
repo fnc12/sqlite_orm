@@ -25,12 +25,12 @@
 #endif
 
 #include "../functional/cxx_polyfill/functional.h"  //  polyfill::identity
-#include "../execution/storage.h"
-#include "../execution/storage_options.h"  //  connection_control
-#include "async_cursor.h"
-#include "async_vfs.h"
-#include "io_context.h"
-#include "task.h"
+#include "../functional/coroutines/task.h"
+#include "../async/io_context.h"
+#include "../result_set/async_cursor.h"
+#include "storage.h"
+#include "storage_options.h"  //  connection_control
+#include "vfs/async_vfs.h"
 
 #ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {

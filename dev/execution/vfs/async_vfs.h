@@ -23,7 +23,7 @@
 #include <unistd.h>  //  close
 #endif
 
-#include "scheduler.h"
+#include "../../async/scheduler.h"
 
 #ifdef SQLITE_ORM_WITH_ASYNC
 SQLITE_ORM_EXPORT namespace sqlite_orm {

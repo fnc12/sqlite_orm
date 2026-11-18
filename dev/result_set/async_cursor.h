@@ -17,7 +17,7 @@
 #endif
 #endif
 
-#include "task.h"
+#include "../functional/coroutines/task.h"
 
 #ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
