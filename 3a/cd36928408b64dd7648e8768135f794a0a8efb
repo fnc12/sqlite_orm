@@ -1,0 +1,18 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-18, on #1627: the code review
+(/code-review medium) of #1627's two commits found task.h and when_all.h
+in functional/ but gated by SQLITE_ORM_WITH_ASYNC alone.
+
+# Decided
+- trueqbit: double guard rather than SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+  alone: the types are general-purpose C++, but make sense only in the
+  purview of sqlite_orm's asynchronous storage; the second guard carries
+  a comment saying so.
+- trueqbit: review findings on #1627's earlier commits are corrected in
+  succeeding commits this time, without rewriting them (fnc12 is
+  requested as reviewer).
+
+# Discussed
+- SQLITE_ORM_WITH_ASYNC already implies coroutine support
+  (config/capabilities.h), so the outer guard states the requirement
+  rather than narrowing anything. pre-commit.sh exits 0.
