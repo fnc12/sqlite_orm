@@ -45,3 +45,28 @@ Action right; this commit is the first, the placement.
   async_cursor and async_storage in the public namespace) are kept in
   trueqbit's Jottacloud folder, async-storage-sanity-findings.md; a pull
   request on top of the chain, or review comments.
+
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-18, on #1627: trueqbit asked
+whether the layout guide needs a sentence on placing headers gated by
+SQLITE_ORM_WITH_ASYNC, and to check docs/async.md for internal
+documentation, then to fold the result into this commit.
+
+# Decided
+- trueqbit: the layout guide's closing paragraph on SQLITE_ORM_WITH_ASYNC
+  is dropped. Placement by content holds for every header, gated or not
+  (FTS5, math and the rest never had such a sentence); "guard the
+  contents, never an #include" is stated in the move-header and
+  add-builtin-function skills; docs/async.md is linked from docs/home.md.
+- trueqbit: docs/async.md holds no internal documentation to split: its
+  mechanism paragraph and its Limits explain behaviour users observe.
+  Only its Intention's "documentation of `dev/async/`", made wrong by the
+  move, is fixed here; the rest of its wording waits for the next pull
+  request.
+
+# Discussed
+- Rewritten from f136620e by amend; 8410c393 replayed on it as fc88b1fb
+  by cherry-pick, which committed by itself, so pre-commit.sh ran right
+  after it rather than before: exit 0, nothing regenerated.
+- A security hook blocked the force-push of the rewritten branch; it
+  waits for trueqbit's explicit yes.
