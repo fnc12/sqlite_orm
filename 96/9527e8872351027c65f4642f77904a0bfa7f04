@@ -1,0 +1,24 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-18, on #1627: the rest of the
+code review's valid findings on #1627's own commits.
+
+# Decided
+- Claude, by trueqbit's atomicity ruling: task.h's "used by every public
+  header of `async/`" was made false by the move, as docs/async.md:5 was,
+  so it is fixed now rather than in the P+I round.
+- trueqbit: corrected in a succeeding commit; 8233c87f's body, which
+  says docs/async.md was left alone, is corrected in this body.
+
+# Discussed
+- Rejected review findings: the guard rule and the docs/async.md link
+  dropped from source-layout.md (trueqbit's decision: stated in the
+  skills, linked from docs/home.md); io_context and task reaching the
+  library only through async_storage.h (the manifests list roots, as for
+  storage.h); async_cursor in result_set/ depending on execution/
+  (mapped_view.h already does; the cursor takes the storage as a template
+  argument). The Purposes of io_context.h, fiber.h and scheduler.h wait
+  for the P+I round.
+- The review covered only #1627's two commits, not #1524's code; a
+  review of #1524 (/code-review medium 1524) runs, its findings to be
+  mapped to the new paths and turned into a GitHub review on #1524 after
+  #1627 merges.
