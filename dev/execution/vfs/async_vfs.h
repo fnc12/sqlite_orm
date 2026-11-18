@@ -26,7 +26,7 @@
 #include "../../async/scheduler.h"
 
 #ifdef SQLITE_ORM_WITH_ASYNC
-SQLITE_ORM_EXPORT namespace sqlite_orm {
+namespace sqlite_orm::internal {
 
     /**
      *  Name of the asynchronous VFS, as accepted by `connection_control::vfs_name`.
@@ -502,7 +502,7 @@ namespace sqlite_orm::internal::async_vfs {
     }
 }
 
-SQLITE_ORM_EXPORT namespace sqlite_orm {
+namespace sqlite_orm::internal {
 
     inline async_vfs_statistics get_async_vfs_statistics() {
         return internal::async_vfs::statistics;

@@ -102,8 +102,8 @@ TEST_CASE("async storage: factory - VFS injection and lazy open") {
     //  Nothing is opened until the first operation, and nothing global changed.
     REQUIRE_FALSE(storage.is_opened());
     REQUIRE_FALSE(std::filesystem::exists(database.path));
-    REQUIRE(sqlite3_vfs_find(nullptr) != sqlite3_vfs_find(async_vfs_name.data()));
-    REQUIRE(storage.vfs_name() == async_vfs_name);
+    REQUIRE(sqlite3_vfs_find(nullptr) != sqlite3_vfs_find(internal::async_vfs_name.data()));
+    REQUIRE(storage.vfs_name() == internal::async_vfs_name);
     REQUIRE(storage.open_mode() == db_open_mode::default_);
     REQUIRE(storage.filename() == database.path);
     REQUIRE_FALSE(storage.is_busy());
@@ -125,7 +125,7 @@ TEST_CASE("async storage: user connection_control keeps its other fields") {
     control.open_mode = db_open_mode::create_readwrite;
     control.vfs_name = "unix";  //  overridden by the asynchronous VFS
     auto storage = make_async_storage(io, database.path, control, users_table());
-    REQUIRE(storage.vfs_name() == async_vfs_name);
+    REQUIRE(storage.vfs_name() == internal::async_vfs_name);
     REQUIRE(storage.open_mode() == db_open_mode::create_readwrite);
 }
 
@@ -133,7 +133,7 @@ TEST_CASE("async storage: CRUD") {
     require_io_uring();
     temp_database database;
     io_context io;
-    reset_async_vfs_statistics();
+    internal::reset_async_vfs_statistics();
     auto storage = make_async_storage(io, database.path, users_table());
 
     auto body = [&storage]() -> task<void> {
@@ -239,7 +239,7 @@ TEST_CASE("async storage: CRUD") {
     };
     run_test(io, body());
 
-    async_vfs_statistics statistics = get_async_vfs_statistics();
+    internal::async_vfs_statistics statistics = internal::get_async_vfs_statistics();
     REQUIRE(statistics.asyncReads > 0);
     REQUIRE(statistics.asyncWrites > 0);
     REQUIRE(statistics.asyncSyncs > 0);

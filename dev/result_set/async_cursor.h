@@ -83,9 +83,6 @@ namespace sqlite_orm::internal {
         std::optional<sentinel_type> end;
         bool finished = false;
     };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  The rows of a query, fetched one at a time; returned by `async_storage::iterate()`.
