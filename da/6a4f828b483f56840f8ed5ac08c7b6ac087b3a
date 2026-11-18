@@ -1,0 +1,20 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-18, on #1627: trueqbit asked
+whether the umbrella dev/async.h is needed, since the manifests name
+dev/execution/storage.h itself; answered "yes, remove the umbrella".
+
+# Decided
+- trueqbit: the umbrella goes; sqlite_orm.json and
+  not_single_header_include list execution/async_storage.h,
+  async/io_pool.h and functional/coroutines/when_all.h, in that order:
+  the storage first, then the two conveniences nothing else includes.
+- Claude: copy first, delete later: this commit changes the manifests,
+  the next one deletes dev/async.h and its mention in source-layout.md.
+
+# Discussed
+- The amalgamation differs by its include comments, the umbrella's own
+  comment block and the order of the moved code (all code lines balanced).
+- Work moved to the worktree C:/projects/wt-async-placement; the main
+  checkout is back on dev. pre-commit.sh in WSL needs GIT_DIR and
+  GIT_WORK_TREE set to the /mnt/c paths there, because the worktree's
+  .git file names a Windows path; with them it exits 0.
