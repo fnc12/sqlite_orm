@@ -3,7 +3,8 @@
 /** @file
  *  Purpose: be the coroutine type an asynchronous storage operation returns.
  *
- *  Intention: realizes a lazy C++20 coroutine that any coroutine can `co_await`; used by every public header of `async/`.
+ *  Intention: realizes a lazy C++20 coroutine that any coroutine can `co_await`; used by `io_context.h`, `when_all.h`,
+ *  `async_storage.h` and `async_cursor.h`.
  */
 
 #ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED

@@ -40,7 +40,7 @@
 #include "../../dev/builtin/functions.h"
 #include "../../dev/builtin/dbos.h"
 
-// the asynchronous storage, and the conveniences of the asynchronous runtime it does not include itself
+// the asynchronous storage, and the conveniences it does not include itself
 #include "../../dev/execution/async_storage.h"
 #include "../../dev/async/io_pool.h"
 #include "../../dev/functional/coroutines/when_all.h"
