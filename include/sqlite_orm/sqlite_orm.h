@@ -35842,6 +35842,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
  *  Intention: realizes a lazy C++20 coroutine that any coroutine can `co_await`; used by every public header of `async/`.
  */
 
+#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <coroutine>  //  std::coroutine_handle, std::suspend_always, std::noop_coroutine
@@ -35850,7 +35851,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::exchange, std::forward, std::move
 #endif
 #endif
+#endif
 
+#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+// general-purpose, but sqlite_orm offers its coroutine types with the asynchronous storage only
 #ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
 
@@ -36044,6 +36048,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         std::coroutine_handle<promise_type> handle;
     };
 }
+#endif
 #endif
 
 // #include "../async/io_context.h"
@@ -39001,6 +39006,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
  *  Intention: a convenience on top of `task.h` for applications, which the storage itself does not need.
  */
 
+#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <coroutine>  //  std::coroutine_handle, std::suspend_never
@@ -39011,9 +39017,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <vector>  //  std::vector
 #endif
 #endif
+#endif
 
 // #include "task.h"
 
+#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+// general-purpose, but sqlite_orm offers its coroutine types with the asynchronous storage only
 #ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
 
@@ -39103,6 +39112,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         co_return output;
     }
 }
+#endif
 #endif
 #pragma once
 
