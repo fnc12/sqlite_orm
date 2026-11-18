@@ -1,0 +1,25 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-18: the public surface of
+#1524's asynchronous storage, sanity finding 7 in trueqbit's
+async-storage-sanity-findings.md. Stacked on #1627.
+
+# Decided
+- trueqbit: what no user writes out goes to internal, in a pull request
+  of its own before the namespace one, so the uncontroversial part does
+  not wait for the namespace discussion with fnc12.
+- trueqbit (option a, to be decided with fnc12 too): io_context, io_pool,
+  task, when_all() and io_uring_available() go to a nested, non-inline
+  sqlite_orm::async; make_async_storage() stays in sqlite_orm. Raised and
+  weighed: a top-level sqlite_orm_async; coro (taken by folly::coro, then
+  ambiguous under using-directives), aio (POSIX/Linux AIO), asyncio
+  (Python), async_io (the namespace also holds coroutine utilities).
+
+# Discussed
+- Usage checked across examples, tests and docs/async.md: async_storage<
+  and async_cursor< appear nowhere; the VFS name and counters only in the
+  tests, now qualified internal::. The examples bring the names in with
+  `using namespace sqlite_orm;`, and asio.cpp writes sqlite_orm::io_context
+  throughout to avoid asio::io_context.
+- The public blocks are merged into the internal ones beside them; the
+  moved code keeps its `internal::` qualifiers. pre-commit.sh exits 0;
+  not compiled.
