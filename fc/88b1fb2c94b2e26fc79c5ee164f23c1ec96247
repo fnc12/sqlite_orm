@@ -1,0 +1,33 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-18, on #1627: trueqbit asked
+whether the umbrella dev/async.h is needed, since the manifests name
+dev/execution/storage.h itself; answered "yes, remove the umbrella".
+Claude first committed the manifest change and the delete apart
+(da6a4f82, 5aaac495); trueqbit had them squashed into this commit.
+
+# Decided
+- trueqbit: the umbrella goes; sqlite_orm.json and
+  not_single_header_include list execution/async_storage.h,
+  async/io_pool.h and functional/coroutines/when_all.h, in that order:
+  the storage first, then the two conveniences nothing else includes.
+- trueqbit: a refactor that leaves something unused removes it in the
+  same commit, the documentation updated with it: atomic changesets.
+  The plugin rule "copy first, delete later: deleting is a step of its
+  own" (refactoring.md) was read as a separate commit; its steps are
+  checkpoints of one commit. Taken to ontocratic-feedback, collected in
+  trueqbit's handover-feedback-domain-sources.md.
+- trueqbit: the damage-control hook blocked a command running `git rm
+  dev/async.h` together with pre-commit.sh, whose GIT_DIR names a path
+  under .git/; trueqbit allowed running them as separate commands,
+  landing in the same commit.
+
+# Discussed
+- The amalgamation differs by its include comments, the umbrella's own
+  comment block and the order of the code (all code lines balanced);
+  pre-commit.sh exits 0, and nothing names dev/async.h any more.
+- The main checkout is back on dev; the branch lives in the worktree
+  C:/projects/wt-async-placement. pre-commit.sh in WSL needs GIT_DIR and
+  GIT_WORK_TREE set to the /mnt/c paths there, because the worktree's
+  .git file names a Windows path.
+- The squash keeps the tree of 5aaac495 byte for byte; the branch was
+  force-pushed, being from the same day and unreviewed.
