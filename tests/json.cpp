@@ -148,6 +148,11 @@ TEST_CASE("json_extract") {
         expected.push_back("[null,2]");
         REQUIRE(expected == rows);
     }
+    SECTION("result type defaults to std::string") {
+        auto rows = storage.select(json_extract(R"({"a":2,"c":[4,5,{"f":7}]})", "$.c"));
+        STATIC_REQUIRE(std::is_same_v<decltype(rows), std::vector<std::string>>);
+        REQUIRE(rows == std::vector<std::string>{"[4,5,{\"f\":7}]"});
+    }
 }
 
 TEST_CASE("json_insert") {
@@ -466,6 +471,11 @@ TEST_CASE("json_quote") {
         decltype(rows) expected;
         expected.push_back("\"verdant\"");
         REQUIRE(rows == expected);
+    }
+    {
+        auto rows = storage.select(json_quote(3.5));
+        STATIC_REQUIRE(std::is_same_v<decltype(rows), std::vector<std::string>>);
+        REQUIRE(rows == std::vector<std::string>{"3.5"});
     }
 }
 
