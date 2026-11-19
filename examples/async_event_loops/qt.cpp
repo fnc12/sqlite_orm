@@ -1,7 +1,7 @@
 /**
  *  This example embeds the asynchronous storage into the event loop of Qt [https://www.qt.io].
  *
- *  The `io_context` of the storage offers a descriptor, `native_handle()`, that is readable whenever it has
+ *  The `async_io_context` of the storage offers a descriptor, `native_handle()`, that is readable whenever it has
  *  something to do, and `poll()`, which does what can be done without waiting and returns. A `QSocketNotifier` watches
  *  the descriptor and calls `poll()`.
  *  The coroutine is resumed from inside `poll()`, hence on the thread of the loop, next to the loop's own
@@ -31,7 +31,7 @@ struct Measurement {
     double value = 0;
 };
 
-auto open_storage(io_context& io, std::string filename) {
+auto open_storage(async_io_context& io, std::string filename) {
     return make_async_storage(io,
                               std::move(filename),
                               make_table("measurements",
@@ -39,12 +39,12 @@ auto open_storage(io_context& io, std::string filename) {
                                          make_column("value", &Measurement::value)));
 }
 
-using Storage = decltype(open_storage(std::declval<io_context&>(), ""));
+using Storage = decltype(open_storage(std::declval<async_io_context&>(), ""));
 
 /**
  *  Nothing may leave this coroutine: `poll()` would rethrow it into the event loop of Qt, which does not support exceptions.
  */
-task<void> store_measurements(Storage& storage, QCoreApplication& application) {
+async_task<void> store_measurements(Storage& storage, QCoreApplication& application) {
     try {
         co_await storage.sync_schema();
         for (int index = 0; index < 200; ++index) {
@@ -79,9 +79,9 @@ int main(int argc, char** argv) {
     });
     timer.start(1);
 
-    //  the whole integration: Qt calls poll() whenever the io_context has something to do.
-    //  The notifier is declared after the io_context, which owns the descriptor, so it is destroyed before it.
-    io_context io;
+    //  the whole integration: Qt calls poll() whenever the async_io_context has something to do.
+    //  The notifier is declared after the async_io_context, which owns the descriptor, so it is destroyed before it.
+    async_io_context io;
     auto storage = open_storage(io, filename);
     QSocketNotifier watcher(io.native_handle(), QSocketNotifier::Read);
     QObject::connect(&watcher, &QSocketNotifier::activated, [&io] {

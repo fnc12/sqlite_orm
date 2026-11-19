@@ -56,7 +56,7 @@ namespace sqlite_orm::internal {
 
     template<class T>
     fire_and_forget
-    start_one(task<T>& oneTask, count_down& countDown, std::optional<T>& result, std::exception_ptr& error) {
+    start_one(async_task<T>& oneTask, count_down& countDown, std::optional<T>& result, std::exception_ptr& error) {
         try {
             result.emplace(co_await oneTask);
         } catch (...) {
@@ -67,7 +67,7 @@ namespace sqlite_orm::internal {
         }
     }
 
-    inline fire_and_forget start_one(task<void>& oneTask, count_down& countDown, std::exception_ptr& error) {
+    inline fire_and_forget start_one(async_task<void>& oneTask, count_down& countDown, std::exception_ptr& error) {
         try {
             co_await oneTask;
         } catch (...) {
@@ -79,7 +79,7 @@ namespace sqlite_orm::internal {
     }
 
     /**
-     *  Awaited by `when_all()`: starts every task with `start(index)` and resumes when the last one has finished.
+     *  Awaited by `async_when_all()`: starts every task with `start(index)` and resumes when the last one has finished.
      */
     template<class Start>
     struct when_all_awaiter {
@@ -122,7 +122,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T>
         requires (!std::is_void_v<T>)
-    task<std::vector<T>> when_all(std::vector<task<T>> tasks) {
+    async_task<std::vector<T>> async_when_all(std::vector<async_task<T>> tasks) {
         std::vector<std::optional<T>> results(tasks.size());
         std::vector<std::exception_ptr> errors(tasks.size());
         internal::count_down countDown{tasks.size() + 1, {}};  //  +1: held while starting
@@ -144,7 +144,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  The same for tasks without a result, like those of `update()` or `remove()`.
      */
-    inline task<void> when_all(std::vector<task<void>> tasks) {
+    inline async_task<void> async_when_all(std::vector<async_task<void>> tasks) {
         std::vector<std::exception_ptr> errors(tasks.size());
         internal::count_down countDown{tasks.size() + 1, {}};  //  +1: held while starting
         co_await internal::when_all_awaiter{tasks.size(),

@@ -2,7 +2,7 @@
  *  This example embeds the asynchronous storage into an event loop the application already has;
  *  here a hand-written epoll loop, to show everything there is to it.
  *
- *  The `io_context` of the storage is not a second loop the application has to run. It offers a descriptor,
+ *  The `async_io_context` of the storage is not a second loop the application has to run. It offers a descriptor,
  *  `native_handle()`, that becomes readable whenever it has something to do, and a function, `poll()`, that
  *  does what can be done without waiting and returns. The host loop watches the descriptor like any socket:
  *
@@ -34,7 +34,7 @@ struct Measurement {
     double value = 0;
 };
 
-auto open_storage(io_context& io, std::string filename) {
+auto open_storage(async_io_context& io, std::string filename) {
     return make_async_storage(io,
                               std::move(filename),
                               make_table("measurements",
@@ -42,9 +42,9 @@ auto open_storage(io_context& io, std::string filename) {
                                          make_column("value", &Measurement::value)));
 }
 
-using Storage = decltype(open_storage(std::declval<io_context&>(), ""));
+using Storage = decltype(open_storage(std::declval<async_io_context&>(), ""));
 
-task<void> store_measurements(Storage& storage, bool& finished) {
+async_task<void> store_measurements(Storage& storage, bool& finished) {
     co_await storage.sync_schema();
     for (int index = 0; index < 200; ++index) {
         //  every insert is a transaction of its own and waits for the disk
@@ -80,7 +80,7 @@ int main(int, char**) {
     watch_readable(loop, timer);
 
     //  the storage joins the loop with one more descriptor
-    io_context io;
+    async_io_context io;
     auto storage = open_storage(io, filename);
     watch_readable(loop, io.native_handle());
 

@@ -34,27 +34,27 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  1. The application has no event loop of its own: `run()`.
      *
-     *         io_context io;
-     *         io.spawn(work(storage));    //  task<void> work(...)
+     *         async_io_context io;
+     *         io.spawn(work(storage));    //  async_task<void> work(...)
      *         io.run();                   //  returns when everything spawned has finished
      *
      *  2. The application already runs an event loop (asio, libhv, libuv, Qt, a hand-written epoll loop):
-     *     embed the io_context into it. `native_handle()` is a descriptor that becomes readable whenever
-     *     the io_context has something to do; the host loop watches it and calls `poll()`, which never blocks.
+     *     embed the async_io_context into it. `native_handle()` is a descriptor that becomes readable whenever
+     *     the async_io_context has something to do; the host loop watches it and calls `poll()`, which never blocks.
      *     Coroutines are then resumed on the host loop's thread, from inside `poll()`.
      *
      *         host.watch_readable(io.native_handle(), [&io] { io.poll(); });
      *         io.spawn(work(storage));
      *         io.poll();                  //  starts what was spawned
      *
-     *  3. The io_context gets a thread of its own: `run_forever()` there, `post()` and `stop()` from any thread.
+     *  3. The async_io_context gets a thread of its own: `run_forever()` there, `post()` and `stop()` from any thread.
      *
-     *  Coroutines (stackless) never run on a fiber stack: a fiber hands the continuation back to the io_context,
+     *  Coroutines (stackless) never run on a fiber stack: a fiber hands the continuation back to the async_io_context,
      *  which resumes it on the native stack.
      */
-    class io_context {
+    class async_io_context {
       public:
-        explicit io_context(unsigned queueDepth = 256) : scheduler_(queueDepth) {
+        explicit async_io_context(unsigned queueDepth = 256) : scheduler_(queueDepth) {
             this->scheduler_.set_external_ready([this] {
                 return !this->ready.empty() || !this->pendingRoots.empty();
             });
@@ -63,19 +63,19 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             this->scheduler_.poll();
         }
 
-        io_context(const io_context&) = delete;
-        io_context& operator=(const io_context&) = delete;
+        async_io_context(const async_io_context&) = delete;
+        async_io_context& operator=(const async_io_context&) = delete;
 
         internal::scheduler& scheduler() noexcept {
             return this->scheduler_;
         }
 
         /**
-         *  The io_context whose run()/poll()/run_forever() is executing on this
+         *  The async_io_context whose run()/poll()/run_forever() is executing on this
          *  thread, or nullptr.
          */
-        static io_context* current() noexcept {
-            return io_context::current_slot();
+        static async_io_context* current() noexcept {
+            return async_io_context::current_slot();
         }
 
         /**
@@ -118,7 +118,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         auto async(F function) {
             using result_type = std::invoke_result_t<F&>;
             struct awaitable {
-                io_context* context;
+                async_io_context* context;
                 F function;
                 internal::result_box<result_type> box;
                 std::size_t stackSize;
@@ -153,10 +153,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         /**
          *  Register a root coroutine. It starts on the next turn of `run()`/`poll()`/`run_forever()`, never inline,
-         *  so `io_context::current()` is set while it executes. Same-thread; when the io_context is embedded
+         *  so `async_io_context::current()` is set while it executes. Same-thread; when the async_io_context is embedded
          *  into another event loop, call `poll()` afterwards.
          */
-        void spawn(task<void> rootTask) {
+        void spawn(async_task<void> rootTask) {
             ++this->live;
             this->pendingRoots.push_back(std::move(rootTask));
         }
@@ -231,27 +231,27 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         std::size_t fiberStackSize = internal::fiber::defaultStackSize;
 
       private:
-        static io_context*& current_slot() noexcept {
-            thread_local io_context* currentContext = nullptr;
+        static async_io_context*& current_slot() noexcept {
+            thread_local async_io_context* currentContext = nullptr;
             return currentContext;
         }
 
         struct current_guard {
-            io_context* previous;
+            async_io_context* previous;
 
-            explicit current_guard(io_context* context) : previous(io_context::current_slot()) {
-                io_context::current_slot() = context;
+            explicit current_guard(async_io_context* context) : previous(async_io_context::current_slot()) {
+                async_io_context::current_slot() = context;
             }
 
             ~current_guard() {
-                io_context::current_slot() = this->previous;
+                async_io_context::current_slot() = this->previous;
             }
         };
 
         struct polling_guard {
-            io_context* context;
+            async_io_context* context;
 
-            explicit polling_guard(io_context* context_) : context(context_) {
+            explicit polling_guard(async_io_context* context_) : context(context_) {
                 this->context->polling = true;
             }
 
@@ -286,7 +286,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             };
         };
 
-        detached launch(task<void> rootTask) {
+        detached launch(async_task<void> rootTask) {
             try {
                 co_await std::move(rootTask);
             } catch (...) {
@@ -307,7 +307,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         void drain() {
             for (;;) {
                 if (!this->pendingRoots.empty()) {
-                    task<void> rootTask = std::move(this->pendingRoots.front());
+                    async_task<void> rootTask = std::move(this->pendingRoots.front());
                     this->pendingRoots.pop_front();
                     this->launch(std::move(rootTask));
                     continue;
@@ -323,13 +323,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         internal::scheduler scheduler_;
         std::deque<std::coroutine_handle<>> ready;
-        std::deque<task<void>> pendingRoots;
+        std::deque<async_task<void>> pendingRoots;
         std::size_t live = 0;
         std::exception_ptr error;
         bool stopped = false;
         bool polling = false;
 
-        friend class io_pool;
+        friend class async_io_pool;
     };
 }
 #endif

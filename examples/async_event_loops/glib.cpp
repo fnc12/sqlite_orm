@@ -1,7 +1,7 @@
 /**
  *  This example embeds the asynchronous storage into the event loop of GLib [https://docs.gtk.org/glib/main-loop.html], the one GTK applications run on.
  *
- *  The `io_context` of the storage offers a descriptor, `native_handle()`, that is readable whenever it has
+ *  The `async_io_context` of the storage offers a descriptor, `native_handle()`, that is readable whenever it has
  *  something to do, and `poll()`, which does what can be done without waiting and returns. `g_unix_fd_add()`
  *  watches the descriptor and calls `poll()`.
  *  The coroutine is resumed from inside `poll()`, hence on the thread of the loop, next to the loop's own
@@ -30,7 +30,7 @@ struct Measurement {
     double value = 0;
 };
 
-auto open_storage(io_context& io, std::string filename) {
+auto open_storage(async_io_context& io, std::string filename) {
     return make_async_storage(io,
                               std::move(filename),
                               make_table("measurements",
@@ -38,12 +38,12 @@ auto open_storage(io_context& io, std::string filename) {
                                          make_column("value", &Measurement::value)));
 }
 
-using Storage = decltype(open_storage(std::declval<io_context&>(), ""));
+using Storage = decltype(open_storage(std::declval<async_io_context&>(), ""));
 
 /**
  *  Nothing may leave this coroutine: `poll()` would rethrow it through the frames of GLib, which is written in C.
  */
-task<void> store_measurements(Storage& storage, GMainLoop* loop) {
+async_task<void> store_measurements(Storage& storage, GMainLoop* loop) {
     try {
         co_await storage.sync_schema();
         for (int index = 0; index < 200; ++index) {
@@ -80,14 +80,14 @@ int main(int, char**) {
         },
         &timerEvents);
 
-    //  the whole integration: GLib calls poll() whenever the io_context has something to do
-    io_context io;
+    //  the whole integration: GLib calls poll() whenever the async_io_context has something to do
+    async_io_context io;
     auto storage = open_storage(io, filename);
     const guint watcher = ::g_unix_fd_add(
         io.native_handle(),
         G_IO_IN,
         [](gint /*descriptor*/, GIOCondition /*condition*/, gpointer io) -> gboolean {
-            static_cast<io_context*>(io)->poll();
+            static_cast<async_io_context*>(io)->poll();
             return G_SOURCE_CONTINUE;
         },
         &io);
@@ -97,7 +97,7 @@ int main(int, char**) {
 
     ::g_main_loop_run(loop);  //  until the coroutine quits the loop
 
-    //  the watcher is removed before the io_context, which owns the descriptor, is destroyed
+    //  the watcher is removed before the async_io_context, which owns the descriptor, is destroyed
     ::g_source_remove(watcher);
     ::g_source_remove(timer);
     ::g_main_loop_unref(loop);

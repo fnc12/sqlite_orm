@@ -4,7 +4,7 @@
  *  Purpose: offer the storage's interface to coroutines, without blocking the thread on file I/O.
  *
  *  Intention: realizes `async_storage` and `make_async_storage()` over the unchanged synchronous storage of
- *  `execution/storage.h`, each operation running on a fiber of the storage's `io_context`; uses `async_vfs.h`.
+ *  `execution/storage.h`, each operation running on a fiber of the storage's `async_io_context`; uses `async_vfs.h`.
  */
 
 #ifdef SQLITE_ORM_WITH_ASYNC
@@ -77,7 +77,7 @@ namespace sqlite_orm::internal {
      *  executed one after another. Operations issued from several coroutines are
      *  queued in order.
      *
-     *      io_context io;
+     *      async_io_context io;
      *      auto storage = make_async_storage(io, "app.db",
      *                                        make_table("users", make_column("id", &User::id, primary_key()), ...));
      *
@@ -87,14 +87,15 @@ namespace sqlite_orm::internal {
      *
      *  The asynchronous VFS is selected for this connection through connection_control. It is registered
      *  with SQLite process-wide under a name of its own, but not as the default VFS: other connections are
-     *  not affected. All coroutines using one async_storage run on the io_context it was created with.
+     *  not affected. All coroutines using one async_storage run on the async_io_context it was created with.
      */
     template<class Storage>
     class async_storage {
       public:
         using storage_type = Storage;
 
-        async_storage(io_context& context_, Storage storage_) : context(&context_), storage(std::move(storage_)) {}
+        async_storage(async_io_context& context_, Storage storage_) :
+            context(&context_), storage(std::move(storage_)) {}
 
         /**
          *  Neither copyable nor movable: it is one connection, and its cursors and the operations waiting for
@@ -104,7 +105,7 @@ namespace sqlite_orm::internal {
         async_storage(const async_storage&) = delete;
         async_storage& operator=(const async_storage&) = delete;
 
-        io_context& get_io_context() noexcept {
+        async_io_context& get_io_context() noexcept {
             return *this->context;
         }
 
@@ -136,7 +137,7 @@ namespace sqlite_orm::internal {
          *  exception rolls back and propagates.
          */
         template<class F>
-        task<bool> transaction(F function) {
+        async_task<bool> transaction(F function) {
             return this->run([function = std::move(function)](Storage& storage) mutable {
                 return storage.transaction([&function, &storage] {
                     return function(storage);
@@ -145,7 +146,7 @@ namespace sqlite_orm::internal {
         }
 
         template<class F>
-        task<bool> savepoint(std::string savepointName, F function) {
+        async_task<bool> savepoint(std::string savepointName, F function) {
             return this->run(
                 [savepointName = std::move(savepointName), function = std::move(function)](Storage& storage) mutable {
                     return storage.savepoint(savepointName, [&function, &storage] {
@@ -223,7 +224,7 @@ namespace sqlite_orm::internal {
         }
 
         template<class It, class Projection = polyfill::identity>
-        task<void> insert_range(It from, It to, Projection project = {}) {
+        async_task<void> insert_range(It from, It to, Projection project = {}) {
             return this->run([from, to, project = std::move(project)](Storage& storage) mutable {
                 storage.insert_range(from, to, std::move(project));
             });
@@ -239,21 +240,21 @@ namespace sqlite_orm::internal {
         }
 
         template<class It, class Projection = polyfill::identity>
-        task<void> replace_range(It from, It to, Projection project = {}) {
+        async_task<void> replace_range(It from, It to, Projection project = {}) {
             return this->run([from, to, project = std::move(project)](Storage& storage) mutable {
                 storage.replace_range(from, to, std::move(project));
             });
         }
 
         template<class O>
-        task<void> update(O&& object) {
+        async_task<void> update(O&& object) {
             return this->run([object = std::forward<O>(object)](Storage& storage) {
                 storage.update(object);
             });
         }
 
         template<class S, class... Wargs>
-        task<void> update_all(S set, Wargs&&... conditions) {
+        async_task<void> update_all(S set, Wargs&&... conditions) {
             return this->run(internal::bind_arguments(
                 [](Storage& storage, auto&& set, auto&&... conditions) {
                     storage.update_all(std::move(set), std::move(conditions)...);
@@ -263,7 +264,7 @@ namespace sqlite_orm::internal {
         }
 
         template<class O, class... Ids>
-        task<void> remove(Ids&&... ids) {
+        async_task<void> remove(Ids&&... ids) {
             return this->run(internal::bind_arguments(
                 [](Storage& storage, auto&&... ids) {
                     storage.template remove<O>(std::move(ids)...);
@@ -272,7 +273,7 @@ namespace sqlite_orm::internal {
         }
 
         template<class O, class... Args>
-        task<void> remove_all(Args&&... args) {
+        async_task<void> remove_all(Args&&... args) {
             return this->run(internal::bind_arguments(
                 [](Storage& storage, auto&&... args) {
                     storage.template remove_all<O>(std::move(args)...);
@@ -283,7 +284,7 @@ namespace sqlite_orm::internal {
         //  ---- aggregates ----
 
         template<class O, class... Args>
-        task<int> count(Args&&... args) {
+        async_task<int> count(Args&&... args) {
             return this->run(internal::bind_arguments(
                 [](Storage& storage, auto&&... args) {
                     return storage.template count<O>(std::move(args)...);
@@ -292,7 +293,7 @@ namespace sqlite_orm::internal {
         }
 
         template<class F, class... Args>
-        task<int> count(F field, Args&&... args) {
+        async_task<int> count(F field, Args&&... args) {
             return this->run(internal::bind_arguments(
                 [](Storage& storage, auto&& field, auto&&... args) {
                     return storage.count(std::move(field), std::move(args)...);
@@ -302,7 +303,7 @@ namespace sqlite_orm::internal {
         }
 
         template<class F, class... Args>
-        task<double> avg(F field, Args&&... args) {
+        async_task<double> avg(F field, Args&&... args) {
             return this->run(internal::bind_arguments(
                 [](Storage& storage, auto&& field, auto&&... args) {
                     return storage.avg(std::move(field), std::move(args)...);
@@ -322,7 +323,7 @@ namespace sqlite_orm::internal {
         }
 
         template<class F, class... Args>
-        task<double> total(F field, Args&&... args) {
+        async_task<double> total(F field, Args&&... args) {
             return this->run(internal::bind_arguments(
                 [](Storage& storage, auto&& field, auto&&... args) {
                     return storage.total(std::move(field), std::move(args)...);
@@ -352,7 +353,7 @@ namespace sqlite_orm::internal {
         }
 
         template<class F, class... Args>
-        task<std::string> group_concat(F field, Args&&... args) {
+        async_task<std::string> group_concat(F field, Args&&... args) {
             return this->run(internal::bind_arguments(
                 [](Storage& storage, auto&& field, auto&&... args) {
                     return storage.group_concat(std::move(field), std::move(args)...);
@@ -453,110 +454,110 @@ namespace sqlite_orm::internal {
             });
         }
 
-        task<bool> table_exists(std::string tableName) {
+        async_task<bool> table_exists(std::string tableName) {
             return this->run([tableName = std::move(tableName)](Storage& storage) {
                 return storage.table_exists(tableName);
             });
         }
 
-        task<bool> view_exists(std::string viewName) {
+        async_task<bool> view_exists(std::string viewName) {
             return this->run([viewName = std::move(viewName)](Storage& storage) {
                 return storage.view_exists(viewName);
             });
         }
 
-        task<void> drop_table(std::string tableName) {
+        async_task<void> drop_table(std::string tableName) {
             return this->run([tableName = std::move(tableName)](Storage& storage) {
                 storage.drop_table(tableName);
             });
         }
 
-        task<void> drop_table_if_exists(std::string tableName) {
+        async_task<void> drop_table_if_exists(std::string tableName) {
             return this->run([tableName = std::move(tableName)](Storage& storage) {
                 storage.drop_table_if_exists(tableName);
             });
         }
 
         template<class O>
-        task<void> rename_table(std::string name) {
+        async_task<void> rename_table(std::string name) {
             return this->run([name = std::move(name)](Storage& storage) mutable {
                 storage.template rename_table<O>(std::move(name));
             });
         }
 
-        task<void> rename_table(std::string oldName, std::string newName) {
+        async_task<void> rename_table(std::string oldName, std::string newName) {
             return this->run([oldName = std::move(oldName), newName = std::move(newName)](Storage& storage) {
                 storage.rename_table(oldName, newName);
             });
         }
 
-        task<void> drop_index(std::string indexName) {
+        async_task<void> drop_index(std::string indexName) {
             return this->run([indexName = std::move(indexName)](Storage& storage) {
                 storage.drop_index(indexName);
             });
         }
 
-        task<void> drop_index_if_exists(std::string indexName) {
+        async_task<void> drop_index_if_exists(std::string indexName) {
             return this->run([indexName = std::move(indexName)](Storage& storage) {
                 storage.drop_index_if_exists(indexName);
             });
         }
 
-        task<void> drop_view(std::string viewName) {
+        async_task<void> drop_view(std::string viewName) {
             return this->run([viewName = std::move(viewName)](Storage& storage) {
                 storage.drop_view(viewName);
             });
         }
 
-        task<void> drop_view_if_exists(std::string viewName) {
+        async_task<void> drop_view_if_exists(std::string viewName) {
             return this->run([viewName = std::move(viewName)](Storage& storage) {
                 storage.drop_view_if_exists(viewName);
             });
         }
 
-        task<void> drop_trigger(std::string triggerName) {
+        async_task<void> drop_trigger(std::string triggerName) {
             return this->run([triggerName = std::move(triggerName)](Storage& storage) {
                 storage.drop_trigger(triggerName);
             });
         }
 
-        task<void> drop_trigger_if_exists(std::string triggerName) {
+        async_task<void> drop_trigger_if_exists(std::string triggerName) {
             return this->run([triggerName = std::move(triggerName)](Storage& storage) {
                 storage.drop_trigger_if_exists(triggerName);
             });
         }
 
-        task<std::vector<std::string>> table_names() {
+        async_task<std::vector<std::string>> table_names() {
             return this->run([](Storage& storage) {
                 return storage.table_names();
             });
         }
 
-        task<std::vector<std::string>> view_names() {
+        async_task<std::vector<std::string>> view_names() {
             return this->run([](Storage& storage) {
                 return storage.view_names();
             });
         }
 
-        task<std::vector<std::string>> trigger_names() {
+        async_task<std::vector<std::string>> trigger_names() {
             return this->run([](Storage& storage) {
                 return storage.trigger_names();
             });
         }
 
-        task<void> vacuum() {
+        async_task<void> vacuum() {
             return this->run([](Storage& storage) {
                 storage.vacuum();
             });
         }
 
-        task<void> analyze() {
+        async_task<void> analyze() {
             return this->run([](Storage& storage) {
                 storage.analyze();
             });
         }
 
-        task<void> analyze(std::string name) {
+        async_task<void> analyze(std::string name) {
             return this->run([name = std::move(name)](Storage& storage) {
                 storage.analyze(name);
             });
@@ -564,67 +565,67 @@ namespace sqlite_orm::internal {
 
         //  ---- connection information ----
 
-        task<std::string> current_time() {
+        async_task<std::string> current_time() {
             return this->run([](Storage& storage) {
                 return storage.current_time();
             });
         }
 
-        task<std::string> current_date() {
+        async_task<std::string> current_date() {
             return this->run([](Storage& storage) {
                 return storage.current_date();
             });
         }
 
-        task<std::string> current_timestamp() {
+        async_task<std::string> current_timestamp() {
             return this->run([](Storage& storage) {
                 return storage.current_timestamp();
             });
         }
 
-        task<int> busy_timeout(int milliseconds) {
+        async_task<int> busy_timeout(int milliseconds) {
             return this->run([milliseconds](Storage& storage) {
                 return storage.busy_timeout(milliseconds);
             });
         }
 
-        task<int64> last_insert_rowid() {
+        async_task<int64> last_insert_rowid() {
             return this->run([](Storage& storage) {
                 return storage.last_insert_rowid();
             });
         }
 
-        task<int> changes() {
+        async_task<int> changes() {
             return this->run([](Storage& storage) {
                 return storage.changes();
             });
         }
 
-        task<int> total_changes() {
+        async_task<int> total_changes() {
             return this->run([](Storage& storage) {
                 return storage.total_changes();
             });
         }
 
-        task<int64> changes64() {
+        async_task<int64> changes64() {
             return this->run([](Storage& storage) {
                 return storage.changes64();
             });
         }
 
-        task<int64> total_changes64() {
+        async_task<int64> total_changes64() {
             return this->run([](Storage& storage) {
                 return storage.total_changes64();
             });
         }
 
-        task<bool> db_readonly() {
+        async_task<bool> db_readonly() {
             return this->run([](Storage& storage) {
                 return storage.db_readonly();
             });
         }
 
-        task<bool> get_autocommit() {
+        async_task<bool> get_autocommit() {
             return this->run([](Storage& storage) {
                 return storage.get_autocommit();
             });
@@ -642,13 +643,13 @@ namespace sqlite_orm::internal {
             });
         }
 
-        task<void> backup_to(std::string fileName) {
+        async_task<void> backup_to(std::string fileName) {
             return this->run([fileName = std::move(fileName)](Storage& storage) {
                 storage.backup_to(fileName);
             });
         }
 
-        task<void> backup_from(std::string fileName) {
+        async_task<void> backup_from(std::string fileName) {
             return this->run([fileName = std::move(fileName)](Storage& storage) {
                 storage.backup_from(fileName);
             });
@@ -711,7 +712,7 @@ namespace sqlite_orm::internal {
         }
 
         template<class F>
-        auto run_on_fiber(std::unique_ptr<F> function) -> task<std::invoke_result_t<F&, Storage&>> {
+        auto run_on_fiber(std::unique_ptr<F> function) -> async_task<std::invoke_result_t<F&, Storage&>> {
             using result_type = std::invoke_result_t<F&, Storage&>;
             if (!function) {
                 throw std::logic_error("sqlite_orm async: no function to run");
@@ -780,7 +781,7 @@ namespace sqlite_orm::internal {
             }
         };
 
-        io_context* context;
+        async_io_context* context;
         Storage storage;
         internal::storage_turnstile turnstile;
         std::vector<std::shared_ptr<void>> retired;
@@ -810,14 +811,14 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
-     *  Same arguments as make_storage, io_context first. The asynchronous VFS is
+     *  Same arguments as make_storage, async_io_context first. The asynchronous VFS is
      *  injected automatically; a connection_control among the arguments keeps its
      *  other fields.
      *
      *      auto storage = make_async_storage(io, "app.db", make_table(...));
      */
     template<class... Args>
-    auto make_async_storage(io_context& context, std::string filename, Args&&... args) {
+    auto make_async_storage(async_io_context& context, std::string filename, Args&&... args) {
         internal::ensure_async_vfs();
         constexpr bool hasConnectionControl = (std::is_same_v<std::decay_t<Args>, connection_control> || ...);
         if constexpr (hasConnectionControl) {

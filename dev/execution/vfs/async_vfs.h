@@ -60,7 +60,7 @@ namespace sqlite_orm::internal {
 namespace sqlite_orm::internal::async_vfs {
 
     /**
-     *  Incremented on every thread that runs an io_context.
+     *  Incremented on every thread that runs an async_io_context.
      */
     struct atomic_statistics {
         std::atomic<sqlite3_int64> asyncReads{0};

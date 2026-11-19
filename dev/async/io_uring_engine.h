@@ -4,7 +4,7 @@
  *  Purpose: submit file I/O to io_uring and collect its completions.
  *
  *  Intention: realizes the I/O engine of `scheduler.h` on the raw io_uring system calls, without liburing;
- *  publishes `io_uring_available()` for applications that have to check before creating an `io_context`.
+ *  publishes `io_uring_available()` for applications that have to check before creating an `async_io_context`.
  */
 
 #ifdef SQLITE_ORM_WITH_ASYNC
@@ -310,7 +310,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  True when an io_uring instance can be created in this process. Creating an
-     *  io_context where this is false throws.
+     *  async_io_context where this is false throws.
      */
     inline bool io_uring_available() noexcept {
         try {

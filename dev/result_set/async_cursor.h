@@ -130,7 +130,7 @@ namespace sqlite_orm::internal {
         /**
          *  The next row, or `std::nullopt` after the last one.
          */
-        task<std::optional<value_type>> next() {
+        async_task<std::optional<value_type>> next() {
             return this->storage->run([position = this->position](typename AsyncStorage::storage_type& storage) {
                 return position->advance(storage);
             });

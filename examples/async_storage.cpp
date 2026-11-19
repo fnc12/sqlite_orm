@@ -2,9 +2,9 @@
  *  This example demonstrates the asynchronous storage: the ordinary storage, awaited from C++20 coroutines.
  *
  *  While an operation waits for the disk, the thread is free to run other coroutines; the file I/O of SQLite
- *  goes through io_uring instead of blocking system calls. The `io_context` is what submits that I/O and resumes
+ *  goes through io_uring instead of blocking system calls. The `async_io_context` is what submits that I/O and resumes
  *  the coroutines. Here the application has no event loop of its own, so it simply calls `io.run()`;
- *  `examples/async_event_loops/` shows how the `io_context` is embedded into a loop the application already has.
+ *  `examples/async_event_loops/` shows how the `async_io_context` is embedded into a loop the application already has.
  *
  *  Available on Linux with C++20 coroutines, see `docs/async.md`.
  */
@@ -28,7 +28,7 @@ struct User {
     int age = 0;
 };
 
-auto open_storage(io_context& io, std::string filename) {
+auto open_storage(async_io_context& io, std::string filename) {
     return make_async_storage(io,
                               std::move(filename),
                               make_table("users",
@@ -37,9 +37,9 @@ auto open_storage(io_context& io, std::string filename) {
                                          make_column("age", &User::age)));
 }
 
-using Storage = decltype(open_storage(std::declval<io_context&>(), ""));
+using Storage = decltype(open_storage(std::declval<async_io_context&>(), ""));
 
-task<void> basics(Storage& storage) {
+async_task<void> basics(Storage& storage) {
     co_await storage.sync_schema();
 
     //  the interface of the synchronous storage, with `co_await` in front
@@ -68,7 +68,7 @@ task<void> basics(Storage& storage) {
     }
 }
 
-task<int> count_users(Storage& storage) {
+async_task<int> count_users(Storage& storage) {
     co_return co_await storage.count<User>();
 }
 
@@ -76,15 +76,15 @@ task<int> count_users(Storage& storage) {
  *  A storage is one connection and executes its operations one after another.
  *  Two storages work at the same time, on one thread.
  */
-task<void> two_connections(Storage& first, Storage& second) {
-    std::vector<task<int>> counts;
+async_task<void> two_connections(Storage& first, Storage& second) {
+    std::vector<async_task<int>> counts;
     counts.push_back(count_users(first));
     counts.push_back(count_users(second));
-    std::vector<int> results = co_await when_all(std::move(counts));
+    std::vector<int> results = co_await async_when_all(std::move(counts));
     cout << "counted concurrently: " << results[0] << " and " << results[1] << endl;
 }
 
-task<void> example(Storage& storage, Storage& sameDatabase) {
+async_task<void> example(Storage& storage, Storage& sameDatabase) {
     co_await basics(storage);
     co_await two_connections(storage, sameDatabase);
 }
@@ -99,7 +99,7 @@ int main(int, char**) {
     const char* filename = "async_storage.sqlite";
     std::remove(filename);
 
-    io_context io;
+    async_io_context io;
     auto storage = open_storage(io, filename);
     auto sameDatabase = open_storage(io, filename);
 

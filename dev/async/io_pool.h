@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: spread work over several threads, each with its own `io_context`.
+ *  Purpose: spread work over several threads, each with its own `async_io_context`.
  *
  *  Intention: a convenience on top of `io_context.h` for applications that want I/O parallelism across storages.
  */
@@ -28,15 +28,15 @@
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
-     *  M:N: `size` worker threads, each running its own io_context. Work is
+     *  M:N: `size` worker threads, each running its own async_io_context. Work is
      *  spread round-robin; a coroutine that awaits pool.async(function) is resumed
-     *  back on the io_context it was running on.
+     *  back on the async_io_context it was running on.
      */
-    class io_pool {
+    class async_io_pool {
       public:
-        explicit io_pool(unsigned size, unsigned queueDepth = 256) {
+        explicit async_io_pool(unsigned size, unsigned queueDepth = 256) {
             for (unsigned index = 0; index < size; ++index) {
-                this->workers.push_back(std::make_unique<io_context>(queueDepth));
+                this->workers.push_back(std::make_unique<async_io_context>(queueDepth));
             }
             for (auto& worker: this->workers) {
                 this->threads.emplace_back([&worker] {
@@ -45,18 +45,18 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             }
         }
 
-        ~io_pool() {
+        ~async_io_pool() {
             this->shutdown();
         }
 
-        io_pool(const io_pool&) = delete;
-        io_pool& operator=(const io_pool&) = delete;
+        async_io_pool(const async_io_pool&) = delete;
+        async_io_pool& operator=(const async_io_pool&) = delete;
 
         std::size_t size() const noexcept {
             return this->workers.size();
         }
 
-        io_context& worker(std::size_t index) noexcept {
+        async_io_context& worker(std::size_t index) noexcept {
             return *this->workers[index];
         }
 
@@ -74,15 +74,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
-         *  Awaitable from a coroutine running on any io_context (pool worker or an
+         *  Awaitable from a coroutine running on any async_io_context (pool worker or an
          *  external one): run `function` on a fiber of some worker, resume the
-         *  awaiting coroutine on its own io_context.
+         *  awaiting coroutine on its own async_io_context.
          */
         template<class F>
         auto async(F function) {
             using result_type = std::invoke_result_t<F&>;
             struct awaitable {
-                io_pool* pool;
+                async_io_pool* pool;
                 F function;
                 internal::result_box<result_type> box;
 
@@ -91,11 +91,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                 }
 
                 void await_suspend(std::coroutine_handle<> handle) {
-                    io_context* origin = io_context::current();
+                    async_io_context* origin = async_io_context::current();
                     if (!origin) {
-                        std::terminate();  //  must be awaited from an io_context
+                        std::terminate();  //  must be awaited from an async_io_context
                     }
-                    io_context* worker = this->pool->pick();
+                    async_io_context* worker = this->pool->pick();
                     worker->post([this, handle, origin, worker] {
                         worker->scheduler_.spawn([this, handle, origin] {
                             try {
@@ -120,21 +120,21 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
-         *  Blocking variant for plain (non-coroutine) callers, on any thread that does not run an io_context:
+         *  Blocking variant for plain (non-coroutine) callers, on any thread that does not run an async_io_context:
          *  such a thread, a worker of this pool included, would wait for work that only it can do.
          *  Code running there uses `co_await pool.async(function)`.
          */
         template<class F>
         auto run_blocking(F function) -> std::invoke_result_t<F&> {
             using result_type = std::invoke_result_t<F&>;
-            if (io_context::current()) {
+            if (async_io_context::current()) {
                 throw std::logic_error(
-                    "sqlite_orm async: io_pool::run_blocking() called on a thread running an io_context");
+                    "sqlite_orm async: async_io_pool::run_blocking() called on a thread running an async_io_context");
             }
             auto promise = std::make_shared<std::promise<result_type>>();
             std::future<result_type> future = promise->get_future();
             auto sharedFunction = std::make_shared<F>(std::move(function));
-            io_context* worker = this->pick();
+            async_io_context* worker = this->pick();
             worker->post([worker, sharedFunction, promise] {
                 worker->scheduler_.spawn([sharedFunction, promise] {
                     try {
@@ -153,12 +153,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
       private:
-        io_context* pick() {
+        async_io_context* pick() {
             const std::size_t index = this->next.fetch_add(1, std::memory_order_relaxed) % this->workers.size();
             return this->workers[index].get();
         }
 
-        std::vector<std::unique_ptr<io_context>> workers;
+        std::vector<std::unique_ptr<async_io_context>> workers;
         std::vector<std::thread> threads;
         std::atomic<std::size_t> next{0};
     };

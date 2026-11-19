@@ -1,7 +1,7 @@
 /**
  *  This example embeds the asynchronous storage into the event loop of libuv [https://libuv.org].
  *
- *  The `io_context` of the storage offers a descriptor, `native_handle()`, that is readable whenever it has
+ *  The `async_io_context` of the storage offers a descriptor, `native_handle()`, that is readable whenever it has
  *  something to do, and `poll()`, which does what can be done without waiting and returns. A `uv_poll_t` watches the
  *  descriptor and calls `poll()`.
  *  The coroutine is resumed from inside `poll()`, hence on the thread of the loop, next to the loop's own
@@ -29,7 +29,7 @@ struct Measurement {
     double value = 0;
 };
 
-auto open_storage(io_context& io, std::string filename) {
+auto open_storage(async_io_context& io, std::string filename) {
     return make_async_storage(io,
                               std::move(filename),
                               make_table("measurements",
@@ -37,12 +37,12 @@ auto open_storage(io_context& io, std::string filename) {
                                          make_column("value", &Measurement::value)));
 }
 
-using Storage = decltype(open_storage(std::declval<io_context&>(), ""));
+using Storage = decltype(open_storage(std::declval<async_io_context&>(), ""));
 
 /**
  *  Nothing may leave this coroutine: `poll()` would rethrow it through the frames of libuv, which is written in C.
  */
-task<void> store_measurements(Storage& storage, uv_loop_t* loop) {
+async_task<void> store_measurements(Storage& storage, uv_loop_t* loop) {
     try {
         co_await storage.sync_schema();
         for (int index = 0; index < 200; ++index) {
@@ -82,14 +82,14 @@ int main(int, char**) {
         1,
         1);
 
-    //  the whole integration: libuv calls poll() whenever the io_context has something to do
-    io_context io;
+    //  the whole integration: libuv calls poll() whenever the async_io_context has something to do
+    async_io_context io;
     auto storage = open_storage(io, filename);
     uv_poll_t watcher;
     ::uv_poll_init(loop, &watcher, io.native_handle());
     watcher.data = &io;
     ::uv_poll_start(&watcher, UV_READABLE, [](uv_poll_t* watcher, int /*status*/, int /*events*/) {
-        static_cast<io_context*>(watcher->data)->poll();
+        static_cast<async_io_context*>(watcher->data)->poll();
     });
 
     io.spawn(store_measurements(storage, loop));
@@ -97,7 +97,7 @@ int main(int, char**) {
 
     ::uv_run(loop, UV_RUN_DEFAULT);  //  until the coroutine stops the loop
 
-    //  the watcher is closed before the io_context, which owns the descriptor, is destroyed
+    //  the watcher is closed before the async_io_context, which owns the descriptor, is destroyed
     ::uv_close(reinterpret_cast<uv_handle_t*>(&watcher), nullptr);
     ::uv_close(reinterpret_cast<uv_handle_t*>(&timer), nullptr);
     ::uv_run(loop, UV_RUN_DEFAULT);

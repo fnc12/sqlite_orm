@@ -4,10 +4,10 @@
  *
  *  Two things are shown:
  *
- *  1. `storage_driver` embeds the storage's `io_context` into `asio::io_context`: Asio watches its descriptor and
+ *  1. `storage_driver` embeds the storage's `async_io_context` into `asio::io_context`: Asio watches its descriptor and
  *     calls `poll()` whenever it is readable. Asio's loop stays the only one that runs.
  *  2. `await_task()` lets an `asio::awaitable` coroutine await a storage operation. Asio's coroutines only await
- *     Asio's own asynchronous operations, so the function presents a `task` as one; with it comes everything a
+ *     Asio's own asynchronous operations, so the function presents an `async_task` as one; with it comes everything a
  *     completion token offers, e.g. `use_awaitable`, `use_future` or a plain callback.
  */
 
@@ -39,12 +39,11 @@ using std::cout;
 using std::endl;
 
 /**
- *  Embeds an `io_context` of sqlite_orm into an `asio::io_context`.
+ *  Embeds an `async_io_context` of sqlite_orm into an `asio::io_context`.
  */
 class storage_driver {
   public:
-    storage_driver(asio::io_context& host, sqlite_orm::io_context& io_) :
-        io(io_), descriptor(host, io_.native_handle()) {
+    storage_driver(asio::io_context& host, async_io_context& io_) : io(io_), descriptor(host, io_.native_handle()) {
         this->wait();
     }
 
@@ -53,7 +52,7 @@ class storage_driver {
     }
 
     /**
-     *  Stop watching. The descriptor is released rather than closed: it belongs to the `io_context`.
+     *  Stop watching. The descriptor is released rather than closed: it belongs to the `async_io_context`.
      */
     void stop() {
         if (this->descriptor.is_open()) {
@@ -72,7 +71,7 @@ class storage_driver {
         });
     }
 
-    sqlite_orm::io_context& io;
+    async_io_context& io;
     asio::posix::stream_descriptor descriptor;
 };
 
@@ -80,7 +79,7 @@ class storage_driver {
  *  Awaits `operation` and hands its result to the completion handler of Asio, through the handler's executor.
  */
 template<class T, class Handler>
-task<void> complete(task<T> operation, Handler handler) {
+async_task<void> complete(async_task<T> operation, Handler handler) {
     std::optional<T> result;
     std::exception_ptr error;
     try {
@@ -99,7 +98,7 @@ task<void> complete(task<T> operation, Handler handler) {
 }
 
 template<class Handler>
-task<void> complete(task<void> operation, Handler handler) {
+async_task<void> complete(async_task<void> operation, Handler handler) {
     std::exception_ptr error;
     try {
         co_await std::move(operation);
@@ -118,9 +117,9 @@ task<void> complete(task<void> operation, Handler handler) {
  *      std::vector<User> users = co_await await_task(io, storage.get_all<User>(), asio::use_awaitable);
  */
 template<class T, class CompletionToken>
-auto await_task(sqlite_orm::io_context& io, task<T> operation, CompletionToken&& token) {
+auto await_task(async_io_context& io, async_task<T> operation, CompletionToken&& token) {
     return asio::async_initiate<CompletionToken, void(std::exception_ptr, T)>(
-        [&io](auto handler, task<T> operation) {
+        [&io](auto handler, async_task<T> operation) {
             io.spawn(complete(std::move(operation), std::move(handler)));
             io.poll();
         },
@@ -129,9 +128,9 @@ auto await_task(sqlite_orm::io_context& io, task<T> operation, CompletionToken&&
 }
 
 template<class CompletionToken>
-auto await_task(sqlite_orm::io_context& io, task<void> operation, CompletionToken&& token) {
+auto await_task(async_io_context& io, async_task<void> operation, CompletionToken&& token) {
     return asio::async_initiate<CompletionToken, void(std::exception_ptr)>(
-        [&io](auto handler, task<void> operation) {
+        [&io](auto handler, async_task<void> operation) {
             io.spawn(complete(std::move(operation), std::move(handler)));
             io.poll();
         },
@@ -145,7 +144,7 @@ struct User {
     int age = 0;
 };
 
-auto open_storage(sqlite_orm::io_context& io, std::string filename) {
+auto open_storage(async_io_context& io, std::string filename) {
     return make_async_storage(io,
                               std::move(filename),
                               make_table("users",
@@ -154,12 +153,12 @@ auto open_storage(sqlite_orm::io_context& io, std::string filename) {
                                          make_column("age", &User::age)));
 }
 
-using Storage = decltype(open_storage(std::declval<sqlite_orm::io_context&>(), ""));
+using Storage = decltype(open_storage(std::declval<async_io_context&>(), ""));
 
 /**
  *  A coroutine of Asio using the storage.
  */
-asio::awaitable<void> use_storage(sqlite_orm::io_context& io, Storage& storage, bool& finished) {
+asio::awaitable<void> use_storage(async_io_context& io, Storage& storage, bool& finished) {
     co_await await_task(io, storage.sync_schema(), asio::use_awaitable);
     for (int index = 1; index <= 100; ++index) {
         co_await await_task(io,
@@ -203,7 +202,7 @@ int main(int, char**) {
     std::remove(filename);
 
     asio::io_context host;
-    sqlite_orm::io_context io;
+    async_io_context io;
     storage_driver driver(host, io);
     auto storage = open_storage(io, filename);
 

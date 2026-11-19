@@ -57,7 +57,7 @@ namespace sqlite_orm::internal {
     };
 
     /**
-     *  Final awaiter of a task: transfers control to whoever awaited the task.
+     *  Final awaiter of an async_task: transfers control to whoever awaited the async_task.
      */
     struct task_final_awaiter {
         bool await_ready() noexcept {
@@ -74,7 +74,7 @@ namespace sqlite_orm::internal {
     };
 
     /**
-     *  Awaiting a task that holds no coroutine, i.e. a default-constructed or moved-from one, is an error
+     *  Awaiting an async_task that holds no coroutine, i.e. a default-constructed or moved-from one, is an error
      *  of the caller.
      */
     inline void require_task(std::coroutine_handle<> handle) {
@@ -110,11 +110,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  exception.
      */
     template<class T>
-    class task {
+    class async_task {
       public:
         struct promise_type : internal::task_promise_base<T> {
-            task get_return_object() {
-                return task{std::coroutine_handle<promise_type>::from_promise(*this)};
+            async_task get_return_object() {
+                return async_task{std::coroutine_handle<promise_type>::from_promise(*this)};
             }
 
             template<class U>
@@ -123,13 +123,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             }
         };
 
-        task() = default;
+        async_task() = default;
 
-        explicit task(std::coroutine_handle<promise_type> handle_) : handle(handle_) {}
+        explicit async_task(std::coroutine_handle<promise_type> handle_) : handle(handle_) {}
 
-        task(task&& other) noexcept : handle(std::exchange(other.handle, {})) {}
+        async_task(async_task&& other) noexcept : handle(std::exchange(other.handle, {})) {}
 
-        task& operator=(task&& other) noexcept {
+        async_task& operator=(async_task&& other) noexcept {
             if (this != &other) {
                 this->reset();
                 this->handle = std::exchange(other.handle, {});
@@ -137,10 +137,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return *this;
         }
 
-        task(const task&) = delete;
-        task& operator=(const task&) = delete;
+        async_task(const async_task&) = delete;
+        async_task& operator=(const async_task&) = delete;
 
-        ~task() {
+        ~async_task() {
             this->reset();
         }
 
@@ -170,23 +170,23 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     };
 
     template<>
-    class task<void> {
+    class async_task<void> {
       public:
         struct promise_type : internal::task_promise_base<void> {
-            task get_return_object() {
-                return task{std::coroutine_handle<promise_type>::from_promise(*this)};
+            async_task get_return_object() {
+                return async_task{std::coroutine_handle<promise_type>::from_promise(*this)};
             }
 
             void return_void() noexcept {}
         };
 
-        task() = default;
+        async_task() = default;
 
-        explicit task(std::coroutine_handle<promise_type> handle_) : handle(handle_) {}
+        explicit async_task(std::coroutine_handle<promise_type> handle_) : handle(handle_) {}
 
-        task(task&& other) noexcept : handle(std::exchange(other.handle, {})) {}
+        async_task(async_task&& other) noexcept : handle(std::exchange(other.handle, {})) {}
 
-        task& operator=(task&& other) noexcept {
+        async_task& operator=(async_task&& other) noexcept {
             if (this != &other) {
                 this->reset();
                 this->handle = std::exchange(other.handle, {});
@@ -194,10 +194,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return *this;
         }
 
-        task(const task&) = delete;
-        task& operator=(const task&) = delete;
+        async_task(const async_task&) = delete;
+        async_task& operator=(const async_task&) = delete;
 
-        ~task() {
+        ~async_task() {
             this->reset();
         }
 

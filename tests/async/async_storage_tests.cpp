@@ -44,7 +44,7 @@ namespace {
                           make_column("age", &User::age));
     }
 
-    using Storage = decltype(make_async_storage(std::declval<io_context&>(), "", users_table()));
+    using Storage = decltype(make_async_storage(std::declval<async_io_context&>(), "", users_table()));
 
     //  one connection, referred to by its cursors and by the operations waiting for their turn
     static_assert(!std::is_move_constructible_v<Storage> && !std::is_copy_constructible_v<Storage>);
@@ -72,7 +72,7 @@ namespace {
         }
     }
 
-    task<void> mark_done(task<void> body, bool& done) {
+    async_task<void> mark_done(async_task<void> body, bool& done) {
         co_await std::move(body);
         done = true;
     }
@@ -81,7 +81,7 @@ namespace {
      *  Coroutine lambdas must outlive their frames: test bodies are stored in a
      *  named variable by the caller and only the task is handed over here.
      */
-    void run_test(io_context& io, task<void> body) {
+    void run_test(async_io_context& io, async_task<void> body) {
         bool done = false;
         io.spawn(mark_done(std::move(body), done));
         io.run();
@@ -89,7 +89,7 @@ namespace {
     }
 
     template<class S>
-    task<void> fill_users(S& storage, int count) {
+    async_task<void> fill_users(S& storage, int count) {
         co_await storage.sync_schema();
         co_await storage.transaction([count](auto& storage) {
             for (int index = 1; index <= count; ++index) {
@@ -103,7 +103,7 @@ namespace {
 TEST_CASE("async storage: factory - VFS injection and lazy open") {
     require_io_uring();
     temp_database database;
-    io_context io;
+    async_io_context io;
     auto storage = make_async_storage(io, database.path, users_table());
 
     //  Nothing is opened until the first operation, and nothing global changed.
@@ -115,7 +115,7 @@ TEST_CASE("async storage: factory - VFS injection and lazy open") {
     REQUIRE(storage.filename() == database.path);
     REQUIRE_FALSE(storage.is_busy());
 
-    auto body = [&storage, &database]() -> task<void> {
+    auto body = [&storage, &database]() -> async_task<void> {
         co_await storage.sync_schema();
         REQUIRE(std::filesystem::exists(database.path));
         REQUIRE(storage.is_opened());
@@ -127,7 +127,7 @@ TEST_CASE("async storage: factory - VFS injection and lazy open") {
 TEST_CASE("async storage: user connection_control keeps its other fields") {
     require_io_uring();
     temp_database database;
-    io_context io;
+    async_io_context io;
     connection_control control{};
     control.open_mode = db_open_mode::create_readwrite;
     control.vfs_name = "unix";  //  overridden by the asynchronous VFS
@@ -139,11 +139,11 @@ TEST_CASE("async storage: user connection_control keeps its other fields") {
 TEST_CASE("async storage: CRUD") {
     require_io_uring();
     temp_database database;
-    io_context io;
+    async_io_context io;
     internal::reset_async_vfs_statistics();
     auto storage = make_async_storage(io, database.path, users_table());
 
-    auto body = [&storage]() -> task<void> {
+    auto body = [&storage]() -> async_task<void> {
         co_await fill_users(storage, 200);
         {
             const auto value = co_await storage.count<User>();
@@ -256,10 +256,10 @@ TEST_CASE("async storage: CRUD") {
 TEST_CASE("async storage: aggregates") {
     require_io_uring();
     temp_database database;
-    io_context io;
+    async_io_context io;
     auto storage = make_async_storage(io, database.path, users_table());
 
-    auto body = [&storage]() -> task<void> {
+    auto body = [&storage]() -> async_task<void> {
         co_await fill_users(storage, 10);
         {
             const auto value = co_await storage.count(&User::age);
@@ -293,10 +293,10 @@ TEST_CASE("async storage: aggregates") {
 TEST_CASE("async storage: prepared statements") {
     require_io_uring();
     temp_database database;
-    io_context io;
+    async_io_context io;
     auto storage = make_async_storage(io, database.path, users_table());
 
-    auto body = [&storage]() -> task<void> {
+    auto body = [&storage]() -> async_task<void> {
         co_await fill_users(storage, 20);
 
         auto selectStatement = co_await storage.prepare(select(columns(&User::name), where(c(&User::id) == 5)));
@@ -335,10 +335,10 @@ TEST_CASE("async storage: prepared statements") {
 TEST_CASE("async storage: transactions and savepoints") {
     require_io_uring();
     temp_database database;
-    io_context io;
+    async_io_context io;
     auto storage = make_async_storage(io, database.path, users_table());
 
-    auto body = [&storage]() -> task<void> {
+    auto body = [&storage]() -> async_task<void> {
         co_await fill_users(storage, 5);
 
         //  returning false rolls back
@@ -389,10 +389,10 @@ TEST_CASE("async storage: transactions and savepoints") {
 TEST_CASE("async storage: schema and connection information") {
     require_io_uring();
     temp_database database;
-    io_context io;
+    async_io_context io;
     auto storage = make_async_storage(io, database.path, users_table());
 
-    auto body = [&storage, &database]() -> task<void> {
+    auto body = [&storage, &database]() -> async_task<void> {
         auto simulated = co_await storage.sync_schema_simulate();
         REQUIRE(simulated.at("users") == sync_schema_result::new_table_created);
         auto results = co_await storage.sync_schema();
@@ -481,12 +481,12 @@ TEST_CASE("async storage: schema and connection information") {
 TEST_CASE("async storage: operations from several coroutines are queued and the thread stays free") {
     require_io_uring();
     temp_database database;
-    io_context io;
+    async_io_context io;
     auto storage = make_async_storage(io, database.path, users_table());
 
     std::uint64_t epoch = 0;
     std::uint64_t interleaved = 0;
-    auto reader = [&storage, &epoch, &interleaved](int seed) -> task<long> {
+    auto reader = [&storage, &epoch, &interleaved](int seed) -> async_task<long> {
         std::mt19937 generator(static_cast<unsigned>(seed));
         long total = 0;
         for (int index = 0; index < 30; ++index) {
@@ -502,13 +502,13 @@ TEST_CASE("async storage: operations from several coroutines are queued and the 
         co_return total;
     };
 
-    auto body = [&storage, &reader, &interleaved]() -> task<void> {
+    auto body = [&storage, &reader, &interleaved]() -> async_task<void> {
         co_await fill_users(storage, 2000);
-        std::vector<task<long>> readers;
+        std::vector<async_task<long>> readers;
         for (int index = 0; index < 8; ++index) {
             readers.push_back(reader(index + 1));
         }
-        std::vector<long> totals = co_await when_all(std::move(readers));
+        std::vector<long> totals = co_await async_when_all(std::move(readers));
         REQUIRE(totals.size() == 8);
         //  Requests from the eight coroutines were interleaved on one connection...
         REQUIRE(interleaved > 0);
@@ -518,14 +518,14 @@ TEST_CASE("async storage: operations from several coroutines are queued and the 
     run_test(io, body());
 }
 
-TEST_CASE("async storage: io_pool spreads work over threads and resumes on the origin") {
+TEST_CASE("async storage: async_io_pool spreads work over threads and resumes on the origin") {
     require_io_uring();
     temp_database database;
-    io_context io;
-    io_pool pool(3);
+    async_io_context io;
+    async_io_pool pool(3);
     auto storage = make_async_storage(io, database.path, users_table());
 
-    auto body = [&storage, &pool]() -> task<void> {
+    auto body = [&storage, &pool]() -> async_task<void> {
         co_await storage.sync_schema();
         const std::thread::id origin = std::this_thread::get_id();
         int answer = co_await pool.async([origin] {
@@ -552,24 +552,24 @@ TEST_CASE("async storage: io_pool spreads work over threads and resumes on the o
     pool.shutdown();
 }
 
-TEST_CASE("async storage: when_all of operations without a result") {
+TEST_CASE("async storage: async_when_all of operations without a result") {
     require_io_uring();
     temp_database database;
-    io_context io;
+    async_io_context io;
     auto storage = make_async_storage(io, database.path, users_table());
 
-    auto body = [&storage]() -> task<void> {
+    auto body = [&storage]() -> async_task<void> {
         co_await fill_users(storage, 20);
-        std::vector<task<void>> updates;
+        std::vector<async_task<void>> updates;
         for (int id = 1; id <= 20; ++id) {
             updates.push_back(storage.update(User{id, "renamed", id}));
         }
-        co_await when_all(std::move(updates));
+        co_await async_when_all(std::move(updates));
         const int renamed = co_await storage.count<User>(where(c(&User::name) == "renamed"));
         REQUIRE(renamed == 20);
 
         //  the first failure is rethrown after all of them have finished
-        std::vector<task<void>> removals;
+        std::vector<async_task<void>> removals;
         removals.push_back(storage.remove<User>(1));
         removals.push_back(storage.run([](auto&) {
             throw std::logic_error("failed on purpose");
@@ -577,7 +577,7 @@ TEST_CASE("async storage: when_all of operations without a result") {
         removals.push_back(storage.remove<User>(2));
         bool thrown = false;
         try {
-            co_await when_all(std::move(removals));
+            co_await async_when_all(std::move(removals));
         } catch (const std::logic_error&) {
             thrown = true;
         }
@@ -585,27 +585,27 @@ TEST_CASE("async storage: when_all of operations without a result") {
         const int left = co_await storage.count<User>();
         REQUIRE(left == 18);
 
-        co_await when_all(std::vector<task<void>>{});
+        co_await async_when_all(std::vector<async_task<void>>{});
     };
     run_test(io, body());
 }
 
 TEST_CASE("async storage: awaiting an empty task is an error, not a crash") {
-    io_context io;
+    async_io_context io;
     bool thrownForValue = false;
     bool thrownForVoid = false;
-    auto body = [&thrownForValue, &thrownForVoid]() -> task<void> {
-        task<int> moved = []() -> task<int> {
+    auto body = [&thrownForValue, &thrownForVoid]() -> async_task<void> {
+        async_task<int> moved = []() -> async_task<int> {
             co_return 1;
         }();
-        task<int> taken = std::move(moved);
+        async_task<int> taken = std::move(moved);
         try {
             (void)co_await moved;
         } catch (const std::logic_error&) {
             thrownForValue = true;
         }
         try {
-            co_await task<void>{};
+            co_await async_task<void>{};
         } catch (const std::logic_error&) {
             thrownForVoid = true;
         }
@@ -645,10 +645,10 @@ namespace {
 TEST_CASE("async storage: shares the file with other connections of the process") {
     require_io_uring();
     temp_database database;
-    io_context io;
+    async_io_context io;
     {
         auto storage = make_async_storage(io, database.path, users_table());
-        auto body = [&storage]() -> task<void> {
+        auto body = [&storage]() -> async_task<void> {
             co_await fill_users(storage, 10);
         };
         run_test(io, body());
@@ -659,7 +659,7 @@ TEST_CASE("async storage: shares the file with other connections of the process"
         readOnly.open_mode = db_open_mode::readonly;
         auto reader = make_async_storage(io, database.path, readOnly, users_table());
         auto writer = make_async_storage(io, database.path, users_table());
-        auto body = [&reader, &writer]() -> task<void> {
+        auto body = [&reader, &writer]() -> async_task<void> {
             const int before = co_await reader.count<User>();
             REQUIRE(before == 10);
             internal::reset_async_vfs_statistics();
@@ -676,7 +676,7 @@ TEST_CASE("async storage: shares the file with other connections of the process"
         REQUIRE(locked_by_this_process(database.path));
         {
             auto storage = make_async_storage(io, database.path, users_table());
-            auto body = [&storage]() -> task<void> {
+            auto body = [&storage]() -> async_task<void> {
                 //  opens the file; reading it is refused, the other connection being in an exclusive transaction
                 bool refused = false;
                 try {
@@ -697,7 +697,7 @@ TEST_CASE("async storage: shares the file with other connections of the process"
 TEST_CASE("async storage: iterate fetches row by row") {
     require_io_uring();
     temp_database database;
-    io_context io;
+    async_io_context io;
     sqlite3* connection = nullptr;
     auto storage = make_async_storage(io, database.path, users_table(), on_open([&connection](sqlite3* handle) {
                                           connection = handle;
@@ -705,7 +705,7 @@ TEST_CASE("async storage: iterate fetches row by row") {
     using storage_type = decltype(storage);
 
     SECTION("objects of a mapped type") {
-        auto body = [&storage, &connection]() -> task<void> {
+        auto body = [&storage, &connection]() -> async_task<void> {
             co_await fill_users(storage, 500);
             std::vector<User> expected = co_await storage.get_all<User>(where(c(&User::age) > 30), order_by(&User::id));
             REQUIRE_FALSE(expected.empty());
@@ -741,7 +741,7 @@ TEST_CASE("async storage: iterate fetches row by row") {
     //  guarded like the iteration over a select statement in tests/iterate.cpp
 #ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
     SECTION("rows of a select statement") {
-        auto body = [&storage]() -> task<void> {
+        auto body = [&storage]() -> async_task<void> {
             co_await fill_users(storage, 50);
             auto rows = storage.iterate(select(columns(&User::id, &User::name), order_by(&User::id)));
             int expectedId = 0;
@@ -760,7 +760,7 @@ TEST_CASE("async storage: iterate fetches row by row") {
     }
 #endif
     SECTION("two cursors interleave on one connection") {
-        auto body = [&storage]() -> task<void> {
+        auto body = [&storage]() -> async_task<void> {
             co_await fill_users(storage, 20);
             auto ascending = storage.iterate<User>(order_by(&User::id));
             auto descending = storage.iterate<User>(order_by(&User::id).desc());
@@ -776,7 +776,7 @@ TEST_CASE("async storage: iterate fetches row by row") {
         run_test(io, body());
     }
     SECTION("a cursor abandoned while the connection is free finalizes its statement at once") {
-        auto body = [&storage, &connection]() -> task<void> {
+        auto body = [&storage, &connection]() -> async_task<void> {
             co_await fill_users(storage, 50);
             {
                 auto users = storage.iterate<User>();
@@ -790,33 +790,33 @@ TEST_CASE("async storage: iterate fetches row by row") {
         run_test(io, body());
     }
     SECTION("a cursor abandoned while an operation is executing finalizes its statement after it") {
-        auto body = [&storage, &connection]() -> task<void> {
+        auto body = [&storage, &connection]() -> async_task<void> {
             co_await fill_users(storage, 50);
             auto users = storage.iterate<User>();
             std::optional<User> first = co_await users.next();
             REQUIRE(first.has_value());
 
-            auto countUsers = [](storage_type& storage) -> task<int> {
+            auto countUsers = [](storage_type& storage) -> async_task<int> {
                 co_return co_await storage.template count<User>();
             };
-            auto abandon = [](storage_type& storage, sqlite3* connection, decltype(users) users) -> task<int> {
+            auto abandon = [](storage_type& storage, sqlite3* connection, decltype(users) users) -> async_task<int> {
                 REQUIRE(storage.is_busy());
                 users.close();
                 //  the statement outlives the cursor for as long as the other operation is executing
                 REQUIRE(sqlite3_next_stmt(connection, nullptr) != nullptr);
                 co_return 0;
             };
-            std::vector<task<int>> tasks;
+            std::vector<async_task<int>> tasks;
             tasks.push_back(countUsers(storage));
             tasks.push_back(abandon(storage, connection, std::move(users)));
-            std::vector<int> results = co_await when_all(std::move(tasks));
+            std::vector<int> results = co_await async_when_all(std::move(tasks));
             REQUIRE(results[0] == 50);
             REQUIRE(sqlite3_next_stmt(connection, nullptr) == nullptr);
         };
         run_test(io, body());
     }
     SECTION("an error ends the iteration") {
-        auto body = [&storage]() -> task<void> {
+        auto body = [&storage]() -> async_task<void> {
             //  no sync_schema(): the table does not exist
             auto users = storage.iterate<User>();
             bool thrown = false;
@@ -835,7 +835,7 @@ TEST_CASE("async storage: iterate fetches row by row") {
 
 namespace {
     /**
-     *  The smallest event loop an io_context can be embedded into: it watches descriptors for readability.
+     *  The smallest event loop an async_io_context can be embedded into: it watches descriptors for readability.
      */
     struct epoll_loop {
         int descriptor = ::epoll_create1(EPOLL_CLOEXEC);
@@ -874,10 +874,10 @@ namespace {
     };
 }
 
-TEST_CASE("async storage: io_context embedded into another event loop") {
+TEST_CASE("async storage: async_io_context embedded into another event loop") {
     require_io_uring();
     temp_database database;
-    io_context io;
+    async_io_context io;
     auto storage = make_async_storage(io, database.path, users_table());
     epoll_loop loop;
     loop.watch_readable(io.native_handle());
@@ -886,13 +886,13 @@ TEST_CASE("async storage: io_context embedded into another event loop") {
     SECTION("the descriptor is readable whenever poll() has work to do") {
         bool done = false;
         int turns = 0;
-        auto body = [&storage, &io, &done]() -> task<void> {
+        auto body = [&storage, &io, &done]() -> async_task<void> {
             co_await fill_users(storage, 300);
             //  a call from inside poll() returns at once
             REQUIRE(io.poll());
             std::vector<User> users = co_await storage.get_all<User>();
             REQUIRE(users.size() == 300);
-            REQUIRE(io_context::current() == &io);
+            REQUIRE(async_io_context::current() == &io);
             done = true;
         };
         io.spawn(body());
@@ -943,7 +943,7 @@ TEST_CASE("async storage: io_context embedded into another event loop") {
         other.join();
     }
     SECTION("an exception escaping a root coroutine is rethrown by poll()") {
-        auto body = [&storage]() -> task<void> {
+        auto body = [&storage]() -> async_task<void> {
             co_await storage.get<User>(1);  //  no such table
         };
         io.spawn(body());

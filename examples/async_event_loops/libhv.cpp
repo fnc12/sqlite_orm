@@ -2,8 +2,8 @@
  *  This example serves a database over HTTP with libhv [https://github.com/ithewei/libhv] and the
  *  asynchronous storage, on libhv's own event loop.
  *
- *  libhv runs one event loop per I/O thread. Each of them gets an `io_context` and a storage, i.e. a connection,
- *  of its own, embedded into the loop by watching the `io_context`'s descriptor (see `database` below).
+ *  libhv runs one event loop per I/O thread. Each of them gets an `async_io_context` and a storage, i.e. a connection,
+ *  of its own, embedded into the loop by watching the `async_io_context`'s descriptor (see `database` below).
  *  A request handler starts a coroutine and returns; the coroutine answers the request when the database has.
  *  No thread ever waits for the disk, and no thread is added.
  *
@@ -32,7 +32,7 @@ struct User {
     int age = 0;
 };
 
-auto open_storage(io_context& io, std::string filename) {
+auto open_storage(async_io_context& io, std::string filename) {
     return make_async_storage(io,
                               std::move(filename),
                               make_table("users",
@@ -41,23 +41,23 @@ auto open_storage(io_context& io, std::string filename) {
                                          make_column("age", &User::age)));
 }
 
-using Storage = decltype(open_storage(std::declval<io_context&>(), ""));
+using Storage = decltype(open_storage(std::declval<async_io_context&>(), ""));
 
 /**
  *  The database as one event loop of libhv sees it.
  */
 struct database {
-    io_context io;
+    async_io_context io;
     Storage storage;
 
     explicit database(hloop_t* loop) : storage(open_storage(this->io, "async_libhv.sqlite")) {
-        //  the whole integration: libhv calls poll() whenever the io_context has something to do
+        //  the whole integration: libhv calls poll() whenever the async_io_context has something to do
         hio_t* watcher = hio_get(loop, this->io.native_handle());
         hio_set_context(watcher, &this->io);
         hio_add(
             watcher,
             [](hio_t* watcher) {
-                static_cast<io_context*>(hio_context(watcher))->poll();
+                static_cast<async_io_context*>(hio_context(watcher))->poll();
             },
             HV_READ);
         //  the event loops share the database file: a connection finding it locked by another one waits,
@@ -69,7 +69,7 @@ struct database {
      *  Start an operation whose result nobody waits for.
      */
     template<class T>
-    void start(task<T> operation) {
+    void start(async_task<T> operation) {
         this->io.spawn(database::discard(std::move(operation)));
         this->io.poll();
     }
@@ -87,12 +87,12 @@ struct database {
 
   private:
     template<class T>
-    static task<void> discard(task<T> operation) {
+    static async_task<void> discard(async_task<T> operation) {
         co_await std::move(operation);
     }
 };
 
-task<void> create_schema(Storage& storage) {
+async_task<void> create_schema(Storage& storage) {
     co_await storage.sync_schema();
 }
 
@@ -101,7 +101,7 @@ void send_error(const HttpContextPtr& context, const std::exception& error) {
     context->send(error.what(), TEXT_PLAIN);
 }
 
-task<void> list_users(database& database, HttpContextPtr context) {
+async_task<void> list_users(database& database, HttpContextPtr context) {
     try {
         hv::Json body = hv::Json::array();
         auto users = database.storage.iterate<User>(order_by(&User::id));
@@ -114,7 +114,7 @@ task<void> list_users(database& database, HttpContextPtr context) {
     }
 }
 
-task<void> add_user(database& database, HttpContextPtr context) {
+async_task<void> add_user(database& database, HttpContextPtr context) {
     try {
         User user{0, context->param("name"), std::stoi(context->param("age", "0"))};
         user.id = co_await database.storage.insert(user);
@@ -137,7 +137,7 @@ int main(int argc, char** argv) {
     //  the schema is synchronized once, before the event loops open their connections: two of them doing it
     //  at the same time would both try to create the table
     {
-        io_context io;
+        async_io_context io;
         Storage storage = open_storage(io, "async_libhv.sqlite");
         io.spawn(create_schema(storage));
         io.run();
