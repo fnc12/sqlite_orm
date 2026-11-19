@@ -134,3 +134,20 @@ C++26's std::execution::when_all.
 - Interoperation of the asynchronous task with C++26 std::execution, such
   as task awaitable inside a sender pipeline: an issue of its own, after
   #1524, alongside the existing runtime rather than replacing it.
+
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-19: #1628 after the review of
+#1524 was posted.
+
+# Decided
+- trueqbit: #1628 marked ready for review, without waiting for fnc12's
+  answer on #1524: the move to internal holds under every namespace
+  option (a)-(f). fnc12 approved it at 8235d1bb; merged by Claude on
+  trueqbit's yes, with checks green (26 passed, 2 skipped), as merge
+  commit 69c025ed into feature/async-storage. The earlier Later line
+  "#1628 stays a draft" is settled.
+- trueqbit: the worktree C:/projects/wt-async-internal is removed.
+
+# Later
+- fnc12's answer on #1524 (the naming option, where the bugs are fixed),
+  then the naming pull request on feature/async-storage.
