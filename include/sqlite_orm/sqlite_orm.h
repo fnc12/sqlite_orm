@@ -36620,7 +36620,7 @@ namespace sqlite_orm::internal {
          *  work announced in between would otherwise be left without a wake.
          */
         void consume_wake() {
-            std::uint64_t value;
+            std::uint64_t value = 0;
             while (::read(this->wakeDescriptor, &value, sizeof value) > 0) {
             }
         }
@@ -36763,16 +36763,6 @@ namespace sqlite_orm::internal {
      */
     class scheduler {
       public:
-        struct statistics {
-            std::uint64_t operationsSubmitted = 0;
-            std::uint64_t operationsCompleted = 0;
-            std::uint64_t fiberSwitches = 0;
-            std::uint64_t synchronousFallbacks = 0;  //  VFS calls made outside a fiber
-            std::uint64_t loopIterations = 0;
-            std::uint64_t waits = 0;  //  blocking reaps
-            std::uint64_t posts = 0;  //  cross-thread posts received
-        };
-
         explicit scheduler(unsigned queueDepth = 256) : engine(queueDepth) {}
 
         scheduler(const scheduler&) = delete;
@@ -36848,14 +36838,6 @@ namespace sqlite_orm::internal {
             return !this->ready.empty() || this->engine.has_unsubmitted();
         }
 
-        std::size_t fibers_alive() const noexcept {
-            return this->alive;
-        }
-
-        const statistics& stats() const noexcept {
-            return this->statistics_;
-        }
-
         int native_handle() const noexcept {
             return this->engine.native_handle();
         }
@@ -36900,10 +36882,6 @@ namespace sqlite_orm::internal {
             this->engine.wake();
         }
 
-        void note_synchronous_fallback() noexcept {
-            ++this->statistics_.synchronousFallbacks;
-        }
-
         /**
          *  Same-thread hook: when it returns true the loop will not block in the
          *  kernel even if no fiber is runnable (the owner has work of its own).
@@ -36912,6 +36890,11 @@ namespace sqlite_orm::internal {
             this->externalReady = std::move(predicate);
         }
 
+        /**
+         *  VFS calls made on this scheduler's thread outside a fiber, which therefore did their I/O synchronously.
+         */
+        std::uint64_t synchronousFallbacks = 0;
+
       private:
         static scheduler*& current_slot() noexcept {
             thread_local scheduler* currentScheduler = nullptr;
@@ -36919,7 +36902,7 @@ namespace sqlite_orm::internal {
         }
 
         struct current_guard {
-            scheduler* previous;
+            scheduler* previous = nullptr;
 
             explicit current_guard(scheduler* self) : previous(scheduler::current_slot()) {
                 scheduler::current_slot() = self;
@@ -36952,7 +36935,6 @@ namespace sqlite_orm::internal {
             operation.waiter = self;
             operation.completed = false;
             ++this->inFlight;
-            ++this->statistics_.operationsSubmitted;
             do {
                 fiber::yield();
             } while (!operation.completed);
@@ -36984,14 +36966,12 @@ namespace sqlite_orm::internal {
                 batch.swap(this->posted);
             }
             for (auto& function: batch) {
-                ++this->statistics_.posts;
                 function();
             }
         }
 
         bool step(bool mayBlock) {
             current_guard guard(this);
-            ++this->statistics_.loopIterations;
             this->drain_posted();
 
             //  1. Run everything that is runnable right now.
@@ -36999,7 +36979,6 @@ namespace sqlite_orm::internal {
             while (runnable-- > 0) {
                 fiber* next = this->ready.front();
                 this->ready.pop_front();
-                ++this->statistics_.fiberSwitches;
                 next->resume();
                 if (next->is_done()) {
                     --this->alive;
@@ -37024,15 +37003,11 @@ namespace sqlite_orm::internal {
                 return !this->ready.empty();
             }
             const bool block = mayBlock && this->ready.empty() && !(this->externalReady && this->externalReady());
-            if (block) {
-                ++this->statistics_.waits;
-            }
             this->completed.clear();
             this->engine.reap(block, this->completed);
             for (io_operation* operation: this->completed) {
                 operation->completed = true;
                 --this->inFlight;
-                ++this->statistics_.operationsCompleted;
                 if (operation->waiter) {
                     this->ready.push_back(operation->waiter);
                 } else if (operation->onComplete) {
@@ -37058,7 +37033,6 @@ namespace sqlite_orm::internal {
         std::vector<io_operation*> completed;
         std::size_t inFlight = 0;  //  operations in the kernel (including the wake operation)
         std::size_t alive = 0;
-        statistics statistics_;
         io_operation wakeOperation;
         bool wakeArmed = false;
         std::mutex postMutex;
@@ -37164,10 +37138,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         auto async(F function) {
             using result_type = std::invoke_result_t<F&>;
             struct awaitable {
-                async_io_context* context;
+                async_io_context* context = nullptr;
                 F function;
                 internal::result_box<result_type> box;
-                std::size_t stackSize;
+                std::size_t stackSize = 0;
 
                 bool await_ready() const noexcept {
                     return false;
@@ -37283,7 +37257,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         struct current_guard {
-            async_io_context* previous;
+            async_io_context* previous = nullptr;
 
             explicit current_guard(async_io_context* context) : previous(async_io_context::current_slot()) {
                 async_io_context::current_slot() = context;
@@ -37295,7 +37269,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         };
 
         struct polling_guard {
-            async_io_context* context;
+            async_io_context* context = nullptr;
 
             explicit polling_guard(async_io_context* context_) : context(context_) {
                 this->context->polling = true;
@@ -37529,7 +37503,7 @@ namespace sqlite_orm::internal {
         }
 
       private:
-        AsyncStorage* storage;
+        AsyncStorage* storage = nullptr;
         std::shared_ptr<position_type> position;
     };
 }
@@ -37624,11 +37598,12 @@ namespace sqlite_orm::internal::async_vfs {
      *  only trivially constructible members.
      */
     struct async_file {
-        sqlite3_file base;  //  must be first
-        sqlite3_file* wrapped;  //  file of the wrapped VFS (allocated right after this struct)
-        int descriptor;  //  the wrapped file's descriptor, or -1: I/O goes through the wrapped file synchronously
-        const char* fileName;  //  as passed to xOpen, which SQLite keeps valid until xClose
-        bool directorySyncPending;  //  a journal or WAL file this open created: its directory entry is not durable yet
+        sqlite3_file base{};  //  must be first
+        sqlite3_file* wrapped = nullptr;  //  file of the wrapped VFS (allocated right after this struct)
+        int descriptor = -1;  //  the wrapped file's descriptor, or -1: I/O goes through the wrapped file synchronously
+        const char* fileName = nullptr;  //  as passed to xOpen, which SQLite keeps valid until xClose
+        bool directorySyncPending =
+            false;  //  a journal or WAL file this open created: its directory entry is not durable yet
     };
 
     inline bool in_fiber(scheduler*& currentScheduler) {
@@ -37637,7 +37612,7 @@ namespace sqlite_orm::internal::async_vfs {
     }
 
     struct vfs_data {
-        sqlite3_vfs* wrapped;
+        sqlite3_vfs* wrapped = nullptr;
     };
 
     inline sqlite3_vfs* wrapped_vfs(sqlite3_vfs* vfs) {
@@ -37729,7 +37704,7 @@ namespace sqlite_orm::internal::async_vfs {
         if (!in_fiber(currentScheduler) || asyncFile->descriptor < 0) {
             count(statistics.syncReads);
             if (currentScheduler) {
-                currentScheduler->note_synchronous_fallback();
+                ++currentScheduler->synchronousFallbacks;
             }
             return asyncFile->wrapped->pMethods->xRead(asyncFile->wrapped, buffer, length, offset);
         }
@@ -37765,7 +37740,7 @@ namespace sqlite_orm::internal::async_vfs {
         if (!in_fiber(currentScheduler) || asyncFile->descriptor < 0) {
             count(statistics.syncWrites);
             if (currentScheduler) {
-                currentScheduler->note_synchronous_fallback();
+                ++currentScheduler->synchronousFallbacks;
             }
             return asyncFile->wrapped->pMethods->xWrite(asyncFile->wrapped, buffer, length, offset);
         }
@@ -37802,7 +37777,7 @@ namespace sqlite_orm::internal::async_vfs {
         if (!in_fiber(currentScheduler) || asyncFile->descriptor < 0) {
             count(statistics.syncSyncs);
             if (currentScheduler) {
-                currentScheduler->note_synchronous_fallback();
+                ++currentScheduler->synchronousFallbacks;
             }
             return asyncFile->wrapped->pMethods->xSync(asyncFile->wrapped, flags);
         }
@@ -38149,10 +38124,6 @@ namespace sqlite_orm::internal {
          */
         async_storage(const async_storage&) = delete;
         async_storage& operator=(const async_storage&) = delete;
-
-        async_io_context& get_io_context() noexcept {
-            return *this->context;
-        }
 
         /**
          *  True while an operation is executing or queued.
@@ -38780,7 +38751,7 @@ namespace sqlite_orm::internal {
         }
 
         struct acquire_awaitable {
-            async_storage* self;
+            async_storage* self = nullptr;
             internal::storage_turnstile::waiter waiter;
 
             bool await_ready() noexcept {
@@ -38819,14 +38790,14 @@ namespace sqlite_orm::internal {
         }
 
         struct release_guard {
-            async_storage* self;
+            async_storage* self = nullptr;
 
             ~release_guard() {
                 this->self->release();
             }
         };
 
-        async_io_context* context;
+        async_io_context* context = nullptr;
         Storage storage;
         internal::storage_turnstile turnstile;
         std::vector<std::shared_ptr<void>> retired;
@@ -38963,7 +38934,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         auto async(F function) {
             using result_type = std::invoke_result_t<F&>;
             struct awaitable {
-                async_io_pool* pool;
+                async_io_pool* pool = nullptr;
                 F function;
                 internal::result_box<result_type> box;
 
@@ -39075,7 +39046,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 namespace sqlite_orm::internal {
 
     struct count_down {
-        std::size_t remaining;
+        std::size_t remaining = 0;
         std::coroutine_handle<> waiter;
     };
 
@@ -39130,7 +39101,7 @@ namespace sqlite_orm::internal {
      */
     template<class Start>
     struct when_all_awaiter {
-        std::size_t count;
+        std::size_t count = 0;
         Start start;
         count_down& countDown;
 
@@ -39175,7 +39146,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         internal::count_down countDown{tasks.size() + 1, {}};  //  +1: held while starting
         co_await internal::when_all_awaiter{
             tasks.size(),
-            [&](std::size_t index) {
+            [&tasks, &countDown, &results, &errors](std::size_t index) {
                 internal::start_one(tasks[index], countDown, results[index], errors[index]);
             },
             countDown};
@@ -39195,7 +39166,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         std::vector<std::exception_ptr> errors(tasks.size());
         internal::count_down countDown{tasks.size() + 1, {}};  //  +1: held while starting
         co_await internal::when_all_awaiter{tasks.size(),
-                                            [&](std::size_t index) {
+                                            [&tasks, &countDown, &errors](std::size_t index) {
                                                 internal::start_one(tasks[index], countDown, errors[index]);
                                             },
                                             countDown};

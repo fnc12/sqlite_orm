@@ -71,7 +71,7 @@ int main(int, char**) {
 
     //  an event source of the application itself
     int timerEvents = 0;
-    uv_timer_t timer;
+    uv_timer_t timer{};
     ::uv_timer_init(loop, &timer);
     timer.data = &timerEvents;
     ::uv_timer_start(
@@ -85,7 +85,7 @@ int main(int, char**) {
     //  the whole integration: libuv calls poll() whenever the async_io_context has something to do
     async_io_context io;
     auto storage = open_storage(io, filename);
-    uv_poll_t watcher;
+    uv_poll_t watcher{};
     ::uv_poll_init(loop, &watcher, io.native_handle());
     watcher.data = &io;
     ::uv_poll_start(&watcher, UV_READABLE, [](uv_poll_t* watcher, int /*status*/, int /*events*/) {

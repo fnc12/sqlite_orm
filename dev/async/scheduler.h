@@ -40,16 +40,6 @@ namespace sqlite_orm::internal {
      */
     class scheduler {
       public:
-        struct statistics {
-            std::uint64_t operationsSubmitted = 0;
-            std::uint64_t operationsCompleted = 0;
-            std::uint64_t fiberSwitches = 0;
-            std::uint64_t synchronousFallbacks = 0;  //  VFS calls made outside a fiber
-            std::uint64_t loopIterations = 0;
-            std::uint64_t waits = 0;  //  blocking reaps
-            std::uint64_t posts = 0;  //  cross-thread posts received
-        };
-
         explicit scheduler(unsigned queueDepth = 256) : engine(queueDepth) {}
 
         scheduler(const scheduler&) = delete;
@@ -125,14 +115,6 @@ namespace sqlite_orm::internal {
             return !this->ready.empty() || this->engine.has_unsubmitted();
         }
 
-        std::size_t fibers_alive() const noexcept {
-            return this->alive;
-        }
-
-        const statistics& stats() const noexcept {
-            return this->statistics_;
-        }
-
         int native_handle() const noexcept {
             return this->engine.native_handle();
         }
@@ -177,10 +159,6 @@ namespace sqlite_orm::internal {
             this->engine.wake();
         }
 
-        void note_synchronous_fallback() noexcept {
-            ++this->statistics_.synchronousFallbacks;
-        }
-
         /**
          *  Same-thread hook: when it returns true the loop will not block in the
          *  kernel even if no fiber is runnable (the owner has work of its own).
@@ -189,6 +167,11 @@ namespace sqlite_orm::internal {
             this->externalReady = std::move(predicate);
         }
 
+        /**
+         *  VFS calls made on this scheduler's thread outside a fiber, which therefore did their I/O synchronously.
+         */
+        std::uint64_t synchronousFallbacks = 0;
+
       private:
         static scheduler*& current_slot() noexcept {
             thread_local scheduler* currentScheduler = nullptr;
@@ -196,7 +179,7 @@ namespace sqlite_orm::internal {
         }
 
         struct current_guard {
-            scheduler* previous;
+            scheduler* previous = nullptr;
 
             explicit current_guard(scheduler* self) : previous(scheduler::current_slot()) {
                 scheduler::current_slot() = self;
@@ -229,7 +212,6 @@ namespace sqlite_orm::internal {
             operation.waiter = self;
             operation.completed = false;
             ++this->inFlight;
-            ++this->statistics_.operationsSubmitted;
             do {
                 fiber::yield();
             } while (!operation.completed);
@@ -261,14 +243,12 @@ namespace sqlite_orm::internal {
                 batch.swap(this->posted);
             }
             for (auto& function: batch) {
-                ++this->statistics_.posts;
                 function();
             }
         }
 
         bool step(bool mayBlock) {
             current_guard guard(this);
-            ++this->statistics_.loopIterations;
             this->drain_posted();
 
             //  1. Run everything that is runnable right now.
@@ -276,7 +256,6 @@ namespace sqlite_orm::internal {
             while (runnable-- > 0) {
                 fiber* next = this->ready.front();
                 this->ready.pop_front();
-                ++this->statistics_.fiberSwitches;
                 next->resume();
                 if (next->is_done()) {
                     --this->alive;
@@ -301,15 +280,11 @@ namespace sqlite_orm::internal {
                 return !this->ready.empty();
             }
             const bool block = mayBlock && this->ready.empty() && !(this->externalReady && this->externalReady());
-            if (block) {
-                ++this->statistics_.waits;
-            }
             this->completed.clear();
             this->engine.reap(block, this->completed);
             for (io_operation* operation: this->completed) {
                 operation->completed = true;
                 --this->inFlight;
-                ++this->statistics_.operationsCompleted;
                 if (operation->waiter) {
                     this->ready.push_back(operation->waiter);
                 } else if (operation->onComplete) {
@@ -335,7 +310,6 @@ namespace sqlite_orm::internal {
         std::vector<io_operation*> completed;
         std::size_t inFlight = 0;  //  operations in the kernel (including the wake operation)
         std::size_t alive = 0;
-        statistics statistics_;
         io_operation wakeOperation;
         bool wakeArmed = false;
         std::mutex postMutex;

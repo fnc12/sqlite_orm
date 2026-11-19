@@ -193,7 +193,7 @@ namespace sqlite_orm::internal {
          *  work announced in between would otherwise be left without a wake.
          */
         void consume_wake() {
-            std::uint64_t value;
+            std::uint64_t value = 0;
             while (::read(this->wakeDescriptor, &value, sizeof value) > 0) {
             }
         }

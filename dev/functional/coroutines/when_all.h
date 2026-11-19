@@ -28,7 +28,7 @@
 namespace sqlite_orm::internal {
 
     struct count_down {
-        std::size_t remaining;
+        std::size_t remaining = 0;
         std::coroutine_handle<> waiter;
     };
 
@@ -83,7 +83,7 @@ namespace sqlite_orm::internal {
      */
     template<class Start>
     struct when_all_awaiter {
-        std::size_t count;
+        std::size_t count = 0;
         Start start;
         count_down& countDown;
 
@@ -128,7 +128,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         internal::count_down countDown{tasks.size() + 1, {}};  //  +1: held while starting
         co_await internal::when_all_awaiter{
             tasks.size(),
-            [&](std::size_t index) {
+            [&tasks, &countDown, &results, &errors](std::size_t index) {
                 internal::start_one(tasks[index], countDown, results[index], errors[index]);
             },
             countDown};
@@ -148,7 +148,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         std::vector<std::exception_ptr> errors(tasks.size());
         internal::count_down countDown{tasks.size() + 1, {}};  //  +1: held while starting
         co_await internal::when_all_awaiter{tasks.size(),
-                                            [&](std::size_t index) {
+                                            [&tasks, &countDown, &errors](std::size_t index) {
                                                 internal::start_one(tasks[index], countDown, errors[index]);
                                             },
                                             countDown};

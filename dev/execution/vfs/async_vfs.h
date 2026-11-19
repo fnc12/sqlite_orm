@@ -83,11 +83,12 @@ namespace sqlite_orm::internal::async_vfs {
      *  only trivially constructible members.
      */
     struct async_file {
-        sqlite3_file base;  //  must be first
-        sqlite3_file* wrapped;  //  file of the wrapped VFS (allocated right after this struct)
-        int descriptor;  //  the wrapped file's descriptor, or -1: I/O goes through the wrapped file synchronously
-        const char* fileName;  //  as passed to xOpen, which SQLite keeps valid until xClose
-        bool directorySyncPending;  //  a journal or WAL file this open created: its directory entry is not durable yet
+        sqlite3_file base{};  //  must be first
+        sqlite3_file* wrapped = nullptr;  //  file of the wrapped VFS (allocated right after this struct)
+        int descriptor = -1;  //  the wrapped file's descriptor, or -1: I/O goes through the wrapped file synchronously
+        const char* fileName = nullptr;  //  as passed to xOpen, which SQLite keeps valid until xClose
+        bool directorySyncPending =
+            false;  //  a journal or WAL file this open created: its directory entry is not durable yet
     };
 
     inline bool in_fiber(scheduler*& currentScheduler) {
@@ -96,7 +97,7 @@ namespace sqlite_orm::internal::async_vfs {
     }
 
     struct vfs_data {
-        sqlite3_vfs* wrapped;
+        sqlite3_vfs* wrapped = nullptr;
     };
 
     inline sqlite3_vfs* wrapped_vfs(sqlite3_vfs* vfs) {
@@ -188,7 +189,7 @@ namespace sqlite_orm::internal::async_vfs {
         if (!in_fiber(currentScheduler) || asyncFile->descriptor < 0) {
             count(statistics.syncReads);
             if (currentScheduler) {
-                currentScheduler->note_synchronous_fallback();
+                ++currentScheduler->synchronousFallbacks;
             }
             return asyncFile->wrapped->pMethods->xRead(asyncFile->wrapped, buffer, length, offset);
         }
@@ -224,7 +225,7 @@ namespace sqlite_orm::internal::async_vfs {
         if (!in_fiber(currentScheduler) || asyncFile->descriptor < 0) {
             count(statistics.syncWrites);
             if (currentScheduler) {
-                currentScheduler->note_synchronous_fallback();
+                ++currentScheduler->synchronousFallbacks;
             }
             return asyncFile->wrapped->pMethods->xWrite(asyncFile->wrapped, buffer, length, offset);
         }
@@ -261,7 +262,7 @@ namespace sqlite_orm::internal::async_vfs {
         if (!in_fiber(currentScheduler) || asyncFile->descriptor < 0) {
             count(statistics.syncSyncs);
             if (currentScheduler) {
-                currentScheduler->note_synchronous_fallback();
+                ++currentScheduler->synchronousFallbacks;
             }
             return asyncFile->wrapped->pMethods->xSync(asyncFile->wrapped, flags);
         }

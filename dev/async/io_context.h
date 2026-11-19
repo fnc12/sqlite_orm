@@ -118,10 +118,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         auto async(F function) {
             using result_type = std::invoke_result_t<F&>;
             struct awaitable {
-                async_io_context* context;
+                async_io_context* context = nullptr;
                 F function;
                 internal::result_box<result_type> box;
-                std::size_t stackSize;
+                std::size_t stackSize = 0;
 
                 bool await_ready() const noexcept {
                     return false;
@@ -237,7 +237,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         struct current_guard {
-            async_io_context* previous;
+            async_io_context* previous = nullptr;
 
             explicit current_guard(async_io_context* context) : previous(async_io_context::current_slot()) {
                 async_io_context::current_slot() = context;
@@ -249,7 +249,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         };
 
         struct polling_guard {
-            async_io_context* context;
+            async_io_context* context = nullptr;
 
             explicit polling_guard(async_io_context* context_) : context(context_) {
                 this->context->polling = true;

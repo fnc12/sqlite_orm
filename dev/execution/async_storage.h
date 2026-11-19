@@ -105,10 +105,6 @@ namespace sqlite_orm::internal {
         async_storage(const async_storage&) = delete;
         async_storage& operator=(const async_storage&) = delete;
 
-        async_io_context& get_io_context() noexcept {
-            return *this->context;
-        }
-
         /**
          *  True while an operation is executing or queued.
          */
@@ -735,7 +731,7 @@ namespace sqlite_orm::internal {
         }
 
         struct acquire_awaitable {
-            async_storage* self;
+            async_storage* self = nullptr;
             internal::storage_turnstile::waiter waiter;
 
             bool await_ready() noexcept {
@@ -774,14 +770,14 @@ namespace sqlite_orm::internal {
         }
 
         struct release_guard {
-            async_storage* self;
+            async_storage* self = nullptr;
 
             ~release_guard() {
                 this->self->release();
             }
         };
 
-        async_io_context* context;
+        async_io_context* context = nullptr;
         Storage storage;
         internal::storage_turnstile turnstile;
         std::vector<std::shared_ptr<void>> retired;

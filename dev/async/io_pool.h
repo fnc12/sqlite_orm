@@ -82,7 +82,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         auto async(F function) {
             using result_type = std::invoke_result_t<F&>;
             struct awaitable {
-                async_io_pool* pool;
+                async_io_pool* pool = nullptr;
                 F function;
                 internal::result_box<result_type> box;
 

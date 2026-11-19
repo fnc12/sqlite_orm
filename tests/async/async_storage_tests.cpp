@@ -250,7 +250,7 @@ TEST_CASE("async storage: CRUD") {
     REQUIRE(statistics.asyncReads > 0);
     REQUIRE(statistics.asyncWrites > 0);
     REQUIRE(statistics.asyncSyncs > 0);
-    REQUIRE(io.scheduler().stats().synchronousFallbacks == 0);
+    REQUIRE(io.scheduler().synchronousFallbacks == 0);
 }
 
 TEST_CASE("async storage: aggregates") {

@@ -147,7 +147,7 @@ namespace sqlite_orm::internal {
         }
 
       private:
-        AsyncStorage* storage;
+        AsyncStorage* storage = nullptr;
         std::shared_ptr<position_type> position;
     };
 }
