@@ -1,0 +1,34 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-19: fnc12 answered the review of
+#1524 (ca37c584 fixes, 94400281 rename to the async_ names) and
+re-requested review.
+
+# Decided
+- fnc12: option (f), async_io_context, async_io_pool, async_task,
+  async_when_all(); io_uring_available(), make_async_storage() and the
+  header names stay. The namespace question is settled.
+- trueqbit: #1524's approval waits for the P+I+A round over the moved
+  headers, docs/async.md, the tests and examples; until then a review is
+  at most a COMMENT. Claude offered "approve now" as an option; trueqbit
+  ruled it out.
+- trueqbit: second COMMENT review posted, mentioning fnc12:
+  https://github.com/fnc12/sqlite_orm/pull/1524#pullrequestreview-5976941241
+  One open point, async_vfs.h:171: a failed directory fsync returns
+  SQLITE_IOERR_DIR_FSYNC and keeps directorySyncPending, where unixSync
+  ignores the result and clears UNIXFILE_DIRSYNC; SQLITE_DISABLE_DIRSYNC
+  is not followed. Aside, no change asked: async_storage.h:97 copies the
+  storage once (storage_t has only a copy constructor; ":memory:" opens
+  twice, on_open runs twice).
+
+# Discussed
+- Checked against sqlite/src/os_unix.c (master): unixFile starts with
+  pMethod, pVfs, pInode, int h, matching the offset ca37c584 reads; the
+  fstat and F_GETFL check makes a layout change fall back or use a
+  descriptor of the same file and mode, never closed by the VFS. Accepted.
+- The wake fix holds by reading; fnc12 says its test was not run against
+  the old code.
+- Rename: no old name left in dev/, examples, tests, docs/async.md.
+
+# Later
+- fnc12's answer on the directory fsync.
+- The P+I+A round (finding 6, review finding 10), then the approval.
