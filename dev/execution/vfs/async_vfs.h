@@ -9,15 +9,15 @@
 
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <cerrno>  //  errno, EINTR, ENOSPC
+#include <atomic>  //  std::atomic, std::memory_order_relaxed
+#include <cerrno>  //  EINTR, ENOSPC
 #include <cstddef>  //  std::size_t
-#include <cstring>  //  std::memcpy, std::memset, std::strdup
-#include <functional>  //  std::hash
-#include <mutex>  //  std::mutex, std::lock_guard
+#include <cstdint>  //  std::int32_t
+#include <cstring>  //  std::memcpy, std::memset, std::strncmp
+#include <string>  //  std::string
 #include <string_view>  //  std::string_view
-#include <unordered_map>  //  std::unordered_map
 #endif
-#include <fcntl.h>  //  open, O_* flags
+#include <fcntl.h>  //  open, fcntl, O_* flags
 #include <sqlite3.h>
 #include <sys/stat.h>  //  stat, fstat
 #include <unistd.h>  //  close
@@ -50,18 +50,33 @@ namespace sqlite_orm::internal {
 /**
  *  SQLite VFS that performs file I/O through the scheduler.
  *
- *  It wraps the platform default VFS ("unix"). Locking, shared memory (WAL
- *  index) and file open/delete are delegated to the wrapped VFS unchanged.
- *  File I/O uses a descriptor of our own (one per inode, see acquire_descriptor).
- *  xRead / xWrite / xSync / xSleep are routed through the scheduler whenever they
- *  are called from inside a fiber; otherwise they fall back to the wrapped
- *  synchronous implementation, so a connection opened with this VFS is usable
- *  from plain code as well.
- *
+ *  It wraps the VFS that is the default one when the first asynchronous storage is made. Locking, shared memory
+ *  (WAL index) and file open/delete are delegated to the wrapped VFS unchanged.
+ *  xRead / xWrite / xSync / xSleep are routed through the scheduler whenever they are called from inside a fiber
+ *  and the file has a descriptor to do so (see `wrapped_descriptor()`); otherwise they fall back to the wrapped
+ *  synchronous implementation, so a connection opened with this VFS is usable from plain code as well, and over
+ *  a default VFS other than SQLite's "unix".
  */
 namespace sqlite_orm::internal::async_vfs {
 
-    inline async_vfs_statistics statistics{};
+    /**
+     *  Incremented on every thread that runs an io_context.
+     */
+    struct atomic_statistics {
+        std::atomic<sqlite3_int64> asyncReads{0};
+        std::atomic<sqlite3_int64> asyncWrites{0};
+        std::atomic<sqlite3_int64> asyncSyncs{0};
+        std::atomic<sqlite3_int64> asyncSleeps{0};
+        std::atomic<sqlite3_int64> syncReads{0};
+        std::atomic<sqlite3_int64> syncWrites{0};
+        std::atomic<sqlite3_int64> syncSyncs{0};
+    };
+
+    inline atomic_statistics statistics{};
+
+    inline void count(std::atomic<sqlite3_int64>& counter) noexcept {
+        counter.fetch_add(1, std::memory_order_relaxed);
+    }
 
     /**
      *  SQLite allocates this struct as raw memory (szOsFile bytes), so it holds
@@ -69,10 +84,10 @@ namespace sqlite_orm::internal::async_vfs {
      */
     struct async_file {
         sqlite3_file base;  //  must be first
-        sqlite3_file* wrapped;  //  wrapped unix file (allocated right after this struct)
-        int descriptor;  //  our own descriptor for the file, or -1
-        dev_t device;  //  inode of `descriptor` (valid when descriptor >= 0)
-        ino_t inode;
+        sqlite3_file* wrapped;  //  file of the wrapped VFS (allocated right after this struct)
+        int descriptor;  //  the wrapped file's descriptor, or -1: I/O goes through the wrapped file synchronously
+        const char* fileName;  //  as passed to xOpen, which SQLite keeps valid until xClose
+        bool directorySyncPending;  //  a journal or WAL file this open created: its directory entry is not durable yet
     };
 
     inline bool in_fiber(scheduler*& currentScheduler) {
@@ -89,97 +104,70 @@ namespace sqlite_orm::internal::async_vfs {
     }
 
     /**
-     *  Our own descriptor for the file, independent of the wrapped unix file.
-     *
-     *  The descriptor is not taken from the private unixFile layout (not portable,
-     *  and some builds of SQLite use guarded descriptors); the file is opened a
-     *  second time instead. Closing any descriptor of a file drops every POSIX lock
-     *  the process holds on it, therefore one descriptor per inode is shared by all
-     *  our files and closed only when the last of them goes away.
+     *  True for the VFSes of SQLite's os_unix.c: "unix", "unix-excl", "unix-none", "unix-dotfile".
      */
-    struct inode_key {
-        dev_t device;
-        ino_t inode;
-
-        bool operator==(const inode_key& other) const noexcept {
-            return this->device == other.device && this->inode == other.inode;
-        }
-    };
-
-    struct inode_key_hash {
-        std::size_t operator()(const inode_key& key) const noexcept {
-            return std::hash<unsigned long long>{}(static_cast<unsigned long long>(key.inode) * 1315423911ull ^
-                                                   static_cast<unsigned long long>(key.device));
-        }
-    };
-
-    struct inode_entry {
-        int descriptor;
-        int references;
-    };
-
-    inline std::mutex& inode_mutex() {
-        static std::mutex mutex;
-        return mutex;
-    }
-
-    inline std::unordered_map<inode_key, inode_entry, inode_key_hash>& inode_table() {
-        static std::unordered_map<inode_key, inode_entry, inode_key_hash> table;
-        return table;
+    inline bool is_unix_vfs(const sqlite3_vfs* vfs) noexcept {
+        return std::strncmp(vfs->zName, "unix", 4) == 0;
     }
 
     /**
-     *  Returns a descriptor and fills `key`, or -1 (then the file is served
-     *  synchronously through the wrapped VFS).
+     *  The descriptor the wrapped "unix" file itself reads and writes, or -1.
+     *
+     *  The asynchronous I/O must go through that very descriptor. A second one for the same file would be
+     *  a hazard to the locks: closing any descriptor of a file drops every POSIX lock the process holds on it,
+     *  those of other connections to the file included, which is why the "unix" VFS itself defers closing
+     *  its descriptors while locks are held. And a second one opened in another mode could not serve the file.
+     *
+     *  SQLite offers no interface to ask for the descriptor, so it is read from where the files of os_unix.c
+     *  have kept it in every release sqlite_orm supports (`unixFile::h`, after three pointers), and trusted only
+     *  if it proves to be an open descriptor of this file in the mode the file was opened with. Anything else,
+     *  like a default VFS that is not "unix" or a file without a name, is served synchronously through the
+     *  wrapped file, which is always correct.
      */
-    inline int acquire_descriptor(const char* fileName, int flags, inode_key& key) {
-        if (!fileName) {
+    inline int wrapped_descriptor(const sqlite3_vfs* wrappedVfs,
+                                  const sqlite3_file* wrappedFile,
+                                  const char* fileName,
+                                  int openedFlags) {
+        if (!fileName || !is_unix_vfs(wrappedVfs)) {
             return -1;
         }
+        int descriptor = -1;
+        std::memcpy(&descriptor, reinterpret_cast<const char*>(wrappedFile) + 3 * sizeof(void*), sizeof descriptor);
         struct stat fileStat{};
-        if (::stat(fileName, &fileStat) != 0) {
-            return -1;  //  e.g. a temp file already unlinked by the unix VFS
-        }
-        key = {fileStat.st_dev, fileStat.st_ino};
-        std::lock_guard<std::mutex> lock(inode_mutex());
-        auto& table = inode_table();
-        auto it = table.find(key);
-        if (it != table.end()) {
-            ++it->second.references;
-            return it->second.descriptor;
-        }
-        int openFlags = (flags & SQLITE_OPEN_READWRITE) ? O_RDWR : O_RDONLY;
-#ifdef O_CLOEXEC
-        openFlags |= O_CLOEXEC;
-#endif
-        int descriptor = ::open(fileName, openFlags);
-        if (descriptor < 0 && (flags & SQLITE_OPEN_READWRITE)) {
-            descriptor = ::open(fileName, O_RDONLY | O_CLOEXEC);
-        }
-        if (descriptor < 0) {
-            return -1;
-        }
         struct stat descriptorStat{};
-        if (::fstat(descriptor, &descriptorStat) != 0 || descriptorStat.st_dev != fileStat.st_dev ||
-            descriptorStat.st_ino != fileStat.st_ino) {
-            ::close(descriptor);
+        if (descriptor < 0 || ::stat(fileName, &fileStat) != 0 || ::fstat(descriptor, &descriptorStat) != 0 ||
+            descriptorStat.st_dev != fileStat.st_dev || descriptorStat.st_ino != fileStat.st_ino) {
             return -1;
         }
-        table.emplace(key, inode_entry{descriptor, 1});
+        const int statusFlags = ::fcntl(descriptor, F_GETFL);
+        const int expectedAccess = (openedFlags & SQLITE_OPEN_READWRITE) ? O_RDWR : O_RDONLY;
+        if (statusFlags < 0 || (statusFlags & O_ACCMODE) != expectedAccess) {
+            return -1;
+        }
         return descriptor;
     }
 
-    inline void release_descriptor(const inode_key& key) {
-        std::lock_guard<std::mutex> lock(inode_mutex());
-        auto& table = inode_table();
-        auto it = table.find(key);
-        if (it == table.end()) {
-            return;
+    /**
+     *  Make the directory entry of a newly created journal or WAL file durable, as the "unix" VFS does in its
+     *  xSync: without it the file can be missing after a power loss, and with it the rollback of the transaction.
+     */
+    inline int sync_directory(scheduler& currentScheduler, const char* fileName) {
+        std::string directory{fileName};
+        const std::size_t slash = directory.find_last_of('/');
+        if (slash == std::string::npos) {
+            directory = ".";
+        } else if (slash == 0) {
+            directory = "/";
+        } else {
+            directory.resize(slash);
         }
-        if (--it->second.references == 0) {
-            ::close(it->second.descriptor);
-            table.erase(it);
+        const int descriptor = ::open(directory.c_str(), O_RDONLY | O_CLOEXEC);
+        if (descriptor < 0) {
+            return SQLITE_OK;  //  a directory that cannot be opened is not synced, as with the "unix" VFS
         }
+        const std::int32_t result = currentScheduler.fsync(descriptor, false);
+        ::close(descriptor);
+        return result < 0 ? SQLITE_IOERR_DIR_FSYNC : SQLITE_OK;
     }
 
     //  ------------------------------------------------------------ io methods
@@ -190,10 +178,7 @@ namespace sqlite_orm::internal::async_vfs {
         if (asyncFile->wrapped->pMethods) {
             rc = asyncFile->wrapped->pMethods->xClose(asyncFile->wrapped);
         }
-        if (asyncFile->descriptor >= 0) {
-            release_descriptor(inode_key{asyncFile->device, asyncFile->inode});
-            asyncFile->descriptor = -1;
-        }
+        asyncFile->descriptor = -1;  //  it was the wrapped file's
         return rc;
     }
 
@@ -201,13 +186,13 @@ namespace sqlite_orm::internal::async_vfs {
         auto* asyncFile = reinterpret_cast<async_file*>(file);
         scheduler* currentScheduler = nullptr;
         if (!in_fiber(currentScheduler) || asyncFile->descriptor < 0) {
-            ++statistics.syncReads;
+            count(statistics.syncReads);
             if (currentScheduler) {
                 currentScheduler->note_synchronous_fallback();
             }
             return asyncFile->wrapped->pMethods->xRead(asyncFile->wrapped, buffer, length, offset);
         }
-        ++statistics.asyncReads;
+        count(statistics.asyncReads);
         auto* output = static_cast<char*>(buffer);
         int got = 0;
         while (got < length) {
@@ -237,13 +222,13 @@ namespace sqlite_orm::internal::async_vfs {
         auto* asyncFile = reinterpret_cast<async_file*>(file);
         scheduler* currentScheduler = nullptr;
         if (!in_fiber(currentScheduler) || asyncFile->descriptor < 0) {
-            ++statistics.syncWrites;
+            count(statistics.syncWrites);
             if (currentScheduler) {
                 currentScheduler->note_synchronous_fallback();
             }
             return asyncFile->wrapped->pMethods->xWrite(asyncFile->wrapped, buffer, length, offset);
         }
-        ++statistics.asyncWrites;
+        count(statistics.asyncWrites);
         auto* input = static_cast<const char*>(buffer);
         int done = 0;
         while (done < length) {
@@ -274,16 +259,25 @@ namespace sqlite_orm::internal::async_vfs {
         auto* asyncFile = reinterpret_cast<async_file*>(file);
         scheduler* currentScheduler = nullptr;
         if (!in_fiber(currentScheduler) || asyncFile->descriptor < 0) {
-            ++statistics.syncSyncs;
+            count(statistics.syncSyncs);
             if (currentScheduler) {
                 currentScheduler->note_synchronous_fallback();
             }
             return asyncFile->wrapped->pMethods->xSync(asyncFile->wrapped, flags);
         }
-        ++statistics.asyncSyncs;
+        count(statistics.asyncSyncs);
         const bool dataOnly = (flags & SQLITE_SYNC_DATAONLY) != 0;
-        const std::int32_t result = currentScheduler->fsync(asyncFile->descriptor, dataOnly);
-        return result < 0 ? SQLITE_IOERR_FSYNC : SQLITE_OK;
+        if (currentScheduler->fsync(asyncFile->descriptor, dataOnly) < 0) {
+            return SQLITE_IOERR_FSYNC;
+        }
+        if (asyncFile->directorySyncPending) {
+            const int rc = sync_directory(*currentScheduler, asyncFile->fileName);
+            if (rc != SQLITE_OK) {
+                return rc;
+            }
+            asyncFile->directorySyncPending = false;
+        }
+        return SQLITE_OK;
     }
 
     inline int file_size(sqlite3_file* file, sqlite3_int64* size) {
@@ -309,7 +303,11 @@ namespace sqlite_orm::internal::async_vfs {
     inline int file_control(sqlite3_file* file, int operation, void* argument) {
         auto* asyncFile = reinterpret_cast<async_file*>(file);
         if (operation == SQLITE_FCNTL_VFSNAME) {
-            *static_cast<char**>(argument) = sqlite3_mprintf("%s/%s", async_vfs_name.data(), "unix");
+            char* wrappedName = nullptr;
+            asyncFile->wrapped->pMethods->xFileControl(asyncFile->wrapped, operation, &wrappedName);
+            *static_cast<char**>(argument) =
+                sqlite3_mprintf("%s/%s", async_vfs_name.data(), wrappedName ? wrappedName : "?");
+            sqlite3_free(wrappedName);
             return SQLITE_OK;
         }
         return asyncFile->wrapped->pMethods->xFileControl(asyncFile->wrapped, operation, argument);
@@ -386,17 +384,21 @@ namespace sqlite_orm::internal::async_vfs {
         sqlite3_vfs* wrapped = wrapped_vfs(vfs);
         asyncFile->wrapped = reinterpret_cast<sqlite3_file*>(reinterpret_cast<char*>(asyncFile) + sizeof(async_file));
         asyncFile->descriptor = -1;
+        asyncFile->fileName = fileName;
+        asyncFile->directorySyncPending = false;
         std::memset(asyncFile->wrapped, 0, static_cast<std::size_t>(wrapped->szOsFile));
-        const int rc = wrapped->xOpen(wrapped, fileName, asyncFile->wrapped, flags, outputFlags);
+        //  the wrapped VFS may open a file read-only that was asked for read-write, and says so in the output flags
+        int openedFlags = flags;
+        const int rc = wrapped->xOpen(wrapped, fileName, asyncFile->wrapped, flags, &openedFlags);
         if (rc != SQLITE_OK) {
             return rc;
         }
-        inode_key key{};
-        asyncFile->descriptor = acquire_descriptor(fileName, flags, key);
-        if (asyncFile->descriptor >= 0) {
-            asyncFile->device = key.device;
-            asyncFile->inode = key.inode;
+        if (outputFlags) {
+            *outputFlags = openedFlags;
         }
+        asyncFile->descriptor = wrapped_descriptor(wrapped, asyncFile->wrapped, fileName, openedFlags);
+        constexpr int journalFiles = SQLITE_OPEN_MAIN_JOURNAL | SQLITE_OPEN_SUPER_JOURNAL | SQLITE_OPEN_WAL;
+        asyncFile->directorySyncPending = (flags & SQLITE_OPEN_CREATE) && (flags & journalFiles);
         file->pMethods = &ioMethods;
         return SQLITE_OK;
     }
@@ -444,7 +446,7 @@ namespace sqlite_orm::internal::async_vfs {
     inline int vfs_sleep(sqlite3_vfs* vfs, int microseconds) {
         scheduler* currentScheduler = nullptr;
         if (in_fiber(currentScheduler)) {
-            ++statistics.asyncSleeps;
+            count(statistics.asyncSleeps);
             currentScheduler->sleep_microseconds(microseconds);
             return microseconds;
         }
@@ -468,48 +470,68 @@ namespace sqlite_orm::internal::async_vfs {
     }
 
     /**
-     *  Register the VFS under async_vfs_name, wrapping the default VFS. Idempotent.
+     *  Register the VFS under `async_vfs_name` in SQLite's process-wide list of VFSes, not as the default one;
+     *  it wraps the VFS that is the default at that moment. Done once per process, from whichever thread comes first.
      */
     inline int register_vfs() {
-        if (sqlite3_vfs_find(async_vfs_name.data())) {
-            return SQLITE_OK;
-        }
-        sqlite3_vfs* wrapped = sqlite3_vfs_find(nullptr);
-        if (!wrapped) {
-            return SQLITE_ERROR;
-        }
-        auto* data = new vfs_data{wrapped};
-        auto* vfs = new sqlite3_vfs{};
-        vfs->iVersion = 2;
-        vfs->szOsFile = static_cast<int>(sizeof(async_file)) + wrapped->szOsFile;
-        vfs->mxPathname = wrapped->mxPathname;
-        vfs->zName = async_vfs_name.data();
-        vfs->pAppData = data;
-        vfs->xOpen = vfs_open;
-        vfs->xDelete = vfs_delete;
-        vfs->xAccess = vfs_access;
-        vfs->xFullPathname = vfs_full_pathname;
-        vfs->xDlOpen = vfs_dlopen;
-        vfs->xDlError = vfs_dlerror;
-        vfs->xDlSym = vfs_dlsym;
-        vfs->xDlClose = vfs_dlclose;
-        vfs->xRandomness = vfs_randomness;
-        vfs->xSleep = vfs_sleep;
-        vfs->xCurrentTime = vfs_current_time;
-        vfs->xGetLastError = vfs_get_last_error;
-        vfs->xCurrentTimeInt64 = vfs_current_time_int64;
-        return sqlite3_vfs_register(vfs, 0);
+        static const int rc = [] {
+            static vfs_data data{};
+            static sqlite3_vfs vfs{};
+            sqlite3_vfs* wrapped = sqlite3_vfs_find(nullptr);
+            if (!wrapped) {
+                return SQLITE_ERROR;
+            }
+            data.wrapped = wrapped;
+            vfs.iVersion = 2;
+            vfs.szOsFile = static_cast<int>(sizeof(async_file)) + wrapped->szOsFile;
+            vfs.mxPathname = wrapped->mxPathname;
+            vfs.zName = async_vfs_name.data();
+            vfs.pAppData = &data;
+            vfs.xOpen = vfs_open;
+            vfs.xDelete = vfs_delete;
+            vfs.xAccess = vfs_access;
+            vfs.xFullPathname = vfs_full_pathname;
+            vfs.xDlOpen = vfs_dlopen;
+            vfs.xDlError = vfs_dlerror;
+            vfs.xDlSym = vfs_dlsym;
+            vfs.xDlClose = vfs_dlclose;
+            vfs.xRandomness = vfs_randomness;
+            vfs.xSleep = vfs_sleep;
+            vfs.xCurrentTime = vfs_current_time;
+            vfs.xGetLastError = vfs_get_last_error;
+            vfs.xCurrentTimeInt64 = vfs_current_time_int64;
+            return sqlite3_vfs_register(&vfs, 0);
+        }();
+        return rc;
     }
 }
 
 namespace sqlite_orm::internal {
 
     inline async_vfs_statistics get_async_vfs_statistics() {
-        return internal::async_vfs::statistics;
+        const async_vfs::atomic_statistics& counters = async_vfs::statistics;
+        async_vfs_statistics snapshot;
+        snapshot.asyncReads = counters.asyncReads.load(std::memory_order_relaxed);
+        snapshot.asyncWrites = counters.asyncWrites.load(std::memory_order_relaxed);
+        snapshot.asyncSyncs = counters.asyncSyncs.load(std::memory_order_relaxed);
+        snapshot.asyncSleeps = counters.asyncSleeps.load(std::memory_order_relaxed);
+        snapshot.syncReads = counters.syncReads.load(std::memory_order_relaxed);
+        snapshot.syncWrites = counters.syncWrites.load(std::memory_order_relaxed);
+        snapshot.syncSyncs = counters.syncSyncs.load(std::memory_order_relaxed);
+        return snapshot;
     }
 
     inline void reset_async_vfs_statistics() {
-        internal::async_vfs::statistics = async_vfs_statistics{};
+        async_vfs::atomic_statistics& counters = async_vfs::statistics;
+        for (std::atomic<sqlite3_int64>* counter: {&counters.asyncReads,
+                                                   &counters.asyncWrites,
+                                                   &counters.asyncSyncs,
+                                                   &counters.asyncSleeps,
+                                                   &counters.syncReads,
+                                                   &counters.syncWrites,
+                                                   &counters.syncSyncs}) {
+            counter->store(0, std::memory_order_relaxed);
+        }
     }
 }
 #endif

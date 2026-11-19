@@ -13,6 +13,7 @@
 #include <coroutine>  //  std::coroutine_handle, std::suspend_always, std::noop_coroutine
 #include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception
 #include <optional>  //  std::optional
+#include <stdexcept>  //  std::logic_error
 #include <utility>  //  std::exchange, std::forward, std::move
 #endif
 #endif
@@ -71,6 +72,16 @@ namespace sqlite_orm::internal {
 
         void await_resume() noexcept {}
     };
+
+    /**
+     *  Awaiting a task that holds no coroutine, i.e. a default-constructed or moved-from one, is an error
+     *  of the caller.
+     */
+    inline void require_task(std::coroutine_handle<> handle) {
+        if (!handle) {
+            throw std::logic_error("sqlite_orm: an empty task was awaited");
+        }
+    }
 
     template<class T>
     struct task_promise_base {
@@ -143,6 +154,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         T await_resume() {
+            internal::require_task(this->handle);
             return this->handle.promise().box.take();
         }
 
@@ -199,6 +211,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         void await_resume() {
+            internal::require_task(this->handle);
             this->handle.promise().box.take();
         }
 

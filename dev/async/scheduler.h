@@ -245,6 +245,7 @@ namespace sqlite_orm::internal {
             this->wakeOperation.onComplete = [](io_operation*, void* context) {
                 auto* self = static_cast<scheduler*>(context);
                 self->wakeArmed = false;
+                self->engine.consume_wake();
                 self->drain_posted();
                 self->arm_wake();
             };

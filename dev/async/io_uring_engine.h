@@ -180,14 +180,22 @@ namespace sqlite_orm::internal {
         }
 
         /**
-         *  Arm `operation` so that it completes when wake() is called from any thread.
+         *  Arm `operation` so that it completes when wake() is called from any thread, or at once if it has been
+         *  called since the last `consume_wake()`.
          */
         void arm_wake(io_operation& operation) {
+            io_uring_sqe* entry = this->next_entry(IORING_OP_POLL_ADD, this->wakeDescriptor, &operation);
+            entry->poll32_events = POLLIN;
+        }
+
+        /**
+         *  Forget the calls of wake() so far. Whoever was woken looks for the work afterwards, never before:
+         *  work announced in between would otherwise be left without a wake.
+         */
+        void consume_wake() {
             std::uint64_t value;
             while (::read(this->wakeDescriptor, &value, sizeof value) > 0) {
             }
-            io_uring_sqe* entry = this->next_entry(IORING_OP_POLL_ADD, this->wakeDescriptor, &operation);
-            entry->poll32_events = POLLIN;
         }
 
         void wake() {

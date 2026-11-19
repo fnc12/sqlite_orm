@@ -14,6 +14,7 @@
 #include <exception>  //  std::current_exception, std::terminate
 #include <future>  //  std::promise, std::future
 #include <memory>  //  std::unique_ptr, std::shared_ptr, std::make_shared
+#include <stdexcept>  //  std::logic_error
 #include <thread>  //  std::thread
 #include <type_traits>  //  std::invoke_result_t, std::is_void_v
 #include <utility>  //  std::move
@@ -119,11 +120,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
-         *  Blocking variant for plain (non-coroutine) callers on any thread.
+         *  Blocking variant for plain (non-coroutine) callers, on any thread that does not run an io_context:
+         *  such a thread, a worker of this pool included, would wait for work that only it can do.
+         *  Code running there uses `co_await pool.async(function)`.
          */
         template<class F>
         auto run_blocking(F function) -> std::invoke_result_t<F&> {
             using result_type = std::invoke_result_t<F&>;
+            if (io_context::current()) {
+                throw std::logic_error(
+                    "sqlite_orm async: io_pool::run_blocking() called on a thread running an io_context");
+            }
             auto promise = std::make_shared<std::promise<result_type>>();
             std::future<result_type> future = promise->get_future();
             auto sharedFunction = std::make_shared<F>(std::move(function));

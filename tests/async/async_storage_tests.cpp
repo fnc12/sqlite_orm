@@ -6,16 +6,20 @@
 #include <cerrno>  //  errno, EINTR
 #include <chrono>  //  std::chrono::milliseconds, std::chrono::steady_clock
 #include <cstdint>  //  std::uint64_t
+#include <fcntl.h>  //  open, fcntl, F_GETLK
 #include <filesystem>  //  std::filesystem::path, temp_directory_path
 #include <memory>  //  std::unique_ptr
 #include <optional>  //  std::optional
 #include <random>  //  std::mt19937, std::random_device
+#include <stdexcept>  //  std::logic_error
 #include <string>  //  std::string
 #include <sys/epoll.h>  //  epoll_create1, epoll_ctl, epoll_wait
+#include <sys/wait.h>  //  waitpid
 #include <system_error>  //  std::system_error
 #include <thread>  //  std::thread, std::this_thread
 #include <tuple>  //  std::tuple, std::get
-#include <unistd.h>  //  close
+#include <type_traits>  //  std::is_move_constructible_v, std::is_copy_constructible_v
+#include <unistd.h>  //  close, fork, _exit
 #include <utility>  //  std::move
 #include <vector>  //  std::vector
 
@@ -41,6 +45,9 @@ namespace {
     }
 
     using Storage = decltype(make_async_storage(std::declval<io_context&>(), "", users_table()));
+
+    //  one connection, referred to by its cursors and by the operations waiting for their turn
+    static_assert(!std::is_move_constructible_v<Storage> && !std::is_copy_constructible_v<Storage>);
 
     struct temp_database {
         std::filesystem::path directory;
@@ -532,7 +539,159 @@ TEST_CASE("async storage: io_pool spreads work over threads and resumes on the o
     REQUIRE(pool.run_blocking([] {
         return 7;
     }) == 7);
+    //  a worker waiting for the pool would wait for itself
+    const bool refused = pool.run_blocking([&pool] {
+        try {
+            pool.run_blocking([] {});
+        } catch (const std::logic_error&) {
+            return true;
+        }
+        return false;
+    });
+    REQUIRE(refused);
     pool.shutdown();
+}
+
+TEST_CASE("async storage: when_all of operations without a result") {
+    require_io_uring();
+    temp_database database;
+    io_context io;
+    auto storage = make_async_storage(io, database.path, users_table());
+
+    auto body = [&storage]() -> task<void> {
+        co_await fill_users(storage, 20);
+        std::vector<task<void>> updates;
+        for (int id = 1; id <= 20; ++id) {
+            updates.push_back(storage.update(User{id, "renamed", id}));
+        }
+        co_await when_all(std::move(updates));
+        const int renamed = co_await storage.count<User>(where(c(&User::name) == "renamed"));
+        REQUIRE(renamed == 20);
+
+        //  the first failure is rethrown after all of them have finished
+        std::vector<task<void>> removals;
+        removals.push_back(storage.remove<User>(1));
+        removals.push_back(storage.run([](auto&) {
+            throw std::logic_error("failed on purpose");
+        }));
+        removals.push_back(storage.remove<User>(2));
+        bool thrown = false;
+        try {
+            co_await when_all(std::move(removals));
+        } catch (const std::logic_error&) {
+            thrown = true;
+        }
+        REQUIRE(thrown);
+        const int left = co_await storage.count<User>();
+        REQUIRE(left == 18);
+
+        co_await when_all(std::vector<task<void>>{});
+    };
+    run_test(io, body());
+}
+
+TEST_CASE("async storage: awaiting an empty task is an error, not a crash") {
+    io_context io;
+    bool thrownForValue = false;
+    bool thrownForVoid = false;
+    auto body = [&thrownForValue, &thrownForVoid]() -> task<void> {
+        task<int> moved = []() -> task<int> {
+            co_return 1;
+        }();
+        task<int> taken = std::move(moved);
+        try {
+            (void)co_await moved;
+        } catch (const std::logic_error&) {
+            thrownForValue = true;
+        }
+        try {
+            co_await task<void>{};
+        } catch (const std::logic_error&) {
+            thrownForVoid = true;
+        }
+        const int value = co_await taken;
+        REQUIRE(value == 1);
+    };
+    if (io_uring_available()) {
+        run_test(io, body());
+        REQUIRE(thrownForValue);
+        REQUIRE(thrownForVoid);
+    }
+}
+
+namespace {
+    /**
+     *  Whether another process holds a lock on the bytes SQLite's "unix" VFS locks for a writer.
+     *  POSIX locks do not conflict within a process, so the question is asked from a child.
+     */
+    bool locked_by_this_process(const std::string& path) {
+        const pid_t child = ::fork();
+        if (child == 0) {
+            const int descriptor = ::open(path.c_str(), O_RDWR);
+            struct flock probe{};
+            probe.l_type = F_WRLCK;
+            probe.l_whence = SEEK_SET;
+            probe.l_start = 0x40000000;  //  PENDING_BYTE, followed by the reserved byte and the shared range
+            probe.l_len = 512;
+            const bool locked = descriptor >= 0 && ::fcntl(descriptor, F_GETLK, &probe) == 0 && probe.l_type != F_UNLCK;
+            ::_exit(locked ? 0 : 1);
+        }
+        int status = 0;
+        ::waitpid(child, &status, 0);
+        return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+    }
+}
+
+TEST_CASE("async storage: shares the file with other connections of the process") {
+    require_io_uring();
+    temp_database database;
+    io_context io;
+    {
+        auto storage = make_async_storage(io, database.path, users_table());
+        auto body = [&storage]() -> task<void> {
+            co_await fill_users(storage, 10);
+        };
+        run_test(io, body());
+    }
+
+    SECTION("a read-write connection after a read-only one writes") {
+        connection_control readOnly{};
+        readOnly.open_mode = db_open_mode::readonly;
+        auto reader = make_async_storage(io, database.path, readOnly, users_table());
+        auto writer = make_async_storage(io, database.path, users_table());
+        auto body = [&reader, &writer]() -> task<void> {
+            const int before = co_await reader.count<User>();
+            REQUIRE(before == 10);
+            internal::reset_async_vfs_statistics();
+            co_await writer.insert(User{0, "written", 1});
+            REQUIRE(internal::get_async_vfs_statistics().asyncWrites > 0);
+            const int after = co_await reader.count<User>();
+            REQUIRE(after == 11);
+        };
+        run_test(io, body());
+    }
+    SECTION("closing an asynchronous connection leaves the locks of a synchronous one alone") {
+        auto synchronous = make_storage(database.path, users_table());
+        synchronous.begin_exclusive_transaction();
+        REQUIRE(locked_by_this_process(database.path));
+        {
+            auto storage = make_async_storage(io, database.path, users_table());
+            auto body = [&storage]() -> task<void> {
+                //  opens the file; reading it is refused, the other connection being in an exclusive transaction
+                bool refused = false;
+                try {
+                    co_await storage.count<User>();
+                } catch (const std::system_error&) {
+                    refused = true;
+                }
+                REQUIRE(refused);
+            };
+            run_test(io, body());
+        }
+        REQUIRE(locked_by_this_process(database.path));
+        synchronous.rollback();
+        REQUIRE_FALSE(locked_by_this_process(database.path));
+    }
 }
 
 TEST_CASE("async storage: iterate fetches row by row") {
@@ -766,6 +925,22 @@ TEST_CASE("async storage: io_context embedded into another event loop") {
         other.join();
         REQUIRE(ranOn == loopThread);
         REQUIRE_FALSE(io.poll());
+    }
+    SECTION("no post() from another thread is left without a wake") {
+        constexpr int count = 20000;
+        int received = 0;
+        std::thread other([&io, &received] {
+            for (int index = 0; index < count; ++index) {
+                io.post([&received] {
+                    ++received;
+                });
+            }
+        });
+        while (received < count) {
+            REQUIRE(loop.wait(timeout));
+            io.poll();
+        }
+        other.join();
     }
     SECTION("an exception escaping a root coroutine is rethrown by poll()") {
         auto body = [&storage]() -> task<void> {

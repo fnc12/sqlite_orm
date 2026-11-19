@@ -85,9 +85,9 @@ namespace sqlite_orm::internal {
      *      auto user  = co_await storage.get<User>(42);
      *      co_await storage.transaction([&user](auto& storage) { storage.update(user); return true; });
      *
-     *  The asynchronous VFS is injected through connection_control, nothing
-     *  global is changed. All coroutines using one async_storage run on the
-     *  io_context it was created with.
+     *  The asynchronous VFS is selected for this connection through connection_control. It is registered
+     *  with SQLite process-wide under a name of its own, but not as the default VFS: other connections are
+     *  not affected. All coroutines using one async_storage run on the io_context it was created with.
      */
     template<class Storage>
     class async_storage {
@@ -96,8 +96,11 @@ namespace sqlite_orm::internal {
 
         async_storage(io_context& context_, Storage storage_) : context(&context_), storage(std::move(storage_)) {}
 
-        async_storage(async_storage&&) noexcept = default;
-        async_storage& operator=(async_storage&&) noexcept = default;
+        /**
+         *  Neither copyable nor movable: it is one connection, and its cursors and the operations waiting for
+         *  their turn refer to it. `make_async_storage()` returns it in place; keep it where it is made, or
+         *  on the heap.
+         */
         async_storage(const async_storage&) = delete;
         async_storage& operator=(const async_storage&) = delete;
 
@@ -818,14 +821,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         internal::ensure_async_vfs();
         constexpr bool hasConnectionControl = (std::is_same_v<std::decay_t<Args>, connection_control> || ...);
         if constexpr (hasConnectionControl) {
-            auto storage =
-                make_storage(std::move(filename), internal::async_connection_control(std::forward<Args>(args))...);
-            return internal::async_storage<decltype(storage)>(context, std::move(storage));
+            return internal::async_storage{
+                context,
+                make_storage(std::move(filename), internal::async_connection_control(std::forward<Args>(args))...)};
         } else {
-            auto storage = make_storage(std::move(filename),
-                                        internal::async_connection_control(connection_control{}),
-                                        std::forward<Args>(args)...);
-            return internal::async_storage<decltype(storage)>(context, std::move(storage));
+            return internal::async_storage{context,
+                                           make_storage(std::move(filename),
+                                                        internal::async_connection_control(connection_control{}),
+                                                        std::forward<Args>(args)...)};
         }
     }
 }

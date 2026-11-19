@@ -39,7 +39,7 @@ io.spawn([&storage]() -> task<void> {
 io.run();
 ```
 
-`make_async_storage` takes the same arguments as `make_storage`, with the `io_context` first. It injects the asynchronous VFS through `connection_control`; nothing global is changed. A `connection_control` passed by the caller keeps its other fields.
+`make_async_storage` takes the same arguments as `make_storage`, with the `io_context` first. It selects the asynchronous VFS for this connection through `connection_control`. The first call registers that VFS with SQLite under the name `sqlite_orm_async`, process-wide like every VFS but not as the default one, so other connections are not affected. A `connection_control` passed by the caller keeps its other fields.
 
 `async_storage` mirrors the public interface of `storage_t`: CRUD, `get_all`, `select`, `with`, aggregates, `prepare` and `execute`, schema functions, `transaction` and `savepoint` (the callable receives the storage and returns `true` to commit), connection information and backups. Each returns a `task<T>`; arguments are moved into the operation and exceptions surface at the `co_await`. Functions that do no I/O (`filename`, `vfs_name`, `open_mode`, `dump`, `interrupt`, `is_opened`) are plain calls. Anything else, for example pragmas, limits or user-defined functions, goes through `storage.run(function)`, the primitive everything is built on: `function(storage)` runs on a fiber with exclusive access to the storage.
 
@@ -117,4 +117,4 @@ An exception that escapes a coroutine passed to `spawn()` is rethrown by `run()`
 
 ## Limits
 
-`xOpen`, `xFileSize` and `xTruncate` are synchronous (they are rare). Writes are not batched: every write is awaited in order, which keeps the file state exactly what SQLite believes it is at all times. Memory-mapped I/O is disabled for these connections because a page fault would be a hidden synchronous read. The time SQLite spends computing is not interruptible: `poll()` and `run()` return to other work when an operation waits for the disk, not while it runs on cached pages.
+`xOpen`, `xFileSize` and `xTruncate` are synchronous (they are rare). The asynchronous VFS wraps the VFS that is SQLite's default when the first asynchronous storage is made, and hands I/O to io_uring only over SQLite's own `unix` VFS: over another default VFS, such as one that encrypts, a storage works but its I/O is synchronous. An `async_storage` is neither copyable nor movable; `when_all()` takes tasks with a result or tasks without one. Writes are not batched: every write is awaited in order, which keeps the file state exactly what SQLite believes it is at all times. Memory-mapped I/O is disabled for these connections because a page fault would be a hidden synchronous read. The time SQLite spends computing is not interruptible: `poll()` and `run()` return to other work when an operation waits for the disk, not while it runs on cached pages.
