@@ -75,3 +75,41 @@ approved it without comments); trueqbit switches to a fresh session.
 - Read review-1524-draft.md with trueqbit, post it on the yes, then the
   rest of the earlier Later on this commit: the sqlite_orm::async pull
   request once fnc12 has answered, the P+I+A round, the plugin feedback.
+
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-19: the GitHub review of #1524,
+drafted the day before, read with trueqbit before posting.
+
+# Decided
+- trueqbit: the namespace question goes to fnc12 with a sixth option, (f)
+  an `async_` prefix (async_io_context, async_io_pool, async_task<T>,
+  async_when_all(); io_uring_available() keeps its name), and the lean
+  moves from (a) sqlite_orm::async to (f): the library keeps its public
+  names flat, the only nested public namespaces are inline, and
+  async_storage and make_async_storage() already carry the prefix.
+- trueqbit: the review of #1524 is posted as event COMMENT, pinned to
+  77f4bd35 by commit_id, with the summary and 11 inline comments:
+  https://github.com/fnc12/sqlite_orm/pull/1524#pullrequestreview-5971797642
+- trueqbit: finding 7 in async-storage-sanity-findings.md records the lean
+  on (f), what was rejected, and (a) as the earlier choice.
+
+# Discussed
+- `orm_`, the prefix of the 23 public concepts (orm_table_alias, ...),
+  was raised by trueqbit and rejected: it says whose a name is, not what
+  it is, reads as "ORM", names the generic runtime by its first user
+  (against finding 6), and its precedent covers only concepts.
+- The review names only std::execution::when_all from C++26, the one
+  name Claude was sure of; std::execution::task was left out as
+  unconfirmed.
+- Before posting: #1524's head was still 77f4bd35 with no new comments;
+  all 11 anchors were checked against the code at that commit, and the
+  payload's text against the draft, word for word.
+
+# Later
+- fnc12's answer on #1524: the namespace option, and whether the bugs are
+  fixed in #1524 or as pull requests in the chain. Then the pull request
+  for the chosen naming, then the P+I+A round (finding 6, review
+  finding 10).
+- #1628 stays a draft until trueqbit marks it ready.
+- Plugin feedback: the ninth entry of handover-feedback-domain-sources.md
+  still waits for trueqbit's yes.
