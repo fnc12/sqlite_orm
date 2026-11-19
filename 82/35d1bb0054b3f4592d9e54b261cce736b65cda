@@ -49,3 +49,29 @@ C:/Users/klaus/Jottacloud/programming/sqlite_orm/async-storage-sanity-findings.m
   (deleting as its own commit) waits for trueqbit's yes to its wording.
 - In WSL, pre-commit.sh in a worktree needs GIT_DIR and GIT_WORK_TREE set
   to the /mnt/c paths.
+
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-19: #1627 merged into
+feature/async-storage (77f4bd35, merged by trueqbit after fnc12
+approved it without comments); trueqbit switches to a fresh session.
+
+# Decided
+- Claude, on trueqbit's yes: #1628 is retargeted onto
+  feature/async-storage; it is mergeable, still a draft.
+- trueqbit: the GitHub review of #1524 is drafted and waits for
+  trueqbit's yes to its text before it is posted, as event COMMENT, with
+  `gh api repos/fnc12/sqlite_orm/pulls/1524/reviews --input review-1524.json`.
+  Draft and payload: C:/Users/klaus/Jottacloud/programming/sqlite_orm/
+  review-1524-draft.md and review-1524.json, beside the findings file.
+  A summary (the chain, the namespace question with options a-e, the P+I
+  round to come) and 11 inline comments: the 9 verified review bugs plus
+  sanity findings 1 and 3. Lines are at 77f4bd35.
+
+# Discussed
+- The damage-control hook blocked a script whose Python call matched its
+  pattern for dump files; trueqbit allowed rewriting the call.
+
+# Later
+- Read review-1524-draft.md with trueqbit, post it on the yes, then the
+  rest of the earlier Later on this commit: the sqlite_orm::async pull
+  request once fnc12 has answered, the P+I+A round, the plugin feedback.
