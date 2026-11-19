@@ -113,3 +113,24 @@ drafted the day before, read with trueqbit before posting.
 - #1628 stays a draft until trueqbit marks it ready.
 - Plugin feedback: the ninth entry of handover-feedback-domain-sources.md
   still waits for trueqbit's yes.
+
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-19, after the review of #1524
+was posted: trueqbit asked whether when_all() could be a polyfill for
+C++26's std::execution::when_all.
+
+# Discussed
+- Rejected as a polyfill: [exec.when.all] (eel.is C++ draft) takes a pack
+  of senders, no range; completes with the children's values
+  concatenated; the first error requests stop of the others through a
+  stop source. Ours (functional/coroutines/when_all.h:77) takes a
+  std::vector<task<T>>, returns task<std::vector<T>>, lets every task
+  finish and rethrows the first exception, without cancellation. Keeping
+  the standard's contract would make task a sender, a redesign of the
+  runtime; the name alone would promise semantics ours lacks. It argues
+  for (f): async_when_all() reads as a different thing, not a stand-in.
+
+# Later
+- Interoperation of the asynchronous task with C++26 std::execution, such
+  as task awaitable inside a sender pipeline: an issue of its own, after
+  #1524, alongside the existing runtime rather than replacing it.
