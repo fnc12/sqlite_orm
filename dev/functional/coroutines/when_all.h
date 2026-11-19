@@ -6,6 +6,7 @@
  *  Intention: a convenience on top of `task.h` for applications, which the storage itself does not need.
  */
 
+#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <coroutine>  //  std::coroutine_handle, std::suspend_never
@@ -16,9 +17,12 @@
 #include <vector>  //  std::vector
 #endif
 #endif
+#endif
 
 #include "task.h"
 
+#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+// general-purpose, but sqlite_orm offers its coroutine types with the asynchronous storage only
 #ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
 
@@ -108,4 +112,5 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         co_return output;
     }
 }
+#endif
 #endif
