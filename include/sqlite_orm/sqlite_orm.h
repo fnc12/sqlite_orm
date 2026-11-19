@@ -37443,9 +37443,6 @@ namespace sqlite_orm::internal {
         std::optional<sentinel_type> end;
         bool finished = false;
     };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  The rows of a query, fetched one at a time; returned by `async_storage::iterate()`.
@@ -37548,7 +37545,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../../async/scheduler.h"
 
 #ifdef SQLITE_ORM_WITH_ASYNC
-SQLITE_ORM_EXPORT namespace sqlite_orm {
+namespace sqlite_orm::internal {
 
     /**
      *  Name of the asynchronous VFS, as accepted by `connection_control::vfs_name`.
@@ -38024,7 +38021,7 @@ namespace sqlite_orm::internal::async_vfs {
     }
 }
 
-SQLITE_ORM_EXPORT namespace sqlite_orm {
+namespace sqlite_orm::internal {
 
     inline async_vfs_statistics get_async_vfs_statistics() {
         return internal::async_vfs::statistics;
@@ -38070,9 +38067,6 @@ namespace sqlite_orm::internal {
         bool busy = false;
         std::deque<waiter*> waiters;
     };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Asynchronous front-end over an ordinary storage. Every operation runs the
@@ -38789,9 +38783,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         internal::storage_turnstile turnstile;
         std::vector<std::shared_ptr<void>> retired;
     };
-}
-
-namespace sqlite_orm::internal {
 
     /**
      *  Force the asynchronous VFS and lazy opening on a user-supplied connection_control.
@@ -38830,12 +38821,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         if constexpr (hasConnectionControl) {
             auto storage =
                 make_storage(std::move(filename), internal::async_connection_control(std::forward<Args>(args))...);
-            return async_storage<decltype(storage)>(context, std::move(storage));
+            return internal::async_storage<decltype(storage)>(context, std::move(storage));
         } else {
             auto storage = make_storage(std::move(filename),
                                         internal::async_connection_control(connection_control{}),
                                         std::forward<Args>(args)...);
-            return async_storage<decltype(storage)>(context, std::move(storage));
+            return internal::async_storage<decltype(storage)>(context, std::move(storage));
         }
     }
 }

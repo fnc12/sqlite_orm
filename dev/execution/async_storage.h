@@ -66,9 +66,6 @@ namespace sqlite_orm::internal {
         bool busy = false;
         std::deque<waiter*> waiters;
     };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Asynchronous front-end over an ordinary storage. Every operation runs the
@@ -785,9 +782,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         internal::storage_turnstile turnstile;
         std::vector<std::shared_ptr<void>> retired;
     };
-}
-
-namespace sqlite_orm::internal {
 
     /**
      *  Force the asynchronous VFS and lazy opening on a user-supplied connection_control.
@@ -826,12 +820,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         if constexpr (hasConnectionControl) {
             auto storage =
                 make_storage(std::move(filename), internal::async_connection_control(std::forward<Args>(args))...);
-            return async_storage<decltype(storage)>(context, std::move(storage));
+            return internal::async_storage<decltype(storage)>(context, std::move(storage));
         } else {
             auto storage = make_storage(std::move(filename),
                                         internal::async_connection_control(connection_control{}),
                                         std::forward<Args>(args)...);
-            return async_storage<decltype(storage)>(context, std::move(storage));
+            return internal::async_storage<decltype(storage)>(context, std::move(storage));
         }
     }
 }
