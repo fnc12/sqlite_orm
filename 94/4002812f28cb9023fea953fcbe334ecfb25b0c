@@ -32,3 +32,33 @@ re-requested review.
 # Later
 - fnc12's answer on the directory fsync.
 - The P+I+A round (finding 6, review finding 10), then the approval.
+
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-19: fnc12 answered the second
+review of #1524 with 35842ffe (directory fsync) and 75b39024 (style).
+
+# Decided
+- trueqbit: 35842ffe settles the directory-fsync point; Claude replied
+  in its thread: https://github.com/fnc12/sqlite_orm/pull/1524#discussion_r4630669964
+- trueqbit: storage_t's missing move constructor (the copy at
+  async_storage.h:97, left as it is by fnc12) becomes a new issue after
+  #1524, linking #653, with trueqbit's Purpose and Intention drawn out
+  in an interview.
+
+# Discussed
+- 35842ffe ignores the directory fsync's result and clears the flag, as
+  unixSync; SQLITE_DISABLE_DIRSYNC is queried with
+  sqlite3_compileoption_used(), and the option is on SQLite's reported
+  list (tool/mkctimec.tcl).
+- 75b39024 removes scheduler::stats() (synchronousFallbacks stays, a
+  public member the tests read), scheduler::fibers_alive() and
+  async_storage::get_io_context(); none was used in dev/, docs,
+  examples or tests.
+- #653 "Make storage_base movable" (2021) was closed for inactivity, not
+  done: fnc12 wanted moving; open there were the busy handler's
+  registered `this` and the moved-from state (fnc12: like an empty
+  filename, in memory). A new issue rather than reopening, as #653's
+  body is a thread-race report.
+
+# Later
+- After #1524: the issue "storage_t is movable", linking #653.
