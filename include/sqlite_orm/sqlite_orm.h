@@ -37602,8 +37602,8 @@ namespace sqlite_orm::internal::async_vfs {
         sqlite3_file* wrapped = nullptr;  //  file of the wrapped VFS (allocated right after this struct)
         int descriptor = -1;  //  the wrapped file's descriptor, or -1: I/O goes through the wrapped file synchronously
         const char* fileName = nullptr;  //  as passed to xOpen, which SQLite keeps valid until xClose
-        bool directorySyncPending =
-            false;  //  a journal or WAL file this open created: its directory entry is not durable yet
+        //  a journal or WAL file this open created: its directory entry is not durable yet
+        bool directorySyncPending = false;
     };
 
     inline bool in_fiber(scheduler*& currentScheduler) {
@@ -37666,8 +37666,9 @@ namespace sqlite_orm::internal::async_vfs {
     /**
      *  Make the directory entry of a newly created journal or WAL file durable, as the "unix" VFS does in its
      *  xSync: without it the file can be missing after a power loss, and with it the rollback of the transaction.
+     *  Like there, a failure is ignored: some file systems cannot sync a directory.
      */
-    inline int sync_directory(scheduler& currentScheduler, const char* fileName) {
+    inline void sync_directory(scheduler& currentScheduler, const char* fileName) {
         std::string directory{fileName};
         const std::size_t slash = directory.find_last_of('/');
         if (slash == std::string::npos) {
@@ -37679,11 +37680,21 @@ namespace sqlite_orm::internal::async_vfs {
         }
         const int descriptor = ::open(directory.c_str(), O_RDONLY | O_CLOEXEC);
         if (descriptor < 0) {
-            return SQLITE_OK;  //  a directory that cannot be opened is not synced, as with the "unix" VFS
+            return;
         }
-        const std::int32_t result = currentScheduler.fsync(descriptor, false);
+        currentScheduler.fsync(descriptor, false);
         ::close(descriptor);
-        return result < 0 ? SQLITE_IOERR_DIR_FSYNC : SQLITE_OK;
+    }
+
+    /**
+     *  False if SQLite was built with SQLITE_DISABLE_DIRSYNC, which makes the "unix" VFS skip the directory sync.
+     */
+    inline bool directory_sync_enabled() {
+#ifdef SQLITE_OMIT_COMPILEOPTION_DIAGS
+        return true;
+#else
+        return !sqlite3_compileoption_used("DISABLE_DIRSYNC");
+#endif
     }
 
     //  ------------------------------------------------------------ io methods
@@ -37787,10 +37798,7 @@ namespace sqlite_orm::internal::async_vfs {
             return SQLITE_IOERR_FSYNC;
         }
         if (asyncFile->directorySyncPending) {
-            const int rc = sync_directory(*currentScheduler, asyncFile->fileName);
-            if (rc != SQLITE_OK) {
-                return rc;
-            }
+            sync_directory(*currentScheduler, asyncFile->fileName);
             asyncFile->directorySyncPending = false;
         }
         return SQLITE_OK;
@@ -37914,7 +37922,8 @@ namespace sqlite_orm::internal::async_vfs {
         }
         asyncFile->descriptor = wrapped_descriptor(wrapped, asyncFile->wrapped, fileName, openedFlags);
         constexpr int journalFiles = SQLITE_OPEN_MAIN_JOURNAL | SQLITE_OPEN_SUPER_JOURNAL | SQLITE_OPEN_WAL;
-        asyncFile->directorySyncPending = (flags & SQLITE_OPEN_CREATE) && (flags & journalFiles);
+        asyncFile->directorySyncPending =
+            (flags & SQLITE_OPEN_CREATE) && (flags & journalFiles) && directory_sync_enabled();
         file->pMethods = &ioMethods;
         return SQLITE_OK;
     }
