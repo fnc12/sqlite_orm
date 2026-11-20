@@ -35852,7 +35852,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <exception>  //  std::exception_ptr, std::rethrow_exception
+#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception
 #include <optional>  //  std::optional
 #include <utility>  //  std::forward, std::move
 #endif
@@ -35880,6 +35880,18 @@ namespace sqlite_orm::internal {
             this->value.emplace(std::forward<U>(newValue));
         }
 
+        /**
+         *  Keep the result of `function()`, or the exception it throws.
+         */
+        template<class F>
+        void invoke(F& function) noexcept {
+            try {
+                this->set(function());
+            } catch (...) {
+                this->error = std::current_exception();
+            }
+        }
+
         T take() {
             if (this->error) {
                 std::rethrow_exception(this->error);
@@ -35891,6 +35903,18 @@ namespace sqlite_orm::internal {
     template<>
     struct result_box<void> {
         std::exception_ptr error;
+
+        /**
+         *  Run `function()`, keeping the exception it throws.
+         */
+        template<class F>
+        void invoke(F& function) noexcept {
+            try {
+                function();
+            } catch (...) {
+                this->error = std::current_exception();
+            }
+        }
 
         void take() {
             if (this->error) {
@@ -36087,13 +36111,60 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <coroutine>  //  std::coroutine_handle, std::suspend_never
+#include <coroutine>  //  std::coroutine_handle
 #include <cstddef>  //  std::size_t
 #include <deque>  //  std::deque
-#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception, std::terminate
+#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception
 #include <functional>  //  std::function
-#include <type_traits>  //  std::invoke_result_t, std::is_void_v
+#include <type_traits>  //  std::invoke_result_t
 #include <utility>  //  std::exchange, std::move
+#endif
+#endif
+
+// #include "../functional/coroutines/fire_and_forget.h"
+
+#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <coroutine>  //  std::suspend_never
+#include <exception>  //  std::terminate
+#endif
+#endif
+#endif
+
+#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+// general-purpose, but sqlite_orm offers its coroutine types with the asynchronous storage only
+#ifdef SQLITE_ORM_WITH_ASYNC
+namespace sqlite_orm::internal {
+
+    /**
+     *  Purpose: start a coroutine that nobody awaits.
+     *
+     *  Intention: realizes an eager C++20 coroutine type that discards its result and terminates on an escaping
+     *  exception; `async_when_all()` starts each of its tasks with it.
+     */
+    struct fire_and_forget {
+        struct promise_type {
+            fire_and_forget get_return_object() noexcept {
+                return {};
+            }
+
+            std::suspend_never initial_suspend() noexcept {
+                return {};
+            }
+
+            std::suspend_never final_suspend() noexcept {
+                return {};
+            }
+
+            void return_void() noexcept {}
+
+            void unhandled_exception() noexcept {
+                std::terminate();
+            }
+        };
+    };
+}
 #endif
 #endif
 
@@ -37118,22 +37189,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
-         *  Thread-safe: resume a coroutine on this context's thread.
-         */
-        void resume_here(std::coroutine_handle<> handle) {
-            this->scheduler_.post([this, handle] {
-                this->ready.push_back(handle);
-            });
-        }
-
-        /**
-         *  Same-thread: resume `handle` on the next turn (never inline).
-         */
-        void schedule(std::coroutine_handle<> handle) {
-            this->ready.push_back(handle);
-        }
-
-        /**
          *  Awaitable: run a synchronous callable on a fiber. Everything inside
          *  (sqlite3_step and friends) may park on I/O without blocking the thread.
          */
@@ -37153,15 +37208,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                 void await_suspend(std::coroutine_handle<> handle) {
                     this->context->scheduler_.spawn(
                         [this, handle] {
-                            try {
-                                if constexpr (std::is_void_v<result_type>) {
-                                    this->function();
-                                } else {
-                                    this->box.set(this->function());
-                                }
-                            } catch (...) {
-                                this->box.error = std::current_exception();
-                            }
+                            this->box.invoke(this->function);
                             this->context->ready.push_back(handle);
                         },
                         this->stackSize);
@@ -37254,6 +37301,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         std::size_t fiberStackSize = internal::fiber::defaultStackSize;
 
       private:
+        /**
+         *  Thread-safe: resume a coroutine on this context's thread.
+         */
+        void resume_here(std::coroutine_handle<> handle) {
+            this->scheduler_.post([this, handle] {
+                this->ready.push_back(handle);
+            });
+        }
+
         static async_io_context*& current_slot() noexcept {
             thread_local async_io_context* currentContext = nullptr;
             return currentContext;
@@ -37287,29 +37343,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return !this->ready.empty() || !this->pendingRoots.empty() || this->scheduler_.has_runnable();
         }
 
-        struct detached {
-            struct promise_type {
-                detached get_return_object() noexcept {
-                    return {};
-                }
-
-                std::suspend_never initial_suspend() noexcept {
-                    return {};
-                }
-
-                std::suspend_never final_suspend() noexcept {
-                    return {};
-                }
-
-                void return_void() noexcept {}
-
-                void unhandled_exception() noexcept {
-                    std::terminate();
-                }
-            };
-        };
-
-        detached launch(async_task<void> rootTask) {
+        internal::fire_and_forget launch(async_task<void> rootTask) {
             try {
                 co_await std::move(rootTask);
             } catch (...) {
@@ -38914,10 +38948,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return this->workers.size();
         }
 
-        async_io_context& worker(std::size_t index) noexcept {
-            return *this->workers[index];
-        }
-
         void shutdown() {
             if (this->threads.empty()) {
                 return;
@@ -38956,15 +38986,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                     async_io_context* worker = this->pool->pick();
                     worker->post([this, handle, origin, worker] {
                         worker->scheduler_.spawn([this, handle, origin] {
-                            try {
-                                if constexpr (std::is_void_v<result_type>) {
-                                    this->function();
-                                } else {
-                                    this->box.set(this->function());
-                                }
-                            } catch (...) {
-                                this->box.error = std::current_exception();
-                            }
+                            this->box.invoke(this->function);
                             origin->resume_here(handle);
                         });
                     });
@@ -39039,51 +39061,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
 // #include "fire_and_forget.h"
-
-#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
-#ifdef SQLITE_ORM_WITH_ASYNC
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <coroutine>  //  std::suspend_never
-#include <exception>  //  std::terminate
-#endif
-#endif
-#endif
-
-#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
-// general-purpose, but sqlite_orm offers its coroutine types with the asynchronous storage only
-#ifdef SQLITE_ORM_WITH_ASYNC
-namespace sqlite_orm::internal {
-
-    /**
-     *  Purpose: start a coroutine that nobody awaits.
-     *
-     *  Intention: realizes an eager C++20 coroutine type that discards its result and terminates on an escaping
-     *  exception; `async_when_all()` starts each of its tasks with it.
-     */
-    struct fire_and_forget {
-        struct promise_type {
-            fire_and_forget get_return_object() noexcept {
-                return {};
-            }
-
-            std::suspend_never initial_suspend() noexcept {
-                return {};
-            }
-
-            std::suspend_never final_suspend() noexcept {
-                return {};
-            }
-
-            void return_void() noexcept {}
-
-            void unhandled_exception() noexcept {
-                std::terminate();
-            }
-        };
-    };
-}
-#endif
-#endif
 
 // #include "task.h"
 

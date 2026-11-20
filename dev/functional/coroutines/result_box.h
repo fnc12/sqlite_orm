@@ -3,7 +3,7 @@
 #ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <exception>  //  std::exception_ptr, std::rethrow_exception
+#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception
 #include <optional>  //  std::optional
 #include <utility>  //  std::forward, std::move
 #endif
@@ -31,6 +31,18 @@ namespace sqlite_orm::internal {
             this->value.emplace(std::forward<U>(newValue));
         }
 
+        /**
+         *  Keep the result of `function()`, or the exception it throws.
+         */
+        template<class F>
+        void invoke(F& function) noexcept {
+            try {
+                this->set(function());
+            } catch (...) {
+                this->error = std::current_exception();
+            }
+        }
+
         T take() {
             if (this->error) {
                 std::rethrow_exception(this->error);
@@ -42,6 +54,18 @@ namespace sqlite_orm::internal {
     template<>
     struct result_box<void> {
         std::exception_ptr error;
+
+        /**
+         *  Run `function()`, keeping the exception it throws.
+         */
+        template<class F>
+        void invoke(F& function) noexcept {
+            try {
+                function();
+            } catch (...) {
+                this->error = std::current_exception();
+            }
+        }
 
         void take() {
             if (this->error) {

@@ -54,10 +54,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return this->workers.size();
         }
 
-        async_io_context& worker(std::size_t index) noexcept {
-            return *this->workers[index];
-        }
-
         void shutdown() {
             if (this->threads.empty()) {
                 return;
@@ -96,15 +92,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                     async_io_context* worker = this->pool->pick();
                     worker->post([this, handle, origin, worker] {
                         worker->scheduler_.spawn([this, handle, origin] {
-                            try {
-                                if constexpr (std::is_void_v<result_type>) {
-                                    this->function();
-                                } else {
-                                    this->box.set(this->function());
-                                }
-                            } catch (...) {
-                                this->box.error = std::current_exception();
-                            }
+                            this->box.invoke(this->function);
                             origin->resume_here(handle);
                         });
                     });
