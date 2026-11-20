@@ -37147,6 +37147,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
+         *  Same-thread: resume `handle` on the next turn (never inline).
+         */
+        void schedule(std::coroutine_handle<> handle) {
+            this->ready.push_back(handle);
+        }
+
+        /**
          *  Awaitable: run a synchronous callable on a fiber. Everything inside it, such as `sqlite3_step()`, may park
          *  on I/O without blocking the thread.
          */
