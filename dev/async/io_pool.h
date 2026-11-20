@@ -1,11 +1,5 @@
 #pragma once
 
-/** @file
- *  Purpose: spread work over several threads, each with its own `async_io_context`.
- *
- *  Intention: a convenience on top of `io_context.h` for applications that want I/O parallelism across threads.
- */
-
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <atomic>  //  std::atomic
@@ -29,8 +23,11 @@
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
-     *  M:N: `size` worker threads, each running its own async_io_context. Work is
-     *  spread round-robin; a coroutine that awaits pool.async(function) is resumed
+     *  Purpose: spread work over several threads, each with its own `async_io_context`.
+     *
+     *  Intention: a convenience on top of `async_io_context` for applications that want I/O parallelism across threads.
+     *
+     *  M:N: `size` worker threads. Work is spread round-robin; a coroutine that awaits pool.async(function) is resumed
      *  back on the async_io_context it was running on.
      */
     class async_io_pool {

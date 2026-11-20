@@ -1,13 +1,5 @@
 #pragma once
 
-/** @file
- *  Purpose: fetch the rows of a query one at a time from a coroutine.
- *
- *  Intention: realizes `async_cursor`, what `async_storage::iterate()` returns, over the views of
- *  `result_set/mapped_view.h` and `result_set/result_set_view.h` that the synchronous `storage_t::iterate()` returns;
- *  uses `task.h`, and the storage's `run()` for every step.
- */
-
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::shared_ptr, std::make_shared
@@ -85,7 +77,10 @@ namespace sqlite_orm::internal {
     };
 
     /**
-     *  The rows of a query, fetched one at a time; returned by `async_storage::iterate()`.
+     *  Purpose: fetch the rows of a query one at a time from a coroutine.
+     *
+     *  Intention: what `async_storage::iterate()` returns, over the views `mapped_view` and `result_set_view` that the
+     *  synchronous `storage_t::iterate()` returns; uses `async_task`, and the storage's `run()` for every step.
      *
      *      auto users = storage.iterate<User>(where(c(&User::age) > 30));
      *      while (std::optional<User> user = co_await users.next()) {

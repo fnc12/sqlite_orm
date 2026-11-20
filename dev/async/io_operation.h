@@ -1,11 +1,5 @@
 #pragma once
 
-/** @file
- *  Purpose: describe one asynchronous request in flight to the I/O engine.
- *
- *  Intention: the record shared by `io_uring_engine.h`, which submits and completes it, and `scheduler.h`, which parks a fiber on it.
- */
-
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <cstdint>  //  std::int32_t
@@ -18,8 +12,12 @@ namespace sqlite_orm::internal {
     class fiber;
 
     /**
-     *  One asynchronous I/O request in flight. Either a fiber waits for it, or a
-     *  callback runs on completion (the cross-thread wake operation).
+     *  Purpose: describe one asynchronous request in flight to the I/O engine.
+     *
+     *  Intention: the record shared by `io_uring_engine`, which submits and completes it, and `scheduler`, which parks
+     *  a fiber on it.
+     *
+     *  Either a fiber waits for it, or a callback runs on completion (the cross-thread wake operation).
      */
     struct io_operation {
         fiber* waiter = nullptr;

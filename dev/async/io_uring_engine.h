@@ -1,12 +1,5 @@
 #pragma once
 
-/** @file
- *  Purpose: submit requests to io_uring and collect their completions.
- *
- *  Intention: realizes the I/O engine of `scheduler.h` on the raw io_uring system calls, without liburing;
- *  publishes `io_uring_available()` for applications that have to check before creating an `async_io_context`.
- */
-
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <algorithm>  //  std::max
@@ -35,11 +28,14 @@
 namespace sqlite_orm::internal {
 
     /**
-     *  io_uring on raw syscalls (no liburing). One submission queue and one
-     *  completion queue, mmap'd from the ring descriptor. submit() only publishes
-     *  the submission tail; the io_uring_enter syscall happens in reap(), so one
-     *  loop iteration costs one syscall, or none when nothing was queued and the
-     *  caller does not block.
+     *  Purpose: submit requests to io_uring and collect their completions.
+     *
+     *  Intention: realizes the I/O engine of `scheduler` on the raw io_uring system calls, without liburing;
+     *  `io_uring_available()` lets applications check before creating an `async_io_context`.
+     *
+     *  One submission queue and one completion queue, mmap'd from the ring descriptor. submit() only publishes the
+     *  submission tail; the io_uring_enter syscall happens in reap(), so one loop iteration costs one syscall, or none
+     *  when nothing was queued and the caller does not block.
      */
     class io_uring_engine {
       public:

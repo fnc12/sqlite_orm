@@ -1,11 +1,5 @@
 #pragma once
 
-/** @file
- *  Purpose: await several tasks concurrently.
- *
- *  Intention: a convenience on top of `task.h` for applications awaiting several tasks at once.
- */
-
 #ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -96,8 +90,12 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
-     *  Start every task, run them concurrently, return all results in order.
-     *  Rethrows the first exception after all tasks have finished.
+     *  Purpose: await several tasks concurrently.
+     *
+     *  Intention: a convenience on top of `async_task` for applications awaiting several tasks at once.
+     *
+     *  Start every task, run them concurrently, return all results in order. Rethrows the first exception after all
+     *  tasks have finished.
      */
     template<class T>
         requires (!std::is_void_v<T>)

@@ -1,12 +1,5 @@
 #pragma once
 
-/** @file
- *  Purpose: schedule the work items of one thread and resume each when what it waits for has completed.
- *
- *  Intention: realizes the loop underneath `io_context.h`, its work items being fibers and functions posted from other
- *  threads; uses `fiber.h` and `io_uring_engine.h`; `async_vfs.h` parks fibers on it from inside them.
- */
-
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <algorithm>  //  std::find_if
@@ -31,12 +24,15 @@
 namespace sqlite_orm::internal {
 
     /**
-     *  Single-threaded cooperative scheduler: runs fibers and drives io_uring.
-     *  Fibers park on I/O by calling read/write/fsync/sleep below; the scheduler
-     *  resumes them when the completion arrives.
+     *  Purpose: schedule the work items of one thread and resume each when what it waits for has completed.
      *
-     *  Cross-thread use is limited to post() and wake(): another thread may hand a
-     *  callable to this scheduler, which runs it on the scheduler's own thread.
+     *  Intention: realizes the loop underneath `async_io_context`, its work items being fibers and functions posted
+     *  from other threads; uses `fiber` and `io_uring_engine`; the VFS of `async_vfs.h` parks fibers on it from inside
+     *  them.
+     *
+     *  Fibers park on I/O by calling read/write/fsync/sleep below; the scheduler resumes them when the completion
+     *  arrives. Cross-thread use is limited to post() and wake(): another thread may hand a callable to this scheduler,
+     *  which runs it on the scheduler's own thread.
      */
     class scheduler {
       public:

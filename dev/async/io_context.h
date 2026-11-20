@@ -1,13 +1,5 @@
 #pragma once
 
-/** @file
- *  Purpose: run asynchronous work on one thread.
- *
- *  Intention: realizes the event loop applications either run themselves or embed into the event loop they already have;
- *  uses `scheduler.h` for the fibers and their file I/O, and `task.h` for the coroutines; `async_storage.h` and
- *  `io_pool.h` run on it.
- */
-
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <coroutine>  //  std::coroutine_handle, std::suspend_never
@@ -28,8 +20,13 @@
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
-     *  Event loop of one thread. It submits file I/O to io_uring, runs synchronous calls on fibers, and resumes the
-     *  coroutines awaiting them.
+     *  Purpose: run asynchronous work on one thread.
+     *
+     *  Intention: realizes the event loop applications either run themselves or embed into the event loop they already
+     *  have; uses `scheduler` for the fibers and their file I/O, and `async_task` for the coroutines; `async_storage`
+     *  and `async_io_pool` run on it.
+     *
+     *  It submits file I/O to io_uring, runs synchronous calls on fibers, and resumes the coroutines awaiting them.
      *
      *  It is not a general-purpose executor, and an application needs no second event loop because of it.
      *  There are three ways to drive it:

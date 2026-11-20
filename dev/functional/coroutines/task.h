@@ -1,12 +1,5 @@
 #pragma once
 
-/** @file
- *  Purpose: represent a computation whose result arrives later.
- *
- *  Intention: realizes a lazy C++20 coroutine type that any coroutine can `co_await`; returned by the operations of
- *  `async_storage.h` and `async_cursor.h`, awaited by `io_context.h` and `when_all.h`.
- */
-
 #ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -74,8 +67,12 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
-     *  Lazy coroutine type. Starts when awaited; the awaiting coroutine is resumed
-     *  with the value or the exception.
+     *  Purpose: represent a computation whose result arrives later.
+     *
+     *  Intention: realizes a lazy C++20 coroutine type that any coroutine can `co_await`; returned by the operations of
+     *  `async_storage` and `async_cursor`, awaited by `async_io_context` and `async_when_all()`.
+     *
+     *  Starts when awaited; the awaiting coroutine is resumed with the value or the exception.
      */
     template<class T>
     class async_task {
