@@ -39062,9 +39062,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <coroutine>  //  std::coroutine_handle, std::suspend_never
+#include <coroutine>  //  std::coroutine_handle
 #include <cstddef>  //  std::size_t
-#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception, std::terminate
+#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception
 #include <optional>  //  std::optional
 #include <type_traits>  //  std::is_void_v
 #include <utility>  //  std::move
@@ -39073,18 +39073,28 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "task.h"
+// #include "fire_and_forget.h"
+
+#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <coroutine>  //  std::suspend_never
+#include <exception>  //  std::terminate
+#endif
+#endif
+#endif
 
 #ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
 // general-purpose, but sqlite_orm offers its coroutine types with the asynchronous storage only
 #ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
 
-    struct count_down {
-        std::size_t remaining = 0;
-        std::coroutine_handle<> waiter;
-    };
-
+    /**
+     *  Purpose: start a coroutine that nobody awaits.
+     *
+     *  Intention: realizes an eager C++20 coroutine type that discards its result and terminates on an escaping
+     *  exception; `async_when_all()` starts each of its tasks with it.
+     */
     struct fire_and_forget {
         struct promise_type {
             fire_and_forget get_return_object() noexcept {
@@ -39105,6 +39115,21 @@ namespace sqlite_orm::internal {
                 std::terminate();
             }
         };
+    };
+}
+#endif
+#endif
+
+// #include "task.h"
+
+#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+// general-purpose, but sqlite_orm offers its coroutine types with the asynchronous storage only
+#ifdef SQLITE_ORM_WITH_ASYNC
+namespace sqlite_orm::internal {
+
+    struct count_down {
+        std::size_t remaining = 0;
+        std::coroutine_handle<> waiter;
     };
 
     template<class T>

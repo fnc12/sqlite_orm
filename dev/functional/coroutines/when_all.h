@@ -9,9 +9,9 @@
 #ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <coroutine>  //  std::coroutine_handle, std::suspend_never
+#include <coroutine>  //  std::coroutine_handle
 #include <cstddef>  //  std::size_t
-#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception, std::terminate
+#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception
 #include <optional>  //  std::optional
 #include <type_traits>  //  std::is_void_v
 #include <utility>  //  std::move
@@ -20,6 +20,7 @@
 #endif
 #endif
 
+#include "fire_and_forget.h"
 #include "task.h"
 
 #ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
@@ -30,28 +31,6 @@ namespace sqlite_orm::internal {
     struct count_down {
         std::size_t remaining = 0;
         std::coroutine_handle<> waiter;
-    };
-
-    struct fire_and_forget {
-        struct promise_type {
-            fire_and_forget get_return_object() noexcept {
-                return {};
-            }
-
-            std::suspend_never initial_suspend() noexcept {
-                return {};
-            }
-
-            std::suspend_never final_suspend() noexcept {
-                return {};
-            }
-
-            void return_void() noexcept {}
-
-            void unhandled_exception() noexcept {
-                std::terminate();
-            }
-        };
     };
 
     template<class T>

@@ -89,7 +89,7 @@ which takes precedence where both apply.
   metaprogramming in `mpl/`, reflection helpers (`meta_util.h`), pointer-to-member mechanics
   (`member_traits.h`, `field_of.h`), in `tuple_helper/` type- and value-level operations on
   `std::tuple`, and in `coroutines/` coroutine types and their helpers (`task.h`, `when_all.h`,
-  `result_box.h`).
+  `fire_and_forget.h`, `result_box.h`).
 - `dev/async/` - The asynchronous runtime, with no SQL or storage meaning: the event loop of a
   thread (`io_context.h`) and of several threads (`io_pool.h`), the scheduler running fibers on
   one thread (`scheduler.h`), the I/O requests they wait for (`io_operation.h`) and the engine
