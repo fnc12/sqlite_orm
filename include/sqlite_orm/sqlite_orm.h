@@ -21323,7 +21323,8 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(destructive_interference_size))
         std::mutex _sync;
         const db_arguments dbArgs;
-        const std::function<void(sqlite3* db)> _didOpenDb;
+        // replaced when the storage owning this holder is moved, from a single-threaded context
+        std::function<void(sqlite3* db)> _didOpenDb;
     };
 
     /*  
@@ -26216,7 +26217,7 @@ namespace sqlite_orm::internal {
 #include <system_error>  //  std::system_error
 #include <tuple>  //  std::apply
 #include <type_traits>  //  std::is_same, std::is_aggregate
-#include <utility>  //  std::move
+#include <utility>  //  std::move, std::exchange
 #include <vector>  //  std::vector
 #endif
 
@@ -28687,6 +28688,33 @@ namespace sqlite_orm::internal {
             }
         }
 
+        /**
+         *  Takes over the connection, open or not, and everything set on it: nothing is opened or closed.
+         *  The storage moved from holds no connection any more: it can only be destroyed.
+         */
+        storage_base(storage_base&& other) :
+            inMemory{other.inMemory}, isOpenedForever{std::exchange(other.isOpenedForever, false)},
+            connection{std::move(other.connection)}, collatingFunctions{std::move(other.collatingFunctions)},
+            cachedForeignKeysCount(other.cachedForeignKeysCount), _busy_handler{std::move(other._busy_handler)},
+#ifdef SQLITE_ORM_LOAD_EXTENSION_SUPPORTED
+            _loadExtensionEnabled{other._loadExtensionEnabled},
+#endif
+            scalarFunctions{std::move(other.scalarFunctions)}, aggregateFunctions{std::move(other.aggregateFunctions)},
+            executor{other.executor.will_run_query, other.executor.did_run_query}, on_open{std::move(other.on_open)},
+            pragma(std::bind(&storage_base::get_connection, this), executor),
+            limit{std::ref(storage_base::connection)} {
+            this->pragma.synchronous_ = other.pragma.synchronous_;
+            this->pragma.journal_mode_ = other.pragma.journal_mode_;
+            this->limit.limits = std::move(other.limit.limits);
+            //  whatever referred to the storage moved from has to refer to this one
+            this->connection->_didOpenDb = std::bind(&storage_base::on_open_internal, this, std::placeholders::_1);
+            if (this->_busy_handler) {
+                if (connection_ptr maybeConnection = *this->connection) {
+                    sqlite3_busy_handler(maybeConnection.get(), busy_handler_callback, this);
+                }
+            }
+        }
+
         ~storage_base() {
             if (this->isOpenedForever) {
                 this->connection->close();
@@ -29245,6 +29273,7 @@ namespace sqlite_orm::internal {
         }
 
         storage_t(const storage_t&) = default;
+        storage_t(storage_t&&) = default;
 
       private:
         db_objects_type db_objects;

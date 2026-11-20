@@ -123,6 +123,7 @@ namespace sqlite_orm::internal {
         }
 
         storage_t(const storage_t&) = default;
+        storage_t(storage_t&&) = default;
 
       private:
         db_objects_type db_objects;

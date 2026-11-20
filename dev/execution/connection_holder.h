@@ -225,7 +225,8 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(destructive_interference_size))
         std::mutex _sync;
         const db_arguments dbArgs;
-        const std::function<void(sqlite3* db)> _didOpenDb;
+        // replaced when the storage owning this holder is moved, from a single-threaded context
+        std::function<void(sqlite3* db)> _didOpenDb;
     };
 
     /*  

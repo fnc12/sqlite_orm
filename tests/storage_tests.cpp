@@ -442,6 +442,125 @@ TEST_CASE("Storage copy") {
     storageCopy.remove_all<User>();
 }
 
+TEST_CASE("Storage move") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+
+    auto makeStorage = [](std::string filename) {
+        return make_storage(
+            std::move(filename),
+            make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
+    };
+    using Storage = decltype(makeStorage(""));
+    STATIC_REQUIRE(std::is_move_constructible<Storage>::value);
+
+    SECTION("an in-memory database keeps its connection and its data") {
+        int openedCount = 0;
+        auto storage = makeStorage("");
+        storage.on_open = [&openedCount](sqlite3*) {
+            ++openedCount;
+        };
+        storage.sync_schema();
+        storage.replace(User{1, "Ada"});
+
+        auto moved = std::move(storage);
+        REQUIRE(moved.is_opened());
+        REQUIRE(openedCount == 0);
+        REQUIRE(moved.get<User>(1).name == "Ada");
+        moved.on_open(nullptr);
+        REQUIRE(openedCount == 1);
+    }
+    SECTION("returned from a function") {
+        auto makeFilled = [&makeStorage] {
+            auto storage = makeStorage("");
+            storage.sync_schema();
+            storage.replace(User{1, "Ada"});
+            return storage;
+        };
+        auto storage = makeFilled();
+        REQUIRE(storage.count<User>() == 1);
+    }
+    SECTION("a database opened forever stays open") {
+        const char* const filename = "storage_move.sqlite";
+        std::remove(filename);
+        {
+            auto storage = makeStorage(filename);
+            storage.sync_schema();
+            storage.open_forever();
+            REQUIRE(storage.is_opened());
+
+            auto moved = std::move(storage);
+            REQUIRE(moved.is_opened());
+            moved.replace(User{1, "Ada"});
+            REQUIRE(moved.count<User>() == 1);
+        }
+        std::remove(filename);
+    }
+    SECTION("a database opened on demand opens after the move") {
+        const char* const filename = "storage_move.sqlite";
+        std::remove(filename);
+        {
+            int openedCount = 0;
+            auto storage = makeStorage(filename);
+            storage.on_open = [&openedCount](sqlite3*) {
+                ++openedCount;
+            };
+            storage.sync_schema();
+            REQUIRE(openedCount == 1);
+            REQUIRE_FALSE(storage.is_opened());
+
+            auto moved = std::move(storage);
+            REQUIRE_FALSE(moved.is_opened());
+            moved.replace(User{1, "Ada"});
+            REQUIRE(openedCount == 2);
+        }
+        std::remove(filename);
+    }
+    SECTION("what was set on the storage follows it") {
+        auto storage = makeStorage("");
+        storage.sync_schema();
+        storage.create_collation("reversed", [](int leftLength, const void* left, int rightLength, const void* right) {
+            const std::string_view leftText{static_cast<const char*>(left), std::size_t(leftLength)};
+            const std::string_view rightText{static_cast<const char*>(right), std::size_t(rightLength)};
+            return rightText.compare(leftText);
+        });
+        storage.limit.length(1000);
+        storage.pragma.synchronous(1);
+        storage.replace(User{1, "Ada"});
+        storage.replace(User{2, "Bob"});
+
+        auto moved = std::move(storage);
+        REQUIRE(moved.limit.length() == 1000);
+        REQUIRE(moved.pragma.synchronous() == 1);
+        const auto names = moved.select(&User::name, order_by(&User::name).collate("reversed"));
+        REQUIRE(names == std::vector<std::string>{"Bob", "Ada"});
+    }
+    SECTION("the busy handler is called on the storage moved to") {
+        const char* const filename = "storage_move_busy.sqlite";
+        std::remove(filename);
+        {
+            int busyCount = 0;
+            auto storage = makeStorage(filename);
+            storage.sync_schema();
+            storage.open_forever();
+            storage.busy_handler([&busyCount](int) {
+                ++busyCount;
+                return 0;
+            });
+            auto moved = std::move(storage);
+
+            auto locker = makeStorage(filename);
+            locker.begin_exclusive_transaction();
+            REQUIRE_THROWS_AS(moved.replace(User{1, "Ada"}), std::system_error);
+            REQUIRE(busyCount > 0);
+            locker.rollback();
+        }
+        std::remove(filename);
+    }
+}
+
 #if SQLITE_VERSION_NUMBER >= 3006019
 TEST_CASE("column_name") {
     struct User {
