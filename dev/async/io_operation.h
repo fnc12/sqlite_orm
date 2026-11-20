@@ -9,8 +9,6 @@
 #ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
 
-    class fiber;
-
     /**
      *  Purpose: describe one asynchronous request in flight to the I/O engine.
      *
@@ -20,7 +18,7 @@ namespace sqlite_orm::internal {
      *  Either a fiber waits for it, or a callback runs on completion (the cross-thread wake operation).
      */
     struct io_operation {
-        fiber* waiter = nullptr;
+        class fiber* waiter = nullptr;
         void (*onComplete)(io_operation*, void*) = nullptr;
         void* context = nullptr;
         std::int32_t result = 0;  //  bytes transferred, or -errno
