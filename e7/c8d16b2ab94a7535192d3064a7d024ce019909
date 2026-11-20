@@ -1,0 +1,28 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-21: the symbol-level reading
+of the coroutine types layer (result_box.h, fire_and_forget.h, task.h,
+when_all.h).
+
+# Decided
+- trueqbit: Claude's leans and routing. #1630: async_task is one class
+  template (d9d0e4d2), its promise split into task_promise<T> and its
+  void specialization over task_promise_base<T>, since a promise cannot
+  hold both return_value() and return_void(), constrained or not;
+  async_when_all() keeps each task's outcome in a result_box
+  (6bf53a1c), one start_one() template, no rethrow_first(). #1631: the
+  void overload's doc-comment drops the storage's update() and remove().
+- Claude: result_box's Intention changes in 6bf53a1c rather than on
+  #1631: that commit makes async_when_all() one of its fillers.
+- The two public async_when_all() overloads stay: a merged signature
+  (conditional return type) would show in users' diagnostics.
+- Nothing in the layer leaves its header; the preambles stay on their
+  bearers.
+
+# Discussed
+- Merged down #1630 -> #1633 -> #1631 by merge commits, no conflicts.
+  pre-commit.sh exits 0 before every commit. Not compiled.
+
+# Later
+- For the final review of #1524: awaiting the same async_task twice
+  takes from a moved-from box; nothing says a task is awaited once.
+- The storage-facing layer: async_cursor.h, async_vfs.h, async_storage.h.
