@@ -9,16 +9,17 @@
 
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <coroutine>  //  std::coroutine_handle, std::suspend_never
+#include <coroutine>  //  std::coroutine_handle
 #include <cstddef>  //  std::size_t
 #include <deque>  //  std::deque
-#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception, std::terminate
+#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception
 #include <functional>  //  std::function
 #include <type_traits>  //  std::invoke_result_t, std::is_void_v
 #include <utility>  //  std::exchange, std::move
 #endif
 #endif
 
+#include "../functional/coroutines/fire_and_forget.h"
 #include "../functional/coroutines/result_box.h"
 #include "../functional/coroutines/task.h"
 #include "scheduler.h"
@@ -265,29 +266,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return !this->ready.empty() || !this->pendingRoots.empty() || this->scheduler_.has_runnable();
         }
 
-        struct detached {
-            struct promise_type {
-                detached get_return_object() noexcept {
-                    return {};
-                }
-
-                std::suspend_never initial_suspend() noexcept {
-                    return {};
-                }
-
-                std::suspend_never final_suspend() noexcept {
-                    return {};
-                }
-
-                void return_void() noexcept {}
-
-                void unhandled_exception() noexcept {
-                    std::terminate();
-                }
-            };
-        };
-
-        detached launch(async_task<void> rootTask) {
+        internal::fire_and_forget launch(async_task<void> rootTask) {
             try {
                 co_await std::move(rootTask);
             } catch (...) {
