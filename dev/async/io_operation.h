@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: describe one asynchronous I/O request in flight.
+ *  Purpose: describe one asynchronous request in flight to the I/O engine.
  *
  *  Intention: the record shared by `io_uring_engine.h`, which submits and completes it, and `scheduler.h`, which parks a fiber on it.
  */

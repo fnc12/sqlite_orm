@@ -36115,10 +36115,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "scheduler.h"
 
 /** @file
- *  Purpose: run fibers on one thread and resume each when the I/O it waits for has completed.
+ *  Purpose: schedule the work items of one thread and resume each when what it waits for has completed.
  *
- *  Intention: realizes the loop underneath `io_context.h`; uses `fiber.h` and `io_uring_engine.h`,
- *  and is called by `async_vfs.h` from inside a fiber.
+ *  Intention: realizes the loop underneath `io_context.h`, its work items being fibers and functions posted from other
+ *  threads; uses `fiber.h` and `io_uring_engine.h`; `async_vfs.h` parks fibers on it from inside them.
  */
 
 #ifdef SQLITE_ORM_WITH_ASYNC
@@ -36419,7 +36419,7 @@ namespace sqlite_orm::internal {
 // #include "io_operation.h"
 
 /** @file
- *  Purpose: describe one asynchronous I/O request in flight.
+ *  Purpose: describe one asynchronous request in flight to the I/O engine.
  *
  *  Intention: the record shared by `io_uring_engine.h`, which submits and completes it, and `scheduler.h`, which parks a fiber on it.
  */
@@ -36452,7 +36452,7 @@ namespace sqlite_orm::internal {
 // #include "io_uring_engine.h"
 
 /** @file
- *  Purpose: submit file I/O to io_uring and collect its completions.
+ *  Purpose: submit requests to io_uring and collect their completions.
  *
  *  Intention: realizes the I/O engine of `scheduler.h` on the raw io_uring system calls, without liburing;
  *  publishes `io_uring_available()` for applications that have to check before creating an `async_io_context`.
@@ -37540,9 +37540,9 @@ namespace sqlite_orm::internal {
 // #include "vfs/async_vfs.h"
 
 /** @file
- *  Purpose: perform the file I/O of a connection through io_uring instead of blocking system calls.
+ *  Purpose: let a connection wait for its file I/O, or sleep, without blocking its thread.
  *
- *  Intention: realizes a VFS, SQLite's OS interface layer, registered next to the built-in ones of `builtin/vfs.h` and wrapping
+ *  Intention: realizes a VFS, SQLite's OS interface layer, handing that I/O to io_uring, registered next to the built-in ones of `builtin/vfs.h` and wrapping
  *  the default one; uses `scheduler.h`, and is selected for a storage by `make_async_storage()` through `connection_control`.
  */
 

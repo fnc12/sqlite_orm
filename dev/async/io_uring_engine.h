@@ -1,7 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: submit file I/O to io_uring and collect its completions.
+ *  Purpose: submit requests to io_uring and collect their completions.
  *
  *  Intention: realizes the I/O engine of `scheduler.h` on the raw io_uring system calls, without liburing;
  *  publishes `io_uring_available()` for applications that have to check before creating an `async_io_context`.

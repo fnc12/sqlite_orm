@@ -1,10 +1,10 @@
 #pragma once
 
 /** @file
- *  Purpose: run fibers on one thread and resume each when the I/O it waits for has completed.
+ *  Purpose: schedule the work items of one thread and resume each when what it waits for has completed.
  *
- *  Intention: realizes the loop underneath `io_context.h`; uses `fiber.h` and `io_uring_engine.h`,
- *  and is called by `async_vfs.h` from inside a fiber.
+ *  Intention: realizes the loop underneath `io_context.h`, its work items being fibers and functions posted from other
+ *  threads; uses `fiber.h` and `io_uring_engine.h`; `async_vfs.h` parks fibers on it from inside them.
  */
 
 #ifdef SQLITE_ORM_WITH_ASYNC

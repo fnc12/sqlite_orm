@@ -1,9 +1,9 @@
 #pragma once
 
 /** @file
- *  Purpose: perform the file I/O of a connection through io_uring instead of blocking system calls.
+ *  Purpose: let a connection wait for its file I/O, or sleep, without blocking its thread.
  *
- *  Intention: realizes a VFS, SQLite's OS interface layer, registered next to the built-in ones of `builtin/vfs.h` and wrapping
+ *  Intention: realizes a VFS, SQLite's OS interface layer, handing that I/O to io_uring, registered next to the built-in ones of `builtin/vfs.h` and wrapping
  *  the default one; uses `scheduler.h`, and is selected for a storage by `make_async_storage()` through `connection_control`.
  */
 
