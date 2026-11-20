@@ -12,6 +12,7 @@
 #include <cstdio>  //  std::remove
 #include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>  //  SQLITE_ORM_WITH_ASYNC
 
 #if defined(SQLITE_ORM_WITH_ASYNC) && __has_include(<boost/asio.hpp>)
 #include <boost/asio.hpp>

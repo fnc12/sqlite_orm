@@ -13,6 +13,7 @@
 #include <iostream>
 #include <optional>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>  //  SQLITE_ORM_WITH_ASYNC
 #include <string>
 #include <utility>
 #include <vector>

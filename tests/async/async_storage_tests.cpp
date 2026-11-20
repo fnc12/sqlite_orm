@@ -8,6 +8,7 @@
  */
 
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>  //  SQLITE_ORM_WITH_ASYNC, SQLITE_ORM_CPP20_VIEWS_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #include <algorithm>  //  std::find
 #include <atomic>  //  std::atomic

@@ -11,6 +11,7 @@
 #include <cstdio>  //  std::remove
 #include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>  //  SQLITE_ORM_WITH_ASYNC
 #include <string>
 
 #ifdef SQLITE_ORM_WITH_ASYNC
