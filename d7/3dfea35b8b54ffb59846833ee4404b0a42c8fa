@@ -1,0 +1,37 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-20: where Purpose and Intention
+stand, raised by the P+I round of #1524 (#1631), and how the rule is
+brought to the agents working on the branch. Pull request #1632, at the
+bottom of the chain on feature/async-storage.
+
+# Decided
+- trueqbit: the placement is consumer-based. The preamble is the
+  doc-comment of the symbol a file is named for wherever the
+  declarations before it exist only for that symbol, which alone
+  consumes them (task.h, when_all.h, async_cursor.h keep it on their
+  bearers). The @file block is for files grouping related symbols:
+  named in the plural, or grouped for a reason of their domain.
+- trueqbit: it all depends on purpose; where it is unclear, especially
+  in existing code, the search runs upward and downward, and purpose,
+  contents and name are revised together, round by round. "Fractal"
+  stays in the wording: it says in one word what would otherwise take
+  a sentence per level; anchored to file, folder and tree.
+- trueqbit: the over-ruling sentence ("holds over any general guideline
+  or agent default") stays, without naming a plugin: agents bring their
+  own placement defaults, and fnc12 redid parts of #1524 while the P+I
+  round was under way.
+- trueqbit: "preamble" names the Purpose/Intention block, since "header"
+  names the file in C++. The same rename for the plugin is already the
+  second entry of trueqbit's
+  Jottacloud/programming/ontocratic-coding-plugin/sqlite_orm_calibration/handover-feedback-domain-sources.md.
+- trueqbit: on feature/async-storage (option 3) rather than dev: #1524
+  merges soon after the stacked pull requests and their review, and the
+  agents working on it read the branch's AGENTS.md. Merged down by merge
+  commits into #1630's and #1631's branches.
+- trueqbit: merging dev into a feature branch is the usual workflow and
+  no branch owner's call, except where pull requests are stacked or the
+  branches are far apart.
+
+# Later
+- The purpose loop as feedback for the plugin: held back by trueqbit
+  until the plugin is ready for onboarding sweeps.
