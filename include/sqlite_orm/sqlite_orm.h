@@ -39114,7 +39114,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  The same for tasks without a result, like those of `update()` or `remove()`.
+     *  The same for tasks without a result.
      */
     inline async_task<void> async_when_all(std::vector<async_task<void>> tasks) {
         std::vector<internal::result_box<void>> boxes(tasks.size());
