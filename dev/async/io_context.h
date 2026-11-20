@@ -14,7 +14,7 @@
 #include <deque>  //  std::deque
 #include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception
 #include <functional>  //  std::function
-#include <type_traits>  //  std::invoke_result_t, std::is_void_v
+#include <type_traits>  //  std::invoke_result_t
 #include <utility>  //  std::exchange, std::move
 #endif
 #endif
@@ -132,15 +132,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                 void await_suspend(std::coroutine_handle<> handle) {
                     this->context->scheduler_.spawn(
                         [this, handle] {
-                            try {
-                                if constexpr (std::is_void_v<result_type>) {
-                                    this->function();
-                                } else {
-                                    this->box.set(this->function());
-                                }
-                            } catch (...) {
-                                this->box.error = std::current_exception();
-                            }
+                            this->box.invoke(this->function);
                             this->context->ready.push_back(handle);
                         },
                         this->stackSize);

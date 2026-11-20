@@ -35859,7 +35859,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <exception>  //  std::exception_ptr, std::rethrow_exception
+#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception
 #include <optional>  //  std::optional
 #include <utility>  //  std::forward, std::move
 #endif
@@ -35887,6 +35887,18 @@ namespace sqlite_orm::internal {
             this->value.emplace(std::forward<U>(newValue));
         }
 
+        /**
+         *  Keep the result of `function()`, or the exception it throws.
+         */
+        template<class F>
+        void invoke(F& function) noexcept {
+            try {
+                this->set(function());
+            } catch (...) {
+                this->error = std::current_exception();
+            }
+        }
+
         T take() {
             if (this->error) {
                 std::rethrow_exception(this->error);
@@ -35898,6 +35910,18 @@ namespace sqlite_orm::internal {
     template<>
     struct result_box<void> {
         std::exception_ptr error;
+
+        /**
+         *  Run `function()`, keeping the exception it throws.
+         */
+        template<class F>
+        void invoke(F& function) noexcept {
+            try {
+                function();
+            } catch (...) {
+                this->error = std::current_exception();
+            }
+        }
 
         void take() {
             if (this->error) {
@@ -36103,7 +36127,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <deque>  //  std::deque
 #include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception
 #include <functional>  //  std::function
-#include <type_traits>  //  std::invoke_result_t, std::is_void_v
+#include <type_traits>  //  std::invoke_result_t
 #include <utility>  //  std::exchange, std::move
 #endif
 #endif
@@ -37221,15 +37245,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                 void await_suspend(std::coroutine_handle<> handle) {
                     this->context->scheduler_.spawn(
                         [this, handle] {
-                            try {
-                                if constexpr (std::is_void_v<result_type>) {
-                                    this->function();
-                                } else {
-                                    this->box.set(this->function());
-                                }
-                            } catch (...) {
-                                this->box.error = std::current_exception();
-                            }
+                            this->box.invoke(this->function);
                             this->context->ready.push_back(handle);
                         },
                         this->stackSize);
@@ -39010,15 +39026,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                     async_io_context* worker = this->pool->pick();
                     worker->post([this, handle, origin, worker] {
                         worker->scheduler_.spawn([this, handle, origin] {
-                            try {
-                                if constexpr (std::is_void_v<result_type>) {
-                                    this->function();
-                                } else {
-                                    this->box.set(this->function());
-                                }
-                            } catch (...) {
-                                this->box.error = std::current_exception();
-                            }
+                            this->box.invoke(this->function);
                             origin->resume_here(handle);
                         });
                     });
