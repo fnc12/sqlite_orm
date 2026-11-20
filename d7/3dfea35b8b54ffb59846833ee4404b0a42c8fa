@@ -21,9 +21,8 @@ bottom of the chain on feature/async-storage.
   own placement defaults, and fnc12 redid parts of #1524 while the P+I
   round was under way.
 - trueqbit: "preamble" names the Purpose/Intention block, since "header"
-  names the file in C++. The same rename for the plugin is already the
-  second entry of trueqbit's
-  Jottacloud/programming/ontocratic-coding-plugin/sqlite_orm_calibration/handover-feedback-domain-sources.md.
+  names the file in C++. The same rename is already among trueqbit's
+  feedback for Metatrom's (ontocratic) coding plugin.
 - trueqbit: on feature/async-storage (option 3) rather than dev: #1524
   merges soon after the stacked pull requests and their review, and the
   agents working on it read the branch's AGENTS.md. Merged down by merge
@@ -33,5 +32,6 @@ bottom of the chain on feature/async-storage.
   branches are far apart.
 
 # Later
-- The purpose loop as feedback for the plugin: held back by trueqbit
-  until the plugin is ready for onboarding sweeps.
+- The purpose loop as feedback for Metatrom's (ontocratic) coding
+  plugin: held back by trueqbit until the plugin is ready for onboarding
+  sweeps.
