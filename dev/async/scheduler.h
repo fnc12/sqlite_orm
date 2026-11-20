@@ -26,7 +26,7 @@ namespace sqlite_orm::internal {
     /**
      *  Purpose: schedule the work items of one thread and resume each when what it waits for has completed.
      *
-     *  Intention: realizes the loop underneath `async_io_context`, its work items being fibers and functions posted
+     *  Intention: the loop underneath `async_io_context`, its work items being fibers and functions posted
      *  from other threads; uses `fiber` and `io_uring_engine`; the VFS of `async_vfs.h` parks fibers on it from inside
      *  them.
      *
@@ -50,7 +50,8 @@ namespace sqlite_orm::internal {
         }
 
         /**
-         *  Create a fiber and make it runnable.
+         *  Run `function` on a fiber, on the stack of a finished one of that size where there is one, and make it
+         *  runnable.
          */
         void spawn(std::function<void()> function, std::size_t stackSize = fiber::defaultStackSize) {
             std::unique_ptr<fiber> newFiber = this->take_idle(fiber::rounded_stack_size(stackSize));
@@ -81,8 +82,8 @@ namespace sqlite_orm::internal {
         }
 
         /**
-         *  One loop iteration; blocks for I/O only if no fiber is runnable.
-         *  Returns false when there is nothing left to do.
+         *  One loop iteration; blocks for I/O only if no fiber is runnable and the hook of `set_external_ready()`
+         *  reports no work of its own. Returns false when there is nothing left to do.
          */
         bool run_one() {
             return this->step(true);
@@ -298,7 +299,7 @@ namespace sqlite_orm::internal {
         std::vector<std::unique_ptr<fiber>> fibers;
         /**
          *  Finished fibers kept for their stacks: mapping a stack and faulting its pages in costs more than
-         *  a typical storage operation. Bounded, so that a burst of concurrent operations does not pin its
+         *  the work a fiber typically runs. Bounded, so that a burst of concurrent operations does not pin its
          *  stacks forever.
          */
         static constexpr std::size_t maxIdleFibers = 64;

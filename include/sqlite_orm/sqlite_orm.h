@@ -36211,14 +36211,9 @@ namespace sqlite_orm::internal {
 /** @file
  *  Purpose: switch between machine stacks on one thread.
  *
- *  Intention: the foundation of `fiber.h`: two naked functions per supported architecture (x86_64 System V, aarch64 AAPCS64),
- *  inline so that the library stays header-only; speaks to nobody else.
- */
-
-#ifdef SQLITE_ORM_WITH_ASYNC
-/**
- *  Minimal stackful context switch for x86_64 (SysV) and aarch64 (AAPCS64),
- *  GCC or Clang, as inline naked functions so that the library stays header-only.
+ *  Intention: used by `fiber` alone; inline naked functions, so that the library stays header-only.
+ *
+ *  For x86_64 (System V) and aarch64 (AAPCS64), with GCC or Clang:
  *
  *      void sqlite_orm_switch_context(void** saveStackPointer, void* loadStackPointer);
  *
@@ -36231,6 +36226,8 @@ namespace sqlite_orm::internal {
  *  "returns" into sqlite_orm_context_trampoline with the entry function and its
  *  argument in two callee-saved registers.
  */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
 extern "C" {
 
 #if defined(__x86_64__)
@@ -36317,7 +36314,7 @@ namespace sqlite_orm::internal {
      *  Purpose: give a synchronous call a stack of its own, so that it can be suspended in the middle and resumed
      *  later.
      *
-     *  Intention: realizes the stackful coroutine a synchronous call suspends on, such as SQLite's VFS callbacks inside
+     *  Intention: the stackful coroutine a synchronous call suspends on, such as SQLite's VFS callbacks inside
      *  `sqlite3_step()`; uses the stack switch of `context_switch.h`, is run by `scheduler`.
      *
      *  One OS thread, many stacks; switching is explicit and cooperative, and a suspended call leaves the thread free.
@@ -36489,7 +36486,7 @@ namespace sqlite_orm::internal {
         class fiber* waiter = nullptr;
         void (*onComplete)(io_operation*, void*) = nullptr;
         void* context = nullptr;
-        std::int32_t result = 0;  //  bytes transferred, or -errno
+        std::int32_t result = 0;  //  bytes transferred, 0, or -errno
         bool completed = false;
     };
 }
@@ -36527,7 +36524,7 @@ namespace sqlite_orm::internal {
     /**
      *  Purpose: submit requests to io_uring and collect their completions.
      *
-     *  Intention: realizes the I/O engine of `scheduler` on the raw io_uring system calls, without liburing;
+     *  Intention: the I/O engine `scheduler` drives, on the raw io_uring system calls, without liburing;
      *  `io_uring_available()` lets applications check before creating an `async_io_context`.
      *
      *  One submission queue and one completion queue, mmap'd from the ring descriptor. submit() only publishes the
@@ -36735,6 +36732,7 @@ namespace sqlite_orm::internal {
             while (head != tail) {
                 const io_uring_cqe& completion = this->completionEntries[head & this->completionMask];
                 auto* operation = reinterpret_cast<io_operation*>(static_cast<std::uintptr_t>(completion.user_data));
+                //  A timeout that fires completes with -ETIME, which is its success.
                 operation->result = completion.res == -ETIME ? 0 : completion.res;
                 this->timeouts.erase(operation);
                 completed.push_back(operation);
@@ -36822,7 +36820,7 @@ namespace sqlite_orm::internal {
     /**
      *  Purpose: schedule the work items of one thread and resume each when what it waits for has completed.
      *
-     *  Intention: realizes the loop underneath `async_io_context`, its work items being fibers and functions posted
+     *  Intention: the loop underneath `async_io_context`, its work items being fibers and functions posted
      *  from other threads; uses `fiber` and `io_uring_engine`; the VFS of `async_vfs.h` parks fibers on it from inside
      *  them.
      *
@@ -36846,7 +36844,8 @@ namespace sqlite_orm::internal {
         }
 
         /**
-         *  Create a fiber and make it runnable.
+         *  Run `function` on a fiber, on the stack of a finished one of that size where there is one, and make it
+         *  runnable.
          */
         void spawn(std::function<void()> function, std::size_t stackSize = fiber::defaultStackSize) {
             std::unique_ptr<fiber> newFiber = this->take_idle(fiber::rounded_stack_size(stackSize));
@@ -36877,8 +36876,8 @@ namespace sqlite_orm::internal {
         }
 
         /**
-         *  One loop iteration; blocks for I/O only if no fiber is runnable.
-         *  Returns false when there is nothing left to do.
+         *  One loop iteration; blocks for I/O only if no fiber is runnable and the hook of `set_external_ready()`
+         *  reports no work of its own. Returns false when there is nothing left to do.
          */
         bool run_one() {
             return this->step(true);
@@ -37094,7 +37093,7 @@ namespace sqlite_orm::internal {
         std::vector<std::unique_ptr<fiber>> fibers;
         /**
          *  Finished fibers kept for their stacks: mapping a stack and faulting its pages in costs more than
-         *  a typical storage operation. Bounded, so that a burst of concurrent operations does not pin its
+         *  the work a fiber typically runs. Bounded, so that a burst of concurrent operations does not pin its
          *  stacks forever.
          */
         static constexpr std::size_t maxIdleFibers = 64;
@@ -37117,9 +37116,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Purpose: run asynchronous work on one thread.
      *
-     *  Intention: realizes the event loop applications either run themselves or embed into the event loop they already
-     *  have; uses `scheduler` for the fibers and their file I/O, and `async_task` for the coroutines; `async_storage`
-     *  and `async_io_pool` run on it.
+     *  Intention: the event loop applications either run themselves or embed into the event loop they already have;
+     *  uses `scheduler` for the fibers and their file I/O, and `async_task` for the coroutines; `async_storage` and
+     *  `async_io_pool` run on it.
      *
      *  It submits file I/O to io_uring, runs synchronous calls on fibers, and resumes the coroutines awaiting them.
      *
@@ -37148,6 +37147,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     class async_io_context {
       public:
+        /**
+         *  `queueDepth` is the number of entries of the io_uring submission queue. Throws std::runtime_error where
+         *  `io_uring_available()` is false.
+         */
         explicit async_io_context(unsigned queueDepth = 256) : scheduler_(queueDepth) {
             this->scheduler_.set_external_ready([this] {
                 return !this->ready.empty() || !this->pendingRoots.empty();
@@ -37189,8 +37192,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
-         *  Awaitable: run a synchronous callable on a fiber. Everything inside
-         *  (sqlite3_step and friends) may park on I/O without blocking the thread.
+         *  Awaitable: run a synchronous callable on a fiber. Everything inside it, such as `sqlite3_step()`, may park
+         *  on I/O without blocking the thread.
          */
         template<class F>
         auto async(F function) {
@@ -37287,7 +37290,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
-         *  Thread-safe.
+         *  Thread-safe: makes `run_forever()` return after its current turn.
          */
         void stop() {
             this->scheduler_.post([this] {
@@ -38926,6 +38929,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     class async_io_pool {
       public:
+        /**
+         *  Starts `size` worker threads, each running an async_io_context of `queueDepth` io_uring entries.
+         */
         explicit async_io_pool(unsigned size, unsigned queueDepth = 256) {
             for (unsigned index = 0; index < size; ++index) {
                 this->workers.push_back(std::make_unique<async_io_context>(queueDepth));
@@ -38944,10 +38950,16 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         async_io_pool(const async_io_pool&) = delete;
         async_io_pool& operator=(const async_io_pool&) = delete;
 
+        /**
+         *  The number of worker threads.
+         */
         std::size_t size() const noexcept {
             return this->workers.size();
         }
 
+        /**
+         *  Stops every worker and joins its thread; the destructor calls it.
+         */
         void shutdown() {
             if (this->threads.empty()) {
                 return;

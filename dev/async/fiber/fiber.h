@@ -23,7 +23,7 @@ namespace sqlite_orm::internal {
      *  Purpose: give a synchronous call a stack of its own, so that it can be suspended in the middle and resumed
      *  later.
      *
-     *  Intention: realizes the stackful coroutine a synchronous call suspends on, such as SQLite's VFS callbacks inside
+     *  Intention: the stackful coroutine a synchronous call suspends on, such as SQLite's VFS callbacks inside
      *  `sqlite3_step()`; uses the stack switch of `context_switch.h`, is run by `scheduler`.
      *
      *  One OS thread, many stacks; switching is explicit and cooperative, and a suspended call leaves the thread free.

@@ -30,7 +30,7 @@ namespace sqlite_orm::internal {
     /**
      *  Purpose: submit requests to io_uring and collect their completions.
      *
-     *  Intention: realizes the I/O engine of `scheduler` on the raw io_uring system calls, without liburing;
+     *  Intention: the I/O engine `scheduler` drives, on the raw io_uring system calls, without liburing;
      *  `io_uring_available()` lets applications check before creating an `async_io_context`.
      *
      *  One submission queue and one completion queue, mmap'd from the ring descriptor. submit() only publishes the
@@ -238,6 +238,7 @@ namespace sqlite_orm::internal {
             while (head != tail) {
                 const io_uring_cqe& completion = this->completionEntries[head & this->completionMask];
                 auto* operation = reinterpret_cast<io_operation*>(static_cast<std::uintptr_t>(completion.user_data));
+                //  A timeout that fires completes with -ETIME, which is its success.
                 operation->result = completion.res == -ETIME ? 0 : completion.res;
                 this->timeouts.erase(operation);
                 completed.push_back(operation);

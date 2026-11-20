@@ -23,9 +23,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Purpose: run asynchronous work on one thread.
      *
-     *  Intention: realizes the event loop applications either run themselves or embed into the event loop they already
-     *  have; uses `scheduler` for the fibers and their file I/O, and `async_task` for the coroutines; `async_storage`
-     *  and `async_io_pool` run on it.
+     *  Intention: the event loop applications either run themselves or embed into the event loop they already have;
+     *  uses `scheduler` for the fibers and their file I/O, and `async_task` for the coroutines; `async_storage` and
+     *  `async_io_pool` run on it.
      *
      *  It submits file I/O to io_uring, runs synchronous calls on fibers, and resumes the coroutines awaiting them.
      *
@@ -54,6 +54,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     class async_io_context {
       public:
+        /**
+         *  `queueDepth` is the number of entries of the io_uring submission queue. Throws std::runtime_error where
+         *  `io_uring_available()` is false.
+         */
         explicit async_io_context(unsigned queueDepth = 256) : scheduler_(queueDepth) {
             this->scheduler_.set_external_ready([this] {
                 return !this->ready.empty() || !this->pendingRoots.empty();
@@ -95,8 +99,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
-         *  Awaitable: run a synchronous callable on a fiber. Everything inside
-         *  (sqlite3_step and friends) may park on I/O without blocking the thread.
+         *  Awaitable: run a synchronous callable on a fiber. Everything inside it, such as `sqlite3_step()`, may park
+         *  on I/O without blocking the thread.
          */
         template<class F>
         auto async(F function) {
@@ -193,7 +197,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
-         *  Thread-safe.
+         *  Thread-safe: makes `run_forever()` return after its current turn.
          */
         void stop() {
             this->scheduler_.post([this] {

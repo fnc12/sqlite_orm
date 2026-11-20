@@ -32,6 +32,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     class async_io_pool {
       public:
+        /**
+         *  Starts `size` worker threads, each running an async_io_context of `queueDepth` io_uring entries.
+         */
         explicit async_io_pool(unsigned size, unsigned queueDepth = 256) {
             for (unsigned index = 0; index < size; ++index) {
                 this->workers.push_back(std::make_unique<async_io_context>(queueDepth));
@@ -50,10 +53,16 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         async_io_pool(const async_io_pool&) = delete;
         async_io_pool& operator=(const async_io_pool&) = delete;
 
+        /**
+         *  The number of worker threads.
+         */
         std::size_t size() const noexcept {
             return this->workers.size();
         }
 
+        /**
+         *  Stops every worker and joins its thread; the destructor calls it.
+         */
         void shutdown() {
             if (this->threads.empty()) {
                 return;

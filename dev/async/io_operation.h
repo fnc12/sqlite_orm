@@ -21,7 +21,7 @@ namespace sqlite_orm::internal {
         class fiber* waiter = nullptr;
         void (*onComplete)(io_operation*, void*) = nullptr;
         void* context = nullptr;
-        std::int32_t result = 0;  //  bytes transferred, or -errno
+        std::int32_t result = 0;  //  bytes transferred, 0, or -errno
         bool completed = false;
     };
 }
