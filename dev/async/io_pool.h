@@ -22,6 +22,7 @@
 #endif
 #endif
 
+#include "../functional/coroutines/result_box.h"
 #include "io_context.h"
 
 #ifdef SQLITE_ORM_WITH_ASYNC

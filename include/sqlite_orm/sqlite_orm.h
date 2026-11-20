@@ -35847,10 +35847,21 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <coroutine>  //  std::coroutine_handle, std::suspend_always, std::noop_coroutine
-#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception
-#include <optional>  //  std::optional
+#include <exception>  //  std::current_exception
 #include <stdexcept>  //  std::logic_error
-#include <utility>  //  std::exchange, std::forward, std::move
+#include <utility>  //  std::exchange, std::forward
+#endif
+#endif
+#endif
+
+// #include "result_box.h"
+
+#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <exception>  //  std::exception_ptr, std::rethrow_exception
+#include <optional>  //  std::optional
+#include <utility>  //  std::forward, std::move
 #endif
 #endif
 #endif
@@ -35861,7 +35872,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 namespace sqlite_orm::internal {
 
     /**
-     *  Result or exception of a coroutine or of a fiber job.
+     *  Purpose: carry the result or the exception of a computation to the coroutine that awaits it.
+     *
+     *  Intention: filled by the promise of `async_task`, and by the jobs `async_io_context::async()` runs on a fiber
+     *  and `async_io_pool::async()` on another thread, each for the coroutine awaiting them.
      */
     template<class T>
     struct result_box {
@@ -35891,6 +35905,14 @@ namespace sqlite_orm::internal {
             }
         }
     };
+}
+#endif
+#endif
+
+#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+// general-purpose, but sqlite_orm offers its coroutine types with the asynchronous storage only
+#ifdef SQLITE_ORM_WITH_ASYNC
+namespace sqlite_orm::internal {
 
     /**
      *  Final awaiter of an async_task: transfers control to whoever awaited the async_task.
@@ -36085,6 +36107,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::exchange, std::move
 #endif
 #endif
+
+// #include "../functional/coroutines/result_box.h"
 
 // #include "../functional/coroutines/task.h"
 
@@ -38882,6 +38906,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <vector>  //  std::vector
 #endif
 #endif
+
+// #include "../functional/coroutines/result_box.h"
 
 // #include "io_context.h"
 

@@ -11,50 +11,19 @@
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <coroutine>  //  std::coroutine_handle, std::suspend_always, std::noop_coroutine
-#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception
-#include <optional>  //  std::optional
+#include <exception>  //  std::current_exception
 #include <stdexcept>  //  std::logic_error
-#include <utility>  //  std::exchange, std::forward, std::move
+#include <utility>  //  std::exchange, std::forward
 #endif
 #endif
 #endif
+
+#include "result_box.h"
 
 #ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
 // general-purpose, but sqlite_orm offers its coroutine types with the asynchronous storage only
 #ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
-
-    /**
-     *  Result or exception of a coroutine or of a fiber job.
-     */
-    template<class T>
-    struct result_box {
-        std::optional<T> value;
-        std::exception_ptr error;
-
-        template<class U>
-        void set(U&& newValue) {
-            this->value.emplace(std::forward<U>(newValue));
-        }
-
-        T take() {
-            if (this->error) {
-                std::rethrow_exception(this->error);
-            }
-            return std::move(*this->value);
-        }
-    };
-
-    template<>
-    struct result_box<void> {
-        std::exception_ptr error;
-
-        void take() {
-            if (this->error) {
-                std::rethrow_exception(this->error);
-            }
-        }
-    };
 
     /**
      *  Final awaiter of an async_task: transfers control to whoever awaited the async_task.

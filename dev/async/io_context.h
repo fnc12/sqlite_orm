@@ -19,6 +19,7 @@
 #endif
 #endif
 
+#include "../functional/coroutines/result_box.h"
 #include "../functional/coroutines/task.h"
 #include "scheduler.h"
 
