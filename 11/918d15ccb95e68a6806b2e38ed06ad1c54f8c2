@@ -1,0 +1,43 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-20: the P+I round of #1524
+(sanity finding 6, review finding 10), on fix/async-storage-findings,
+stacked on feature/async-storage at 35842ffe, worktree
+C:/projects/wt-async-storage-findings. fnc12 re-requested trueqbit's
+review of #1524 at 11:30, with no new commits.
+
+# Decided
+- trueqbit: Claude's first draft Purposes for io_context.h and task.h
+  were too concrete (they listed contents and mechanics); taken: "run
+  asynchronous work on one thread" and "represent a computation whose
+  result arrives later". fiber.h's Purpose holds; its Intention names
+  SQLite's VFS callbacks as "such as". io_pool.h: "across threads";
+  when_all.h: "for applications awaiting several tasks at once".
+- trueqbit (2 a): only #1524's files; the P+I sweep is still owed by
+  many groups of headers, tests and examples across the tree.
+- trueqbit: the examples' prose is valuable for humans; it stays under
+  the two labels, proof-read and shortened.
+- trueqbit (4): the test file's header goes first, as its @file block,
+  not below the includes: Catch2's free TEST_CASEs give it no suite.
+  Taken to ontocratic-feedback as the tenth entry of
+  handover-feedback-domain-sources.md; its wording waits for trueqbit.
+- trueqbit (5): #1629 (fnc12's "A storage can be moved", off dev) is
+  outside this round; the pivot Claude named is withdrawn.
+- trueqbit (6 a): no answer on #1524's re-request; the review already
+  said the P+I pull request comes.
+- The renaming (option f) is done in 94400281; the file names stay by
+  fnc12's choice.
+
+# Discussed
+- #1629 would turn async_storage.h:97's copy of the storage into a move;
+  async_storage stays non-movable (tests/async/async_storage_tests.cpp:50).
+- No example (0/51) or test (0/195) in the tree carries the header yet.
+- pre-commit.sh exits 0 on both commits; not compiled.
+
+# Later
+- trueqbit: cross-check every declaration of each file in the round
+  against its Purpose, and refine the Purposes it shows too narrow.
+- trueqbit's review points: [[maybe_unused]] argc/argv in the examples;
+  include <sqlite_orm/sqlite_orm_config.h> where examples and tests test
+  SQLITE_ORM_* macros.
+- After #1524: the issue "storage_t is movable" linking #653, with #1629
+  now open; the wider P+I sweep.
