@@ -127,7 +127,7 @@ async_task<void> add_user(database& database, HttpContextPtr context) {
 
 #endif
 
-int main(int argc, char** argv) {
+int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 #ifdef SQLITE_ORM_WITH_ASYNC
     const int port = argc > 1 ? std::stoi(argv[1]) : 8080;
     if (!io_uring_available()) {
@@ -163,8 +163,6 @@ int main(int argc, char** argv) {
     printf("listening on http://127.0.0.1:%d, stop with Ctrl-C\n", port);
     server.run();
 #else
-    (void)argc;
-    (void)argv;
     std::cout << "the asynchronous storage is not available with this platform, compiler or C++ standard" << std::endl;
 #endif
     return 0;

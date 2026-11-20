@@ -58,7 +58,7 @@ async_task<void> store_measurements(Storage& storage, QCoreApplication& applicat
 }
 #endif
 
-int main(int argc, char** argv) {
+int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 #ifdef SQLITE_ORM_WITH_ASYNC
     if (!io_uring_available()) {
         cout << "io_uring is not available in this environment" << endl;
