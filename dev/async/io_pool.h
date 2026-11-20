@@ -57,10 +57,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return this->workers.size();
         }
 
-        async_io_context& worker(std::size_t index) noexcept {
-            return *this->workers[index];
-        }
-
         void shutdown() {
             if (this->threads.empty()) {
                 return;
