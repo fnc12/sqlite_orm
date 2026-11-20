@@ -1,0 +1,37 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-20/21: the symbol-level reading
+of the runtime layer (context_switch.h, fiber.h, io_operation.h,
+io_uring_engine.h, scheduler.h, io_context.h, io_pool.h): does each
+doc-comment say what its symbol is and does, does each symbol's purpose
+hold. The P+I round of #1524 had checked only file to symbol.
+
+# Decided
+- trueqbit: Claude's leans and routing, except scheduler.h. #1630 got
+  fire_and_forget's second user (async_io_context's `detached` was a
+  copy) and result_box::invoke() (one try block held twice). #1633,
+  new, stacked between #1630 and #1631: schedule() and worker() removed,
+  resume_here() private. #1631: the doc-comment points.
+- trueqbit: scheduler.h loses nothing; its members follow common
+  designs of such loops ("drawn from generally available sources").
+  What it holds unused is flagged in the last review step instead.
+- "Realizes" stays where a contract stands behind it (async_task and
+  fire_and_forget realize the language's coroutine protocol), and goes
+  from fiber, io_uring_engine, scheduler and async_io_context.
+
+# Discussed
+- pre-commit.sh exits 0 before every commit; the amalgamation's code
+  changes only where the refactors mean it to. Not compiled.
+
+# Later
+- For the final review of #1524, comments to fnc12: scheduler::run()
+  unused; scheduler::synchronousFallbacks, a VFS counter on the generic
+  scheduler, read by one test through the public
+  async_io_context::scheduler(); io_uring_engine's constructor leaks the
+  ring descriptor and mappings when a later step throws (and
+  io_uring_available() probes through it); fiber ignores mprotect's
+  result; async_io_pool after shutdown() posts to stopped workers and
+  run_blocking() waits forever; async_io_pool::async() terminates off an
+  async_io_context where run_blocking() throws (lean: throw);
+  context_switch.h's #error is unreachable under capabilities.h (lean:
+  keep).
+- The coroutine types layer, then the storage-facing layer.
