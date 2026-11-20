@@ -1,0 +1,24 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-20, the P+I round of #1524,
+after the symbol cross-check.
+
+# Decided
+- trueqbit: a file named for a single main bearer carries Purpose and
+  Intention on that bearer's doc-comment, not on an @file block. AGENTS.md
+  says so already ("the @file block where the file groups related
+  symbols, otherwise the doc-comment of its main symbol"); Claude's slip,
+  no plugin text responsible. Applied to fiber, io_operation,
+  io_uring_engine, scheduler, async_io_context, async_io_pool,
+  async_cursor, async_task and the first async_when_all(); the @file
+  stays for context_switch.h, async_vfs.h and async_storage.h.
+- The four rewordings of 7f96958b as trueqbit refined them:
+  io_operation.h keeps "asynchronous"; scheduler.h schedules work items
+  (fibers and posted functions); async_vfs.h waits for "its file I/O"
+  rather than "a system call", since xOpen, xFileSize, xTruncate and the
+  locks remain synchronous system calls.
+- Claude: the moved Intentions name symbols rather than headers, and the
+  old class comments' sentences restating the labels are dropped.
+
+# Discussed
+- pre-commit.sh exits 0; the amalgamation's code lines are identical.
+  The rebased commits were checked at the tip only. Not compiled.
