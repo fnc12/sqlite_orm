@@ -1,0 +1,31 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-20: the cross-check of each
+declaration against its file's Purpose in the P+I round of #1524 found
+two helpers that serve more than their header's main bearer. A refactor
+pull request of its own, refactor/async-coroutine-helpers on
+feature/async-storage, before the P+I branch.
+
+# Decided
+- trueqbit: result_box's place depends on whether it is useful outside
+  coroutines. It is not: its users besides async_task, the awaitables of
+  async_io_context::async() and async_io_pool::async(), hand a result to
+  an awaiting coroutine; outside one std::future or std::expected serve.
+  So functional/coroutines/result_box.h, not functional/result_box.h
+  (Claude's first lean).
+- fire_and_forget gets functional/coroutines/fire_and_forget.h and stays
+  internal. trueqbit asked whether it could be public: the C++26 working
+  draft (eel.is) has no fire-and-forget; std::execution::spawn
+  ([exec.spawn]) starts work only within an async scope
+  (simple_counting_scope, counting_scope), so its completion stays
+  observable (P3149); start_detached is not in the draft. For users,
+  async_io_context::spawn() already plays spawn's role, the context as
+  the scope.
+- trueqbit: the refactor comes first, the P+I branch rebased onto it
+  (unpushed, so no merge needed).
+
+# Discussed
+- The amalgamation's code lines differ by the two new namespace blocks
+  alone; pre-commit.sh exits 0 on each commit. Not compiled.
+- The damage-control hook blocked `rm` of the unstaged new header in a
+  command that also set GIT_DIR under .git/; the split was done without
+  deleting anything.
