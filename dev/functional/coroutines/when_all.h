@@ -3,7 +3,7 @@
 /** @file
  *  Purpose: await several tasks concurrently.
  *
- *  Intention: a convenience on top of `task.h` for applications, which the storage itself does not need.
+ *  Intention: a convenience on top of `task.h` for applications awaiting several tasks at once.
  */
 
 #ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED

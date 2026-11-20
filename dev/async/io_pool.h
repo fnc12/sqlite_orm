@@ -3,7 +3,7 @@
 /** @file
  *  Purpose: spread work over several threads, each with its own `async_io_context`.
  *
- *  Intention: a convenience on top of `io_context.h` for applications that want I/O parallelism across storages.
+ *  Intention: a convenience on top of `io_context.h` for applications that want I/O parallelism across threads.
  */
 
 #ifdef SQLITE_ORM_WITH_ASYNC

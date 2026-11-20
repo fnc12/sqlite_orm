@@ -35837,10 +35837,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../functional/coroutines/task.h"
 
 /** @file
- *  Purpose: be the coroutine type an asynchronous storage operation returns.
+ *  Purpose: represent a computation whose result arrives later.
  *
- *  Intention: realizes a lazy C++20 coroutine that any coroutine can `co_await`; used by `io_context.h`, `when_all.h`,
- *  `async_storage.h` and `async_cursor.h`.
+ *  Intention: realizes a lazy C++20 coroutine type that any coroutine can `co_await`; returned by the operations of
+ *  `async_storage.h` and `async_cursor.h`, awaited by `io_context.h` and `when_all.h`.
  */
 
 #ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
@@ -35963,9 +35963,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
-     *  Lazy coroutine type returned by asynchronous storage operations. Starts
-     *  when awaited; the awaiting coroutine is resumed with the value or the
-     *  exception.
+     *  Lazy coroutine type. Starts when awaited; the awaiting coroutine is resumed
+     *  with the value or the exception.
      */
     template<class T>
     class async_task {
@@ -36090,10 +36089,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../async/io_context.h"
 
 /** @file
- *  Purpose: drive the asynchronous storages of one thread: their I/O, their fibers and the coroutines awaiting them.
+ *  Purpose: run asynchronous work on one thread.
  *
  *  Intention: realizes the event loop applications either run themselves or embed into the event loop they already have;
- *  uses `scheduler.h` and `task.h`.
+ *  uses `scheduler.h` for the fibers and their file I/O, and `task.h` for the coroutines; `async_storage.h` and
+ *  `io_pool.h` run on it.
  */
 
 #ifdef SQLITE_ORM_WITH_ASYNC
@@ -36142,8 +36142,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 /** @file
  *  Purpose: give a synchronous call a stack of its own, so that it can be suspended in the middle and resumed later.
  *
- *  Intention: realizes the stackful coroutine SQLite's synchronous VFS callbacks suspend on inside `sqlite3_step()`;
- *  uses `context_switch.h`, is run by `scheduler.h`.
+ *  Intention: realizes the stackful coroutine a synchronous call suspends on in the middle, such as SQLite's VFS callbacks
+ *  inside `sqlite3_step()`; uses `context_switch.h`, is run by `scheduler.h`.
  */
 
 #ifdef SQLITE_ORM_WITH_ASYNC
@@ -36269,8 +36269,8 @@ namespace sqlite_orm::internal {
 
     /**
      *  Stackful coroutine. One OS thread, many stacks; switching is explicit and
-     *  cooperative. Used so that SQLite's synchronous VFS callbacks can suspend in
-     *  the middle of sqlite3_step() without blocking the thread.
+     *  cooperative. A synchronous call on it, such as SQLite's VFS callbacks inside
+     *  sqlite3_step(), can suspend in the middle without blocking the thread.
      */
     class fiber {
       public:
@@ -37070,8 +37070,8 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
-     *  Event loop of the asynchronous storage: one per thread. It submits the file I/O of its storages to io_uring,
-     *  runs the fibers their operations execute on, and resumes the coroutines awaiting them.
+     *  Event loop of one thread. It submits file I/O to io_uring, runs synchronous calls on fibers, and resumes the
+     *  coroutines awaiting them.
      *
      *  It is not a general-purpose executor, and an application needs no second event loop because of it.
      *  There are three ways to drive it:
@@ -38888,7 +38888,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 /** @file
  *  Purpose: spread work over several threads, each with its own `async_io_context`.
  *
- *  Intention: a convenience on top of `io_context.h` for applications that want I/O parallelism across storages.
+ *  Intention: a convenience on top of `io_context.h` for applications that want I/O parallelism across threads.
  */
 
 #ifdef SQLITE_ORM_WITH_ASYNC
@@ -39056,7 +39056,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 /** @file
  *  Purpose: await several tasks concurrently.
  *
- *  Intention: a convenience on top of `task.h` for applications, which the storage itself does not need.
+ *  Intention: a convenience on top of `task.h` for applications awaiting several tasks at once.
  */
 
 #ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
