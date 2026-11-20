@@ -1,13 +1,11 @@
 /**
- *  This example embeds the asynchronous storage into the event loop of libuv [https://libuv.org].
+ *  Purpose: show the asynchronous storage embedded into the event loop of libuv.
  *
- *  The `async_io_context` of the storage offers a descriptor, `native_handle()`, that is readable whenever it has
- *  something to do, and `poll()`, which does what can be done without waiting and returns. A `uv_poll_t` watches the
- *  descriptor and calls `poll()`.
- *  The coroutine is resumed from inside `poll()`, hence on the thread of the loop, next to the loop's own
- *  events; here a timer firing every millisecond.
+ *  Intention: uses libuv [https://libuv.org]; `epoll.cpp` next to this file shows the same with a hand-written loop.
  *
- *  `epoll.cpp` next to this file shows the same with a hand-written loop.
+ *  A `uv_poll_t` watches the `async_io_context`'s descriptor, `native_handle()`, and calls `poll()` when it is readable.
+ *  The coroutine is resumed from inside `poll()`, on the thread of the loop, next to the loop's own events; here a
+ *  timer firing every millisecond.
  */
 
 #include <cstdio>  //  std::remove

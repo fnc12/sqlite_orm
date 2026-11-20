@@ -1,11 +1,12 @@
 /**
- *  This example serves a database over HTTP with libhv [https://github.com/ithewei/libhv] and the
- *  asynchronous storage, on libhv's own event loop.
+ *  Purpose: show a database served over HTTP with no thread waiting for the disk and no thread added.
  *
- *  libhv runs one event loop per I/O thread. Each of them gets an `async_io_context` and a storage, i.e. a connection,
- *  of its own, embedded into the loop by watching the `async_io_context`'s descriptor (see `database` below).
- *  A request handler starts a coroutine and returns; the coroutine answers the request when the database has.
- *  No thread ever waits for the disk, and no thread is added.
+ *  Intention: uses libhv [https://github.com/ithewei/libhv] and its event loops; `epoll.cpp` next to this file shows
+ *  the embedding alone.
+ *
+ *  Each of libhv's I/O threads gets an `async_io_context` and a storage, i.e. a connection, of its own, embedded into
+ *  its loop (see `database` below). A request handler starts a coroutine and returns; the coroutine answers the
+ *  request when the database has.
  *
  *      async_libhv [port]
  *      curl -X POST 'http://127.0.0.1:8080/users?name=Ann&age=30'

@@ -1,3 +1,12 @@
+/** @file
+ *  Purpose: the asynchronous storage, its cursor and the runtime beneath them do what the synchronous storage does,
+ *  awaited from coroutines, without blocking the thread on file I/O.
+ *
+ *  Intention: runs on the host's io_uring, skipped where the kernel refuses it, over database files in the temporary
+ *  directory; a forked child asks for the locks another process sees, since POSIX locks do not conflict within one
+ *  process; a minimal epoll loop stands in for an application's event loop.
+ */
+
 #include <sqlite_orm/sqlite_orm.h>
 #ifdef SQLITE_ORM_WITH_ASYNC
 #include <algorithm>  //  std::find
