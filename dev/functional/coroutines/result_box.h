@@ -18,8 +18,9 @@ namespace sqlite_orm::internal {
     /**
      *  Purpose: carry the result or the exception of a computation to the coroutine that awaits it.
      *
-     *  Intention: filled by the promise of `async_task`, and by the jobs `async_io_context::async()` runs on a fiber
-     *  and `async_io_pool::async()` on another thread, each for the coroutine awaiting them.
+     *  Intention: filled by the promise of `async_task`, by `async_when_all()` for each of its tasks, and by the jobs
+     *  `async_io_context::async()` runs on a fiber and `async_io_pool::async()` on another thread, each for the
+     *  coroutine awaiting them.
      */
     template<class T>
     struct result_box {
