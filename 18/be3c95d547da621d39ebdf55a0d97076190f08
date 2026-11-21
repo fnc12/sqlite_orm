@@ -1,0 +1,44 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-21: the symbol-level reading
+of the storage-facing layer (async_cursor.h, async_vfs.h,
+async_storage.h), the last of the three layers.
+
+# Decided
+- trueqbit: Claude's leans and routing. #1631 got the storage
+  doc-comments (449daac6): the constraint that lets
+  cursor_position::advance() drop its view (async_storage keeps its
+  connection open), every way a cursor's statement is finalized, the
+  VFS's statistics, async_vfs.h's preamble rewrapped, async_storage.h's
+  Intention without "realizes".
+- trueqbit: the gcc 11 reasons for bind_arguments()'s tuple and
+  async_storage::run()'s heap move go to compiler_quirks.h beside
+  SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES (18be3c95), so they are not
+  lost if the review of #1524 removes the workarounds; the two places
+  point there.
+
+# Discussed
+- Claude's mistake in the runtime layer: b154adcd removed
+  async_io_context::schedule() as unused; the search for callers matched
+  `.schedule(` and missed async_storage::release()'s
+  `this->context->schedule(`. #1633 and #1631 did not compile from the
+  push of b154adcd until de863506 restored it and 74263dda merged it
+  down; #1633's body says so. The other two changes were rechecked with
+  `.` and `->`.
+- The continuity keeper hook asked for a note on dev's a202bd1 (#1620's
+  merge), a commit of the main checkout, not this session's; left
+  without one.
+- pre-commit.sh exits 0 before every commit. Not compiled.
+
+# Later
+- For the final review of #1524, comments to fnc12: scheduler::run()
+  unused; scheduler::synchronousFallbacks and the public
+  async_io_context::scheduler(); io_uring_engine's constructor leaking
+  when a later step throws; fiber ignoring mprotect's result;
+  async_io_pool after shutdown(); async_io_pool::async() terminating
+  where run_blocking() throws (lean: throw); context_switch.h's
+  unreachable #error (lean: keep); an async_task awaited twice; next()
+  on a moved-from async_cursor; the VFS's counters listed four times and
+  its fallback prologue three times; the gcc 11 workarounds; the null
+  check in run_on_fiber() without a case.
+- The stack marked ready (#1632 -> #1630 -> #1633 -> #1631), reviewed,
+  merged bottom-up; then the review of #1524.
