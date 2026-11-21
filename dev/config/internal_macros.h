@@ -7,6 +7,12 @@
 
 #include "config.h"
 
+#ifdef __has_cpp_attribute
+#define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) __has_cpp_attribute(attr)
+#else
+#define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) 0L
+#endif
+
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
 #else

@@ -5,12 +5,6 @@
  *  May be amended by compiler_quirks.h.
  */
 
-#ifdef __has_cpp_attribute
-#define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) __has_cpp_attribute(attr)
-#else
-#define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) 0L
-#endif
-
 #if __cpp_generic_lambdas >= 201707L
 #define SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
 #endif
