@@ -3,8 +3,9 @@
 /** @file
  *  Purpose: let a connection wait for its file I/O, or sleep, without blocking its thread.
  *
- *  Intention: realizes a VFS, SQLite's OS interface layer, handing that I/O to io_uring, registered next to the built-in ones of `builtin/vfs.h` and wrapping
- *  the default one; uses `scheduler.h`, and is selected for a storage by `make_async_storage()` through `connection_control`.
+ *  Intention: realizes a VFS, SQLite's OS interface layer, handing that I/O to io_uring, registered next to the
+ *  built-in ones of `builtin/vfs.h` and wrapping the default one; uses `scheduler.h`, and is selected for a storage
+ *  by `make_async_storage()` through `connection_control`.
  */
 
 #ifdef SQLITE_ORM_WITH_ASYNC
@@ -34,7 +35,7 @@ namespace sqlite_orm::internal {
     inline constexpr std::string_view async_vfs_name = "sqlite_orm_async";
 
     /**
-     *  Counters of the asynchronous VFS, mostly for tests.
+     *  Counters of the asynchronous VFS, read by the tests.
      */
     struct async_vfs_statistics {
         sqlite3_int64 asyncReads = 0;
@@ -60,7 +61,7 @@ namespace sqlite_orm::internal {
 namespace sqlite_orm::internal::async_vfs {
 
     /**
-     *  Incremented on every thread that runs an async_io_context.
+     *  Process-wide, incremented from every thread that runs an async_io_context, hence atomic.
      */
     struct atomic_statistics {
         std::atomic<sqlite3_int64> asyncReads{0};

@@ -3,8 +3,8 @@
 /** @file
  *  Purpose: offer the storage's interface to coroutines, without blocking the thread on file I/O.
  *
- *  Intention: realizes `async_storage` and `make_async_storage()` over the unchanged synchronous storage of
- *  `execution/storage.h`, each operation running on a fiber of the storage's `async_io_context`; uses `async_vfs.h`.
+ *  Intention: wraps the unchanged synchronous storage of `execution/storage.h`, each operation running on a fiber of
+ *  an `async_io_context`; selects the VFS of `async_vfs.h` for its connection.
  */
 
 #ifdef SQLITE_ORM_WITH_ASYNC

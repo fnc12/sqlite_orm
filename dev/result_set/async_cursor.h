@@ -36,6 +36,8 @@ namespace sqlite_orm::internal {
             }
             try {
                 if (!this->iterator) {
+                    //  The view's connection reference ends with this block while the iterator keeps the statement:
+                    //  sound because async_storage keeps its connection open.
                     view_type view = (*this->makeView)(storage);
                     this->makeView.reset();
                     this->iterator.emplace(view.begin());
@@ -87,9 +89,10 @@ namespace sqlite_orm::internal {
      *          ...
      *      }
      *
-     *  The first `next()` prepares the statement; it is finalized when the rows are exhausted or the cursor is
-     *  destroyed. Between two rows the connection is free: other operations on the storage run in between,
-     *  further cursors included, as they may inside a loop over the synchronous `storage.iterate()`.
+     *  The first `next()` prepares the statement; it is finalized when the rows are exhausted, when an error ends
+     *  the iteration, or when the cursor is closed or destroyed. Between two rows the connection is free: other
+     *  operations on the storage run in between, further cursors included, as they may inside a loop over the
+     *  synchronous `storage.iterate()`.
      *
      *  A cursor must not outlive its storage.
      */
