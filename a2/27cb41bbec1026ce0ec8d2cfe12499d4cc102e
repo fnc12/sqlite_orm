@@ -1,0 +1,30 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-21: step 1 of the config macro
+review on chore/config-macro-consistency.
+
+# Decided
+- Tiers, one header each: language (toolchain/language_features.h, now
+  with the CLASSTYPE_TEMPLATE_ARGS override), stdlib
+  (toolchain/stdlib_features.h), platform and compiler identity
+  (toolchain/platform.h, new toolchain/compiler.h), SQLite features
+  (sqlite3/sqlite3_config.h), capabilities (config/capabilities.h),
+  internal (toolchain/compiler_quirks.h, internal_macros.h).
+- trueqbit: the quirks are internal although the public header includes
+  them, as namespace `internal` is: subject to change without notice.
+  They get the SQLITE_ORM_INTERNAL_ prefix.
+- trueqbit: SQLITE_ORM_EXPORT keeps its name (as MSVC's STL and others).
+- trueqbit: the keyword macros of internal_macros.h keep their short names;
+  a `_KW_` infix was mentioned as another option.
+- Naming: language features SQLITE_ORM_CPP_<F>_SUPPORTED; library features
+  SQLITE_ORM_CPPxx_LIB_<F>_SUPPORTED (trueqbit: the standard version a
+  library feature came with is worth carrying).
+- Compiler macros keep their names: <maker>_<compiler it presents as>
+  (MS_MSVC, GNU_GCC, CLANG_MSVC); clang defines __GNUC__ too, which is why
+  GNU_GCC says GNU (trueqbit). The scheme gets stated in compiler.h.
+
+# Discussed
+- `-E -dM` of the published sqlite_orm_config.h, g++-16 and clang++ at
+  C++17/20/23/26 with a stub sqlite3.h: identical SQLITE_ORM_* sets before
+  and after.
+- Rejected: HAS_ for language features (Boost reads BOOST_HAS_* as
+  non-standard extensions; __has_* are function-like queries).
