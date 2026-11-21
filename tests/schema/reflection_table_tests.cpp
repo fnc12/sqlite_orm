@@ -1,5 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 #include <algorithm>  //  std::ranges::find

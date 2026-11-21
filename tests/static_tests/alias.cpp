@@ -1,4 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 #include <type_traits>  //  std::is_same
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>  //  std::same_as

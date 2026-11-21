@@ -17,6 +17,7 @@
  */
 
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 
 #if SQLITE_VERSION_NUMBER >= 3031000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
 #define ENABLE_THIS_EXAMPLE

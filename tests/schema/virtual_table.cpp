@@ -2,6 +2,7 @@
 #include <cstdint>  //  std::int32_t
 #include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 
 extern "C" int sqlite3_series_init(sqlite3*, char**, const sqlite3_api_routines*);
 

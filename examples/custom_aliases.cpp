@@ -3,6 +3,7 @@
  */
 
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 
 #include <assert.h>
 #include <iostream>

@@ -3,6 +3,7 @@
  */
 #include <cstdint>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #if __cpp_lib_bit_cast >= 201806L
 #include <bit>

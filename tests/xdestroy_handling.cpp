@@ -1,6 +1,7 @@
 #include <catch2/catch_all.hpp>
 #include <memory>  // std::default_delete
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 #include <stdlib.h>  // free()
 
 using namespace sqlite_orm;

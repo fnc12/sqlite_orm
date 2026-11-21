@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 
 #if SQLITE_VERSION_NUMBER >= 3006019
 #define ENABLE_THIS_EXAMPLE

@@ -2,6 +2,7 @@
 #include <cstdio>  //  std::remove
 #include <filesystem>  //  std::filesystem::exists
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 #include <string_view>  //  std::string_view
 #include "catch_matchers.h"
 

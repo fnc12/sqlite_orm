@@ -2,6 +2,7 @@
 #include <array>
 #include <catch2/catch_all.hpp>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 #include <tuple>
 #include <type_traits>
 
