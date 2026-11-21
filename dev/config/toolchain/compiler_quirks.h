@@ -11,7 +11,7 @@
 #include "compiler.h"
 #include "language_features.h"
 
-#if defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1920)
+#if defined(SQLITE_ORM_COMPILER_MS_MSVC) && (_MSC_VER < 1920)
 #define SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION
 // Type replacement may fail if an alias template has a non-type template parameter from a dependent expression in it,
 // `e.g. template<class T> using is_something = std::bool_constant<is_something_v<T>>;`
@@ -29,7 +29,8 @@
 // In these cases we have to use helper structures to break down the type alias.
 // Note that the detection of specific compilers is so complicated because some compilers emulate other compilers,
 // so we simply exclude all compilers that do not support C++20, even though this test is actually inaccurate.
-#if (defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1920)) || (!defined(SQLITE_ORM_MS_MSVC) && (__cplusplus < 202002L))
+#if (defined(SQLITE_ORM_COMPILER_MS_MSVC) && (_MSC_VER < 1920)) ||                                                     \
+    (!defined(SQLITE_ORM_COMPILER_MS_MSVC) && (__cplusplus < 202002L))
 #define SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
 #endif
 
@@ -39,7 +40,7 @@
 // error reported at the end of the translation unit without a source location.
 // Remedy: redeclare the alias in the generic lambda that uses it.
 // Verified broken with 19.29, verified fixed with 19.44 and 19.51; the versions in between were not tested.
-#if defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1944)
+#if defined(SQLITE_ORM_COMPILER_MS_MSVC) && (_MSC_VER < 1944)
 #define SQLITE_ORM_INTERNAL_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
 #endif
 
@@ -61,6 +62,6 @@
 // gcc 11 also initializes a pack init-capture bytewise and relocates bytewise a closure passed as a coroutine
 // parameter, with the same effect on captured strings; `bind_arguments()` and `async_storage::run()` in
 // `execution/async_storage.h` avoid both, with a tuple and by moving the closure to the heap.
-#if defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 13)
+#if defined(SQLITE_ORM_COMPILER_GNU_GCC) && (__GNUC__ < 13)
 #define SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES
 #endif

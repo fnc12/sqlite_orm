@@ -201,40 +201,41 @@
 /** @file
  *  Purpose: identify the platform sqlite_orm is built for.
  *
- *  Intention: the platform tier of the configuration gathered by `config.h`; `SQLITE_ORM_UNIX` accompanies each
- *  platform but Windows, and an unknown platform stops the build. `capabilities.h` builds on it.
+ *  Intention: the platform tier of the configuration gathered by `config.h`; `capabilities.h` builds on it. Its macros
+ *  are named `SQLITE_ORM_PLATFORM_<platform>`; `SQLITE_ORM_PLATFORM_UNIX` accompanies each platform but Windows, and an
+ *  unknown platform stops the build.
  */
 
 #if defined(_WIN32)
-#define SQLITE_ORM_WIN
+#define SQLITE_ORM_PLATFORM_WIN
 
 #elif defined(__APPLE__)
 #include <TargetConditionals.h>
 #if TARGET_IPHONE_SIMULATOR == 1 || TARGET_OS_IPHONE == 1
-#define SQLITE_ORM_IOS
+#define SQLITE_ORM_PLATFORM_IOS
 #elif TARGET_OS_OSX == 1
-#define SQLITE_ORM_MACOS
+#define SQLITE_ORM_PLATFORM_MACOS
 #endif
-#define SQLITE_ORM_APPLE
-#define SQLITE_ORM_UNIX
+#define SQLITE_ORM_PLATFORM_APPLE
+#define SQLITE_ORM_PLATFORM_UNIX
 
 #elif defined(__linux__)
 #if defined(__ANDROID__)
-#define SQLITE_ORM_ANDROID
+#define SQLITE_ORM_PLATFORM_ANDROID
 #endif
-#define SQLITE_ORM_LINUX
-#define SQLITE_ORM_UNIX
+#define SQLITE_ORM_PLATFORM_LINUX
+#define SQLITE_ORM_PLATFORM_UNIX
 
 #elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
-#define SQLITE_ORM_BSD
-#define SQLITE_ORM_UNIX
+#define SQLITE_ORM_PLATFORM_BSD
+#define SQLITE_ORM_PLATFORM_UNIX
 
 #elif defined(__RTP__) || defined(_WRS_KERNEL)
-#define SQLITE_ORM_VXWORKS
-#define SQLITE_ORM_UNIX
+#define SQLITE_ORM_PLATFORM_VXWORKS
+#define SQLITE_ORM_PLATFORM_UNIX
 
 #elif defined(__unix__) || defined(__unix)
-#define SQLITE_ORM_UNIX
+#define SQLITE_ORM_PLATFORM_UNIX
 
 #else
 #error "Unknown target platform detected"
@@ -267,25 +268,26 @@
  *  Purpose: identify the compiler that translates sqlite_orm.
  *
  *  Intention: the compiler tier of the configuration gathered by `config.h`; `compiler_quirks.h` keys its workarounds
- *  on it. Each name gives the compiler's maker, then the compiler it presents itself as: `SQLITE_ORM_GNU_GCC` is GNU's
- *  own GCC, as Clang defines `__GNUC__` too, and `SQLITE_ORM_CLANG_MSVC` is Clang presenting itself as MSVC.
+ *  on it. Its macros are named `SQLITE_ORM_COMPILER_<maker>_<compiler>`, the compiler being the one it presents itself
+ *  as: `SQLITE_ORM_COMPILER_GNU_GCC` is GNU's own GCC, as Clang defines `__GNUC__` too, and
+ *  `SQLITE_ORM_COMPILER_CLANG_MSVC` is Clang presenting itself as MSVC.
  */
 
 #if defined(_MSC_VER) && !defined(__clang__)
-#define SQLITE_ORM_MS_MSVC
+#define SQLITE_ORM_COMPILER_MS_MSVC
 #endif
 
 #if defined(__clang__) && defined(_MSC_VER)
-#define SQLITE_ORM_CLANG_MSVC
+#define SQLITE_ORM_COMPILER_CLANG_MSVC
 #endif
 
 #if defined(__GNUC__) && !defined(__clang__)
-#define SQLITE_ORM_GNU_GCC
+#define SQLITE_ORM_COMPILER_GNU_GCC
 #endif
 
 // #include "language_features.h"
 
-#if defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1920)
+#if defined(SQLITE_ORM_COMPILER_MS_MSVC) && (_MSC_VER < 1920)
 #define SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION
 // Type replacement may fail if an alias template has a non-type template parameter from a dependent expression in it,
 // `e.g. template<class T> using is_something = std::bool_constant<is_something_v<T>>;`
@@ -303,7 +305,8 @@
 // In these cases we have to use helper structures to break down the type alias.
 // Note that the detection of specific compilers is so complicated because some compilers emulate other compilers,
 // so we simply exclude all compilers that do not support C++20, even though this test is actually inaccurate.
-#if (defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1920)) || (!defined(SQLITE_ORM_MS_MSVC) && (__cplusplus < 202002L))
+#if (defined(SQLITE_ORM_COMPILER_MS_MSVC) && (_MSC_VER < 1920)) ||                                                     \
+    (!defined(SQLITE_ORM_COMPILER_MS_MSVC) && (__cplusplus < 202002L))
 #define SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
 #endif
 
@@ -313,7 +316,7 @@
 // error reported at the end of the translation unit without a source location.
 // Remedy: redeclare the alias in the generic lambda that uses it.
 // Verified broken with 19.29, verified fixed with 19.44 and 19.51; the versions in between were not tested.
-#if defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1944)
+#if defined(SQLITE_ORM_COMPILER_MS_MSVC) && (_MSC_VER < 1944)
 #define SQLITE_ORM_INTERNAL_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
 #endif
 
@@ -335,7 +338,7 @@
 // gcc 11 also initializes a pack init-capture bytewise and relocates bytewise a closure passed as a coroutine
 // parameter, with the same effect on captured strings; `bind_arguments()` and `async_storage::run()` in
 // `execution/async_storage.h` avoid both, with a tuple and by moving the closure to the heap.
-#if defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 13)
+#if defined(SQLITE_ORM_COMPILER_GNU_GCC) && (__GNUC__ < 13)
 #define SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES
 #endif
 
@@ -408,7 +411,7 @@
 
 // The asynchronous storage: its I/O engine is io_uring (Linux), its fibers switch stacks with inline assembly
 // written for GCC and Clang on x86_64 and aarch64.
-#if (defined(SQLITE_ORM_LINUX) && !defined(SQLITE_ORM_ANDROID)) &&                                                     \
+#if (defined(SQLITE_ORM_PLATFORM_LINUX) && !defined(SQLITE_ORM_PLATFORM_ANDROID)) &&                                   \
     (defined(SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED) &&                                                             \
      !defined(SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES)) &&                                                    \
     (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(__aarch64__))

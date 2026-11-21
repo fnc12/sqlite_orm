@@ -4,7 +4,7 @@
  *        `statement_finalizer` guard built on one of them.
  *
  *        A deleter is the C library's release function as a function constant; under clang-cl
- *        (`SQLITE_ORM_CLANG_MSVC`) it is a function object calling it instead.
+ *        (`SQLITE_ORM_COMPILER_CLANG_MSVC`) it is a function object calling it instead.
  */
 
 #include <sqlite3.h>
@@ -14,7 +14,7 @@
 #endif
 
 namespace sqlite_orm::internal {
-#ifndef SQLITE_ORM_CLANG_MSVC
+#ifndef SQLITE_ORM_COMPILER_CLANG_MSVC
     /**
      *  Finalizes a statement.
      */

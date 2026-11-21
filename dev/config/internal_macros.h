@@ -22,7 +22,7 @@
 #define SQLITE_ORM_EXPORT
 #endif
 
-#if !defined(SQLITE_ORM_MS_MSVC) || (_MSC_VER >= 1920)
+#if !defined(SQLITE_ORM_COMPILER_MS_MSVC) || (_MSC_VER >= 1920)
 #define SQLITE_ORM_SWITCH_MAYBE_UNUSED [[maybe_unused]]
 #else
 #define SQLITE_ORM_SWITCH_MAYBE_UNUSED
@@ -49,7 +49,7 @@
 #endif
 
 // note: Visual Studio 2019 v16.11 supports `consteval` but not for functions returning void.
-#if defined(SQLITE_ORM_CPP_CONSTEVAL_SUPPORTED) && (!defined(SQLITE_ORM_MS_MSVC) || (_MSC_VER >= 1930))
+#if defined(SQLITE_ORM_CPP_CONSTEVAL_SUPPORTED) && (!defined(SQLITE_ORM_COMPILER_MS_MSVC) || (_MSC_VER >= 1930))
 #define SQLITE_ORM_CONSTEVAL consteval
 #else
 #define SQLITE_ORM_CONSTEVAL constexpr
@@ -77,11 +77,11 @@
 #define SQLITE_ORM_CLANG_SUPPRESS(warnoption, ...) __VA_ARGS__
 #endif
 
-#ifdef SQLITE_ORM_MS_MSVC
+#ifdef SQLITE_ORM_COMPILER_MS_MSVC
 #define SQLITE_ORM_DO_PRAGMA(...) __pragma(__VA_ARGS__)
 #endif
 
-#ifdef SQLITE_ORM_MS_MSVC
+#ifdef SQLITE_ORM_COMPILER_MS_MSVC
 #define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) SQLITE_ORM_DO_PRAGMA(warning(suppress : warncode))
 #else
 #define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) __VA_ARGS__
