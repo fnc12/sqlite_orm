@@ -125,27 +125,28 @@
  *
  *  Intention: the language tier of the configuration gathered by `config.h`, read from the feature-test macros
  *  `__cpp_*` and from `__cplusplus`, and amended where a compiler supports a feature it does not report;
- *  `compiler_quirks.h`, `stdlib_features.h` and `capabilities.h` build on it.
+ *  `compiler_quirks.h`, `stdlib_features.h` and `capabilities.h` build on it. Its macros are named
+ *  `SQLITE_ORM_CPP_<feature>_SUPPORTED`, after the standard's prefix `__cpp_`.
  */
 
 #if __cpp_generic_lambdas >= 201707L
-#define SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
+#define SQLITE_ORM_CPP_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
 #endif
 
 #if __cpp_init_captures >= 201803L
-#define SQLITE_ORM_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
+#define SQLITE_ORM_CPP_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
 #endif
 
 #if __cpp_consteval >= 201811L
-#define SQLITE_ORM_CONSTEVAL_SUPPORTED
+#define SQLITE_ORM_CPP_CONSTEVAL_SUPPORTED
 #endif
 
 #if __cpp_char8_t >= 201811L
-#define SQLITE_ORM_CHAR8T_SUPPORTED
+#define SQLITE_ORM_CPP_CHAR8T_SUPPORTED
 #endif
 
 #if __cpp_aggregate_paren_init >= 201902L
-#define SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+#define SQLITE_ORM_CPP_AGGREGATE_PAREN_INIT_SUPPORTED
 #endif
 
 #if __cpp_constexpr >= 201907L
@@ -153,17 +154,17 @@
 #endif
 
 #if __cpp_concepts >= 201907L
-#define SQLITE_ORM_CONCEPTS_SUPPORTED
+#define SQLITE_ORM_CPP_CONCEPTS_SUPPORTED
 #endif
 
 #if __cpp_nontype_template_args >= 201911L
-#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#define SQLITE_ORM_CPP_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
-// overwrite SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+// overwrite SQLITE_ORM_CPP_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #if (__cpp_nontype_template_args < 201911L) &&                                                                         \
     (defined(__clang__) && (__clang_major__ >= 12) && (__cplusplus >= 202002L))
-#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#define SQLITE_ORM_CPP_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
 #if __cpp_explicit_this_parameter >= 202110L
@@ -175,7 +176,7 @@
 #endif
 
 #if __cpp_pack_indexing >= 202311L
-#define SQLITE_ORM_PACK_INDEXING_SUPPORTED
+#define SQLITE_ORM_CPP_PACK_INDEXING_SUPPORTED
 #endif
 
 #if __cpp_structured_bindings >= 202411L
@@ -191,7 +192,7 @@
 #endif
 
 #if __cplusplus >= 202002L
-#define SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#define SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
 #define SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED
 #endif
 
@@ -246,7 +247,8 @@
  *
  *  Intention: the standard library tier of the configuration gathered by `config.h`, read from the feature-test macros
  *  `__cpp_lib_*` of `<version>`, and from the language features and compiler quirks a library feature needs;
- *  `capabilities.h` builds on it.
+ *  `capabilities.h` builds on it. Its macros are named `SQLITE_ORM_CPPxx_LIB_<feature>_SUPPORTED`, after the
+ *  standard's prefix `__cpp_lib_` and the standard the feature came with.
  */
 
 // #include "compiler_quirks.h"
@@ -318,7 +320,7 @@
 // clang 10 chokes on concepts that don't depend on template parameters;
 // when it tries to instantiate an expression in a requires expression, which results in an error,
 // the compiler reports an error instead of dismissing the templated function.
-#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && (defined(__clang__) && (__clang_major__ == 10))
+#if defined(SQLITE_ORM_CPP_CONCEPTS_SUPPORTED) && (defined(__clang__) && (__clang_major__ == 10))
 #define SQLITE_ORM_INTERNAL_BROKEN_NONTEMPLATE_CONCEPTS
 #endif
 
@@ -356,12 +358,12 @@
 #define SQLITE_ORM_CPP20_LIB_IS_CONSTANT_EVALUATED_SUPPORTED
 #endif
 
-#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
-#define SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#if defined(SQLITE_ORM_CPP_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
+#define SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #endif
 
 #if __cpp_lib_ranges >= 201911L
-#define SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#define SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
 #endif
 
 #if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_INTERNAL_BROKEN_CPP20_VIEWS)
@@ -385,15 +387,20 @@
 // Another way of detection might be the feature-test macro __cpp_lib_concepts
 #if (__cplusplus >= 202002L) &&                                                                                        \
     ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
-#define SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
+#define SQLITE_ORM_CPP20_LIB_DEFAULT_SENTINEL_SUPPORTED
 #endif
 
-#if (defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&              \
-    (defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED))
+#if (defined(SQLITE_ORM_CPP_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_CPP_CONSTEVAL_SUPPORTED)) &&      \
+    (defined(SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED))
 #define SQLITE_ORM_WITH_CPP20_ALIASES
 #endif
 
 #define SQLITE_ORM_WITH_CTE
+
+// the deprecated spelling of `SQLITE_ORM_OMIT_CODECVT`, which omits the `std::wstring` support
+#if defined(SQLITE_ORM_OMITS_CODECVT) && !defined(SQLITE_ORM_OMIT_CODECVT)
+#define SQLITE_ORM_OMIT_CODECVT
+#endif
 
 #if defined(SQLITE_ORM_CPP_REFLECTION_SUPPORTED)
 #define SQLITE_ORM_WITH_VIEW

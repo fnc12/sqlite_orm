@@ -62,7 +62,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #endif
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     /**
      *  Explicit FROM for an eponymous virtual table used as a table-valued function. Usage:
      *  `storage.select(asterisk<dbstat>(), from(dbstat_table("main", true)));`

@@ -364,7 +364,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                    is_conditional_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value
-#ifndef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifndef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
                                       && !is_table_reference_v<L>
 #endif
                                   ,

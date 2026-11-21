@@ -41,7 +41,7 @@ TEST_CASE("is_printable") {
     STATIC_REQUIRE_FALSE(is_printable_v<const char*>);
     STATIC_REQUIRE(is_printable_v<std::string>);
     STATIC_REQUIRE(is_printable_v<StringVeneer<char>>);
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
     STATIC_REQUIRE_FALSE(is_printable_v<const wchar_t*>);
     STATIC_REQUIRE(is_printable_v<std::wstring>);
     STATIC_REQUIRE(is_printable_v<StringVeneer<wchar_t>>);

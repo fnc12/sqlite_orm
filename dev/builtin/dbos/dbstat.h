@@ -58,7 +58,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         };
     };
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     inline constexpr orm_table_reference auto dbstat_table = c<dbstat>();
 #else
     inline constexpr auto dbstat_table = c<dbstat>();

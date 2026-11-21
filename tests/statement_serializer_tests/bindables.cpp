@@ -141,7 +141,7 @@ TEST_CASE("bindables") {
                             long double,
                             const char*,
                             nullptr_t
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
                             ,
                             const wchar_t*
 #endif
@@ -167,7 +167,7 @@ TEST_CASE("bindables") {
                                                   "0",
                                                   "''",
                                                   "NULL"
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
                                                   ,
                                                   "''"
 #endif
@@ -191,7 +191,7 @@ TEST_CASE("bindables") {
 
     SECTION("bindable_types") {
         using Tuple = tuple<string,
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
                             wstring,
                             StringVeneer<wchar_t>,
 #endif
@@ -201,7 +201,7 @@ TEST_CASE("bindables") {
                             std::optional<int>,
                             std::optional<Custom>,
                             std::string_view,
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
                             std::wstring_view,
 #endif
                             StringVeneer<char>,
@@ -211,7 +211,7 @@ TEST_CASE("bindables") {
         Tuple tpl = make_default_tuple<Tuple>();
 
         array<string, tuple_size<Tuple>::value> e{"''",
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
                                                   "''",
                                                   "''",
 #endif
@@ -221,7 +221,7 @@ TEST_CASE("bindables") {
                                                   "NULL",
                                                   "NULL",
                                                   "''",
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
                                                   "''",
 #endif
                                                   "''",

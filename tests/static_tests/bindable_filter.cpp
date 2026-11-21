@@ -45,7 +45,7 @@ TEST_CASE("bindable_filter") {
                                  const char*,
                                  std::string,
                                  StringVeneer<char>,
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
                                  const wchar_t*,
                                  std::wstring,
                                  StringVeneer<wchar_t>,
@@ -56,7 +56,7 @@ TEST_CASE("bindable_filter") {
                                  std::optional<int>,
                                  std::optional<Custom>,
                                  std::string_view,
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
                                  std::wstring_view,
 #endif
                                  std::unique_ptr<int>,

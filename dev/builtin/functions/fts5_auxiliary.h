@@ -73,7 +73,7 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_FTS5_SUPPORTED
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     /**
      *  The FTS5 highlight function.
      *  See https://www.sqlite.org/fts5.html#the_highlight_function

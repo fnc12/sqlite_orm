@@ -107,11 +107,16 @@ endif()
 ucm_print_flags()
 message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
-option(SQLITE_ORM_OMITS_CODECVT "Omit the std::wstring support, which relies on the deprecated <codecvt>" OFF)
+option(SQLITE_ORM_OMIT_CODECVT "Omit the std::wstring support, which relies on the deprecated <codecvt>" OFF)
+# the deprecated spelling of SQLITE_ORM_OMIT_CODECVT, from the command line or a build directory's cache
 if(SQLITE_ORM_OMITS_CODECVT)
-    message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
+    message(DEPRECATION "SQLITE_ORM_OMITS_CODECVT is deprecated, use SQLITE_ORM_OMIT_CODECVT")
+    set(SQLITE_ORM_OMIT_CODECVT ON)
+endif()
+if(SQLITE_ORM_OMIT_CODECVT)
+    message(STATUS "SQLITE_ORM_OMIT_CODECVT is enabled")
     # note: it changes the library's content, hence it is published to every consumer, including the named module
-    target_compile_definitions(sqlite_orm INTERFACE SQLITE_ORM_OMITS_CODECVT=1)
+    target_compile_definitions(sqlite_orm INTERFACE SQLITE_ORM_OMIT_CODECVT=1)
 endif()
 
 # Named module

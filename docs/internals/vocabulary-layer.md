@@ -203,7 +203,7 @@ Concepts cannot be forward-declared.
   the failing check, *is* its condition and must live where everything it names is visible.
 
 The latter goes into a dedicated `_concepts.h` file, included eagerly by its umbrella, with
-its C++17 fallback under the same `SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED` guard in the same
+its C++17 fallback under the same `SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED` guard in the same
 file: `algorithms/field_predicates_concepts.h`, and `traits/recordset_concepts.h`, whose alias
 concepts need only the forward-declared `alias_tag`. Concepts composing those across axes are
 algorithms, in `algorithms/recordset_predicates.h`.

@@ -2,7 +2,7 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same, std::disjunction, std::negation, std::is_empty, std::is_aggregate, std::is_function, std::common_type
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #include <concepts>  //  std::same_as
 #endif
 #endif
@@ -14,7 +14,7 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_eval_order_guaranteed = std::is_aggregate<T>;
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     template<typename T>
     concept stateless = std::is_empty_v<T>;
 #endif
@@ -50,7 +50,7 @@ namespace sqlite_orm::internal {
     template<class... Args>
     using same_or_void_t = typename same_or_void<Args...>::type;
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     template<class A, std::same_as<A>... Rest>
     struct same_or_void<A, Rest...> {
         using type = A;
@@ -106,7 +106,7 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     template<class T>
     concept orm_names_type = requires { typename T::type; };
 

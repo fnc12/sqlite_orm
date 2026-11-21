@@ -5,7 +5,7 @@
 #endif
 
 namespace sqlite_orm::internal {
-#if defined(SQLITE_ORM_PACK_INDEXING_SUPPORTED)
+#if defined(SQLITE_ORM_CPP_PACK_INDEXING_SUPPORTED)
     /**
      *  Get the index value of an `index_sequence` at a specific position.
      */

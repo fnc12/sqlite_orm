@@ -93,7 +93,7 @@ TEST_CASE("Issue 87") {
                        where(c(&Data::mDefault) == data.mDefault));
 }
 
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
 TEST_CASE("Wide string") {
 
     struct Alphabet {
@@ -122,7 +122,7 @@ TEST_CASE("Wide string") {
     }
     std::remove(filename);
 }
-#endif  //  SQLITE_ORM_OMITS_CODECVT
+#endif  //  SQLITE_ORM_OMIT_CODECVT
 
 TEST_CASE("Busy timeout") {
     auto storage = make_storage("testBusyTimeout.sqlite");

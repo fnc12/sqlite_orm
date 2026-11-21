@@ -16,7 +16,7 @@ TEST_CASE("generic vtab and dbstat layout tests") {
     struct mystat : dbstat {};
 
     STATIC_REQUIRE(is_table_reference_v<decltype(dbstat_table)>);
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     STATIC_REQUIRE(orm_table_reference<decltype(dbstat_table)>);
 #endif
 
@@ -65,7 +65,7 @@ TEST_CASE("generate_series layout tests") {
     using internal::generate_series_module_tag;
 
     STATIC_REQUIRE(is_table_reference_v<decltype(generate_series_table)>);
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     STATIC_REQUIRE(orm_table_reference<decltype(generate_series_table)>);
 #endif
 
@@ -92,7 +92,7 @@ TEST_CASE("pragma_table_info layout tests") {
     using internal::pragma_table_info_module_tag;
 
     STATIC_REQUIRE(is_table_reference_v<decltype(pragma_table_info)>);
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     STATIC_REQUIRE(orm_table_reference<decltype(pragma_table_info)>);
 #endif
 
@@ -120,7 +120,7 @@ TEST_CASE("pragma_table_xinfo layout tests") {
     using internal::pragma_table_xinfo_module_tag;
 
     STATIC_REQUIRE(is_table_reference_v<decltype(pragma_table_xinfo)>);
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     STATIC_REQUIRE(orm_table_reference<decltype(pragma_table_xinfo)>);
 #endif
 

@@ -9,7 +9,7 @@
 #include <string_view>  //  std::string_view
 #include <type_traits>  //  std::enable_if, std::is_arithmetic, std::is_same
 #include <vector>  //  std::vector
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #include <locale>  // std::wstring_convert
 #endif
@@ -137,7 +137,7 @@ namespace sqlite_orm {
         }
     };
 
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
     template<class V>
     struct statement_binder<V,
                             std::enable_if_t<std::disjunction<std::is_base_of<std::wstring, V>,

@@ -41,7 +41,7 @@ namespace sqlite_orm::internal {
                              column.template is<is_generated_always>());
         });
         const auto tableKeyColumnNames = this->table_key_columns_names();
-#if defined(SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
+#if defined(SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED)
         for (int n = 1; const std::string& columnName: tableKeyColumnNames) {
             if (auto it = std::ranges::find(res, columnName, &table_xinfo::name); it != res.end()) {
                 it->pk = n;

@@ -207,27 +207,28 @@ __pragma(push_macro("max"))
  *
  *  Intention: the language tier of the configuration gathered by `config.h`, read from the feature-test macros
  *  `__cpp_*` and from `__cplusplus`, and amended where a compiler supports a feature it does not report;
- *  `compiler_quirks.h`, `stdlib_features.h` and `capabilities.h` build on it.
+ *  `compiler_quirks.h`, `stdlib_features.h` and `capabilities.h` build on it. Its macros are named
+ *  `SQLITE_ORM_CPP_<feature>_SUPPORTED`, after the standard's prefix `__cpp_`.
  */
 
 #if __cpp_generic_lambdas >= 201707L
-#define SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
+#define SQLITE_ORM_CPP_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
 #endif
 
 #if __cpp_init_captures >= 201803L
-#define SQLITE_ORM_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
+#define SQLITE_ORM_CPP_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
 #endif
 
 #if __cpp_consteval >= 201811L
-#define SQLITE_ORM_CONSTEVAL_SUPPORTED
+#define SQLITE_ORM_CPP_CONSTEVAL_SUPPORTED
 #endif
 
 #if __cpp_char8_t >= 201811L
-#define SQLITE_ORM_CHAR8T_SUPPORTED
+#define SQLITE_ORM_CPP_CHAR8T_SUPPORTED
 #endif
 
 #if __cpp_aggregate_paren_init >= 201902L
-#define SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+#define SQLITE_ORM_CPP_AGGREGATE_PAREN_INIT_SUPPORTED
 #endif
 
 #if __cpp_constexpr >= 201907L
@@ -235,17 +236,17 @@ __pragma(push_macro("max"))
 #endif
 
 #if __cpp_concepts >= 201907L
-#define SQLITE_ORM_CONCEPTS_SUPPORTED
+#define SQLITE_ORM_CPP_CONCEPTS_SUPPORTED
 #endif
 
 #if __cpp_nontype_template_args >= 201911L
-#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#define SQLITE_ORM_CPP_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
-// overwrite SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+// overwrite SQLITE_ORM_CPP_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #if (__cpp_nontype_template_args < 201911L) &&                                                                         \
     (defined(__clang__) && (__clang_major__ >= 12) && (__cplusplus >= 202002L))
-#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#define SQLITE_ORM_CPP_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
 #if __cpp_explicit_this_parameter >= 202110L
@@ -257,7 +258,7 @@ __pragma(push_macro("max"))
 #endif
 
 #if __cpp_pack_indexing >= 202311L
-#define SQLITE_ORM_PACK_INDEXING_SUPPORTED
+#define SQLITE_ORM_CPP_PACK_INDEXING_SUPPORTED
 #endif
 
 #if __cpp_structured_bindings >= 202411L
@@ -273,7 +274,7 @@ __pragma(push_macro("max"))
 #endif
 
 #if __cplusplus >= 202002L
-#define SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#define SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
 #define SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED
 #endif
 
@@ -328,7 +329,8 @@ __pragma(push_macro("max"))
  *
  *  Intention: the standard library tier of the configuration gathered by `config.h`, read from the feature-test macros
  *  `__cpp_lib_*` of `<version>`, and from the language features and compiler quirks a library feature needs;
- *  `capabilities.h` builds on it.
+ *  `capabilities.h` builds on it. Its macros are named `SQLITE_ORM_CPPxx_LIB_<feature>_SUPPORTED`, after the
+ *  standard's prefix `__cpp_lib_` and the standard the feature came with.
  */
 
 // #include "compiler_quirks.h"
@@ -400,7 +402,7 @@ __pragma(push_macro("max"))
 // clang 10 chokes on concepts that don't depend on template parameters;
 // when it tries to instantiate an expression in a requires expression, which results in an error,
 // the compiler reports an error instead of dismissing the templated function.
-#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && (defined(__clang__) && (__clang_major__ == 10))
+#if defined(SQLITE_ORM_CPP_CONCEPTS_SUPPORTED) && (defined(__clang__) && (__clang_major__ == 10))
 #define SQLITE_ORM_INTERNAL_BROKEN_NONTEMPLATE_CONCEPTS
 #endif
 
@@ -438,12 +440,12 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_CPP20_LIB_IS_CONSTANT_EVALUATED_SUPPORTED
 #endif
 
-#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
-#define SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#if defined(SQLITE_ORM_CPP_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
+#define SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #endif
 
 #if __cpp_lib_ranges >= 201911L
-#define SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#define SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
 #endif
 
 #if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_INTERNAL_BROKEN_CPP20_VIEWS)
@@ -467,15 +469,20 @@ __pragma(push_macro("max"))
 // Another way of detection might be the feature-test macro __cpp_lib_concepts
 #if (__cplusplus >= 202002L) &&                                                                                        \
     ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
-#define SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
+#define SQLITE_ORM_CPP20_LIB_DEFAULT_SENTINEL_SUPPORTED
 #endif
 
-#if (defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&              \
-    (defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED))
+#if (defined(SQLITE_ORM_CPP_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_CPP_CONSTEVAL_SUPPORTED)) &&      \
+    (defined(SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED))
 #define SQLITE_ORM_WITH_CPP20_ALIASES
 #endif
 
 #define SQLITE_ORM_WITH_CTE
+
+// the deprecated spelling of `SQLITE_ORM_OMIT_CODECVT`, which omits the `std::wstring` support
+#if defined(SQLITE_ORM_OMITS_CODECVT) && !defined(SQLITE_ORM_OMIT_CODECVT)
+#define SQLITE_ORM_OMIT_CODECVT
+#endif
 
 #if defined(SQLITE_ORM_CPP_REFLECTION_SUPPORTED)
 #define SQLITE_ORM_WITH_VIEW
@@ -552,7 +559,7 @@ __pragma(push_macro("max"))
 #endif
 
 // note: Visual Studio 2019 v16.11 supports `consteval` but not for functions returning void.
-#if defined(SQLITE_ORM_CONSTEVAL_SUPPORTED) && (!defined(SQLITE_ORM_MS_MSVC) || (_MSC_VER >= 1930))
+#if defined(SQLITE_ORM_CPP_CONSTEVAL_SUPPORTED) && (!defined(SQLITE_ORM_MS_MSVC) || (_MSC_VER >= 1930))
 #define SQLITE_ORM_CONSTEVAL consteval
 #else
 #define SQLITE_ORM_CONSTEVAL constexpr
@@ -847,7 +854,7 @@ namespace sqlite_orm {
         //
         // T must be a pointer type
         //
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
         template<class T>
             requires std::is_pointer_v<T>
         using owner = T;
@@ -1038,7 +1045,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  // std::integral_constant
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #include <concepts>
 #endif
 #endif
@@ -1164,7 +1171,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 namespace sqlite_orm::internal {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     /**
      *  Constrains a deleter to be state-less.
      */
@@ -1192,7 +1199,7 @@ namespace sqlite_orm::internal {
     };
 #endif
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     /**
      *  Yield a deleter's function pointer.
      */
@@ -1239,7 +1246,7 @@ namespace sqlite_orm::internal {
     template<typename D>
     using yielded_fn_t = typename yield_fp_of<D>::type;
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     template<typename D>
     concept is_unusable_for_xdestroy =
         (!stateless_deleter<D> && (yields_fp<D> && !std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>));
@@ -1317,7 +1324,7 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     /**
      *  Prohibits using a yielded function pointer, which is not of type xdestroy_fn_t.
      *  
@@ -3065,7 +3072,7 @@ namespace sqlite_orm::internal {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same, std::disjunction, std::negation, std::is_empty, std::is_aggregate, std::is_function, std::common_type
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #include <concepts>  //  std::same_as
 #endif
 #endif
@@ -3077,7 +3084,7 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_eval_order_guaranteed = std::is_aggregate<T>;
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     template<typename T>
     concept stateless = std::is_empty_v<T>;
 #endif
@@ -3113,7 +3120,7 @@ namespace sqlite_orm::internal {
     template<class... Args>
     using same_or_void_t = typename same_or_void<Args...>::type;
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     template<class A, std::same_as<A>... Rest>
     struct same_or_void<A, Rest...> {
         using type = A;
@@ -3169,7 +3176,7 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     template<class T>
     concept orm_names_type = requires { typename T::type; };
 
@@ -4819,7 +4826,7 @@ namespace sqlite_orm::internal {
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #include <concepts>  //  std::derived_from, std::same_as
 #include <type_traits>  //  std::remove_const_t
 #endif
@@ -4912,7 +4919,7 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     template<class A>
     concept orm_alias = std::derived_from<A, alias_tag>;
 
@@ -5022,7 +5029,7 @@ namespace sqlite_orm::internal {
      *  Access the main DML expression of a with clause or the passed in DML expression.
      */
     template<class DML>
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CONCEPTS_SUPPORTED
         requires (is_raw_dml_expression_v<DML>)
 #endif
     constexpr decltype(auto) access_main_dml(const DML& dml) {
@@ -5066,7 +5073,7 @@ namespace sqlite_orm::internal {
      *  object by primary key and carries no object to reach for. Hence the second half.
      */
     template<class DML>
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CONCEPTS_SUPPORTED
         requires (is_object_dml_expression_v<expression_type_t<DML>> &&
                   requires(DML& statement) { statement.expression.object; })
 #endif
@@ -5463,7 +5470,7 @@ namespace sqlite_orm::internal {
 #endif
 
 namespace sqlite_orm::internal {
-#if defined(SQLITE_ORM_PACK_INDEXING_SUPPORTED)
+#if defined(SQLITE_ORM_CPP_PACK_INDEXING_SUPPORTED)
     /**
      *  Get the index value of an `index_sequence` at a specific position.
      */
@@ -5784,7 +5791,7 @@ namespace sqlite_orm::internal {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #include <concepts>  // std::same_as
 #endif
 #endif
@@ -5844,7 +5851,7 @@ namespace sqlite_orm::internal {
 // #include "../node_traits.h"
 
 namespace sqlite_orm::internal {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     /**
      *  Whether the field `F Hidden::*` names a hidden column of the virtual table `VTabStruct`.
      */
@@ -6018,7 +6025,7 @@ namespace sqlite_orm::internal {
 // #include "../node_traits.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     /** @short Specifies that a type refers to a mapped table (possibly aliased).
      */
     template<class T>
@@ -6037,7 +6044,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 namespace sqlite_orm::internal {
-#ifndef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifndef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     /**
      *  Whether a node refers to a record set: a table reference or a record set alias.
      */
@@ -6815,7 +6822,7 @@ namespace sqlite_orm::internal {
      *  
      *  Note: This method is useful for reducing combinatorial instantiation of template lambdas,
      *  as long as this library supports compilers that do not implement
-     *  explicit template parameters in generic lambdas [SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED].
+     *  explicit template parameters in generic lambdas [SQLITE_ORM_CPP_EXPLICIT_GENERIC_LAMBDA_SUPPORTED].
      *  Unfortunately it doesn't work with user-defined conversion operators in order to extract
      *  parts of a class. In other words, the destination type must be a direct template base class.
      */
@@ -7652,7 +7659,7 @@ namespace sqlite_orm::internal {
             return _action != foreign_key_action::none;
         }
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         friend bool operator==(const on_fk_action&, const on_fk_action&) = default;
 #else
         friend bool operator==(const on_fk_action& lhs, const on_fk_action& rhs) {
@@ -7731,7 +7738,7 @@ namespace sqlite_orm::internal {
             return _enforcement != foreign_key_enforcement::not_specified;
         }
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         friend bool operator==(const fk_enforcement_state&, const fk_enforcement_state&) = default;
 #else
         friend bool operator==(const fk_enforcement_state& lhs, const fk_enforcement_state& rhs) {
@@ -8858,7 +8865,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "schema/virtual_table.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #include <concepts>  // std::convertible_to
 #endif
 #include <string>  //  std::string
@@ -8886,7 +8893,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "table_base.h"
 
 namespace sqlite_orm::internal {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     template<class T>
     concept module_tag = requires {
         typename T::module_type;
@@ -8942,7 +8949,7 @@ namespace sqlite_orm::internal {
      */
     template<class O, class M, class... Cs>
     struct virtual_table_description : virtual_table_traits<M, Cs...>::definition_type {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
         static_assert(module_tag<M>, "Template parameter M must be a module tag");
 #endif
     };
@@ -8955,7 +8962,7 @@ namespace sqlite_orm::internal {
      */
     template<class M, class... Cs>
     struct virtual_table_definition : virtual_table_traits<M, Cs...>::definition_type {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
         static_assert(module_tag<M>, "Template parameter M must be a module tag");
 #endif
         using module_type = M;
@@ -9826,7 +9833,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_member_function_pointer, std::is_function, std::remove_const, std::decay, std::is_convertible, std::is_same, std::false_type, std::true_type, std::is_pointer
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #include <concepts>  //  std::copy_constructible
 #endif
 #include <algorithm>  //  std::min, std::copy_n
@@ -11581,7 +11588,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                    is_conditional_operand<R>,
                                                    is_operator_argument<L>,
                                                    is_operator_argument<R>>::value
-#ifndef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifndef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
                                       && !is_table_reference_v<L>
 #endif
                                   ,
@@ -14584,7 +14591,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
          */
         template<char... Chars>
         [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator""_ctealias() {
-#ifdef SQLITE_ORM_PACK_INDEXING_SUPPORTED
+#ifdef SQLITE_ORM_CPP_PACK_INDEXING_SUPPORTED
             // numeric monikers are used for automatically assigning implicit aliases to unaliased column expressions,
             // which start at "1".
             // note: hoisted into a variable because clang before 20.1 fails to treat an indexed non-type
@@ -15145,7 +15152,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #endif
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     /**
      *  Explicit FROM for an eponymous virtual table used as a table-valued function. Usage:
      *  `storage.select(asterisk<dbstat>(), from(dbstat_table("main", true)));`
@@ -17140,7 +17147,7 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     /**
      *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
      *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
@@ -17406,7 +17413,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     struct type_printer<T,
                         std::enable_if_t<std::conjunction<std::negation<internal::is_any_of<T,
                                                                                             wchar_t,
-#ifdef SQLITE_ORM_CHAR8T_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CHAR8T_SUPPORTED
                                                                                             char8_t,
 #endif
                                                                                             char16_t,
@@ -17568,7 +17575,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         std::string dflt_value;
         int pk = 0;
 
-#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+#ifndef SQLITE_ORM_CPP_AGGREGATE_PAREN_INIT_SUPPORTED
         table_info(decltype(cid) cid_,
                    decltype(name) name_,
                    decltype(type) type_,
@@ -17605,7 +17612,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         //  `get_table_info()` stores 1 for a generated column, so only zero vs non-zero may be compared
         int hidden = 0;
 
-#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+#ifndef SQLITE_ORM_CPP_AGGREGATE_PAREN_INIT_SUPPORTED
         table_xinfo(decltype(cid) cid_,
                     decltype(name) name_,
                     decltype(type) type_,
@@ -19613,7 +19620,7 @@ namespace sqlite_orm::internal {
 #include <sstream>  //  std::ostringstream
 #include <string>  //  std::string
 #include <vector>  //  std::vector
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #include <locale>  // std::wstring_convert
 #endif
@@ -19717,7 +19724,7 @@ namespace sqlite_orm {
             return ss.str();
         }
     };
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
     /**
      *  Specialization for std::wstring (UTF-16 assumed).
      */
@@ -19728,7 +19735,7 @@ namespace sqlite_orm {
             return converter.to_bytes(wideString);
         }
     };
-#endif  //  SQLITE_ORM_OMITS_CODECVT
+#endif  //  SQLITE_ORM_OMIT_CODECVT
     template<>
     struct field_printer<std::nullptr_t, void> {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const std::nullptr_t&) SQLITE_ORM_OR_CONST_CALLOP {
@@ -19796,13 +19803,13 @@ namespace sqlite_orm {
 #include <cstring>  //  ::strlen
 #include <string>  //  std::string, std::wstring
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #include <locale>  // std::wstring_convert
 #endif
 #include <optional>  //  std::optional
 #include <vector>  //  std::vector
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #include <concepts>
 #endif
 #endif
@@ -19877,7 +19884,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         V extract(sqlite3_value* value) const = delete;
     };
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     template<typename T>
     concept orm_column_text_extractable = requires(const row_extractor<T>& extractor, orm_gsl::czstring columnText) {
         { extractor.extract(columnText) } -> std::same_as<T>;
@@ -19901,7 +19908,7 @@ namespace sqlite_orm::internal {
      *  Make a row extractor to be used for casting SQL column text to a C++ typed value.
      */
     template<class R>
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
         requires (orm_column_text_extractable<R>)
 #endif
     row_extractor<R> column_text_extractor() {
@@ -19912,7 +19919,7 @@ namespace sqlite_orm::internal {
      *  Make a row extractor to be used for converting a value from a SQL result row set to a C++ typed value.
      */
     template<class R>
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
         requires (orm_row_value_extractable<R>)
 #endif
     row_extractor<R> row_value_extractor() {
@@ -19923,7 +19930,7 @@ namespace sqlite_orm::internal {
      *  Make a row extractor to be used for unboxing a dynamically typed SQL value to a C++ typed value.
      */
     template<class R>
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
         requires (orm_boxed_value_extractable<R>)
 #endif
     row_extractor<R> boxed_value_extractor() {
@@ -20066,7 +20073,7 @@ namespace sqlite_orm {
             }
         }
     };
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
     /**
      *  Specialization for std::wstring.
      */
@@ -20098,14 +20105,14 @@ namespace sqlite_orm {
             }
         }
     };
-#endif  //  SQLITE_ORM_OMITS_CODECVT
+#endif  //  SQLITE_ORM_OMIT_CODECVT
 
     template<class V>
     struct row_extractor<V, std::enable_if_t<is_std_ptr<V>::value>> {
         using unqualified_type = std::remove_cv_t<typename V::element_type>;
 
         V extract(orm_gsl::czstring columnText) const
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
             requires (orm_column_text_extractable<unqualified_type>)
 #endif
         {
@@ -20118,7 +20125,7 @@ namespace sqlite_orm {
         }
 
         V extract(sqlite3_stmt* stmt, int columnIndex) const
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
             requires (orm_row_value_extractable<unqualified_type>)
 #endif
         {
@@ -20132,7 +20139,7 @@ namespace sqlite_orm {
         }
 
         V extract(sqlite3_value* value) const
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
             requires (orm_boxed_value_extractable<unqualified_type>)
 #endif
         {
@@ -20151,7 +20158,7 @@ namespace sqlite_orm {
         using unqualified_type = std::remove_cv_t<typename V::value_type>;
 
         V extract(orm_gsl::czstring columnText) const
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
             requires (orm_column_text_extractable<unqualified_type>)
 #endif
         {
@@ -20164,7 +20171,7 @@ namespace sqlite_orm {
         }
 
         V extract(sqlite3_stmt* stmt, int columnIndex) const
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
             requires (orm_row_value_extractable<unqualified_type>)
 #endif
         {
@@ -20178,7 +20185,7 @@ namespace sqlite_orm {
         }
 
         V extract(sqlite3_value* value) const
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
             requires (orm_boxed_value_extractable<unqualified_type>)
 #endif
         {
@@ -20294,7 +20301,7 @@ namespace sqlite_orm::internal {
 #include <string_view>  //  std::string_view
 #include <type_traits>  //  std::enable_if, std::is_arithmetic, std::is_same
 #include <vector>  //  std::vector
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #include <locale>  // std::wstring_convert
 #endif
@@ -20428,7 +20435,7 @@ namespace sqlite_orm {
         }
     };
 
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
     template<class V>
     struct statement_binder<V,
                             std::enable_if_t<std::disjunction<std::is_base_of<std::wstring, V>,
@@ -22198,7 +22205,7 @@ namespace sqlite_orm::internal {
             return lhs.current == rhs.current;
         }
 
-#ifndef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifndef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         friend bool operator!=(const mapped_iterator& lhs, const mapped_iterator& rhs) {
             return !(lhs == rhs);
         }
@@ -22248,7 +22255,7 @@ namespace sqlite_orm::internal {
     };
 }
 
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
 template<class T, class S, class... Args>
 constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_view<T, S, Args...>> = true;
 #endif
@@ -22259,7 +22266,7 @@ constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_v
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <functional>  //  std::reference_wrapper
 #include <utility>  //  std::move, std::remove_cvref
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
 #include <ranges>  //  std::ranges::view_interface
 #endif
 #endif
@@ -22304,7 +22311,7 @@ namespace sqlite_orm::internal {
     template<class ColResult, class DBOs>
     class result_set_iterator;
 
-#ifdef SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
+#ifdef SQLITE_ORM_CPP20_LIB_DEFAULT_SENTINEL_SUPPORTED
     using result_set_sentinel_t = std::default_sentinel_t;
 #else
     // sentinel
@@ -22322,7 +22329,7 @@ namespace sqlite_orm::internal {
       public:
         using db_objects_type = DBOs;
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
         using iterator_concept = std::input_iterator_tag;
 #else
         using iterator_category = std::input_iterator_tag;
@@ -22357,7 +22364,7 @@ namespace sqlite_orm::internal {
         friend bool operator==(const result_set_iterator& it, const result_set_sentinel_t&) noexcept {
             return sqlite3_data_count(it.stmt.get()) == 0;
         }
-#ifndef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifndef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         friend bool operator!=(const result_set_iterator& it, const result_set_sentinel_t& s) noexcept {
             return !(it == s);
         }
@@ -22390,7 +22397,7 @@ namespace sqlite_orm::internal {
      */
     template<class Select, class DBOs>
     struct result_set_view
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
         : std::ranges::view_interface<result_set_view<Select, DBOs>>
 #endif
     {
@@ -22438,7 +22445,7 @@ namespace sqlite_orm::internal {
     };
 }
 
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
 template<class Select, class DBOs>
 constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_set_view<Select, DBOs>> = true;
 #endif
@@ -22705,7 +22712,7 @@ namespace sqlite_orm::internal {
         return stream_identifier(ss, std::get<Is>(tpl)...);
     }
 
-#if defined(SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED) && defined(SQLITE_ORM_CONCEPTS_SUPPORTED)
+#if defined(SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED) && defined(SQLITE_ORM_CPP_CONCEPTS_SUPPORTED)
     template<typename Tpl>
         requires polyfill::is_detected_v<type_t, std::tuple_size<Tpl>>
     void stream_identifier(std::ostream& ss, const Tpl& tpl) {
@@ -23093,7 +23100,7 @@ namespace sqlite_orm::internal {
 #include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref, std::disjunction
 #include <utility>  //  std::make_pair
 #include <vector>  //  std::vector
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #include <locale>  // std::wstring_convert
 #endif
@@ -23101,7 +23108,7 @@ namespace sqlite_orm::internal {
 #include <functional>  //  std::invoke
 #include <list>  //  std::list
 #include <memory>
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
 #include <ranges>  //  std::views::transform
 #endif
 #endif
@@ -23503,7 +23510,7 @@ namespace sqlite_orm::internal {
       private:
         template<class X,
                  std::enable_if_t<is_printable<X>::value && !std::is_base_of<std::string, X>::value
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
                                       && !std::is_base_of<std::wstring, X>::value
 #endif
                                   ,
@@ -23523,7 +23530,7 @@ namespace sqlite_orm::internal {
         static std::string do_serialize(orm_gsl::czstring c) {
             return quote_string_literal(c);
         }
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
         static std::string do_serialize(const std::wstring& c) {
             // implementation detail: utilizing field_printer
             return quote_string_literal(field_printer<std::wstring>{}(c));
@@ -23537,7 +23544,7 @@ namespace sqlite_orm::internal {
         static std::string do_serialize(const std::string_view& c) {
             return quote_string_literal(std::string(c));
         }
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
         static std::string do_serialize(const std::wstring_view& c) {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             return quote_string_literal(converter.to_bytes(c.data(), c.data() + c.size()));
@@ -26083,7 +26090,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                 return &other.container == &this->container && other.index == this->index;
             }
 
-#ifndef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifndef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
             bool operator!=(const iterator& other) const {
                 return !(*this == other);
             }
@@ -26497,7 +26504,7 @@ namespace sqlite_orm::internal {
             journal_mode::WAL,
             journal_mode::OFF,
         }};
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
         std::ranges::transform(string, string.begin(), [](unsigned char c) SQLITE_ORM_STATIC_CALLOP noexcept {
             return std::toupper(c);
         });
@@ -26593,7 +26600,7 @@ namespace sqlite_orm::internal {
             locking_mode::EXCLUSIVE,
         }};
 
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
         std::ranges::transform(string, string.begin(), [](unsigned char c) SQLITE_ORM_STATIC_CALLOP noexcept {
             return std::toupper(c);
         });
@@ -27961,7 +27968,7 @@ namespace sqlite_orm::internal {
 
             this->create_scalar_function_impl(
                 udf_holder<F>{},
-#ifdef SQLITE_ORM_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
+#ifdef SQLITE_ORM_CPP_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
                 /* constructAt */ [... constructorArgs = std::move(constructorArgs)](void* location) {
 #else
                 /* constructAt */
@@ -28071,7 +28078,7 @@ namespace sqlite_orm::internal {
 
             this->create_aggregate_function_impl(
                 udf_holder<F>{}, /* constructAt = */
-#ifdef SQLITE_ORM_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
+#ifdef SQLITE_ORM_CPP_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
                 /* constructAt */ [... constructorArgs = std::move(constructorArgs)](void* location) {
 #else
                 /* constructAt */
@@ -28618,7 +28625,7 @@ namespace sqlite_orm::internal {
         }
 
         void delete_function_impl(const std::string& name, std::list<udf_proxy>& functions) const {
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
             auto it = std::ranges::find(functions, name, &udf_proxy::name);
 #else
             auto it = std::find_if(functions.begin(), functions.end(), [&name](const udf_proxy& udfProxy) {
@@ -28764,7 +28771,7 @@ namespace sqlite_orm::internal {
                 const std::string& columnName = storageColumnInfo.name;
 
                 //  search for a column in db with the same name
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
                 auto dbColumnInfoIt = std::ranges::find(dbTableInfo, columnName, &table_xinfo::name);
 #else
                 auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(), dbTableInfo.end(), [&columnName](auto& ti) {
@@ -28932,7 +28939,7 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP void operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {}
 
         static bool _contains(const std::list<udf_proxy>& functions, std::string_view name) {
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
             auto it = std::ranges::find(functions, name, &udf_proxy::name);
 #else
             auto it = std::find_if(functions.begin(), functions.end(), [&name](const udf_proxy& udfProxy) {
@@ -29207,11 +29214,11 @@ namespace sqlite_orm::internal {
          *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
          */
         template<class Select>
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
             requires (is_select_expression_v<Select>)
 #endif
         result_set_view<Select, db_objects_type> iterate(Select expression) {
-#ifndef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifndef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
             static_assert(is_select_expression_v<Select>,
                           "SQL expression must be a select expression or a with-clause with a select expression");
 #endif
@@ -30487,7 +30494,7 @@ namespace sqlite_orm::internal {
             };
 
             if constexpr (is_replace_range_v<T>) {
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
                 std::ranges::for_each(statement.expression.range.first,
                                       statement.expression.range.second,
                                       std::ref(processObject),
@@ -30545,7 +30552,7 @@ namespace sqlite_orm::internal {
             };
 
             if constexpr (is_insert_range_v<T>) {
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
                 std::ranges::for_each(statement.expression.range.first,
                                       statement.expression.range.second,
                                       std::ref(processObject),
@@ -30841,7 +30848,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         int rootpage = 0;
         std::string sql;
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         friend bool operator==(const sqlite_master&, const sqlite_master&) = default;
 #endif
     };
@@ -30855,7 +30862,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                           make_column("sql", &sqlite_master::sql));
     }
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     inline constexpr orm_table_reference auto sqlite_master_table = c<sqlite_master>();
 #else
     inline constexpr auto sqlite_master_table = c<sqlite_master>();
@@ -31007,7 +31014,7 @@ namespace sqlite_orm::internal {
         columnNames.reserve(table.template count_of<is_column>());
         table.for_each_column([&columnNames, &columnsToIgnore](const column_identifier& column) {
             auto& columnName = column.name;
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
             auto columnToIgnoreIt = std::ranges::find(columnsToIgnore, columnName, &table_xinfo::name);
 #else
             auto columnToIgnoreIt = std::find_if(columnsToIgnore.begin(),
@@ -31138,7 +31145,7 @@ namespace sqlite_orm::internal {
                              column.template is<is_generated_always>());
         });
         const auto tableKeyColumnNames = this->table_key_columns_names();
-#if defined(SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
+#if defined(SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED)
         for (int n = 1; const std::string& columnName: tableKeyColumnNames) {
             if (auto it = std::ranges::find(res, columnName, &table_xinfo::name); it != res.end()) {
                 it->pk = n;
@@ -33267,7 +33274,7 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_FTS5_SUPPORTED
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     /**
      *  The FTS5 highlight function.
      *  See https://www.sqlite.org/fts5.html#the_highlight_function
@@ -35474,7 +35481,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         };
     };
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     inline constexpr orm_table_reference auto dbstat_table = c<dbstat>();
 #else
     inline constexpr auto dbstat_table = c<dbstat>();
@@ -35712,7 +35719,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         };
     };
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     inline constexpr orm_table_reference auto generate_series_table = c<generate_series>();
 #else
     inline constexpr auto generate_series_table = c<generate_series>();

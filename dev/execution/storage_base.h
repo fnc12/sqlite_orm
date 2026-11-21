@@ -690,7 +690,7 @@ namespace sqlite_orm::internal {
 
             this->create_scalar_function_impl(
                 udf_holder<F>{},
-#ifdef SQLITE_ORM_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
+#ifdef SQLITE_ORM_CPP_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
                 /* constructAt */ [... constructorArgs = std::move(constructorArgs)](void* location) {
 #else
                 /* constructAt */
@@ -800,7 +800,7 @@ namespace sqlite_orm::internal {
 
             this->create_aggregate_function_impl(
                 udf_holder<F>{}, /* constructAt = */
-#ifdef SQLITE_ORM_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
+#ifdef SQLITE_ORM_CPP_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
                 /* constructAt */ [... constructorArgs = std::move(constructorArgs)](void* location) {
 #else
                 /* constructAt */
@@ -1347,7 +1347,7 @@ namespace sqlite_orm::internal {
         }
 
         void delete_function_impl(const std::string& name, std::list<udf_proxy>& functions) const {
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
             auto it = std::ranges::find(functions, name, &udf_proxy::name);
 #else
             auto it = std::find_if(functions.begin(), functions.end(), [&name](const udf_proxy& udfProxy) {
@@ -1493,7 +1493,7 @@ namespace sqlite_orm::internal {
                 const std::string& columnName = storageColumnInfo.name;
 
                 //  search for a column in db with the same name
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
                 auto dbColumnInfoIt = std::ranges::find(dbTableInfo, columnName, &table_xinfo::name);
 #else
                 auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(), dbTableInfo.end(), [&columnName](auto& ti) {

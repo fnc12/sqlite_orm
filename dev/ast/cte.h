@@ -85,7 +85,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
          */
         template<char... Chars>
         [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator""_ctealias() {
-#ifdef SQLITE_ORM_PACK_INDEXING_SUPPORTED
+#ifdef SQLITE_ORM_CPP_PACK_INDEXING_SUPPORTED
             // numeric monikers are used for automatically assigning implicit aliases to unaliased column expressions,
             // which start at "1".
             // note: hoisted into a variable because clang before 20.1 fails to treat an indexed non-type

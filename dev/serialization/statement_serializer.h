@@ -7,7 +7,7 @@
 #include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref, std::disjunction
 #include <utility>  //  std::make_pair
 #include <vector>  //  std::vector
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #include <locale>  // std::wstring_convert
 #endif
@@ -15,7 +15,7 @@
 #include <functional>  //  std::invoke
 #include <list>  //  std::list
 #include <memory>
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
 #include <ranges>  //  std::views::transform
 #endif
 #endif
@@ -80,7 +80,7 @@ namespace sqlite_orm::internal {
       private:
         template<class X,
                  std::enable_if_t<is_printable<X>::value && !std::is_base_of<std::string, X>::value
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
                                       && !std::is_base_of<std::wstring, X>::value
 #endif
                                   ,
@@ -100,7 +100,7 @@ namespace sqlite_orm::internal {
         static std::string do_serialize(orm_gsl::czstring c) {
             return quote_string_literal(c);
         }
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
         static std::string do_serialize(const std::wstring& c) {
             // implementation detail: utilizing field_printer
             return quote_string_literal(field_printer<std::wstring>{}(c));
@@ -114,7 +114,7 @@ namespace sqlite_orm::internal {
         static std::string do_serialize(const std::string_view& c) {
             return quote_string_literal(std::string(c));
         }
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
         static std::string do_serialize(const std::wstring_view& c) {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             return quote_string_literal(converter.to_bytes(c.data(), c.data() + c.size()));

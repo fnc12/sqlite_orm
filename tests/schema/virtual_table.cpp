@@ -25,7 +25,7 @@ TEST_CASE("fts5 virtual table schema") {
 
         using hidden = fts5::hidden_fields_of<Post>;
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const Post&) const = default;
 #else
         bool operator==(const Post& other) const {

@@ -16,7 +16,7 @@
 #include "../node_traits.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     /** @short Specifies that a type refers to a mapped table (possibly aliased).
      */
     template<class T>
@@ -35,7 +35,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 namespace sqlite_orm::internal {
-#ifndef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifndef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     /**
      *  Whether a node refers to a record set: a table reference or a record set alias.
      */

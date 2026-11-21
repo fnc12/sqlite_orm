@@ -5,7 +5,8 @@
  *
  *  Intention: the standard library tier of the configuration gathered by `config.h`, read from the feature-test macros
  *  `__cpp_lib_*` of `<version>`, and from the language features and compiler quirks a library feature needs;
- *  `capabilities.h` builds on it.
+ *  `capabilities.h` builds on it. Its macros are named `SQLITE_ORM_CPPxx_LIB_<feature>_SUPPORTED`, after the
+ *  standard's prefix `__cpp_lib_` and the standard the feature came with.
  */
 
 #include "compiler_quirks.h"
@@ -28,12 +29,12 @@
 #define SQLITE_ORM_CPP20_LIB_IS_CONSTANT_EVALUATED_SUPPORTED
 #endif
 
-#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
-#define SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#if defined(SQLITE_ORM_CPP_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
+#define SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #endif
 
 #if __cpp_lib_ranges >= 201911L
-#define SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#define SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
 #endif
 
 #if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_INTERNAL_BROKEN_CPP20_VIEWS)
@@ -57,5 +58,5 @@
 // Another way of detection might be the feature-test macro __cpp_lib_concepts
 #if (__cplusplus >= 202002L) &&                                                                                        \
     ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
-#define SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
+#define SQLITE_ORM_CPP20_LIB_DEFAULT_SENTINEL_SUPPORTED
 #endif

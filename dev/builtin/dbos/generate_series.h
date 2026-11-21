@@ -35,7 +35,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         };
     };
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     inline constexpr orm_table_reference auto generate_series_table = c<generate_series>();
 #else
     inline constexpr auto generate_series_table = c<generate_series>();

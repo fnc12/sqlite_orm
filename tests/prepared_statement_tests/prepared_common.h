@@ -10,7 +10,7 @@ namespace PreparedStatementTests {
         sqlite_orm::int64 id = 0;
         std::string name;
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         friend bool operator==(const User&, const User&) = default;
 #else
         friend bool operator==(const User& lhs, const User& rhs) {

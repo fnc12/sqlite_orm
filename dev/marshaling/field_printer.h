@@ -6,7 +6,7 @@
 #include <sstream>  //  std::ostringstream
 #include <string>  //  std::string
 #include <vector>  //  std::vector
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #include <locale>  // std::wstring_convert
 #endif
@@ -106,7 +106,7 @@ namespace sqlite_orm {
             return ss.str();
         }
     };
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
     /**
      *  Specialization for std::wstring (UTF-16 assumed).
      */
@@ -117,7 +117,7 @@ namespace sqlite_orm {
             return converter.to_bytes(wideString);
         }
     };
-#endif  //  SQLITE_ORM_OMITS_CODECVT
+#endif  //  SQLITE_ORM_OMIT_CODECVT
     template<>
     struct field_printer<std::nullptr_t, void> {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const std::nullptr_t&) SQLITE_ORM_OR_CONST_CALLOP {

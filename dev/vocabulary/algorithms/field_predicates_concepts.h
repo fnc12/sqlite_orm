@@ -10,7 +10,7 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #include <concepts>  // std::same_as
 #endif
 #endif
@@ -20,7 +20,7 @@
 #include "../node_traits.h"
 
 namespace sqlite_orm::internal {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     /**
      *  Whether the field `F Hidden::*` names a hidden column of the virtual table `VTabStruct`.
      */

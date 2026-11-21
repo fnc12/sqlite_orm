@@ -43,7 +43,7 @@ TEST_CASE("is_bindable") {
     STATIC_REQUIRE(is_bindable_v<const char*>);
     STATIC_REQUIRE(is_bindable_v<std::string>);
     STATIC_REQUIRE(is_bindable_v<StringVeneer<char>>);
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
     STATIC_REQUIRE(is_bindable_v<const wchar_t*>);
     STATIC_REQUIRE(is_bindable_v<std::wstring>);
     STATIC_REQUIRE(is_bindable_v<StringVeneer<wchar_t>>);
@@ -52,7 +52,7 @@ TEST_CASE("is_bindable") {
     STATIC_REQUIRE(is_bindable_v<std::unique_ptr<int>>);
     STATIC_REQUIRE(is_bindable_v<std::shared_ptr<int>>);
     STATIC_REQUIRE(is_bindable_v<std::string_view>);
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
     STATIC_REQUIRE(is_bindable_v<std::wstring_view>);
 #endif
     STATIC_REQUIRE(is_bindable_v<std::nullopt_t>);

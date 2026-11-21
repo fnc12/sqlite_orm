@@ -14,7 +14,7 @@ namespace {
         std::string address;  //  optional
         double salary;  //  optional
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const Employee&) const = default;
 #else
         bool operator==(const Employee& other) const {
@@ -401,7 +401,7 @@ namespace {
         int id = 0;
         std::string firstName;
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const User4&) const = default;
 #else
         bool operator==(const User4& user) const {

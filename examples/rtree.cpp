@@ -8,7 +8,7 @@
 
 // note: clang currently has problems to use constexpr variables in lambdas
 #if defined(SQLITE_ORM_RTREE_SUPPORTED) && SQLITE_VERSION_NUMBER >= 3024000 &&                                         \
-    defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED) && defined(SQLITE_ORM_WITH_CPP20_ALIASES) && !defined(__clang__)
+    defined(SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED) && defined(SQLITE_ORM_WITH_CPP20_ALIASES) && !defined(__clang__)
 #define ENABLE_THIS_EXAMPLE
 #endif
 

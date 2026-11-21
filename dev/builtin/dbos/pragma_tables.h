@@ -28,7 +28,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         std::string dflt_value;
         int pk = 0;
 
-#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+#ifndef SQLITE_ORM_CPP_AGGREGATE_PAREN_INIT_SUPPORTED
         table_info(decltype(cid) cid_,
                    decltype(name) name_,
                    decltype(type) type_,
@@ -65,7 +65,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         //  `get_table_info()` stores 1 for a generated column, so only zero vs non-zero may be compared
         int hidden = 0;
 
-#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+#ifndef SQLITE_ORM_CPP_AGGREGATE_PAREN_INIT_SUPPORTED
         table_xinfo(decltype(cid) cid_,
                     decltype(name) name_,
                     decltype(type) type_,

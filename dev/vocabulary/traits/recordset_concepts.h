@@ -9,7 +9,7 @@
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #include <concepts>  //  std::derived_from, std::same_as
 #include <type_traits>  //  std::remove_const_t
 #endif
@@ -21,7 +21,7 @@
 #include "structural_traits_fwd.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     template<class A>
     concept orm_alias = std::derived_from<A, alias_tag>;
 

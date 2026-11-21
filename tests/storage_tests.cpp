@@ -780,7 +780,7 @@ TEST_CASE("insert with generated column") {
         double tax = 0;
         double netPrice = 0;
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const Product&) const = default;
 #else
         bool operator==(const Product& other) const {

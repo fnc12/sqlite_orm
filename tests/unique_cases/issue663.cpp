@@ -70,7 +70,7 @@ namespace {
         int age = 0;
         std::string email;
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const User1&) const = default;
 #else
         bool operator==(const User1& rhs) const {

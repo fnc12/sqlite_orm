@@ -13,12 +13,17 @@
 #include "toolchain/platform.h"
 #include "toolchain/stdlib_features.h"
 
-#if (defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&              \
-    (defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED))
+#if (defined(SQLITE_ORM_CPP_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_CPP_CONSTEVAL_SUPPORTED)) &&      \
+    (defined(SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED))
 #define SQLITE_ORM_WITH_CPP20_ALIASES
 #endif
 
 #define SQLITE_ORM_WITH_CTE
+
+// the deprecated spelling of `SQLITE_ORM_OMIT_CODECVT`, which omits the `std::wstring` support
+#if defined(SQLITE_ORM_OMITS_CODECVT) && !defined(SQLITE_ORM_OMIT_CODECVT)
+#define SQLITE_ORM_OMIT_CODECVT
+#endif
 
 #if defined(SQLITE_ORM_CPP_REFLECTION_SUPPORTED)
 #define SQLITE_ORM_WITH_VIEW
