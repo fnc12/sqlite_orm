@@ -90,7 +90,7 @@ namespace sqlite_orm::internal {
     /*
      *  Implementation note: a derived struct in favor of an alias template, because it is passed on as a
      *  template-template argument - type replacement of an alias template having a non-type template parameter
-     *  from a dependent expression in it may fail [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
+     *  from a dependent expression in it may fail [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
      */
     template<class T>
     struct select_clause_rank : polyfill::index_constant<select_clause_rank_v<T>> {};
@@ -119,7 +119,7 @@ namespace sqlite_orm::internal {
     constexpr size_t delete_clause_rank_v = clause_rank_v<T, is_where, is_any_order_by, is_limit>;
 
     //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
-    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    //  [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
     template<class T>
     struct delete_clause_rank : polyfill::index_constant<delete_clause_rank_v<T>> {};
 
@@ -153,7 +153,7 @@ namespace sqlite_orm::internal {
                                                           is_limit>;
 
     //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
-    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    //  [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
     template<class T>
     struct update_clause_rank : polyfill::index_constant<update_clause_rank_v<T>> {};
 

@@ -153,7 +153,7 @@ namespace sqlite_orm::internal {
         columnNames.reserve(table.template count_of<is_column>());
         table.for_each_column([&columnNames, &columnsToIgnore](const column_identifier& column) {
             auto& columnName = column.name;
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
             auto columnToIgnoreIt = std::ranges::find(columnsToIgnore, columnName, &table_xinfo::name);
 #else
             auto columnToIgnoreIt = std::find_if(columnsToIgnore.begin(),

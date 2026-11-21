@@ -97,7 +97,7 @@ namespace sqlite_orm::internal {
     template<class Lookup, class DBOs>
     using schema_find_table_t = typename schema_find_table<Lookup, std::remove_const_t<DBOs>>::type;
 
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#ifndef SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION
     template<class DBOs, class Lookup, class SFINAE = void>
     struct is_mapped : std::false_type {};
     template<class DBOs, class Lookup>

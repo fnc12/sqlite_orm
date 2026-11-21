@@ -97,7 +97,7 @@ namespace sqlite_orm::internal {
     /*
      *  Metafunction that casts the class type of a pointer-to-member from a base class to the specified derived class.
      *  note (implementation): go through `member_field_type_t<>` instead of `decltype(as_field_of())` because of
-     *  older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+     *  older compilers having problems with the detection of dependent templates [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
      */
     template<class O, class F>
     using as_field_of_t = member_field_type_t<F> O::*;

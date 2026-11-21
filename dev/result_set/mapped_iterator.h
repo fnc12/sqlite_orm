@@ -103,7 +103,7 @@ namespace sqlite_orm::internal {
             return lhs.current == rhs.current;
         }
 
-#ifndef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifndef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         friend bool operator!=(const mapped_iterator& lhs, const mapped_iterator& rhs) {
             return !(lhs == rhs);
         }

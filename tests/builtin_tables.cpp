@@ -43,7 +43,7 @@ TEST_CASE("builtin tables bundle") {
 #ifdef SQLITE_ORM_DBSTAT_SUPPORTED
                                         + 1
 #endif
-#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_CPP_REFLECTION_SUPPORTED)
                                         + std::tuple_size<decltype(make_pragma_tables())>::value
 #endif
             ;
@@ -73,7 +73,7 @@ TEST_CASE("builtin tables bundle") {
     SECTION("a table bundled twice is kept once") {
         auto storage = make_storage("",
                                     make_builtin_tables(),
-#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_CPP_REFLECTION_SUPPORTED)
                                     make_pragma_tables(),
 #endif
                                     make_builtin_tables());
@@ -99,7 +99,7 @@ TEST_CASE("builtin tables bundle") {
 
         auto tableNames = storage.select(&sqlite_master::name, where(c(&sqlite_master::type) == "table"));
         REQUIRE_THAT(tableNames, Equals(std::vector<std::string>{"users"}));
-#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_CPP_REFLECTION_SUPPORTED)
         auto columnNames = storage.select(&table_info::name, from(pragma_table_info("users")));
         REQUIRE_THAT(columnNames, Equals(std::vector<std::string>{"id", "name"}));
 #endif

@@ -8,7 +8,7 @@
  */
 
 #include <sqlite_orm/sqlite_orm.h>
-#include <sqlite_orm/sqlite_orm_config.h>  //  SQLITE_ORM_WITH_ASYNC, SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+#include <sqlite_orm/sqlite_orm_config.h>  //  SQLITE_ORM_WITH_ASYNC, SQLITE_ORM_CPP20_LIB_VIEWS_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #include <algorithm>  //  std::find
 #include <atomic>  //  std::atomic
@@ -749,7 +749,7 @@ TEST_CASE("async storage: iterate fetches row by row") {
         run_test(io, body());
     }
     //  guarded like the iteration over a select statement in tests/iterate.cpp
-#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_VIEWS_SUPPORTED
     SECTION("rows of a select statement") {
         auto body = [&storage]() -> async_task<void> {
             co_await fill_users(storage, 50);

@@ -50,7 +50,7 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP void operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {}
 
         static bool _contains(const std::list<udf_proxy>& functions, std::string_view name) {
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
             auto it = std::ranges::find(functions, name, &udf_proxy::name);
 #else
             auto it = std::find_if(functions.begin(), functions.end(), [&name](const udf_proxy& udfProxy) {

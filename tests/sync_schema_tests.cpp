@@ -563,7 +563,7 @@ TEST_CASE("sync_schema with generated columns") {
         int id = 0;
         int hash = 0;
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const User& other) const = default;
 #else
         bool operator==(const User& other) const {
@@ -806,7 +806,7 @@ TEST_CASE("sync_schema attribute matrix: composite primary key") {
         int month = 0;
         int amount = 0;
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const Record&) const = default;
 #else
         bool operator==(const Record& other) const {

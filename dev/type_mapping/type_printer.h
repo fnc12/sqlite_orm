@@ -54,7 +54,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     struct type_printer<T,
                         std::enable_if_t<std::conjunction<std::negation<internal::is_any_of<T,
                                                                                             wchar_t,
-#ifdef SQLITE_ORM_CHAR8T_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CHAR8T_SUPPORTED
                                                                                             char8_t,
 #endif
                                                                                             char16_t,

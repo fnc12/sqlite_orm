@@ -1,11 +1,19 @@
 #pragma once
 
-/*
- *  The macros sqlite_orm's own code is spelled with: module export, keywords and attributes
- *  depending on the language version, and the suppression of compiler diagnostics.
+/** @file
+ *  Purpose: provide the macros sqlite_orm's own code is spelled with.
+ *
+ *  Intention: outside the published <sqlite_orm/sqlite_orm_config.h>; both variants of <sqlite_orm/sqlite_orm.h> place
+ *  it right after `config.h`.
  */
 
 #include "config.h"
+
+#ifdef __has_cpp_attribute
+#define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) __has_cpp_attribute(attr)
+#else
+#define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) 0L
+#endif
 
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
@@ -13,7 +21,7 @@
 #define SQLITE_ORM_EXPORT
 #endif
 
-#if !defined(SQLITE_ORM_MS_MSVC) || (_MSC_VER >= 1920)
+#if !defined(SQLITE_ORM_COMPILER_MS_MSVC) || (_MSC_VER >= 1920)
 #define SQLITE_ORM_SWITCH_MAYBE_UNUSED [[maybe_unused]]
 #else
 #define SQLITE_ORM_SWITCH_MAYBE_UNUSED
@@ -40,13 +48,13 @@
 #endif
 
 // note: Visual Studio 2019 v16.11 supports `consteval` but not for functions returning void.
-#if defined(SQLITE_ORM_CONSTEVAL_SUPPORTED) && (!defined(SQLITE_ORM_MS_MSVC) || (_MSC_VER >= 1930))
+#if defined(SQLITE_ORM_CPP_CONSTEVAL_SUPPORTED) && (!defined(SQLITE_ORM_COMPILER_MS_MSVC) || (_MSC_VER >= 1930))
 #define SQLITE_ORM_CONSTEVAL consteval
 #else
 #define SQLITE_ORM_CONSTEVAL constexpr
 #endif
 
-#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
 #define SQLITE_ORM_STATIC_CALLOP static
 #define SQLITE_ORM_OR_CONST_CALLOP
 #else
@@ -68,11 +76,11 @@
 #define SQLITE_ORM_CLANG_SUPPRESS(warnoption, ...) __VA_ARGS__
 #endif
 
-#ifdef SQLITE_ORM_MS_MSVC
+#ifdef SQLITE_ORM_COMPILER_MS_MSVC
 #define SQLITE_ORM_DO_PRAGMA(...) __pragma(__VA_ARGS__)
 #endif
 
-#ifdef SQLITE_ORM_MS_MSVC
+#ifdef SQLITE_ORM_COMPILER_MS_MSVC
 #define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) SQLITE_ORM_DO_PRAGMA(warning(suppress : warncode))
 #else
 #define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) __VA_ARGS__

@@ -132,7 +132,7 @@ TEST_CASE("column pointers") {
     SECTION("table reference") {
         STATIC_REQUIRE_FALSE(is_table_alias_v<decltype(derived_user)>);
         STATIC_REQUIRE_FALSE(is_recordset_alias_v<decltype(derived_user)>);
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
         STATIC_REQUIRE(orm_table_reference<decltype(derived_user)>);
 #endif
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES

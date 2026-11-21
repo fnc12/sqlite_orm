@@ -35,7 +35,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         };
     };
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     inline constexpr orm_table_reference auto generate_series_table = c<generate_series>();
 #else
     inline constexpr auto generate_series_table = c<generate_series>();
@@ -49,7 +49,7 @@ namespace sqlite_orm::internal {
      *  The hidden generate_series columns 'start', 'stop' and 'step' are mapped into each table definition.
      */
     inline auto using_generate_series() {
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
         return make_reflected_virtual_table_definition<generate_series_module_tag, generate_series>();
 #else
         return make_virtual_table_definition<generate_series_module_tag>(

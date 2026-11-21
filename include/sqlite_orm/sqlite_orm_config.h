@@ -1,12 +1,13 @@
 #pragma once
 
-/*
- *  The public configuration: detection of the language, standard library, compiler and platform,
- *  the SQLite version and feature macros, and sqlite_orm's capabilities.
- *  Macros only, no declarations.
+/** @file
+ *  Purpose: gather the public configuration.
  *
- *  Published as <sqlite_orm/sqlite_orm_config.h> for consumers of the named module, which cannot export macros:
- *  include it ahead of `import sqlite_orm;` and `import std;`.
+ *  Intention: each of its tiers has a header of its own, which names the tier; `internal_macros.h` builds sqlite_orm's
+ *  own spelling on it.
+ *
+ *  Published, macros only, as <sqlite_orm/sqlite_orm_config.h> for consumers of the named module, which cannot export
+ *  macros: include it ahead of `import sqlite_orm;` and `import std;`.
  *  The standard permits either order, but GCC rejects including it after either import: it does not merge
  *  the standard library's inline definitions from `<version>` with those reachable from the module
  *  [see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=99000].
@@ -18,11 +19,22 @@
 
 // #include "capabilities.h"
 
-/*
- *  The optional features sqlite_orm offers with the language, standard library and SQLite in use.
+/** @file
+ *  Purpose: define, in one place, the guards of sqlite_orm's major features.
+ *
+ *  Intention: the capabilities tier of the configuration gathered by `config.h`, built on the other tiers;
+ *  sqlite_orm's headers and its consumers test `SQLITE_ORM_WITH_*` for a feature.
  */
 
 // #include "../sqlite3/sqlite3_config.h"
+
+/** @file
+ *  Purpose: tell which optional SQLite features the SQLite in use provides.
+ *
+ *  Intention: the SQLite tier of the configuration gathered by `config.h`, read from `<sqlite3.h>`'s version and the
+ *  `SQLITE_ENABLE_*` and `SQLITE_OMIT_*` macros a distribution defines; sqlite_orm's headers test
+ *  `SQLITE_ORM_*_SUPPORTED` to offer the functions and tables of a feature.
+ */
 
 #include <sqlite3.h>
 
@@ -99,110 +111,120 @@
 
 // #include "toolchain/language_features.h"
 
-/*
- *  Detection of the C++ core language features.
- *  May be amended by compiler_quirks.h.
+/** @file
+ *  Purpose: detect the C++ core language features sqlite_orm can use.
+ *
+ *  Intention: the language tier of the configuration gathered by `config.h`, read from the feature-test macros
+ *  `__cpp_*` and from `__cplusplus`; `compiler_quirks.h`, `stdlib_features.h` and `capabilities.h` build on it. Its
+ *  macros are named `SQLITE_ORM_CPP_<feature>_SUPPORTED`, after the standard's prefix `__cpp_`.
  */
 
-#ifdef __has_cpp_attribute
-#define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) __has_cpp_attribute(attr)
-#else
-#define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) 0L
-#endif
-
 #if __cpp_generic_lambdas >= 201707L
-#define SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
+#define SQLITE_ORM_CPP_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
 #endif
 
 #if __cpp_init_captures >= 201803L
-#define SQLITE_ORM_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
+#define SQLITE_ORM_CPP_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
 #endif
 
 #if __cpp_consteval >= 201811L
-#define SQLITE_ORM_CONSTEVAL_SUPPORTED
+#define SQLITE_ORM_CPP_CONSTEVAL_SUPPORTED
 #endif
 
 #if __cpp_char8_t >= 201811L
-#define SQLITE_ORM_CHAR8T_SUPPORTED
+#define SQLITE_ORM_CPP_CHAR8T_SUPPORTED
 #endif
 
 #if __cpp_aggregate_paren_init >= 201902L
-#define SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+#define SQLITE_ORM_CPP_AGGREGATE_PAREN_INIT_SUPPORTED
 #endif
 
 #if __cpp_constexpr >= 201907L
-#define SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
+#define SQLITE_ORM_CPP_TRIVIAL_DEFAULTINIT_SUPPORTED
 #endif
 
 #if __cpp_concepts >= 201907L
-#define SQLITE_ORM_CONCEPTS_SUPPORTED
+#define SQLITE_ORM_CPP_CONCEPTS_SUPPORTED
 #endif
 
 #if __cpp_nontype_template_args >= 201911L
-#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#define SQLITE_ORM_CPP_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#endif
+
+// overwrite SQLITE_ORM_CPP_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#if (__cpp_nontype_template_args < 201911L) &&                                                                         \
+    (defined(__clang__) && (__clang_major__ >= 12) && (__cplusplus >= 202002L))
+#define SQLITE_ORM_CPP_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
 #if __cpp_explicit_this_parameter >= 202110L
-#define SQLITE_ORM_DEDUCING_THIS_SUPPORTED
+#define SQLITE_ORM_CPP_DEDUCING_THIS_SUPPORTED
 #endif
 
 #if __cpp_static_call_operator >= 202207L
-#define SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#define SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
 #endif
 
 #if __cpp_pack_indexing >= 202311L
-#define SQLITE_ORM_PACK_INDEXING_SUPPORTED
+#define SQLITE_ORM_CPP_PACK_INDEXING_SUPPORTED
 #endif
 
 #if __cpp_structured_bindings >= 202411L
-#define SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#define SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED
 #endif
 
 #if __cpp_contracts >= 202502L
-#define SQLITE_ORM_CONTRACTS_SUPPORTED
+#define SQLITE_ORM_CPP_CONTRACTS_SUPPORTED
 #endif
 
 #if __cpp_impl_reflection >= 202506L
-#define SQLITE_ORM_REFLECTION_SUPPORTED
+#define SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 #endif
 
 #if __cplusplus >= 202002L
-#define SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
-#define SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+#define SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
+#define SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED
 #endif
 
 // #include "toolchain/platform.h"
 
+/** @file
+ *  Purpose: identify the platform sqlite_orm is used on.
+ *
+ *  Intention: the platform tier of the configuration gathered by `config.h`; `capabilities.h` builds on it. Its macros
+ *  are named `SQLITE_ORM_PLATFORM_<platform>`.
+ */
+
 #if defined(_WIN32)
-#define SQLITE_ORM_WIN
+#define SQLITE_ORM_PLATFORM_WIN
 
 #elif defined(__APPLE__)
 #include <TargetConditionals.h>
 #if TARGET_IPHONE_SIMULATOR == 1 || TARGET_OS_IPHONE == 1
-#define SQLITE_ORM_IOS
+#define SQLITE_ORM_PLATFORM_IOS
 #elif TARGET_OS_OSX == 1
-#define SQLITE_ORM_MACOS
+#define SQLITE_ORM_PLATFORM_MACOS
 #endif
-#define SQLITE_ORM_APPLE
-#define SQLITE_ORM_UNIX
+#define SQLITE_ORM_PLATFORM_APPLE
+#define SQLITE_ORM_PLATFORM_UNIX
 
 #elif defined(__linux__)
 #if defined(__ANDROID__)
-#define SQLITE_ORM_ANDROID
+#define SQLITE_ORM_PLATFORM_ANDROID
 #endif
-#define SQLITE_ORM_LINUX
-#define SQLITE_ORM_UNIX
+#define SQLITE_ORM_PLATFORM_LINUX
+#define SQLITE_ORM_PLATFORM_UNIX
 
 #elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
-#define SQLITE_ORM_BSD
-#define SQLITE_ORM_UNIX
+#define SQLITE_ORM_PLATFORM_BSD
+#define SQLITE_ORM_PLATFORM_UNIX
 
 #elif defined(__RTP__) || defined(_WRS_KERNEL)
-#define SQLITE_ORM_VXWORKS
-#define SQLITE_ORM_UNIX
+#define SQLITE_ORM_PLATFORM_VXWORKS
+#define SQLITE_ORM_PLATFORM_UNIX
 
 #elif defined(__unix__) || defined(__unix)
-#define SQLITE_ORM_UNIX
+#define SQLITE_ORM_PLATFORM_UNIX
 
 #else
 #error "Unknown target platform detected"
@@ -210,86 +232,58 @@
 
 // #include "toolchain/stdlib_features.h"
 
-/*
- *  Detection of the C++ standard library features.
+/** @file
+ *  Purpose: detect the C++ standard library features sqlite_orm can use.
+ *
+ *  Intention: the standard library tier of the configuration gathered by `config.h`, read from the feature-test macros
+ *  `__cpp_lib_*` of `<version>`; `capabilities.h` builds on it. Its macros are named
+ *  `SQLITE_ORM_CPPxx_LIB_<feature>_SUPPORTED`, after the standard's prefix `__cpp_lib_` and the standard the feature
+ *  came with.
  */
-
-// #include "check_prerequisites.h"
-
-/*
- *  This header detects missing core C++ language features and standard library features
- *  on which sqlite_orm depends, bailing out with a hard error.
- */
-
-// note: Before the C++17 language standard was made the baseline, the library had workarounds for these specific missing C++14 language features,
-// so they are kept here as explicit checks for reference.
-#if (__cpp_aggregate_nsdmi < 201304L || __cpp_constexpr < 201304L)
-#error A fully C++17-compliant compiler is required.
-#endif
-
-#if (!defined(__has_include)) ||                                                                                       \
-    ((__cpp_static_assert < 201411L) || (__cpp_noexcept_function_type < 201510L) ||                                    \
-     (__cpp_fold_expressions < 201603L || __cpp_constexpr < 201603L || __cpp_aggregate_bases < 201603L ||              \
-      __cpp_range_based_for < 201603L) ||                                                                              \
-     (__cpp_if_constexpr < 201606L || __cpp_inline_variables < 201606L || __cpp_structured_bindings < 201606L) ||      \
-     (__cpp_deduction_guides < 201703L))
-#error A fully C++17-compliant compiler is required.
-#endif
-
-// Make the standard library's feature-test macros universally available:
-// `<version>` is a C++20 header, but is shipped independently of the language mode by libstdc++ 9, libc++ 8 and MSVC STL 19.20 or newer.
-// Older standard libraries only know the pre-C++20 idiom of including `<ciso646>`, an otherwise empty header
-// that drags in the standard library's configuration. Note that this is what keeps MSVC 19.16 (VC 2017 15.9) viable,
-// since it is the only one of the three that defines the feature-test macros in its configuration.
-#if __has_include(<version>)
-#include <version>
-#elif __has_include(<ciso646>)
-#include <ciso646>
-#endif
-
-// note: The check is deliberately limited to the C++17 library features sqlite_orm relies on;
-// e.g. `__cpp_lib_hardware_interference_size` is a C++17 feature that libc++ still does not provide.
-// It also rules out libstdc++ 7-8 and libc++ 7, which provide these features but no populated `<version>`
-// (libc++ 7's is an empty stub). Testing the feature headers themselves instead would include the standard library
-// ahead of everything, which conflicts with the `SQLITE_ORM_IMPORT_STD_MODULE` build.
-// The Apple deployment target (macOS 10.14 / iOS 12 for `std::optional`) is beyond any macro test.
-#if ((__cpp_lib_void_t < 201411L || __cpp_lib_bool_constant < 201505L) ||                                              \
-     (__cpp_lib_logical_traits < 201510L || __cpp_lib_type_trait_variable_templates < 201510L) ||                      \
-     (__cpp_lib_is_aggregate < 201703L)) ||                                                                            \
-    ((__cpp_lib_invoke < 201411L || __cpp_lib_apply < 201603L || __cpp_lib_is_invocable < 201703L)) ||                 \
-    ((__cpp_lib_optional < 201606L || __cpp_lib_string_view < 201606L))
-#error A fully C++17-compliant standard library is required (libstdc++ 9, libc++ 8, MSVC 19.16 or newer).
-#endif
 
 // #include "compiler_quirks.h"
 
-/*
- *  Compiler detection, and the workarounds for compiler quirks sqlite_orm depends on.
- *  May amend language_features.h.
+/** @file
+ *  Purpose: work around the compiler defects sqlite_orm's own code meets.
+ *
+ *  Intention: the internal tier of the configuration gathered by `config.h`: published only because
+ *  `stdlib_features.h` and `capabilities.h` rest on it, and subject to change without notice; sqlite_orm's headers
+ *  test `SQLITE_ORM_INTERNAL_BROKEN_*` to choose a workaround.
  */
 
-// #include "language_features.h"
+// #include "compiler.h"
+
+/** @file
+ *  Purpose: identify the compiler that translates sqlite_orm.
+ *
+ *  Intention: the compiler tier of the configuration gathered by `config.h`; `compiler_quirks.h` keys its workarounds
+ *  on it. Its macros are named `SQLITE_ORM_COMPILER_<maker>_<compiler>`, the compiler being the one it presents itself
+ *  as: `SQLITE_ORM_COMPILER_GNU_GCC` is GNU's own GCC, as Clang defines `__GNUC__` too, and
+ *  `SQLITE_ORM_COMPILER_CLANG_MSVC` is Clang presenting itself as MSVC.
+ */
 
 #if defined(_MSC_VER) && !defined(__clang__)
-#define SQLITE_ORM_MS_MSVC
+#define SQLITE_ORM_COMPILER_MS_MSVC
 #endif
 
 #if defined(__clang__) && defined(_MSC_VER)
-#define SQLITE_ORM_CLANG_MSVC
+#define SQLITE_ORM_COMPILER_CLANG_MSVC
 #endif
 
 #if defined(__GNUC__) && !defined(__clang__)
-#define SQLITE_ORM_GNU_GCC
+#define SQLITE_ORM_COMPILER_GNU_GCC
 #endif
 
-#if defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1920)
-#define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+// #include "language_features.h"
+
+#if defined(SQLITE_ORM_COMPILER_MS_MSVC) && (_MSC_VER < 1920)
+#define SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION
 // Type replacement may fail if an alias template has a non-type template parameter from a dependent expression in it,
 // `e.g. template<class T> using is_something = std::bool_constant<is_something_v<T>>;`
 // Remedies:
 // a. use a derived struct: `template<class T> struct is_something : std::bool_constant<is_something_v<T>>;`
 // b. hoist the result into a constexpr value: `static constexpr auto value = is_something_v<T>; using is_something : std::bool_constant<value>;`
-#define SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
+#define SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
 #endif
 
 // These compilers are known to have problems with alias templates in SFINAE contexts:
@@ -300,8 +294,9 @@
 // In these cases we have to use helper structures to break down the type alias.
 // Note that the detection of specific compilers is so complicated because some compilers emulate other compilers,
 // so we simply exclude all compilers that do not support C++20, even though this test is actually inaccurate.
-#if (defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1920)) || (!defined(SQLITE_ORM_MS_MSVC) && (__cplusplus < 202002L))
-#define SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
+#if (defined(SQLITE_ORM_COMPILER_MS_MSVC) && (_MSC_VER < 1920)) ||                                                     \
+    (!defined(SQLITE_ORM_COMPILER_MS_MSVC) && (__cplusplus < 202002L))
+#define SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
 #endif
 
 // msvc 16.11 in C++20 mode fails to look up a type alias declared in an enclosing lambda if the use site is
@@ -310,25 +305,19 @@
 // error reported at the end of the translation unit without a source location.
 // Remedy: redeclare the alias in the generic lambda that uses it.
 // Verified broken with 19.29, verified fixed with 19.44 and 19.51; the versions in between were not tested.
-#if defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1944)
-#define SQLITE_ORM_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
-#endif
-
-// overwrite SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-#if (__cpp_nontype_template_args < 201911L) &&                                                                         \
-    (defined(__clang__) && (__clang_major__ >= 12) && (__cplusplus >= 202002L))
-#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#if defined(SQLITE_ORM_COMPILER_MS_MSVC) && (_MSC_VER < 1944)
+#define SQLITE_ORM_INTERNAL_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
 #endif
 
 // clang 10 chokes on concepts that don't depend on template parameters;
 // when it tries to instantiate an expression in a requires expression, which results in an error,
 // the compiler reports an error instead of dismissing the templated function.
-#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && (defined(__clang__) && (__clang_major__ == 10))
-#define SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS
+#if defined(SQLITE_ORM_CPP_CONCEPTS_SUPPORTED) && (defined(__clang__) && (__clang_major__ == 10))
+#define SQLITE_ORM_INTERNAL_BROKEN_NONTEMPLATE_CONCEPTS
 #endif
 
 #if defined(__clang__) && (__clang_major__ <= 15)
-#define SQLITE_ORM_BROKEN_CPP20_VIEWS
+#define SQLITE_ORM_INTERNAL_BROKEN_CPP20_VIEWS
 #endif
 
 // gcc 11 and 12 relocate bytewise a temporary that lives across a suspension point of a `co_await` expression,
@@ -338,34 +327,47 @@
 // gcc 11 also initializes a pack init-capture bytewise and relocates bytewise a closure passed as a coroutine
 // parameter, with the same effect on captured strings; `bind_arguments()` and `async_storage::run()` in
 // `execution/async_storage.h` avoid both, with a tuple and by moving the closure to the heap.
-#if defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 13)
-#define SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES
+#if defined(SQLITE_ORM_COMPILER_GNU_GCC) && (__GNUC__ < 13)
+#define SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES
 #endif
 
 // #include "language_features.h"
 
-#if __cpp_lib_is_constant_evaluated >= 201811L
-#define SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
+// Make the standard library's feature-test macros universally available:
+// `<version>` is a C++20 header, but is shipped independently of the language mode by libstdc++ 9, libc++ 8 and MSVC STL 19.20 or newer.
+// Older standard libraries only know the pre-C++20 idiom of including `<ciso646>`, an otherwise empty header
+// that drags in the standard library's configuration. Note that this is what keeps MSVC 19.16 (VC 2017 15.9) viable,
+// since it is the only one of the three that defines the feature-test macros in its configuration.
+#if defined(__has_include)
+#if __has_include(<version>)
+#include <version>
+#elif __has_include(<ciso646>)
+#include <ciso646>
+#endif
 #endif
 
-#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
-#define SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#if __cpp_lib_is_constant_evaluated >= 201811L
+#define SQLITE_ORM_CPP20_LIB_IS_CONSTANT_EVALUATED_SUPPORTED
+#endif
+
+#if defined(SQLITE_ORM_CPP_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
+#define SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #endif
 
 #if __cpp_lib_ranges >= 201911L
-#define SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#define SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
 #endif
 
-#if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_BROKEN_CPP20_VIEWS)
-#define SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+#if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_INTERNAL_BROKEN_CPP20_VIEWS)
+#define SQLITE_ORM_CPP20_LIB_VIEWS_SUPPORTED
 #endif
 
 #if __cpp_impl_coroutine >= 201902L && __cpp_lib_coroutine >= 201902L
-#define SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#define SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED
 #endif
 
 #if __cpp_lib_generator >= 202207L
-#define SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+#define SQLITE_ORM_CPP23_LIB_GENERATOR_SUPPORTED
 #endif
 
 // C++20 or later (unfortunately there's no feature test macro).
@@ -377,29 +379,35 @@
 // Another way of detection might be the feature-test macro __cpp_lib_concepts
 #if (__cplusplus >= 202002L) &&                                                                                        \
     ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
-#define SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
+#define SQLITE_ORM_CPP20_LIB_DEFAULT_SENTINEL_SUPPORTED
 #endif
 
-#if (defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&              \
-    (defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED))
+#if (defined(SQLITE_ORM_CPP_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_CPP_CONSTEVAL_SUPPORTED)) &&      \
+    (defined(SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED))
 #define SQLITE_ORM_WITH_CPP20_ALIASES
 #endif
 
 #define SQLITE_ORM_WITH_CTE
 
-#if defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+// the deprecated spelling of `SQLITE_ORM_OMIT_CODECVT`, which omits the `std::wstring` support
+#if defined(SQLITE_ORM_OMITS_CODECVT) && !defined(SQLITE_ORM_OMIT_CODECVT)
+#define SQLITE_ORM_OMIT_CODECVT
+#endif
+
+#if defined(SQLITE_ORM_CPP_REFLECTION_SUPPORTED)
 #define SQLITE_ORM_WITH_VIEW
 #endif
 
 // The asynchronous storage: its I/O engine is io_uring (Linux), its fibers switch stacks with inline assembly
 // written for GCC and Clang on x86_64 and aarch64.
-#if (defined(SQLITE_ORM_LINUX) && !defined(SQLITE_ORM_ANDROID)) &&                                                     \
-    (defined(SQLITE_ORM_CPP20_COROUTINES_SUPPORTED) && !defined(SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES)) &&           \
+#if (defined(SQLITE_ORM_PLATFORM_LINUX) && !defined(SQLITE_ORM_PLATFORM_ANDROID)) &&                                   \
+    (defined(SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED) &&                                                             \
+     !defined(SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES)) &&                                                    \
     (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(__aarch64__))
 #define SQLITE_ORM_WITH_ASYNC
 #endif
 
-// #include "toolchain/check_prerequisites.h"
+// #include "toolchain/compiler.h"
 
 // #include "toolchain/compiler_quirks.h"
 

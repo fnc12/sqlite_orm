@@ -27,7 +27,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_DBSTAT_SUPPORTED
                               std::tuple{make_dbstat_table()},
 #endif
-#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_CPP_REFLECTION_SUPPORTED)
                               make_pragma_tables(),
 #endif
                               std::tuple<>{});

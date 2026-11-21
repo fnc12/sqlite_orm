@@ -41,7 +41,7 @@ namespace sqlite_orm::internal {
 
     //  note: the definitions below are written in terms of the variable templates rather than of the `is_*` alias
     //  templates of the traits - msvc 141 fails to resolve an alias template in the initializer of a variable template
-    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR];
+    //  [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR];
     //  and they name their template parameter like the declarations in `grammar_traits_fwd.h` do - msvc 141 resolves
     //  the initializer of a redeclared variable template with the parameter names of the first declaration
 

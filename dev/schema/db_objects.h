@@ -101,7 +101,7 @@ namespace sqlite_orm::internal {
         return std::tuple_cat(unpack_db_objects<K, std::tuple<Spec...>>(std::get<K>(std::move(specs)))...);
     }
 
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED
     /**
      *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
      */

@@ -229,7 +229,7 @@ namespace sqlite_orm::internal {
      *  Implementation note: it is provided as a mixin to reduce the number of involved template parameters,
      *  which is possible in C++23 mode for 'getters'.
      */
-#ifdef SQLITE_ORM_DEDUCING_THIS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEDUCING_THIS_SUPPORTED
     template<class O>
 #else
     template<class O, class Definition>
@@ -251,7 +251,7 @@ namespace sqlite_orm::internal {
 
         template<class M, class... Cs, satisfies<is_setter, M> = true>
         const member_field_type_t<M>*
-#ifdef SQLITE_ORM_DEDUCING_THIS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEDUCING_THIS_SUPPORTED
         object_field_value(this const table_definition<Cs...>& self, const object_type& object, M memberPointer) {
             using elements_type = elements_type_t<table_definition<Cs...>>;
 #else

@@ -24,7 +24,7 @@ namespace sqlite_orm::internal {
      *  Access the main DML expression of a with clause or the passed in DML expression.
      */
     template<class DML>
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CONCEPTS_SUPPORTED
         requires (is_raw_dml_expression_v<DML>)
 #endif
     constexpr decltype(auto) access_main_dml(const DML& dml) {
@@ -68,7 +68,7 @@ namespace sqlite_orm::internal {
      *  object by primary key and carries no object to reach for. Hence the second half.
      */
     template<class DML>
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CONCEPTS_SUPPORTED
         requires (is_object_dml_expression_v<expression_type_t<DML>> &&
                   requires(DML& statement) { statement.expression.object; })
 #endif

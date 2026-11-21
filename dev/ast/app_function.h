@@ -10,7 +10,7 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_member_function_pointer, std::is_function, std::remove_const, std::decay, std::is_convertible, std::is_same, std::false_type, std::true_type, std::is_pointer
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #include <concepts>  //  std::copy_constructible
 #endif
 #include <algorithm>  //  std::min, std::copy_n
@@ -255,7 +255,7 @@ namespace sqlite_orm::internal {
         return valid;
     }
 
-#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
+#ifndef SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
     template<size_t I, const char* PointerArg, const char* Binding>
     SQLITE_ORM_CONSTEVAL bool assert_same_pointer_tag() {
         constexpr bool valid = Binding == PointerArg;

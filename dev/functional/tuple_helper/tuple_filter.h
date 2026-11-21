@@ -31,7 +31,7 @@ namespace sqlite_orm::internal {
     template<class Tpl, template<class...> class Pred, template<class...> class Proj, class Seq>
     struct filter_tuple_sequence;
 
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#ifndef SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION
     template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
     struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
         : flatten_idxseq<mpl::ternary_t<Pred<mpl::invoke_fn_t<Proj, std::tuple_element_t<Idx, Tpl>>>,
@@ -81,7 +81,7 @@ namespace sqlite_orm::internal {
      *  `FilterProj` is a metafunction
      *  
      *  Implementation note: must be distinct from a `count_tuple` w/o index sequence parameter because legacy compilers have problems
-     *  with a default Sequence in function template parameters [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
+     *  with a default Sequence in function template parameters [SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION].
      */
     template<class Tpl,
              template<class...> class Pred,

@@ -15,7 +15,7 @@
 #include <type_traits>  //  std::remove_reference, std::remove_cvref, std::decay
 #include <utility>  //  std::forward, std::pair
 #include <vector>  //  std::vector
-#ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP23_LIB_GENERATOR_SUPPORTED
 #include <generator>
 #endif
 #endif
@@ -72,7 +72,7 @@
 namespace sqlite_orm::internal {
     /*
      *  Implementation note: the technique of indirect expression testing is because
-     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
      *  It must also be a type that differs from those for `is_printable_v`, `is_bindable_v`.
      */
     template<class Binder>
@@ -332,11 +332,11 @@ namespace sqlite_orm::internal {
          *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
          */
         template<class Select>
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
             requires (is_select_expression_v<Select>)
 #endif
         result_set_view<Select, db_objects_type> iterate(Select expression) {
-#ifndef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifndef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
             static_assert(is_select_expression_v<Select>,
                           "SQL expression must be a select expression or a with-clause with a select expression");
 #endif
@@ -347,7 +347,7 @@ namespace sqlite_orm::internal {
             return {this->db_objects, std::move(conRef), std::move(expression)};
         }
 
-#ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP23_LIB_GENERATOR_SUPPORTED
         /*  
          *  Iterate over objects of a type mapped as a table, lazily fetched from a result set in a coroutine.
          */
@@ -1612,7 +1612,7 @@ namespace sqlite_orm::internal {
             };
 
             if constexpr (is_replace_range_v<T>) {
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
                 std::ranges::for_each(statement.expression.range.first,
                                       statement.expression.range.second,
                                       std::ref(processObject),
@@ -1654,7 +1654,7 @@ namespace sqlite_orm::internal {
 
                 table.template for_each_column_excluding<mpl::disjunction<is_pkcolumn_q, is_generated_always_q>>(
                     [&table, &bindValue, &object](auto& column) {
-#ifdef SQLITE_ORM_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
+#ifdef SQLITE_ORM_INTERNAL_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
                         using table_type = polyfill::remove_cvref_t<decltype(table)>;
 #endif
                         if (!table_type::is_without_rowid::value &&
@@ -1670,7 +1670,7 @@ namespace sqlite_orm::internal {
             };
 
             if constexpr (is_insert_range_v<T>) {
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
                 std::ranges::for_each(statement.expression.range.first,
                                       statement.expression.range.second,
                                       std::ref(processObject),

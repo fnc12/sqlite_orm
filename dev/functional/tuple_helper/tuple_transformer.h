@@ -79,7 +79,7 @@ namespace sqlite_orm::internal {
         return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
     }
 
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED
     /*
      *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
      */
@@ -105,7 +105,7 @@ namespace sqlite_orm::internal {
         return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
     }
 
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED
     /*
      *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
      */

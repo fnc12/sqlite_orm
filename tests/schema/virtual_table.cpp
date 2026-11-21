@@ -25,7 +25,7 @@ TEST_CASE("fts5 virtual table schema") {
 
         using hidden = fts5::hidden_fields_of<Post>;
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const Post&) const = default;
 #else
         bool operator==(const Post& other) const {
@@ -311,7 +311,7 @@ TEST_CASE("generate_series virtual table schema") {
 }
 #endif
 
-#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_CPP_REFLECTION_SUPPORTED)
 TEST_CASE("pragma_table_info virtual table") {
     using Catch::Matchers::Equals;
     using row_type = std::tuple<int, std::string, std::string, bool, std::string, int>;
@@ -466,7 +466,7 @@ TEST_CASE("rtree virtual table schema") {
 }
 #endif
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 #ifdef SQLITE_ORM_FTS5_SUPPORTED
 namespace {
     struct[[= "reflected_posts"_orm_name]] ReflectedPost {

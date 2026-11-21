@@ -29,7 +29,7 @@ namespace sqlite_orm::internal {
     struct quoted_expression_t {
         T _value;
 
-#ifdef SQLITE_ORM_DEDUCING_THIS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEDUCING_THIS_SUPPORTED
         template<class Self, class R>
         assign_t<T, R> operator=(this Self&& self, R right) {
             return {polyfill::forward_like<Self>(self._value), std::move(right)};

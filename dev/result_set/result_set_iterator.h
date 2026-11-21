@@ -17,7 +17,7 @@ namespace sqlite_orm::internal {
     template<class ColResult, class DBOs>
     class result_set_iterator;
 
-#ifdef SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
+#ifdef SQLITE_ORM_CPP20_LIB_DEFAULT_SENTINEL_SUPPORTED
     using result_set_sentinel_t = std::default_sentinel_t;
 #else
     // sentinel
@@ -35,7 +35,7 @@ namespace sqlite_orm::internal {
       public:
         using db_objects_type = DBOs;
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
         using iterator_concept = std::input_iterator_tag;
 #else
         using iterator_category = std::input_iterator_tag;
@@ -70,7 +70,7 @@ namespace sqlite_orm::internal {
         friend bool operator==(const result_set_iterator& it, const result_set_sentinel_t&) noexcept {
             return sqlite3_data_count(it.stmt.get()) == 0;
         }
-#ifndef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifndef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         friend bool operator!=(const result_set_iterator& it, const result_set_sentinel_t& s) noexcept {
             return !(it == s);
         }

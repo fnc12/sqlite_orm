@@ -7,7 +7,7 @@
 #include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref, std::disjunction
 #include <utility>  //  std::make_pair
 #include <vector>  //  std::vector
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #include <locale>  // std::wstring_convert
 #endif
@@ -15,7 +15,7 @@
 #include <functional>  //  std::invoke
 #include <list>  //  std::list
 #include <memory>
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
 #include <ranges>  //  std::views::transform
 #endif
 #endif
@@ -80,7 +80,7 @@ namespace sqlite_orm::internal {
       private:
         template<class X,
                  std::enable_if_t<is_printable<X>::value && !std::is_base_of<std::string, X>::value
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
                                       && !std::is_base_of<std::wstring, X>::value
 #endif
                                   ,
@@ -100,7 +100,7 @@ namespace sqlite_orm::internal {
         static std::string do_serialize(orm_gsl::czstring c) {
             return quote_string_literal(c);
         }
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
         static std::string do_serialize(const std::wstring& c) {
             // implementation detail: utilizing field_printer
             return quote_string_literal(field_printer<std::wstring>{}(c));
@@ -114,7 +114,7 @@ namespace sqlite_orm::internal {
         static std::string do_serialize(const std::string_view& c) {
             return quote_string_literal(std::string(c));
         }
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
         static std::string do_serialize(const std::wstring_view& c) {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             return quote_string_literal(converter.to_bytes(c.data(), c.data() + c.size()));
@@ -392,7 +392,7 @@ namespace sqlite_orm::internal {
             //  note: msvc 141 resolves a `std::get<0>` at parse time, even here in a branch it has already ruled
             //  out for an empty argument tuple, and forming that call trips the "tuple index out of bounds"
             //  static_assert in `std::tuple_element`. Hoisting the index into a constexpr value defers the call
-            //  to instantiation time; the same remedy as b. of SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR,
+            //  to instantiation time; the same remedy as b. of SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR,
             //  although that quirk is about alias templates rather than calls.
             constexpr size_t windowRefIndex = 0;
             ss << " OVER " << std::get<windowRefIndex>(arguments).name;
@@ -1513,7 +1513,7 @@ namespace sqlite_orm::internal {
                                                         const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             std::ostringstream ss;
             ss << "SET ";
-#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_VIEWS_SUPPORTED
             ss << streaming_serialized(statement | std::views::transform(&dynamic_set_entry::serialized_value));
 #else
             int index = 0;
@@ -1858,7 +1858,7 @@ namespace sqlite_orm::internal {
                << streaming_identifier(table.name) << " WHERE ";
 
             const auto primaryKeyColumnNames = table.primary_key_column_names();
-#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
             for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {
                 ss << sep[std::exchange(first, false)] << streaming_identifier(pkName) << " = ?";

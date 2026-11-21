@@ -5,7 +5,7 @@
 #endif
 
 namespace sqlite_orm::internal {
-#if defined(SQLITE_ORM_PACK_INDEXING_SUPPORTED)
+#if defined(SQLITE_ORM_CPP_PACK_INDEXING_SUPPORTED)
     /**
      *  Get the index value of an `index_sequence` at a specific position.
      */
@@ -20,7 +20,7 @@ namespace sqlite_orm::internal {
     template<size_t Pos, size_t... Idx>
     SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
         static_assert(Pos < sizeof...(Idx));
-#ifdef SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
+#ifdef SQLITE_ORM_CPP_TRIVIAL_DEFAULTINIT_SUPPORTED
         size_t result;
 #else
         size_t result = 0;

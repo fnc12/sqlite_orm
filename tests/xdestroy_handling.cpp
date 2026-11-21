@@ -8,7 +8,7 @@ using std::default_delete;
 using std::unique_ptr;
 
 // Wrap std::default_delete in a function
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#ifndef SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION
 template<typename T>
 void delete_default(mpl::ternary_t<std::is_array<T>, std::decay_t<T>, T*> o) noexcept(
     noexcept(std::default_delete<T>{}(o))) {
@@ -23,7 +23,7 @@ template<typename T>
 inline constexpr delete_default_t<T> delete_default_f{};
 #endif
 
-#ifndef SQLITE_ORM_CLANG_MSVC
+#ifndef SQLITE_ORM_COMPILER_CLANG_MSVC
 using free_t = std::integral_constant<decltype(&free), free>;
 inline constexpr free_t free_f{};
 #endif
@@ -54,7 +54,8 @@ TEST_CASE("obtain_xdestroy_for") {
 
     {
         constexpr int* int_nullptr = nullptr;
-#if !defined(SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION) || defined(SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED)
+#if !defined(SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION) ||                                                    \
+    defined(SQLITE_ORM_CPP_TRIVIAL_DEFAULTINIT_SUPPORTED)
         constexpr const int* const_int_nullptr = nullptr;
 #endif
 
@@ -63,7 +64,7 @@ TEST_CASE("obtain_xdestroy_for") {
         STATIC_REQUIRE(xDestroy1 == nullptr);
         REQUIRE(xDestroy1 == nullptr);
 
-#ifndef SQLITE_ORM_CLANG_MSVC
+#ifndef SQLITE_ORM_COMPILER_CLANG_MSVC
         // free(int*)
         constexpr xdestroy_fn_t xDestroy2 = obtain_xdestroy_for(free, int_nullptr);
         STATIC_REQUIRE(xDestroy2 == &free);
@@ -97,7 +98,7 @@ TEST_CASE("obtain_xdestroy_for") {
         STATIC_REQUIRE(xDestroy5 == &xdestroy_proxy<default_delete<int>, int>);
         REQUIRE((xDestroy5 == &xdestroy_proxy<default_delete<int>, int>));
 
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#ifndef SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION
         // delete_default_f<int>(int*)
         constexpr xdestroy_fn_t xDestroy6 = obtain_xdestroy_for(delete_default_f<int>, int_nullptr);
         STATIC_REQUIRE(xDestroy6 == &xdestroy_proxy<delete_default_t<int>, int>);
@@ -109,8 +110,8 @@ TEST_CASE("obtain_xdestroy_for") {
         REQUIRE((xDestroy7 == &xdestroy_proxy<delete_default_t<int>, const int>));
 #endif
 
-#ifdef SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
-#ifndef SQLITE_ORM_CLANG_MSVC
+#ifdef SQLITE_ORM_CPP_TRIVIAL_DEFAULTINIT_SUPPORTED
+#ifndef SQLITE_ORM_COMPILER_CLANG_MSVC
         // xdestroy_holder{ free }(int*)
         constexpr xdestroy_fn_t xDestroy8 = obtain_xdestroy_for(xdestroy_holder{free}, int_nullptr);
         STATIC_REQUIRE(xDestroy8 == &free);

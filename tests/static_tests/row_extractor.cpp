@@ -1,6 +1,6 @@
 #include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #define ENABLE_THIS_UT
 #endif
 
@@ -69,7 +69,7 @@ TEST_CASE("is_extractable") {
     check_not_extractable<const char*>();
     check_extractable<std::string>();
     check_extractable<StringVeneer<char>>();
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
     check_not_extractable<const wchar_t*>();
     check_extractable<std::wstring>();
     check_not_extractable<StringVeneer<wchar_t>>();
@@ -78,7 +78,7 @@ TEST_CASE("is_extractable") {
     check_extractable<std::unique_ptr<int>>();
     check_extractable<std::shared_ptr<int>>();
     check_not_extractable<std::string_view>();
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
     check_not_extractable<std::wstring_view>();
 #endif
     check_not_extractable<std::nullopt_t>();

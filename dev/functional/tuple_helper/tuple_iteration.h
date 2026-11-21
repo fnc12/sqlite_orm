@@ -11,7 +11,7 @@ namespace sqlite_orm::internal {
     constexpr void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
         if constexpr (reversed) {
             // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
-#ifdef SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
+#ifdef SQLITE_ORM_CPP_TRIVIAL_DEFAULTINIT_SUPPORTED
             [[maybe_unused]] int sink;
 #else
             [[maybe_unused]] int sink = 0;
@@ -55,7 +55,7 @@ namespace sqlite_orm::internal {
      *  
      *  Note: This method is useful for reducing combinatorial instantiation of template lambdas,
      *  as long as this library supports compilers that do not implement
-     *  explicit template parameters in generic lambdas [SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED].
+     *  explicit template parameters in generic lambdas [SQLITE_ORM_CPP_EXPLICIT_GENERIC_LAMBDA_SUPPORTED].
      *  Unfortunately it doesn't work with user-defined conversion operators in order to extract
      *  parts of a class. In other words, the destination type must be a direct template base class.
      */

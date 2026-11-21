@@ -1,12 +1,13 @@
 #pragma once
 
-/*
- *  The public configuration: detection of the language, standard library, compiler and platform,
- *  the SQLite version and feature macros, and sqlite_orm's capabilities.
- *  Macros only, no declarations.
+/** @file
+ *  Purpose: gather the public configuration.
  *
- *  Published as <sqlite_orm/sqlite_orm_config.h> for consumers of the named module, which cannot export macros:
- *  include it ahead of `import sqlite_orm;` and `import std;`.
+ *  Intention: each of its tiers has a header of its own, which names the tier; `internal_macros.h` builds sqlite_orm's
+ *  own spelling on it.
+ *
+ *  Published, macros only, as <sqlite_orm/sqlite_orm_config.h> for consumers of the named module, which cannot export
+ *  macros: include it ahead of `import sqlite_orm;` and `import std;`.
  *  The standard permits either order, but GCC rejects including it after either import: it does not merge
  *  the standard library's inline definitions from `<version>` with those reachable from the module
  *  [see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=99000].
@@ -17,7 +18,7 @@
 #define SQLITE_ORM_CONFIG_INCLUDED
 
 #include "capabilities.h"
-#include "toolchain/check_prerequisites.h"
+#include "toolchain/compiler.h"
 #include "toolchain/compiler_quirks.h"
 #include "toolchain/language_features.h"
 #include "toolchain/platform.h"

@@ -1,5 +1,13 @@
 #pragma once
 
+/** @file
+ *  Purpose: tell which optional SQLite features the SQLite in use provides.
+ *
+ *  Intention: the SQLite tier of the configuration gathered by `config.h`, read from `<sqlite3.h>`'s version and the
+ *  `SQLITE_ENABLE_*` and `SQLITE_OMIT_*` macros a distribution defines; sqlite_orm's headers test
+ *  `SQLITE_ORM_*_SUPPORTED` to offer the functions and tables of a feature.
+ */
+
 #include <sqlite3.h>
 
 /*

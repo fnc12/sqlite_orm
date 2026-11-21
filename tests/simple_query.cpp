@@ -31,7 +31,7 @@ TEST_CASE("Simple query") {
         REQUIRE(ototo.size() == 1);
         REQUIRE(ototo.front() == "ototo");
     }
-#ifndef SQLITE_ORM_OMITS_CODECVT
+#ifndef SQLITE_ORM_OMIT_CODECVT
     {
         //  SELECT 'ototo'
         auto ototo = storage.select(L"ototo");

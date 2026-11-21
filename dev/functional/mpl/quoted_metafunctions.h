@@ -44,7 +44,7 @@ namespace sqlite_orm::internal::mpl {
      *  Determines whether a class template has a nested metafunction `fn`.
      *  
      *  Implementation note: the technique of specialiazing on the inline variable must come first because
-     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
+     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
      */
     template<class T, class SFINAE = void>
     constexpr bool is_quoted_metafunction_v = false;
@@ -372,7 +372,7 @@ namespace sqlite_orm::internal::mpl {
 
         template<template<class...> class Pack, class... T, class ProjectQ>
         struct invoke_this_fn<Pack<T...>, ProjectQ> {
-            // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+            // hoist result into `value` [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
             static constexpr size_t value =
                 find_first_true_helper({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
             using type = polyfill::index_constant<value>;
@@ -399,7 +399,7 @@ namespace sqlite_orm::internal::mpl {
 
         template<template<class...> class Pack, class... T, class ProjectQ>
         struct invoke_this_fn<Pack<T...>, ProjectQ> {
-            // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+            // hoist result into `value` [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
             static constexpr size_t value =
                 count_true_helper({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
             using type = polyfill::index_constant<value>;
@@ -426,7 +426,7 @@ namespace sqlite_orm::internal::mpl {
 
         template<template<class...> class Pack, class... T, class ProjectQ>
         struct invoke_this_fn<Pack<T...>, ProjectQ> {
-            // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+            // hoist result into `value` [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
             static constexpr size_t value = static_cast<bool>(
                 count_true_helper({TraitQ::template fn<typename ProjectQ::template fn<T>>::value...}));
             using type = std::bool_constant<value>;

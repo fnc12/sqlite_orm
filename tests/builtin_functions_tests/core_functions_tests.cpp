@@ -320,7 +320,7 @@ namespace replace_func_local {
         std::string lastName;
         std::string phone;
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         friend bool operator==(const Contact&, const Contact&) = default;
 #else
         friend bool operator==(const Contact& lhs, const Contact& rhs) {

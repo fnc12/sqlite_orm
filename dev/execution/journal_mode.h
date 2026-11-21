@@ -63,7 +63,7 @@ namespace sqlite_orm::internal {
             journal_mode::WAL,
             journal_mode::OFF,
         }};
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
         std::ranges::transform(string, string.begin(), [](unsigned char c) SQLITE_ORM_STATIC_CALLOP noexcept {
             return std::toupper(c);
         });

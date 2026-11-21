@@ -4,6 +4,7 @@
   "target": "include/sqlite_orm/sqlite_orm.h",
   "sources": [
     "dev/config/prologue.h",
+    "dev/config/toolchain/check_prerequisites.h",
     "dev/config/config.h",
     "dev/config/internal_macros.h",
     "dev/functional/cxx_universal.h",

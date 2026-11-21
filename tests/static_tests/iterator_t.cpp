@@ -2,7 +2,7 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <type_traits>
 #include <utility>
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 #include <concepts>
 #endif
 
@@ -17,7 +17,7 @@ using internal::structure;
 using internal::table_reference;
 #endif
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 template<class T>
 using with_reference = T&;
 
@@ -79,14 +79,14 @@ concept storage_iterate_mapped_ref = requires(S& storage_type) {
 };
 #endif
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
 template<class Iter, class Value>
 concept can_iterate_result_set = requires(Iter it) {
     requires std::input_iterator<Iter>;
     // explicit check of the sentinel role, since `std::ranges::borrowed_range` in `can_view_mapped`
     // would not tell us why exactly the end iterator cannot be a sentinel
     requires std::sentinel_for<result_set_sentinel_t, Iter>;
-#ifdef SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
+#ifdef SQLITE_ORM_CPP20_LIB_DEFAULT_SENTINEL_SUPPORTED
     requires std::same_as<result_set_sentinel_t, std::default_sentinel_t>;
 #endif
     { *it } -> std::same_as<Value>;
@@ -107,7 +107,7 @@ concept storage_iterate_result_set = requires(S& storage_type, Select select) {
 };
 #endif
 
-#ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP23_LIB_GENERATOR_SUPPORTED
 template<class S, class T, class O>
 concept storage_yield_mapped = requires(S& storage_type) {
     { storage_type.template yield<T>() } -> std::same_as<std::generator<O>>;
@@ -126,7 +126,7 @@ concept storage_yield_result_set = requires(S& storage_type, Select select) {
 
 namespace {
     struct Object {};
-#if defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED) && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
+#if defined(SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED) && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
     constexpr orm_table_alias auto object_alias = "o"_alias.for_<Object>();
     constexpr orm_table_reference auto object_table = c<Object>();
 #endif
@@ -135,7 +135,7 @@ namespace {
 TEST_CASE("can view and iterate mapped") {
     using storage_type = decltype(make_storage("", make_table<Object>("")));
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     using iter = mapped_iterator<Object, storage_type::db_objects_type>;
 
     STATIC_REQUIRE(can_iterate_mapped<iter, Object>);
@@ -175,26 +175,26 @@ TEST_CASE("can view and iterate mapped") {
     STATIC_REQUIRE(std::is_same<std::iterator_traits<iter>::pointer, Object*>::value);
 #endif
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     STATIC_REQUIRE(storage_iterate_mapped<storage_type, Object>);
-#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_VIEWS_SUPPORTED
     STATIC_REQUIRE(storage_iterate_mapped_ref<storage_type, object_table, Object>);
 #endif
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_VIEWS_SUPPORTED
     STATIC_REQUIRE(storage_iterate_mapped_ref<storage_type, object_alias, Object>);
 #endif
 #endif
 #endif
 
-#ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP23_LIB_GENERATOR_SUPPORTED
     STATIC_REQUIRE(storage_yield_mapped<storage_type, Object, Object>);
     STATIC_REQUIRE(storage_yield_mapped_ref<storage_type, object_table, Object>);
     STATIC_REQUIRE(storage_yield_mapped_ref<storage_type, object_alias, Object>);
 #endif
 }
 
-#if defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED) && defined(SQLITE_ORM_CPP20_VIEWS_SUPPORTED)
+#if defined(SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED) && defined(SQLITE_ORM_CPP20_LIB_VIEWS_SUPPORTED)
 TEST_CASE("can view and iterate result set") {
     struct Object {};
     using empty_storage_type = decltype(make_storage(""));
@@ -235,7 +235,7 @@ TEST_CASE("can view and iterate result set") {
 #endif
 #endif
 
-#ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP23_LIB_GENERATOR_SUPPORTED
     STATIC_REQUIRE(storage_yield_result_set<empty_storage_type, decltype(select(42)), int>);
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     STATIC_REQUIRE(storage_yield_result_set<storage_type, decltype(with(x(i).as(select(1)), select(x->*i))), int>);

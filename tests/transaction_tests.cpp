@@ -10,7 +10,7 @@ namespace {
         int64 id = 0;
         std::string name;
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const Object&) const = default;
 #else
         bool operator==(const Object& other) const {

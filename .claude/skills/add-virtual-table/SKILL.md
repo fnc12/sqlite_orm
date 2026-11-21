@@ -14,7 +14,7 @@ The headers live in `dev/builtin/dbos/`, one per module, included by the umbrell
 Guard each header's contents, never its inclusion, with what the module needs: the SQLite version
 (`#if SQLITE_VERSION_NUMBER >= 3008012`), a compile option of SQLite through its feature macro in `dev/sqlite3/sqlite3_config.h`
 (`#ifdef SQLITE_ORM_DBSTAT_SUPPORTED`), or
-reflection (`SQLITE_ORM_REFLECTION_SUPPORTED`).
+reflection (`SQLITE_ORM_CPP_REFLECTION_SUPPORTED`).
 
 ## 1. The module tag
 
@@ -40,12 +40,12 @@ creates only instances named differently from the module.
 In `SQLITE_ORM_EXPORT namespace sqlite_orm`, a struct with one data member per column, named as
 SQLite names them. Hidden columns (the table-valued function's arguments, the schema) go into a
 nested `struct hidden` with `using enclosing_type = <row type>;`, so that `&row::hidden::arg`
-refers to a column of the enclosing table. Without `SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED`,
+refers to a column of the enclosing table. Without `SQLITE_ORM_CPP_AGGREGATE_PAREN_INIT_SUPPORTED`,
 add a constructor taking every column, as `table_info` does.
 
 Publish a table reference for use as a table-valued function:
 `inline constexpr orm_table_reference auto generate_series_table = c<generate_series>();`
-(guarded by `SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED`, with a plain `auto` otherwise, unless the
+(guarded by `SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED`, with a plain `auto` otherwise, unless the
 header requires C++26 anyway).
 
 ## 3. The definition factory

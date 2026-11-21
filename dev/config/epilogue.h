@@ -1,5 +1,11 @@
 #pragma once
 
+/** @file
+ *  Purpose: restore the compiler warnings and macros `prologue.h` suspended.
+ *
+ *  Intention: paired with `prologue.h`; both variants of <sqlite_orm/sqlite_orm.h> place it last.
+ */
+
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif

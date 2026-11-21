@@ -7,7 +7,7 @@ namespace {
     struct Pattern {
         std::string value;
 
-#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+#ifndef SQLITE_ORM_CPP_AGGREGATE_PAREN_INIT_SUPPORTED
         Pattern() = default;
         Pattern(std::string value) : value{std::move(value)} {}
 #endif
@@ -16,7 +16,7 @@ namespace {
         int id = 0;
         std::string attributes;
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         friend bool operator==(const Item&, const Item&) = default;
 #else
         friend bool operator==(const Item& lhs, const Item& rhs) {

@@ -71,7 +71,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
     /**
      *  Factory function for a RTREE virtual table definition.
      *
@@ -99,7 +99,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
     /**
      *  Factory function for a RTREE_I32 virtual table definition.
      *

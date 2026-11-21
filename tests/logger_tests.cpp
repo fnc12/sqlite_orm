@@ -25,7 +25,7 @@ namespace {
     std::vector<std::string> DidLogsCollector::logs;
 
 #ifdef SQLITE_ORM_WITH_VIEW
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
     struct[[= "users_view"_orm_name]] UserViewLoggerTests {
         int id = 0;
         std::string name;
@@ -100,7 +100,7 @@ TEST_CASE("logger") {
                                 make_column("id", &VisitLog::id, primary_key()),
                                 make_column("message", &VisitLog::message)),
 #ifdef SQLITE_ORM_WITH_VIEW
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
                      make_view<UserViewLoggerTests>(select(asterisk<User>())),
 #endif
 #endif
@@ -244,7 +244,7 @@ TEST_CASE("logger") {
             pushExpected(expected);
         }
 #ifdef SQLITE_ORM_WITH_VIEW
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
         SECTION("drop_view") {
             storage.drop_view("users_view");
             pushExpected(R"(DROP VIEW "users_view")");

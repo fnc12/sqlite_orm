@@ -1,8 +1,10 @@
 #pragma once
 
-/** @file The public configuration of the library, when used as separate headers rather than as the amalgamation.
+/** @file
+ *  Purpose: publish the configuration.
  *
- *  `third_party/amalgamate/sqlite_orm_config.json` lists the same headers in the same order.
+ *  Intention: the separate-header variant of <sqlite_orm/sqlite_orm_config.h>; includes `dev/config/config.h`, whose
+ *  headers `third_party/amalgamate/sqlite_orm_config.json` lists in the same order for the amalgamated variant.
  */
 
 #include "../../dev/config/config.h"

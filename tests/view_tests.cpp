@@ -3,7 +3,7 @@
 #include <sqlite_orm/sqlite_orm.h>
 
 #ifdef SQLITE_ORM_WITH_VIEW
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 using namespace sqlite_orm;
 
 namespace {
@@ -11,7 +11,7 @@ namespace {
         int64 id = 0;
         std::string name;
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const UserViewTests&) const = default;
 #else
         bool operator==(const UserViewTests& right) const {
@@ -23,7 +23,7 @@ namespace {
     struct[[= "user_view"_orm_name]] UserView2Tests {
         std::string name;
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const UserView2Tests&) const = default;
 #else
         bool operator==(const UserView2Tests& right) const {

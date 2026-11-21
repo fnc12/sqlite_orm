@@ -6,7 +6,7 @@
 #include <tuple>  //  std::tuple
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_member_object_pointer, std::is_signed
 #include <utility>  //  std::move, std::index_sequence, std::make_index_sequence
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 #include <meta>  //  std::meta::info, std::meta::identifier_of
 #endif
 #endif
@@ -224,7 +224,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
     /**
      *  The columns of the non-static data members of `O`: named after the members' identifiers,

@@ -66,7 +66,7 @@ namespace sqlite_orm::internal {
             return _action != foreign_key_action::none;
         }
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         friend bool operator==(const on_fk_action&, const on_fk_action&) = default;
 #else
         friend bool operator==(const on_fk_action& lhs, const on_fk_action& rhs) {
@@ -145,7 +145,7 @@ namespace sqlite_orm::internal {
             return _enforcement != foreign_key_enforcement::not_specified;
         }
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
         friend bool operator==(const fk_enforcement_state&, const fk_enforcement_state&) = default;
 #else
         friend bool operator==(const fk_enforcement_state& lhs, const fk_enforcement_state& rhs) {

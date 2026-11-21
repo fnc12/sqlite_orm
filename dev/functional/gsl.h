@@ -71,7 +71,7 @@ namespace sqlite_orm {
         //
         // T must be a pointer type
         //
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
         template<class T>
             requires std::is_pointer_v<T>
         using owner = T;

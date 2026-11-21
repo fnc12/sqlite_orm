@@ -96,6 +96,12 @@ from anywhere else.
   existing code, the search asks what the folder and the neighbours are for, what the file
   holds and what it should hold, and revises purpose, contents and name together, round by
   round, until they agree.
+- A preamble holds only its labels' own: the Purpose states the reason, as wide as the file
+  name, and the Intention names the relations - who includes, calls or realizes the file, and
+  the outside shapes it reads - rather than the headers it includes. What the file declares and
+  what its members do is said on the declarations. An existing description comment is a source
+  to find the reason from, rather than a Purpose to relabel: carried over, it brings its contents
+  along.
 - A Purpose or doc-comment naming an SQL or SQLite construct takes the construct's meaning from
   SQLite's documentation, or from the documentation of the module that defines it, rather than
   from the cases sqlite_orm uses it for today. A page silent on a case leaves the case open, for
@@ -109,6 +115,20 @@ from anywhere else.
   sites and diagnostics.
 
 ## Development workflow
+
+### Preambles, worked out together
+
+The human who programs and reviews with an agent holds the purpose; agent and human work a
+preamble out in this order:
+
+1. Before writing a file or its code, the agent offers the file's Purpose in one line, and the
+   human confirms or corrects it.
+2. The agent names where each Purpose comes from: the record (continuity notes, the commits
+   that made the file), the file's family (the preambles of its folder and siblings), or a term
+   the tree already defines. The human asks for the source wherever it is missing; a
+   description comment relabelled as a Purpose is the case this catches.
+3. A correction names the pattern behind the instance, and the agent applies it to every
+   preamble the change touches.
 
 ### Before every commit
 

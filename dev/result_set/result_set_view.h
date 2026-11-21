@@ -4,7 +4,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <functional>  //  std::reference_wrapper
 #include <utility>  //  std::move, std::remove_cvref
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
 #include <ranges>  //  std::ranges::view_interface
 #endif
 #endif
@@ -31,7 +31,7 @@ namespace sqlite_orm::internal {
      */
     template<class Select, class DBOs>
     struct result_set_view
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
         : std::ranges::view_interface<result_set_view<Select, DBOs>>
 #endif
     {
@@ -79,7 +79,7 @@ namespace sqlite_orm::internal {
     };
 }
 
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_RANGES_SUPPORTED
 template<class Select, class DBOs>
 constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_set_view<Select, DBOs>> = true;
 #endif

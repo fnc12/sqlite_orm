@@ -53,7 +53,7 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_CONCEPTS_SUPPORTED
     /**
      *  Make a table reference, lifting a struct mapped as a table or view into the DSL.
      *  Usable as a template argument in place of the struct, and to form column pointers: `c<Object>()->*&Object::id`.
