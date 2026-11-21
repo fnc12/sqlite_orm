@@ -1,0 +1,14 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-21: AGENTS.md gets the preamble
+rule and a workflow for agent and human.
+
+# Decided
+- trueqbit: the "what you can do" points go into AGENTS.md as a reminder
+  workflow for the human programming and reviewing ("Preambles, worked out
+  together": Purpose as a one-liner first; the source named - record,
+  family, tree's word; a correction names the pattern and is applied to
+  every preamble of the change).
+- The code-style bullet carries the rule itself and names no plugin:
+  trueqbit was unsure the plugin may be named in a file of the tree; the
+  plugin's rules reach agents through the git-ignored .claude/rules/ mirror,
+  whose file-header.md already asks to load irreducible-code.
