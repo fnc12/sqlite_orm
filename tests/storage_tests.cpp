@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <memory>  //  std::unique_ptr, std::make_unique
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 
 using namespace sqlite_orm;
 

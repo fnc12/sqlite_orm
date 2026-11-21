@@ -1,5 +1,6 @@
 #include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 
 using std::cout;
 using std::endl;

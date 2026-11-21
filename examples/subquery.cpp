@@ -4,6 +4,7 @@
 #include <iostream>
 #include <memory>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 #include <string>
 
 using std::cout;

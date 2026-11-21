@@ -1,5 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 
 #if defined(SQLITE_ORM_WITH_CPP20_ALIASES) || defined(SQLITE_ORM_WITH_CTE)
 using namespace sqlite_orm::literals;

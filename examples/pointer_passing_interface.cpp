@@ -17,6 +17,7 @@
  *  Note: pointers are only accessible within application code, and therefore unleakable.
  */
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 #if SQLITE_VERSION_NUMBER >= 3020000
 #define ENABLE_THIS_EXAMPLE
 #endif

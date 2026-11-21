@@ -1,5 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 
 #if SQLITE_VERSION_NUMBER >= 3020000
 using namespace sqlite_orm;

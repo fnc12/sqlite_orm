@@ -2,6 +2,7 @@
 #include <memory>  //  std::unique_ptr, std::shared_ptr
 #include <optional>  //  std::optional
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 #include <string>  //  std::string
 #include <string_view>
 

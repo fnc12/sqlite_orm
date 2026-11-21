@@ -16,6 +16,7 @@
  */
 
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 
 #ifdef SQLITE_ORM_DBSTAT_SUPPORTED
 #define ENABLE_THIS_EXAMPLE

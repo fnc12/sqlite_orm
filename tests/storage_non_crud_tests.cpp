@@ -3,6 +3,7 @@
 #include <cstring>  //  std::strcmp
 #include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 #include "catch_matchers.h"
 
 using namespace sqlite_orm;

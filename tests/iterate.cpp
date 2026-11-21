@@ -1,6 +1,7 @@
 #include <catch2/catch_all.hpp>
 #include <numeric>  //  std::iota
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 
 using namespace sqlite_orm;
 

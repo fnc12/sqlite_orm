@@ -1,6 +1,7 @@
 #include <catch2/catch_all.hpp>
 #include <optional>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>
 #include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
