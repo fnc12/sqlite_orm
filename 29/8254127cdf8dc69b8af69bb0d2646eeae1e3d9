@@ -1,0 +1,24 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-21: step 2 of the config macro
+review, the tier documentation as preambles - ground for the preamble
+sweep, where dev/functional/ is still untouched.
+
+# Decided
+- config.h's Purpose stays short ("gather the public configuration, macros
+  only"); the tier list is its Intention (trueqbit: too detailed before).
+- The separate-header sqlite_orm_config.h: "publish the configuration"; that
+  it is the separate-header variant is a relation, said in the Intention -
+  its folder already sets it apart (trueqbit).
+- Naming patterns stay out of the preambles until the renames land.
+- trueqbit: check_prerequisites.h leaves the public configuration, so a
+  consumer can test sqlite_orm's features without the C++17 #error; next
+  commit.
+- No ontocratic-feedback round: AGENTS.md and file-header.md already put
+  relations in the Intention; the slip was in applying it (trueqbit).
+
+# Discussed
+- Corrected while drafting: check_prerequisites.h is not ahead of all
+  detection (config.h reaches language_features.h first); "first"/"last"
+  hold for both variants of sqlite_orm.h.
+- A regeneration without the full clang-format pass left ~400 blank-line
+  hunks in the amalgamation; the full pass removes them.
