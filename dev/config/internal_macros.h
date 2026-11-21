@@ -1,8 +1,11 @@
 #pragma once
 
-/*
- *  The macros sqlite_orm's own code is spelled with: module export, keywords and attributes
+/** @file
+ *  Purpose: provide the macros sqlite_orm's own code is spelled with: module export, keywords and attributes
  *  depending on the language version, and the suppression of compiler diagnostics.
+ *
+ *  Intention: builds on the configuration of `config.h`, outside the published <sqlite_orm/sqlite_orm_config.h>;
+ *  both variants of <sqlite_orm/sqlite_orm.h> place it right after `config.h`.
  */
 
 #include "config.h"

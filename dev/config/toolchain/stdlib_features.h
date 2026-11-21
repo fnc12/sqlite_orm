@@ -1,7 +1,11 @@
 #pragma once
 
-/*
- *  Detection of the C++ standard library features.
+/** @file
+ *  Purpose: detect the C++ standard library features sqlite_orm can use.
+ *
+ *  Intention: the standard library tier of the configuration gathered by `config.h`, read from the feature-test macros
+ *  `__cpp_lib_*` that `check_prerequisites.h` brings in, and from the language features and compiler quirks a library
+ *  feature needs; `capabilities.h` builds on it.
  */
 
 #include "check_prerequisites.h"

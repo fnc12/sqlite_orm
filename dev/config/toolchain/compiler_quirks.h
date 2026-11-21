@@ -1,7 +1,11 @@
 #pragma once
 
-/*
- *  The workarounds for compiler quirks sqlite_orm depends on.
+/** @file
+ *  Purpose: work around the compiler defects sqlite_orm's own code meets.
+ *
+ *  Intention: the internal tier of the configuration gathered by `config.h`: published only because
+ *  `stdlib_features.h` and `capabilities.h` rest on it, and subject to change without notice. Keyed on `compiler.h` and
+ *  `language_features.h`; sqlite_orm's headers test `SQLITE_ORM_BROKEN_*` to choose a workaround.
  */
 
 #include "compiler.h"

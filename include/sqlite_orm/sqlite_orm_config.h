@@ -1,9 +1,18 @@
 #pragma once
 
-/*
- *  The public configuration: detection of the language, standard library, compiler and platform,
- *  the SQLite version and feature macros, and sqlite_orm's capabilities.
- *  Macros only, no declarations.
+/** @file
+ *  Purpose: gather the public configuration, macros only.
+ *
+ *  Intention: gathers one header per tier:
+ *  - `toolchain/language_features.h`, the C++ language features;
+ *  - `toolchain/stdlib_features.h`, the C++ standard library features;
+ *  - `toolchain/compiler.h` and `toolchain/platform.h`, the compiler and the platform;
+ *  - `sqlite3/sqlite3_config.h`, the SQLite features;
+ *  - `capabilities.h`, sqlite_orm's capabilities;
+ *  - `toolchain/compiler_quirks.h`, the internal tier: published only because the tiers above rest on it, and subject
+ *    to change without notice.
+ *  `toolchain/check_prerequisites.h` rejects a toolchain short of C++17, and `internal_macros.h` builds sqlite_orm's
+ *  own spelling on the tiers.
  *
  *  Published as <sqlite_orm/sqlite_orm_config.h> for consumers of the named module, which cannot export macros:
  *  include it ahead of `import sqlite_orm;` and `import std;`.
@@ -18,11 +27,23 @@
 
 // #include "capabilities.h"
 
-/*
- *  The optional features sqlite_orm offers with the language, standard library and SQLite in use.
+/** @file
+ *  Purpose: tell which optional features sqlite_orm offers with the C++ language, standard library, platform and
+ *  SQLite in use.
+ *
+ *  Intention: the capabilities tier of the configuration gathered by `config.h`, built on the other tiers;
+ *  sqlite_orm's headers and its consumers test `SQLITE_ORM_WITH_*` for a feature.
  */
 
 // #include "../sqlite3/sqlite3_config.h"
+
+/** @file
+ *  Purpose: tell which optional SQLite features the SQLite in use provides.
+ *
+ *  Intention: the SQLite tier of the configuration gathered by `config.h`, read from `<sqlite3.h>`'s version and the
+ *  `SQLITE_ENABLE_*` and `SQLITE_OMIT_*` macros a distribution defines; sqlite_orm's headers test
+ *  `SQLITE_ORM_*_SUPPORTED` to offer the functions and tables of a feature.
+ */
 
 #include <sqlite3.h>
 
@@ -99,8 +120,12 @@
 
 // #include "toolchain/language_features.h"
 
-/*
- *  Detection of the C++ core language features.
+/** @file
+ *  Purpose: detect the C++ core language features sqlite_orm can use.
+ *
+ *  Intention: the language tier of the configuration gathered by `config.h`, read from the feature-test macros
+ *  `__cpp_*` and from `__cplusplus`, and amended where a compiler supports a feature it does not report;
+ *  `compiler_quirks.h`, `stdlib_features.h` and `capabilities.h` build on it.
  */
 
 #if __cpp_generic_lambdas >= 201707L
@@ -172,6 +197,13 @@
 
 // #include "toolchain/platform.h"
 
+/** @file
+ *  Purpose: identify the platform sqlite_orm is built for.
+ *
+ *  Intention: the platform tier of the configuration gathered by `config.h`; `SQLITE_ORM_UNIX` accompanies each
+ *  platform but Windows, and an unknown platform stops the build. `capabilities.h` builds on it.
+ */
+
 #if defined(_WIN32)
 #define SQLITE_ORM_WIN
 
@@ -209,15 +241,21 @@
 
 // #include "toolchain/stdlib_features.h"
 
-/*
- *  Detection of the C++ standard library features.
+/** @file
+ *  Purpose: detect the C++ standard library features sqlite_orm can use.
+ *
+ *  Intention: the standard library tier of the configuration gathered by `config.h`, read from the feature-test macros
+ *  `__cpp_lib_*` that `check_prerequisites.h` brings in, and from the language features and compiler quirks a library
+ *  feature needs; `capabilities.h` builds on it.
  */
 
 // #include "check_prerequisites.h"
 
-/*
- *  This header detects missing core C++ language features and standard library features
- *  on which sqlite_orm depends, bailing out with a hard error.
+/** @file
+ *  Purpose: reject a compiler or standard library that lacks the C++17 features sqlite_orm depends on.
+ *
+ *  Intention: part of the configuration gathered by `config.h`; includes `<version>`, whose library feature-test macros
+ *  `stdlib_features.h` reads, which includes it first.
  */
 
 // note: Before the C++17 language standard was made the baseline, the library had workarounds for these specific missing C++14 language features,
@@ -262,8 +300,12 @@
 
 // #include "compiler_quirks.h"
 
-/*
- *  The workarounds for compiler quirks sqlite_orm depends on.
+/** @file
+ *  Purpose: work around the compiler defects sqlite_orm's own code meets.
+ *
+ *  Intention: the internal tier of the configuration gathered by `config.h`: published only because
+ *  `stdlib_features.h` and `capabilities.h` rest on it, and subject to change without notice. Keyed on `compiler.h` and
+ *  `language_features.h`; sqlite_orm's headers test `SQLITE_ORM_BROKEN_*` to choose a workaround.
  */
 
 // #include "compiler.h"
@@ -271,7 +313,9 @@
 /** @file
  *  Purpose: identify the compiler that translates sqlite_orm.
  *
- *  Intention: part of the public configuration gathered by `config.h`; `compiler_quirks.h` keys its workarounds on it.
+ *  Intention: the compiler tier of the configuration gathered by `config.h`; `compiler_quirks.h` keys its workarounds
+ *  on it. Each name gives the compiler's maker, then the compiler it presents itself as: `SQLITE_ORM_GNU_GCC` is GNU's
+ *  own GCC, as Clang defines `__GNUC__` too, and `SQLITE_ORM_CLANG_MSVC` is Clang presenting itself as MSVC.
  */
 
 #if defined(_MSC_VER) && !defined(__clang__)

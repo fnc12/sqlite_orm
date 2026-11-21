@@ -1,7 +1,11 @@
 #pragma once
 
-/*
- *  Detection of the C++ core language features.
+/** @file
+ *  Purpose: detect the C++ core language features sqlite_orm can use.
+ *
+ *  Intention: the language tier of the configuration gathered by `config.h`, read from the feature-test macros
+ *  `__cpp_*` and from `__cplusplus`, and amended where a compiler supports a feature it does not report;
+ *  `compiler_quirks.h`, `stdlib_features.h` and `capabilities.h` build on it.
  */
 
 #if __cpp_generic_lambdas >= 201707L

@@ -1,9 +1,18 @@
 #pragma once
 
-/*
- *  The public configuration: detection of the language, standard library, compiler and platform,
- *  the SQLite version and feature macros, and sqlite_orm's capabilities.
- *  Macros only, no declarations.
+/** @file
+ *  Purpose: gather the public configuration, macros only.
+ *
+ *  Intention: gathers one header per tier:
+ *  - `toolchain/language_features.h`, the C++ language features;
+ *  - `toolchain/stdlib_features.h`, the C++ standard library features;
+ *  - `toolchain/compiler.h` and `toolchain/platform.h`, the compiler and the platform;
+ *  - `sqlite3/sqlite3_config.h`, the SQLite features;
+ *  - `capabilities.h`, sqlite_orm's capabilities;
+ *  - `toolchain/compiler_quirks.h`, the internal tier: published only because the tiers above rest on it, and subject
+ *    to change without notice.
+ *  `toolchain/check_prerequisites.h` rejects a toolchain short of C++17, and `internal_macros.h` builds sqlite_orm's
+ *  own spelling on the tiers.
  *
  *  Published as <sqlite_orm/sqlite_orm_config.h> for consumers of the named module, which cannot export macros:
  *  include it ahead of `import sqlite_orm;` and `import std;`.

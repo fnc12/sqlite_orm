@@ -1,8 +1,10 @@
 #pragma once
 
-/*
- *  This header detects missing core C++ language features and standard library features
- *  on which sqlite_orm depends, bailing out with a hard error.
+/** @file
+ *  Purpose: reject a compiler or standard library that lacks the C++17 features sqlite_orm depends on.
+ *
+ *  Intention: part of the configuration gathered by `config.h`; includes `<version>`, whose library feature-test macros
+ *  `stdlib_features.h` reads, which includes it first.
  */
 
 // note: Before the C++17 language standard was made the baseline, the library had workarounds for these specific missing C++14 language features,
