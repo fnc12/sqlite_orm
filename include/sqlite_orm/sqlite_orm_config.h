@@ -171,6 +171,43 @@
 #define SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
 #endif
 
+// #include "toolchain/platform.h"
+
+#if defined(_WIN32)
+#define SQLITE_ORM_WIN
+
+#elif defined(__APPLE__)
+#include <TargetConditionals.h>
+#if TARGET_IPHONE_SIMULATOR == 1 || TARGET_OS_IPHONE == 1
+#define SQLITE_ORM_IOS
+#elif TARGET_OS_OSX == 1
+#define SQLITE_ORM_MACOS
+#endif
+#define SQLITE_ORM_APPLE
+#define SQLITE_ORM_UNIX
+
+#elif defined(__linux__)
+#if defined(__ANDROID__)
+#define SQLITE_ORM_ANDROID
+#endif
+#define SQLITE_ORM_LINUX
+#define SQLITE_ORM_UNIX
+
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
+#define SQLITE_ORM_BSD
+#define SQLITE_ORM_UNIX
+
+#elif defined(__RTP__) || defined(_WRS_KERNEL)
+#define SQLITE_ORM_VXWORKS
+#define SQLITE_ORM_UNIX
+
+#elif defined(__unix__) || defined(__unix)
+#define SQLITE_ORM_UNIX
+
+#else
+#error "Unknown target platform detected"
+#endif
+
 // #include "toolchain/stdlib_features.h"
 
 /*
@@ -294,6 +331,14 @@
 #define SQLITE_ORM_BROKEN_CPP20_VIEWS
 #endif
 
+// gcc 11 and 12 relocate bytewise a temporary that lives across a suspension point of a `co_await` expression,
+// which breaks any type with a non-trivial move constructor, e.g. a `std::string` in its small-buffer state
+// in `co_await storage.insert(User{...})`.
+// Verified broken with 11.4 and 12.5, verified fixed with 13.4.
+#if defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 13)
+#define SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES
+#endif
+
 // #include "language_features.h"
 
 #if __cpp_lib_is_constant_evaluated >= 201811L
@@ -310,6 +355,10 @@
 
 #if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_BROKEN_CPP20_VIEWS)
 #define SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+#endif
+
+#if __cpp_impl_coroutine >= 201902L && __cpp_lib_coroutine >= 201902L
+#define SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
 #endif
 
 #if __cpp_lib_generator >= 202207L
@@ -339,6 +388,14 @@
 #define SQLITE_ORM_WITH_VIEW
 #endif
 
+// The asynchronous storage: its I/O engine is io_uring (Linux), its fibers switch stacks with inline assembly
+// written for GCC and Clang on x86_64 and aarch64.
+#if (defined(SQLITE_ORM_LINUX) && !defined(SQLITE_ORM_ANDROID)) &&                                                     \
+    (defined(SQLITE_ORM_CPP20_COROUTINES_SUPPORTED) && !defined(SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES)) &&           \
+    (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(__aarch64__))
+#define SQLITE_ORM_WITH_ASYNC
+#endif
+
 // #include "toolchain/check_prerequisites.h"
 
 // #include "toolchain/compiler_quirks.h"
@@ -346,41 +403,6 @@
 // #include "toolchain/language_features.h"
 
 // #include "toolchain/platform.h"
-
-#if defined(_WIN32)
-#define SQLITE_ORM_WIN
-
-#elif defined(__APPLE__)
-#include <TargetConditionals.h>
-#if TARGET_IPHONE_SIMULATOR == 1 || TARGET_OS_IPHONE == 1
-#define SQLITE_ORM_IOS
-#elif TARGET_OS_OSX == 1
-#define SQLITE_ORM_MACOS
-#endif
-#define SQLITE_ORM_APPLE
-#define SQLITE_ORM_UNIX
-
-#elif defined(__linux__)
-#if defined(__ANDROID__)
-#define SQLITE_ORM_ANDROID
-#endif
-#define SQLITE_ORM_LINUX
-#define SQLITE_ORM_UNIX
-
-#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
-#define SQLITE_ORM_BSD
-#define SQLITE_ORM_UNIX
-
-#elif defined(__RTP__) || defined(_WRS_KERNEL)
-#define SQLITE_ORM_VXWORKS
-#define SQLITE_ORM_UNIX
-
-#elif defined(__unix__) || defined(__unix)
-#define SQLITE_ORM_UNIX
-
-#else
-#error "Unknown target platform detected"
-#endif
 
 // #include "toolchain/stdlib_features.h"
 

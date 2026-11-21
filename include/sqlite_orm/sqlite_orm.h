@@ -200,6 +200,43 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
 #endif
 
+// #include "toolchain/platform.h"
+
+#if defined(_WIN32)
+#define SQLITE_ORM_WIN
+
+#elif defined(__APPLE__)
+#include <TargetConditionals.h>
+#if TARGET_IPHONE_SIMULATOR == 1 || TARGET_OS_IPHONE == 1
+#define SQLITE_ORM_IOS
+#elif TARGET_OS_OSX == 1
+#define SQLITE_ORM_MACOS
+#endif
+#define SQLITE_ORM_APPLE
+#define SQLITE_ORM_UNIX
+
+#elif defined(__linux__)
+#if defined(__ANDROID__)
+#define SQLITE_ORM_ANDROID
+#endif
+#define SQLITE_ORM_LINUX
+#define SQLITE_ORM_UNIX
+
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
+#define SQLITE_ORM_BSD
+#define SQLITE_ORM_UNIX
+
+#elif defined(__RTP__) || defined(_WRS_KERNEL)
+#define SQLITE_ORM_VXWORKS
+#define SQLITE_ORM_UNIX
+
+#elif defined(__unix__) || defined(__unix)
+#define SQLITE_ORM_UNIX
+
+#else
+#error "Unknown target platform detected"
+#endif
+
 // #include "toolchain/stdlib_features.h"
 
 /*
@@ -323,6 +360,14 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_BROKEN_CPP20_VIEWS
 #endif
 
+// gcc 11 and 12 relocate bytewise a temporary that lives across a suspension point of a `co_await` expression,
+// which breaks any type with a non-trivial move constructor, e.g. a `std::string` in its small-buffer state
+// in `co_await storage.insert(User{...})`.
+// Verified broken with 11.4 and 12.5, verified fixed with 13.4.
+#if defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 13)
+#define SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES
+#endif
+
 // #include "language_features.h"
 
 #if __cpp_lib_is_constant_evaluated >= 201811L
@@ -339,6 +384,10 @@ __pragma(push_macro("max"))
 
 #if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_BROKEN_CPP20_VIEWS)
 #define SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+#endif
+
+#if __cpp_impl_coroutine >= 201902L && __cpp_lib_coroutine >= 201902L
+#define SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
 #endif
 
 #if __cpp_lib_generator >= 202207L
@@ -368,6 +417,14 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_WITH_VIEW
 #endif
 
+// The asynchronous storage: its I/O engine is io_uring (Linux), its fibers switch stacks with inline assembly
+// written for GCC and Clang on x86_64 and aarch64.
+#if (defined(SQLITE_ORM_LINUX) && !defined(SQLITE_ORM_ANDROID)) &&                                                     \
+    (defined(SQLITE_ORM_CPP20_COROUTINES_SUPPORTED) && !defined(SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES)) &&           \
+    (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(__aarch64__))
+#define SQLITE_ORM_WITH_ASYNC
+#endif
+
 // #include "toolchain/check_prerequisites.h"
 
 // #include "toolchain/compiler_quirks.h"
@@ -375,41 +432,6 @@ __pragma(push_macro("max"))
 // #include "toolchain/language_features.h"
 
 // #include "toolchain/platform.h"
-
-#if defined(_WIN32)
-#define SQLITE_ORM_WIN
-
-#elif defined(__APPLE__)
-#include <TargetConditionals.h>
-#if TARGET_IPHONE_SIMULATOR == 1 || TARGET_OS_IPHONE == 1
-#define SQLITE_ORM_IOS
-#elif TARGET_OS_OSX == 1
-#define SQLITE_ORM_MACOS
-#endif
-#define SQLITE_ORM_APPLE
-#define SQLITE_ORM_UNIX
-
-#elif defined(__linux__)
-#if defined(__ANDROID__)
-#define SQLITE_ORM_ANDROID
-#endif
-#define SQLITE_ORM_LINUX
-#define SQLITE_ORM_UNIX
-
-#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
-#define SQLITE_ORM_BSD
-#define SQLITE_ORM_UNIX
-
-#elif defined(__RTP__) || defined(_WRS_KERNEL)
-#define SQLITE_ORM_VXWORKS
-#define SQLITE_ORM_UNIX
-
-#elif defined(__unix__) || defined(__unix)
-#define SQLITE_ORM_UNIX
-
-#else
-#error "Unknown target platform detected"
-#endif
 
 // #include "toolchain/stdlib_features.h"
 
@@ -36235,6 +36257,3384 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "dbos/sqlite_schema.h"
 
+#pragma once
+
+/** @file
+ *  Purpose: offer the storage's interface to coroutines, without blocking the thread on file I/O.
+ *
+ *  Intention: realizes `async_storage` and `make_async_storage()` over the unchanged synchronous storage of
+ *  `execution/storage.h`, each operation running on a fiber of the storage's `async_io_context`; uses `async_vfs.h`.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <coroutine>  //  std::coroutine_handle
+#include <cstddef>  //  std::size_t
+#include <deque>  //  std::deque
+#include <functional>  //  std::function
+#include <memory>  //  std::unique_ptr, std::make_unique, std::shared_ptr
+#include <stdexcept>  //  std::logic_error, std::runtime_error
+#include <string>  //  std::string
+#include <string_view>  //  std::string_view
+#include <tuple>  //  std::tuple, std::make_tuple, std::apply
+#include <type_traits>  //  std::invoke_result_t, std::is_void_v, std::is_same_v, std::decay_t
+#include <utility>  //  std::forward, std::move
+#include <vector>  //  std::vector
+#endif
+#endif
+
+// #include "../functional/cxx_polyfill/functional.h"
+//  polyfill::identity
+// #include "../functional/coroutines/task.h"
+
+/** @file
+ *  Purpose: be the coroutine type an asynchronous storage operation returns.
+ *
+ *  Intention: realizes a lazy C++20 coroutine that any coroutine can `co_await`; used by `io_context.h`, `when_all.h`,
+ *  `async_storage.h` and `async_cursor.h`.
+ */
+
+#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <coroutine>  //  std::coroutine_handle, std::suspend_always, std::noop_coroutine
+#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception
+#include <optional>  //  std::optional
+#include <stdexcept>  //  std::logic_error
+#include <utility>  //  std::exchange, std::forward, std::move
+#endif
+#endif
+#endif
+
+#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+// general-purpose, but sqlite_orm offers its coroutine types with the asynchronous storage only
+#ifdef SQLITE_ORM_WITH_ASYNC
+namespace sqlite_orm::internal {
+
+    /**
+     *  Result or exception of a coroutine or of a fiber job.
+     */
+    template<class T>
+    struct result_box {
+        std::optional<T> value;
+        std::exception_ptr error;
+
+        template<class U>
+        void set(U&& newValue) {
+            this->value.emplace(std::forward<U>(newValue));
+        }
+
+        T take() {
+            if (this->error) {
+                std::rethrow_exception(this->error);
+            }
+            return std::move(*this->value);
+        }
+    };
+
+    template<>
+    struct result_box<void> {
+        std::exception_ptr error;
+
+        void take() {
+            if (this->error) {
+                std::rethrow_exception(this->error);
+            }
+        }
+    };
+
+    /**
+     *  Final awaiter of an async_task: transfers control to whoever awaited the async_task.
+     */
+    struct task_final_awaiter {
+        bool await_ready() noexcept {
+            return false;
+        }
+
+        template<class Promise>
+        std::coroutine_handle<> await_suspend(std::coroutine_handle<Promise> handle) noexcept {
+            std::coroutine_handle<> continuation = handle.promise().continuation;
+            return continuation ? continuation : std::noop_coroutine();
+        }
+
+        void await_resume() noexcept {}
+    };
+
+    /**
+     *  Awaiting an async_task that holds no coroutine, i.e. a default-constructed or moved-from one, is an error
+     *  of the caller.
+     */
+    inline void require_task(std::coroutine_handle<> handle) {
+        if (!handle) {
+            throw std::logic_error("sqlite_orm: an empty task was awaited");
+        }
+    }
+
+    template<class T>
+    struct task_promise_base {
+        result_box<T> box;
+        std::coroutine_handle<> continuation;
+
+        std::suspend_always initial_suspend() noexcept {
+            return {};
+        }
+
+        task_final_awaiter final_suspend() noexcept {
+            return {};
+        }
+
+        void unhandled_exception() noexcept {
+            this->box.error = std::current_exception();
+        }
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  Lazy coroutine type returned by asynchronous storage operations. Starts
+     *  when awaited; the awaiting coroutine is resumed with the value or the
+     *  exception.
+     */
+    template<class T>
+    class async_task {
+      public:
+        struct promise_type : internal::task_promise_base<T> {
+            async_task get_return_object() {
+                return async_task{std::coroutine_handle<promise_type>::from_promise(*this)};
+            }
+
+            template<class U>
+            void return_value(U&& value) {
+                this->box.set(std::forward<U>(value));
+            }
+        };
+
+        async_task() = default;
+
+        explicit async_task(std::coroutine_handle<promise_type> handle_) : handle(handle_) {}
+
+        async_task(async_task&& other) noexcept : handle(std::exchange(other.handle, {})) {}
+
+        async_task& operator=(async_task&& other) noexcept {
+            if (this != &other) {
+                this->reset();
+                this->handle = std::exchange(other.handle, {});
+            }
+            return *this;
+        }
+
+        async_task(const async_task&) = delete;
+        async_task& operator=(const async_task&) = delete;
+
+        ~async_task() {
+            this->reset();
+        }
+
+        bool await_ready() const noexcept {
+            return !this->handle || this->handle.done();
+        }
+
+        std::coroutine_handle<> await_suspend(std::coroutine_handle<> continuation) noexcept {
+            this->handle.promise().continuation = continuation;
+            return this->handle;
+        }
+
+        T await_resume() {
+            internal::require_task(this->handle);
+            return this->handle.promise().box.take();
+        }
+
+      private:
+        void reset() {
+            if (this->handle) {
+                this->handle.destroy();
+                this->handle = {};
+            }
+        }
+
+        std::coroutine_handle<promise_type> handle;
+    };
+
+    template<>
+    class async_task<void> {
+      public:
+        struct promise_type : internal::task_promise_base<void> {
+            async_task get_return_object() {
+                return async_task{std::coroutine_handle<promise_type>::from_promise(*this)};
+            }
+
+            void return_void() noexcept {}
+        };
+
+        async_task() = default;
+
+        explicit async_task(std::coroutine_handle<promise_type> handle_) : handle(handle_) {}
+
+        async_task(async_task&& other) noexcept : handle(std::exchange(other.handle, {})) {}
+
+        async_task& operator=(async_task&& other) noexcept {
+            if (this != &other) {
+                this->reset();
+                this->handle = std::exchange(other.handle, {});
+            }
+            return *this;
+        }
+
+        async_task(const async_task&) = delete;
+        async_task& operator=(const async_task&) = delete;
+
+        ~async_task() {
+            this->reset();
+        }
+
+        bool await_ready() const noexcept {
+            return !this->handle || this->handle.done();
+        }
+
+        std::coroutine_handle<> await_suspend(std::coroutine_handle<> continuation) noexcept {
+            this->handle.promise().continuation = continuation;
+            return this->handle;
+        }
+
+        void await_resume() {
+            internal::require_task(this->handle);
+            this->handle.promise().box.take();
+        }
+
+      private:
+        void reset() {
+            if (this->handle) {
+                this->handle.destroy();
+                this->handle = {};
+            }
+        }
+
+        std::coroutine_handle<promise_type> handle;
+    };
+}
+#endif
+#endif
+
+// #include "../async/io_context.h"
+
+/** @file
+ *  Purpose: drive the asynchronous storages of one thread: their I/O, their fibers and the coroutines awaiting them.
+ *
+ *  Intention: realizes the event loop applications either run themselves or embed into the event loop they already have;
+ *  uses `scheduler.h` and `task.h`.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <coroutine>  //  std::coroutine_handle, std::suspend_never
+#include <cstddef>  //  std::size_t
+#include <deque>  //  std::deque
+#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception, std::terminate
+#include <functional>  //  std::function
+#include <type_traits>  //  std::invoke_result_t, std::is_void_v
+#include <utility>  //  std::exchange, std::move
+#endif
+#endif
+
+// #include "../functional/coroutines/task.h"
+
+// #include "scheduler.h"
+
+/** @file
+ *  Purpose: run fibers on one thread and resume each when the I/O it waits for has completed.
+ *
+ *  Intention: realizes the loop underneath `io_context.h`; uses `fiber.h` and `io_uring_engine.h`,
+ *  and is called by `async_vfs.h` from inside a fiber.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <algorithm>  //  std::find_if
+#include <cassert>  //  assert
+#include <cstddef>  //  std::size_t
+#include <cstdint>  //  std::int32_t, std::int64_t, std::uint64_t
+#include <deque>  //  std::deque
+#include <functional>  //  std::function
+#include <iterator>  //  std::next
+#include <memory>  //  std::unique_ptr
+#include <mutex>  //  std::mutex, std::lock_guard
+#include <utility>  //  std::move
+#include <vector>  //  std::vector
+#endif
+#endif
+
+// #include "fiber/fiber.h"
+
+/** @file
+ *  Purpose: give a synchronous call a stack of its own, so that it can be suspended in the middle and resumed later.
+ *
+ *  Intention: realizes the stackful coroutine SQLite's synchronous VFS callbacks suspend on inside `sqlite3_step()`;
+ *  uses `context_switch.h`, is run by `scheduler.h`.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <cstddef>  //  std::size_t
+#include <cstdint>  //  std::uintptr_t
+#include <cstring>  //  std::memset
+#include <exception>  //  std::terminate
+#include <functional>  //  std::function
+#include <stdexcept>  //  std::runtime_error
+#include <utility>  //  std::move
+#endif
+#include <sys/mman.h>  //  mmap, mprotect, munmap
+#include <unistd.h>  //  sysconf
+#endif
+
+// #include "context_switch.h"
+
+/** @file
+ *  Purpose: switch between machine stacks on one thread.
+ *
+ *  Intention: the foundation of `fiber.h`: two naked functions per supported architecture (x86_64 System V, aarch64 AAPCS64),
+ *  inline so that the library stays header-only; speaks to nobody else.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+/**
+ *  Minimal stackful context switch for x86_64 (SysV) and aarch64 (AAPCS64),
+ *  GCC or Clang, as inline naked functions so that the library stays header-only.
+ *
+ *      void sqlite_orm_switch_context(void** saveStackPointer, void* loadStackPointer);
+ *
+ *  Pushes the callee-saved registers of the current context onto its stack,
+ *  stores the resulting stack pointer into *saveStackPointer, loads
+ *  loadStackPointer, pops the callee-saved registers of the target context and
+ *  returns into it.
+ *
+ *  A brand-new context is created in fiber.h by laying out an initial frame that
+ *  "returns" into sqlite_orm_context_trampoline with the entry function and its
+ *  argument in two callee-saved registers.
+ */
+extern "C" {
+
+#if defined(__x86_64__)
+
+__attribute__((naked, noinline)) inline void sqlite_orm_switch_context(void** /*saveStackPointer*/,
+                                                                       void* /*loadStackPointer*/) {
+    __asm__ volatile("pushq %rbp\n\t"
+                     "pushq %rbx\n\t"
+                     "pushq %r12\n\t"
+                     "pushq %r13\n\t"
+                     "pushq %r14\n\t"
+                     "pushq %r15\n\t"
+                     "movq  %rsp, (%rdi)\n\t"
+                     "movq  %rsi, %rsp\n\t"
+                     "popq  %r15\n\t"
+                     "popq  %r14\n\t"
+                     "popq  %r13\n\t"
+                     "popq  %r12\n\t"
+                     "popq  %rbx\n\t"
+                     "popq  %rbp\n\t"
+                     "ret\n\t");
+}
+
+/**
+ *  r12 = entry, r13 = argument. rsp is 16-byte aligned on entry.
+ */
+__attribute__((naked, noinline)) inline void sqlite_orm_context_trampoline() {
+    __asm__ volatile("movq  %r13, %rdi\n\t"
+                     "callq *%r12\n\t"
+                     "ud2\n\t");
+}
+
+#elif defined(__aarch64__)
+
+__attribute__((naked, noinline)) inline void sqlite_orm_switch_context(void** /*saveStackPointer*/,
+                                                                       void* /*loadStackPointer*/) {
+    __asm__ volatile("sub  sp, sp, #176\n\t"
+                     "stp  x19, x20, [sp, #0]\n\t"
+                     "stp  x21, x22, [sp, #16]\n\t"
+                     "stp  x23, x24, [sp, #32]\n\t"
+                     "stp  x25, x26, [sp, #48]\n\t"
+                     "stp  x27, x28, [sp, #64]\n\t"
+                     "stp  x29, x30, [sp, #80]\n\t"
+                     "stp  d8,  d9,  [sp, #96]\n\t"
+                     "stp  d10, d11, [sp, #112]\n\t"
+                     "stp  d12, d13, [sp, #128]\n\t"
+                     "stp  d14, d15, [sp, #144]\n\t"
+                     "mov  x2, sp\n\t"
+                     "str  x2, [x0]\n\t"
+                     "mov  sp, x1\n\t"
+                     "ldp  x19, x20, [sp, #0]\n\t"
+                     "ldp  x21, x22, [sp, #16]\n\t"
+                     "ldp  x23, x24, [sp, #32]\n\t"
+                     "ldp  x25, x26, [sp, #48]\n\t"
+                     "ldp  x27, x28, [sp, #64]\n\t"
+                     "ldp  x29, x30, [sp, #80]\n\t"
+                     "ldp  d8,  d9,  [sp, #96]\n\t"
+                     "ldp  d10, d11, [sp, #112]\n\t"
+                     "ldp  d12, d13, [sp, #128]\n\t"
+                     "ldp  d14, d15, [sp, #144]\n\t"
+                     "add  sp, sp, #176\n\t"
+                     "ret\n\t");
+}
+
+/**
+ *  x19 = entry, x20 = argument.
+ */
+__attribute__((naked, noinline)) inline void sqlite_orm_context_trampoline() {
+    __asm__ volatile("mov  x0, x20\n\t"
+                     "blr  x19\n\t"
+                     "brk  #0\n\t");
+}
+
+#else
+#error "sqlite_orm async: unsupported architecture"
+#endif
+}
+#endif
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+namespace sqlite_orm::internal {
+
+    /**
+     *  Stackful coroutine. One OS thread, many stacks; switching is explicit and
+     *  cooperative. Used so that SQLite's synchronous VFS callbacks can suspend in
+     *  the middle of sqlite3_step() without blocking the thread.
+     */
+    class fiber {
+      public:
+        static constexpr std::size_t defaultStackSize = 512 * 1024;
+
+        explicit fiber(std::function<void()> function_, std::size_t stackSize_ = defaultStackSize) {
+            const std::size_t pageSize = fiber::page_size();
+            this->stackSize = fiber::rounded_stack_size(stackSize_);
+            const std::size_t totalSize = this->stackSize + pageSize;  //  plus a guard page at the bottom
+            void* memory = ::mmap(nullptr, totalSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            if (memory == MAP_FAILED) {
+                throw std::runtime_error("sqlite_orm async: mmap of a fiber stack failed");
+            }
+            ::mprotect(memory, pageSize, PROT_NONE);
+            this->stack = memory;
+            this->restart(std::move(function_));
+        }
+
+        ~fiber() {
+            if (this->stack) {
+                ::munmap(this->stack, this->stackSize + fiber::page_size());
+            }
+        }
+
+        fiber(const fiber&) = delete;
+        fiber& operator=(const fiber&) = delete;
+
+        /**
+         *  Give a finished fiber a new function to run, on the stack it already has.
+         */
+        void restart(std::function<void()> function_) {
+            this->function = std::move(function_);
+            this->done = false;
+            char* stackTop = static_cast<char*>(this->stack) + this->stackSize + fiber::page_size();
+            this->stackPointer = fiber::make_initial_frame(stackTop, &fiber::entry, this);
+        }
+
+        /**
+         *  The usable size of a stack requested with `stackSize`: rounded up to whole pages.
+         */
+        static std::size_t rounded_stack_size(std::size_t stackSize) {
+            const std::size_t pageSize = fiber::page_size();
+            return (stackSize + pageSize - 1) / pageSize * pageSize;
+        }
+
+        std::size_t stack_size() const noexcept {
+            return this->stackSize;
+        }
+
+        /**
+         *  Switch from the caller (the scheduler) into this fiber. Returns when the
+         *  fiber yields or finishes.
+         */
+        void resume() {
+            fiber* previous = fiber::current_slot();
+            fiber::current_slot() = this;
+            sqlite_orm_switch_context(&this->callerStackPointer, this->stackPointer);
+            fiber::current_slot() = previous;
+        }
+
+        /**
+         *  Switch from the running fiber back to whoever resumed it.
+         */
+        static void yield() {
+            fiber* self = fiber::current_slot();
+            sqlite_orm_switch_context(&self->stackPointer, self->callerStackPointer);
+        }
+
+        /**
+         *  The fiber currently executing on this thread, or nullptr when running on
+         *  the thread's native stack.
+         */
+        static fiber* current() noexcept {
+            return fiber::current_slot();
+        }
+
+        bool is_done() const noexcept {
+            return this->done;
+        }
+
+      private:
+        static fiber*& current_slot() noexcept {
+            thread_local fiber* currentFiber = nullptr;
+            return currentFiber;
+        }
+
+        static std::size_t page_size() {
+            static const std::size_t pageSize = static_cast<std::size_t>(::sysconf(_SC_PAGESIZE));
+            return pageSize;
+        }
+
+        /**
+         *  Build the initial frame that sqlite_orm_switch_context will "pop" on the first resume.
+         */
+        static void* make_initial_frame(void* stackTop, void (*entry)(void*), void* argument) {
+            auto top = reinterpret_cast<std::uintptr_t>(stackTop) & ~std::uintptr_t{15};
+#if defined(__x86_64__)
+            //  Frame popped by the switch: r15 r14 r13 r12 rbx rbp, then ret. After ret
+            //  rsp == top, which is 16-byte aligned, so that the trampoline's `call`
+            //  leaves the callee with (rsp + 8) % 16 == 0.
+            auto* frame = reinterpret_cast<void**>(top) - 7;
+            frame[0] = nullptr;  //  r15
+            frame[1] = nullptr;  //  r14
+            frame[2] = argument;  //  r13
+            frame[3] = reinterpret_cast<void*>(entry);  //  r12
+            frame[4] = nullptr;  //  rbx
+            frame[5] = nullptr;  //  rbp
+            frame[6] = reinterpret_cast<void*>(&sqlite_orm_context_trampoline);  //  return address
+            return frame;
+#elif defined(__aarch64__)
+            auto* frame = reinterpret_cast<void**>(top - 176);
+            std::memset(frame, 0, 176);
+            frame[0] = reinterpret_cast<void*>(entry);  //  x19
+            frame[1] = argument;  //  x20
+            frame[11] = reinterpret_cast<void*>(&sqlite_orm_context_trampoline);  //  x30 (lr)
+            return frame;
+#endif
+        }
+
+        static void entry(void* self) noexcept {
+            auto* thisFiber = static_cast<fiber*>(self);
+            try {
+                thisFiber->function();
+                thisFiber->function = nullptr;
+            } catch (...) {
+                //  A fiber body must handle its own exceptions; there is no stack to
+                //  propagate them through.
+                std::terminate();
+            }
+            thisFiber->done = true;
+            for (;;) {
+                fiber::yield();  //  hand control back for the last time; never returns
+            }
+        }
+
+        std::function<void()> function;
+        void* stack = nullptr;  //  mmap'd region including the guard page
+        std::size_t stackSize = 0;  //  usable size (without the guard page)
+        void* stackPointer = nullptr;  //  saved stack pointer while suspended
+        void* callerStackPointer = nullptr;  //  saved stack pointer of whoever resumed us
+        bool done = false;
+    };
+}
+#endif
+
+// #include "io_operation.h"
+
+/** @file
+ *  Purpose: describe one asynchronous I/O request in flight.
+ *
+ *  Intention: the record shared by `io_uring_engine.h`, which submits and completes it, and `scheduler.h`, which parks a fiber on it.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <cstdint>  //  std::int32_t
+#endif
+#endif
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+namespace sqlite_orm::internal {
+
+    class fiber;
+
+    /**
+     *  One asynchronous I/O request in flight. Either a fiber waits for it, or a
+     *  callback runs on completion (the cross-thread wake operation).
+     */
+    struct io_operation {
+        fiber* waiter = nullptr;
+        void (*onComplete)(io_operation*, void*) = nullptr;
+        void* context = nullptr;
+        std::int32_t result = 0;  //  bytes transferred, or -errno
+        bool completed = false;
+    };
+}
+#endif
+
+// #include "io_uring_engine.h"
+
+/** @file
+ *  Purpose: submit file I/O to io_uring and collect its completions.
+ *
+ *  Intention: realizes the I/O engine of `scheduler.h` on the raw io_uring system calls, without liburing;
+ *  publishes `io_uring_available()` for applications that have to check before creating an `async_io_context`.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <algorithm>  //  std::max
+#include <atomic>  //  std::atomic, memory orders
+#include <cerrno>  //  errno
+#include <cstddef>  //  std::size_t
+#include <cstdint>  //  std::uint32_t, std::uint64_t, std::int64_t
+#include <cstring>  //  std::memset, std::strerror
+#include <stdexcept>  //  std::runtime_error
+#include <string>  //  std::string
+#include <unordered_map>  //  std::unordered_map
+#include <vector>  //  std::vector
+#endif
+#include <linux/io_uring.h>  //  io_uring ABI
+#include <linux/time_types.h>  //  __kernel_timespec
+#include <poll.h>  //  POLLIN
+#include <sys/eventfd.h>  //  eventfd
+#include <sys/mman.h>  //  mmap, munmap
+#include <sys/syscall.h>  //  __NR_io_uring_setup, __NR_io_uring_enter
+#include <unistd.h>  //  syscall, read, write, close
+#endif
+
+// #include "io_operation.h"
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+namespace sqlite_orm::internal {
+
+    /**
+     *  io_uring on raw syscalls (no liburing). One submission queue and one
+     *  completion queue, mmap'd from the ring descriptor. submit() only publishes
+     *  the submission tail; the io_uring_enter syscall happens in reap(), so one
+     *  loop iteration costs one syscall, or none when nothing was queued and the
+     *  caller does not block.
+     */
+    class io_uring_engine {
+      public:
+        /**
+         *  Throws std::runtime_error when the kernel refuses (ENOSYS: no io_uring,
+         *  EPERM: blocked by seccomp or the io_uring_disabled sysctl).
+         */
+        explicit io_uring_engine(unsigned entries) {
+            io_uring_params params{};
+            const int ringDescriptor = static_cast<int>(::syscall(__NR_io_uring_setup, entries, &params));
+            if (ringDescriptor < 0) {
+                io_uring_engine::fail("io_uring_setup");
+            }
+            this->ringDescriptor = ringDescriptor;
+
+            this->submissionRingSize = params.sq_off.array + params.sq_entries * sizeof(std::uint32_t);
+            this->completionRingSize = params.cq_off.cqes + params.cq_entries * sizeof(io_uring_cqe);
+            const bool singleMapping = (params.features & IORING_FEAT_SINGLE_MMAP) != 0;
+            if (singleMapping) {
+                this->submissionRingSize = this->completionRingSize =
+                    std::max(this->submissionRingSize, this->completionRingSize);
+            }
+            this->submissionRing = ::mmap(nullptr,
+                                          this->submissionRingSize,
+                                          PROT_READ | PROT_WRITE,
+                                          MAP_SHARED | MAP_POPULATE,
+                                          ringDescriptor,
+                                          IORING_OFF_SQ_RING);
+            if (this->submissionRing == MAP_FAILED) {
+                io_uring_engine::fail("mmap of the submission ring");
+            }
+            if (singleMapping) {
+                this->completionRing = this->submissionRing;
+            } else {
+                this->completionRing = ::mmap(nullptr,
+                                              this->completionRingSize,
+                                              PROT_READ | PROT_WRITE,
+                                              MAP_SHARED | MAP_POPULATE,
+                                              ringDescriptor,
+                                              IORING_OFF_CQ_RING);
+                if (this->completionRing == MAP_FAILED) {
+                    io_uring_engine::fail("mmap of the completion ring");
+                }
+            }
+            this->entriesSize = params.sq_entries * sizeof(io_uring_sqe);
+            this->entries = static_cast<io_uring_sqe*>(::mmap(nullptr,
+                                                              this->entriesSize,
+                                                              PROT_READ | PROT_WRITE,
+                                                              MAP_SHARED | MAP_POPULATE,
+                                                              ringDescriptor,
+                                                              IORING_OFF_SQES));
+            if (this->entries == MAP_FAILED) {
+                io_uring_engine::fail("mmap of the submission entries");
+            }
+
+            auto* submissionBase = static_cast<char*>(this->submissionRing);
+            this->submissionHead = reinterpret_cast<std::atomic<std::uint32_t>*>(submissionBase + params.sq_off.head);
+            this->submissionTail = reinterpret_cast<std::atomic<std::uint32_t>*>(submissionBase + params.sq_off.tail);
+            this->submissionMask = *reinterpret_cast<std::uint32_t*>(submissionBase + params.sq_off.ring_mask);
+            this->submissionEntries = *reinterpret_cast<std::uint32_t*>(submissionBase + params.sq_off.ring_entries);
+            this->submissionArray = reinterpret_cast<std::uint32_t*>(submissionBase + params.sq_off.array);
+
+            auto* completionBase = static_cast<char*>(this->completionRing);
+            this->completionHead = reinterpret_cast<std::atomic<std::uint32_t>*>(completionBase + params.cq_off.head);
+            this->completionTail = reinterpret_cast<std::atomic<std::uint32_t>*>(completionBase + params.cq_off.tail);
+            this->completionMask = *reinterpret_cast<std::uint32_t*>(completionBase + params.cq_off.ring_mask);
+            this->completionEntries = reinterpret_cast<io_uring_cqe*>(completionBase + params.cq_off.cqes);
+
+            this->wakeDescriptor = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+            if (this->wakeDescriptor < 0) {
+                io_uring_engine::fail("eventfd");
+            }
+            this->localTail = this->submissionTail->load(std::memory_order_relaxed);
+        }
+
+        ~io_uring_engine() {
+            if (this->entries && this->entries != MAP_FAILED) {
+                ::munmap(this->entries, this->entriesSize);
+            }
+            if (this->completionRing && this->completionRing != this->submissionRing &&
+                this->completionRing != MAP_FAILED) {
+                ::munmap(this->completionRing, this->completionRingSize);
+            }
+            if (this->submissionRing && this->submissionRing != MAP_FAILED) {
+                ::munmap(this->submissionRing, this->submissionRingSize);
+            }
+            if (this->ringDescriptor >= 0) {
+                ::close(this->ringDescriptor);
+            }
+            if (this->wakeDescriptor >= 0) {
+                ::close(this->wakeDescriptor);
+            }
+        }
+
+        io_uring_engine(const io_uring_engine&) = delete;
+        io_uring_engine& operator=(const io_uring_engine&) = delete;
+
+        /**
+         *  Pollable descriptor: readable when completions are waiting. Lets an
+         *  external event loop know when to call the scheduler.
+         */
+        int native_handle() const noexcept {
+            return this->ringDescriptor;
+        }
+
+        void prepare_read(io_operation& operation, int descriptor, void* buffer, unsigned length, std::int64_t offset) {
+            io_uring_sqe* entry = this->next_entry(IORING_OP_READ, descriptor, &operation);
+            entry->addr = reinterpret_cast<std::uint64_t>(buffer);
+            entry->len = length;
+            entry->off = static_cast<std::uint64_t>(offset);
+        }
+
+        void prepare_write(io_operation& operation,
+                           int descriptor,
+                           const void* buffer,
+                           unsigned length,
+                           std::int64_t offset) {
+            io_uring_sqe* entry = this->next_entry(IORING_OP_WRITE, descriptor, &operation);
+            entry->addr = reinterpret_cast<std::uint64_t>(buffer);
+            entry->len = length;
+            entry->off = static_cast<std::uint64_t>(offset);
+        }
+
+        void prepare_fsync(io_operation& operation, int descriptor, bool dataOnly) {
+            io_uring_sqe* entry = this->next_entry(IORING_OP_FSYNC, descriptor, &operation);
+            entry->fsync_flags = dataOnly ? IORING_FSYNC_DATASYNC : 0;
+        }
+
+        void prepare_timeout(io_operation& operation, std::int64_t microseconds) {
+            //  The timespec must stay valid until completion.
+            __kernel_timespec& timeSpec = this->timeouts[&operation];
+            timeSpec.tv_sec = microseconds / 1000000;
+            timeSpec.tv_nsec = (microseconds % 1000000) * 1000;
+            io_uring_sqe* entry = this->next_entry(IORING_OP_TIMEOUT, -1, &operation);
+            entry->addr = reinterpret_cast<std::uint64_t>(&timeSpec);
+            entry->len = 1;
+            entry->off = 0;  //  count 0: fire on time only
+        }
+
+        /**
+         *  Arm `operation` so that it completes when wake() is called from any thread, or at once if it has been
+         *  called since the last `consume_wake()`.
+         */
+        void arm_wake(io_operation& operation) {
+            io_uring_sqe* entry = this->next_entry(IORING_OP_POLL_ADD, this->wakeDescriptor, &operation);
+            entry->poll32_events = POLLIN;
+        }
+
+        /**
+         *  Forget the calls of wake() so far. Whoever was woken looks for the work afterwards, never before:
+         *  work announced in between would otherwise be left without a wake.
+         */
+        void consume_wake() {
+            std::uint64_t value = 0;
+            while (::read(this->wakeDescriptor, &value, sizeof value) > 0) {
+            }
+        }
+
+        void wake() {
+            const std::uint64_t one = 1;
+            (void)!::write(this->wakeDescriptor, &one, sizeof one);
+        }
+
+        /**
+         *  Publish queued entries; the syscall is issued in reap().
+         */
+        void submit() {
+            this->submissionTail->store(this->localTail, std::memory_order_release);
+        }
+
+        /**
+         *  True when entries are queued that the kernel has not been told about yet.
+         */
+        bool has_unsubmitted() const noexcept {
+            return this->localTail != this->submissionHead->load(std::memory_order_acquire);
+        }
+
+        /**
+         *  Collect finished operations. Blocks when `block` is true and nothing has
+         *  completed yet. Returns the number of completions appended to `completed`.
+         */
+        std::size_t reap(bool block, std::vector<io_operation*>& completed) {
+            const unsigned toSubmit = this->localTail - this->submissionHead->load(std::memory_order_acquire);
+            if (toSubmit > 0 || block) {
+                unsigned flags = block ? IORING_ENTER_GETEVENTS : 0;
+                //  Only wait if nothing is already there to be reaped.
+                if (block && this->completionHead->load(std::memory_order_relaxed) !=
+                                 this->completionTail->load(std::memory_order_acquire)) {
+                    flags = 0;
+                }
+                const int rc = static_cast<int>(
+                    ::syscall(__NR_io_uring_enter, this->ringDescriptor, toSubmit, block ? 1u : 0u, flags, nullptr, 0));
+                if (rc < 0 && errno != EINTR) {
+                    io_uring_engine::fail("io_uring_enter");
+                }
+            }
+            std::size_t count = 0;
+            std::uint32_t head = this->completionHead->load(std::memory_order_relaxed);
+            const std::uint32_t tail = this->completionTail->load(std::memory_order_acquire);
+            while (head != tail) {
+                const io_uring_cqe& completion = this->completionEntries[head & this->completionMask];
+                auto* operation = reinterpret_cast<io_operation*>(static_cast<std::uintptr_t>(completion.user_data));
+                operation->result = completion.res == -ETIME ? 0 : completion.res;
+                this->timeouts.erase(operation);
+                completed.push_back(operation);
+                ++head;
+                ++count;
+            }
+            this->completionHead->store(head, std::memory_order_release);
+            return count;
+        }
+
+      private:
+        [[noreturn]] static void fail(const char* what) {
+            const int error = errno;
+            throw std::runtime_error(std::string("sqlite_orm async: io_uring: ") + what + ": " + std::strerror(error));
+        }
+
+        io_uring_sqe* next_entry(std::uint8_t opcode, int descriptor, io_operation* operation) {
+            if (this->localTail - this->submissionHead->load(std::memory_order_acquire) >= this->submissionEntries) {
+                //  Ring full: push what we have and let the kernel drain it.
+                this->submit();
+                const unsigned pending = this->localTail - this->submissionHead->load(std::memory_order_acquire);
+                const int rc =
+                    static_cast<int>(::syscall(__NR_io_uring_enter, this->ringDescriptor, pending, 0u, 0u, nullptr, 0));
+                if (rc < 0) {
+                    io_uring_engine::fail("io_uring_enter on a full ring");
+                }
+                if (this->localTail - this->submissionHead->load(std::memory_order_acquire) >=
+                    this->submissionEntries) {
+                    throw std::runtime_error("sqlite_orm async: io_uring submission queue is full");
+                }
+            }
+            const std::uint32_t index = this->localTail & this->submissionMask;
+            io_uring_sqe* entry = &this->entries[index];
+            std::memset(entry, 0, sizeof *entry);
+            entry->opcode = opcode;
+            entry->fd = descriptor;
+            entry->user_data = static_cast<std::uint64_t>(reinterpret_cast<std::uintptr_t>(operation));
+            this->submissionArray[index] = index;
+            ++this->localTail;
+            return entry;
+        }
+
+        int ringDescriptor = -1;
+        int wakeDescriptor = -1;
+        void* submissionRing = nullptr;
+        void* completionRing = nullptr;
+        std::size_t submissionRingSize = 0;
+        std::size_t completionRingSize = 0;
+        std::size_t entriesSize = 0;
+        io_uring_sqe* entries = nullptr;
+        std::atomic<std::uint32_t>* submissionHead = nullptr;
+        std::atomic<std::uint32_t>* submissionTail = nullptr;
+        std::uint32_t submissionMask = 0;
+        std::uint32_t submissionEntries = 0;
+        std::uint32_t* submissionArray = nullptr;
+        std::atomic<std::uint32_t>* completionHead = nullptr;
+        std::atomic<std::uint32_t>* completionTail = nullptr;
+        std::uint32_t completionMask = 0;
+        io_uring_cqe* completionEntries = nullptr;
+        std::uint32_t localTail = 0;
+        std::unordered_map<io_operation*, __kernel_timespec> timeouts;
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  True when an io_uring instance can be created in this process. Creating an
+     *  async_io_context where this is false throws.
+     */
+    inline bool io_uring_available() noexcept {
+        try {
+            internal::io_uring_engine probe(4);
+            return true;
+        } catch (const std::exception&) {
+            return false;
+        }
+    }
+}
+#endif
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+namespace sqlite_orm::internal {
+
+    /**
+     *  Single-threaded cooperative scheduler: runs fibers and drives io_uring.
+     *  Fibers park on I/O by calling read/write/fsync/sleep below; the scheduler
+     *  resumes them when the completion arrives.
+     *
+     *  Cross-thread use is limited to post() and wake(): another thread may hand a
+     *  callable to this scheduler, which runs it on the scheduler's own thread.
+     */
+    class scheduler {
+      public:
+        explicit scheduler(unsigned queueDepth = 256) : engine(queueDepth) {}
+
+        scheduler(const scheduler&) = delete;
+        scheduler& operator=(const scheduler&) = delete;
+
+        /**
+         *  The scheduler bound to this thread while a loop iteration executes, i.e.
+         *  the scheduler owning the currently running fiber. nullptr on a bare thread.
+         */
+        static scheduler* current() noexcept {
+            return scheduler::current_slot();
+        }
+
+        /**
+         *  Create a fiber and make it runnable.
+         */
+        void spawn(std::function<void()> function, std::size_t stackSize = fiber::defaultStackSize) {
+            std::unique_ptr<fiber> newFiber = this->take_idle(fiber::rounded_stack_size(stackSize));
+            if (newFiber) {
+                newFiber->restart(std::move(function));
+            } else {
+                newFiber = std::make_unique<fiber>(std::move(function), stackSize);
+            }
+            this->ready.push_back(newFiber.get());
+            this->fibers.push_back(std::move(newFiber));
+            ++this->alive;
+        }
+
+        /**
+         *  Run until every fiber has finished.
+         */
+        void run() {
+            while (this->run_one()) {
+            }
+        }
+
+        /**
+         *  Keep a wake operation armed so that run_one() blocks while idle and post()
+         *  from another thread interrupts it.
+         */
+        void enable_wake() {
+            this->arm_wake();
+        }
+
+        /**
+         *  One loop iteration; blocks for I/O only if no fiber is runnable.
+         *  Returns false when there is nothing left to do.
+         */
+        bool run_one() {
+            return this->step(true);
+        }
+
+        /**
+         *  One non-blocking iteration.
+         */
+        bool poll() {
+            return this->step(false);
+        }
+
+        /**
+         *  True when nothing is runnable and no I/O (other than the cross-thread wake
+         *  operation) is in flight.
+         */
+        bool is_idle() const noexcept {
+            return this->ready.empty() && this->inFlight == (this->wakeArmed ? 1u : 0u);
+        }
+
+        /**
+         *  True when another loop iteration would make progress without waiting: a fiber is runnable,
+         *  or I/O is queued that the kernel has not been told about yet.
+         */
+        bool has_runnable() const noexcept {
+            return !this->ready.empty() || this->engine.has_unsubmitted();
+        }
+
+        int native_handle() const noexcept {
+            return this->engine.native_handle();
+        }
+
+        //  ---- Called from inside a fiber; they park it until completion ----
+
+        std::int32_t read(int descriptor, void* buffer, unsigned length, std::int64_t offset) {
+            io_operation operation;
+            this->engine.prepare_read(operation, descriptor, buffer, length, offset);
+            return this->await(operation);
+        }
+
+        std::int32_t write(int descriptor, const void* buffer, unsigned length, std::int64_t offset) {
+            io_operation operation;
+            this->engine.prepare_write(operation, descriptor, buffer, length, offset);
+            return this->await(operation);
+        }
+
+        std::int32_t fsync(int descriptor, bool dataOnly) {
+            io_operation operation;
+            this->engine.prepare_fsync(operation, descriptor, dataOnly);
+            return this->await(operation);
+        }
+
+        std::int32_t sleep_microseconds(std::int64_t microseconds) {
+            io_operation operation;
+            this->engine.prepare_timeout(operation, microseconds);
+            return this->await(operation);
+        }
+
+        //  ---- Thread-safe ----
+
+        void post(std::function<void()> function) {
+            {
+                std::lock_guard<std::mutex> lock(this->postMutex);
+                this->posted.push_back(std::move(function));
+            }
+            this->wake();
+        }
+
+        void wake() {
+            this->engine.wake();
+        }
+
+        /**
+         *  Same-thread hook: when it returns true the loop will not block in the
+         *  kernel even if no fiber is runnable (the owner has work of its own).
+         */
+        void set_external_ready(std::function<bool()> predicate) {
+            this->externalReady = std::move(predicate);
+        }
+
+        /**
+         *  VFS calls made on this scheduler's thread outside a fiber, which therefore did their I/O synchronously.
+         */
+        std::uint64_t synchronousFallbacks = 0;
+
+      private:
+        static scheduler*& current_slot() noexcept {
+            thread_local scheduler* currentScheduler = nullptr;
+            return currentScheduler;
+        }
+
+        struct current_guard {
+            scheduler* previous = nullptr;
+
+            explicit current_guard(scheduler* self) : previous(scheduler::current_slot()) {
+                scheduler::current_slot() = self;
+            }
+
+            ~current_guard() {
+                scheduler::current_slot() = this->previous;
+            }
+        };
+
+        /**
+         *  The most recently finished fiber whose stack has the given size, or nullptr.
+         */
+        std::unique_ptr<fiber> take_idle(std::size_t stackSize) {
+            auto it =
+                std::find_if(this->idle.rbegin(), this->idle.rend(), [stackSize](const std::unique_ptr<fiber>& owned) {
+                    return owned->stack_size() == stackSize;
+                });
+            if (it == this->idle.rend()) {
+                return nullptr;
+            }
+            std::unique_ptr<fiber> taken = std::move(*it);
+            this->idle.erase(std::next(it).base());
+            return taken;
+        }
+
+        std::int32_t await(io_operation& operation) {
+            fiber* self = fiber::current();
+            assert(self && "scheduler I/O must be called from inside a fiber");
+            operation.waiter = self;
+            operation.completed = false;
+            ++this->inFlight;
+            do {
+                fiber::yield();
+            } while (!operation.completed);
+            return operation.result;
+        }
+
+        void arm_wake() {
+            if (this->wakeArmed) {
+                return;
+            }
+            this->wakeOperation = io_operation{};
+            this->wakeOperation.context = this;
+            this->wakeOperation.onComplete = [](io_operation*, void* context) {
+                auto* self = static_cast<scheduler*>(context);
+                self->wakeArmed = false;
+                self->engine.consume_wake();
+                self->drain_posted();
+                self->arm_wake();
+            };
+            this->engine.arm_wake(this->wakeOperation);
+            this->wakeArmed = true;
+            ++this->inFlight;
+        }
+
+        void drain_posted() {
+            std::deque<std::function<void()>> batch;
+            {
+                std::lock_guard<std::mutex> lock(this->postMutex);
+                batch.swap(this->posted);
+            }
+            for (auto& function: batch) {
+                function();
+            }
+        }
+
+        bool step(bool mayBlock) {
+            current_guard guard(this);
+            this->drain_posted();
+
+            //  1. Run everything that is runnable right now.
+            std::size_t runnable = this->ready.size();
+            while (runnable-- > 0) {
+                fiber* next = this->ready.front();
+                this->ready.pop_front();
+                next->resume();
+                if (next->is_done()) {
+                    --this->alive;
+                    auto it = std::find_if(this->fibers.begin(),
+                                           this->fibers.end(),
+                                           [next](const std::unique_ptr<fiber>& owned) {
+                                               return owned.get() == next;
+                                           });
+                    if (it != this->fibers.end()) {
+                        if (this->idle.size() < scheduler::maxIdleFibers) {
+                            this->idle.push_back(std::move(*it));
+                        }
+                        this->fibers.erase(it);
+                    }
+                }
+            }
+
+            //  2. Push queued I/O to the kernel and collect completions. Block only
+            //     when no fiber can make progress without them.
+            this->engine.submit();
+            if (this->inFlight == 0) {
+                return !this->ready.empty();
+            }
+            const bool block = mayBlock && this->ready.empty() && !(this->externalReady && this->externalReady());
+            this->completed.clear();
+            this->engine.reap(block, this->completed);
+            for (io_operation* operation: this->completed) {
+                operation->completed = true;
+                --this->inFlight;
+                if (operation->waiter) {
+                    this->ready.push_back(operation->waiter);
+                } else if (operation->onComplete) {
+                    operation->onComplete(operation, operation->context);
+                }
+            }
+            if (this->ready.empty() && this->inFlight == (this->wakeArmed ? 1u : 0u) && this->alive == 0) {
+                return false;
+            }
+            return true;
+        }
+
+        io_uring_engine engine;
+        std::deque<fiber*> ready;
+        std::vector<std::unique_ptr<fiber>> fibers;
+        /**
+         *  Finished fibers kept for their stacks: mapping a stack and faulting its pages in costs more than
+         *  a typical storage operation. Bounded, so that a burst of concurrent operations does not pin its
+         *  stacks forever.
+         */
+        static constexpr std::size_t maxIdleFibers = 64;
+        std::vector<std::unique_ptr<fiber>> idle;
+        std::vector<io_operation*> completed;
+        std::size_t inFlight = 0;  //  operations in the kernel (including the wake operation)
+        std::size_t alive = 0;
+        io_operation wakeOperation;
+        bool wakeArmed = false;
+        std::mutex postMutex;
+        std::deque<std::function<void()>> posted;
+        std::function<bool()> externalReady;
+    };
+}
+#endif
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  Event loop of the asynchronous storage: one per thread. It submits the file I/O of its storages to io_uring,
+     *  runs the fibers their operations execute on, and resumes the coroutines awaiting them.
+     *
+     *  It is not a general-purpose executor, and an application needs no second event loop because of it.
+     *  There are three ways to drive it:
+     *
+     *  1. The application has no event loop of its own: `run()`.
+     *
+     *         async_io_context io;
+     *         io.spawn(work(storage));    //  async_task<void> work(...)
+     *         io.run();                   //  returns when everything spawned has finished
+     *
+     *  2. The application already runs an event loop (asio, libhv, libuv, Qt, a hand-written epoll loop):
+     *     embed the async_io_context into it. `native_handle()` is a descriptor that becomes readable whenever
+     *     the async_io_context has something to do; the host loop watches it and calls `poll()`, which never blocks.
+     *     Coroutines are then resumed on the host loop's thread, from inside `poll()`.
+     *
+     *         host.watch_readable(io.native_handle(), [&io] { io.poll(); });
+     *         io.spawn(work(storage));
+     *         io.poll();                  //  starts what was spawned
+     *
+     *  3. The async_io_context gets a thread of its own: `run_forever()` there, `post()` and `stop()` from any thread.
+     *
+     *  Coroutines (stackless) never run on a fiber stack: a fiber hands the continuation back to the async_io_context,
+     *  which resumes it on the native stack.
+     */
+    class async_io_context {
+      public:
+        explicit async_io_context(unsigned queueDepth = 256) : scheduler_(queueDepth) {
+            this->scheduler_.set_external_ready([this] {
+                return !this->ready.empty() || !this->pendingRoots.empty();
+            });
+            //  From here on a post() from another thread wakes run() and shows on native_handle().
+            this->scheduler_.enable_wake();
+            this->scheduler_.poll();
+        }
+
+        async_io_context(const async_io_context&) = delete;
+        async_io_context& operator=(const async_io_context&) = delete;
+
+        internal::scheduler& scheduler() noexcept {
+            return this->scheduler_;
+        }
+
+        /**
+         *  The async_io_context whose run()/poll()/run_forever() is executing on this
+         *  thread, or nullptr.
+         */
+        static async_io_context* current() noexcept {
+            return async_io_context::current_slot();
+        }
+
+        /**
+         *  A descriptor for embedding into another event loop: it is readable whenever `poll()` has work to do
+         *  that arrived from outside, i.e. completed I/O or a `post()` from another thread.
+         *  Level-triggered; watch it for readability only, and never read from it or close it.
+         */
+        int native_handle() const noexcept {
+            return this->scheduler_.native_handle();
+        }
+
+        /**
+         *  Thread-safe: run `function` on this context's thread at the next turn.
+         */
+        void post(std::function<void()> function) {
+            this->scheduler_.post(std::move(function));
+        }
+
+        /**
+         *  Thread-safe: resume a coroutine on this context's thread.
+         */
+        void resume_here(std::coroutine_handle<> handle) {
+            this->scheduler_.post([this, handle] {
+                this->ready.push_back(handle);
+            });
+        }
+
+        /**
+         *  Same-thread: resume `handle` on the next turn (never inline).
+         */
+        void schedule(std::coroutine_handle<> handle) {
+            this->ready.push_back(handle);
+        }
+
+        /**
+         *  Awaitable: run a synchronous callable on a fiber. Everything inside
+         *  (sqlite3_step and friends) may park on I/O without blocking the thread.
+         */
+        template<class F>
+        auto async(F function) {
+            using result_type = std::invoke_result_t<F&>;
+            struct awaitable {
+                async_io_context* context = nullptr;
+                F function;
+                internal::result_box<result_type> box;
+                std::size_t stackSize = 0;
+
+                bool await_ready() const noexcept {
+                    return false;
+                }
+
+                void await_suspend(std::coroutine_handle<> handle) {
+                    this->context->scheduler_.spawn(
+                        [this, handle] {
+                            try {
+                                if constexpr (std::is_void_v<result_type>) {
+                                    this->function();
+                                } else {
+                                    this->box.set(this->function());
+                                }
+                            } catch (...) {
+                                this->box.error = std::current_exception();
+                            }
+                            this->context->ready.push_back(handle);
+                        },
+                        this->stackSize);
+                }
+
+                result_type await_resume() {
+                    return this->box.take();
+                }
+            };
+            return awaitable{this, std::move(function), {}, this->fiberStackSize};
+        }
+
+        /**
+         *  Register a root coroutine. It starts on the next turn of `run()`/`poll()`/`run_forever()`, never inline,
+         *  so `async_io_context::current()` is set while it executes. Same-thread; when the async_io_context is embedded
+         *  into another event loop, call `poll()` afterwards.
+         */
+        void spawn(async_task<void> rootTask) {
+            ++this->live;
+            this->pendingRoots.push_back(std::move(rootTask));
+        }
+
+        /**
+         *  Drive everything to completion. Rethrows the first exception that escaped
+         *  a root coroutine.
+         */
+        void run() {
+            current_guard guard(this);
+            for (;;) {
+                this->drain();
+                this->rethrow_if_failed();
+                if (this->ready.empty() && this->scheduler_.is_idle() && this->live == 0) {
+                    break;
+                }
+                if (this->ready.empty()) {
+                    this->scheduler_.run_one();  //  runs fibers, or blocks for I/O / posts
+                }
+            }
+        }
+
+        /**
+         *  Run everything that can run without waiting, then return: never blocks. For embedding into another
+         *  event loop, which calls it whenever `native_handle()` is readable and after handing over new work
+         *  with `spawn()`.
+         *
+         *  Returns true while work is in progress. Rethrows the first exception that escaped a root coroutine.
+         *  A call made from inside `poll()` itself, e.g. from a coroutine it resumed, returns at once; the
+         *  outer call picks up the work.
+         */
+        bool poll() {
+            if (this->polling) {
+                return true;
+            }
+            current_guard guard(this);
+            polling_guard pollingGuard{this};
+            do {
+                this->drain();
+                this->scheduler_.poll();
+            } while (this->has_runnable());
+            this->rethrow_if_failed();
+            return !(this->scheduler_.is_idle() && this->live == 0);
+        }
+
+        /**
+         *  Serve posted work, fibers and coroutines until stop() is called.
+         */
+        void run_forever() {
+            current_guard guard(this);
+            this->stopped = false;
+            while (!this->stopped) {
+                this->drain();
+                this->rethrow_if_failed();
+                this->scheduler_.run_one();  //  blocks on the wake operation while idle
+            }
+            this->drain();
+        }
+
+        /**
+         *  Thread-safe.
+         */
+        void stop() {
+            this->scheduler_.post([this] {
+                this->stopped = true;
+            });
+        }
+
+        /**
+         *  Stack size of the fibers created by async().
+         */
+        std::size_t fiberStackSize = internal::fiber::defaultStackSize;
+
+      private:
+        static async_io_context*& current_slot() noexcept {
+            thread_local async_io_context* currentContext = nullptr;
+            return currentContext;
+        }
+
+        struct current_guard {
+            async_io_context* previous = nullptr;
+
+            explicit current_guard(async_io_context* context) : previous(async_io_context::current_slot()) {
+                async_io_context::current_slot() = context;
+            }
+
+            ~current_guard() {
+                async_io_context::current_slot() = this->previous;
+            }
+        };
+
+        struct polling_guard {
+            async_io_context* context = nullptr;
+
+            explicit polling_guard(async_io_context* context_) : context(context_) {
+                this->context->polling = true;
+            }
+
+            ~polling_guard() {
+                this->context->polling = false;
+            }
+        };
+
+        bool has_runnable() const noexcept {
+            return !this->ready.empty() || !this->pendingRoots.empty() || this->scheduler_.has_runnable();
+        }
+
+        struct detached {
+            struct promise_type {
+                detached get_return_object() noexcept {
+                    return {};
+                }
+
+                std::suspend_never initial_suspend() noexcept {
+                    return {};
+                }
+
+                std::suspend_never final_suspend() noexcept {
+                    return {};
+                }
+
+                void return_void() noexcept {}
+
+                void unhandled_exception() noexcept {
+                    std::terminate();
+                }
+            };
+        };
+
+        detached launch(async_task<void> rootTask) {
+            try {
+                co_await std::move(rootTask);
+            } catch (...) {
+                if (!this->error) {
+                    this->error = std::current_exception();
+                }
+            }
+            --this->live;
+        }
+
+        void rethrow_if_failed() {
+            if (this->error) {
+                std::exception_ptr error = std::exchange(this->error, nullptr);
+                std::rethrow_exception(error);
+            }
+        }
+
+        void drain() {
+            for (;;) {
+                if (!this->pendingRoots.empty()) {
+                    async_task<void> rootTask = std::move(this->pendingRoots.front());
+                    this->pendingRoots.pop_front();
+                    this->launch(std::move(rootTask));
+                    continue;
+                }
+                if (this->ready.empty()) {
+                    break;
+                }
+                std::coroutine_handle<> handle = this->ready.front();
+                this->ready.pop_front();
+                handle.resume();
+            }
+        }
+
+        internal::scheduler scheduler_;
+        std::deque<std::coroutine_handle<>> ready;
+        std::deque<async_task<void>> pendingRoots;
+        std::size_t live = 0;
+        std::exception_ptr error;
+        bool stopped = false;
+        bool polling = false;
+
+        friend class async_io_pool;
+    };
+}
+#endif
+
+// #include "../result_set/async_cursor.h"
+
+/** @file
+ *  Purpose: fetch the rows of a query one at a time from a coroutine.
+ *
+ *  Intention: realizes `async_cursor`, what `async_storage::iterate()` returns, over the views of
+ *  `result_set/mapped_view.h` and `result_set/result_set_view.h` that the synchronous `storage_t::iterate()` returns;
+ *  uses `task.h`, and the storage's `run()` for every step.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <memory>  //  std::shared_ptr, std::make_shared
+#include <optional>  //  std::optional, std::nullopt
+#include <type_traits>  //  std::invoke_result_t, std::remove_cvref_t
+#include <utility>  //  std::declval, std::exchange, std::move
+#endif
+#endif
+
+// #include "../functional/coroutines/task.h"
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+namespace sqlite_orm::internal {
+
+    /**
+     *  Where a cursor stands in its result set. Shared between the cursor and the step in progress, and handed
+     *  to the storage when the cursor is destroyed before the rows are exhausted.
+     */
+    template<class Storage, class MakeView>
+    struct cursor_position {
+        using view_type = std::invoke_result_t<MakeView&, Storage&>;
+        using iterator_type = decltype(std::declval<view_type&>().begin());
+        using sentinel_type = decltype(std::declval<view_type&>().end());
+        using value_type = std::remove_cvref_t<decltype(*std::declval<iterator_type&>())>;
+
+        explicit cursor_position(MakeView makeView_) : makeView(std::move(makeView_)) {}
+
+        /**
+         *  Step to the next row and return it, or nothing when the rows are exhausted. Runs on a fiber.
+         */
+        std::optional<value_type> advance(Storage& storage) {
+            if (this->finished) {
+                return std::nullopt;
+            }
+            try {
+                if (!this->iterator) {
+                    view_type view = (*this->makeView)(storage);
+                    this->makeView.reset();
+                    this->iterator.emplace(view.begin());
+                    this->end.emplace(view.end());
+                } else {
+                    ++*this->iterator;
+                }
+                if (*this->iterator == *this->end) {
+                    this->finish();
+                    return std::nullopt;
+                }
+                auto&& row = **this->iterator;
+                return std::optional<value_type>{std::move(row)};
+            } catch (...) {
+                this->finish();
+                throw;
+            }
+        }
+
+        /**
+         *  Finalize the statement.
+         */
+        void finish() {
+            this->iterator.reset();
+            this->end.reset();
+            this->makeView.reset();
+            this->finished = true;
+        }
+
+        bool holds_statement() const noexcept {
+            return this->iterator.has_value();
+        }
+
+      private:
+        std::optional<MakeView> makeView;
+        std::optional<iterator_type> iterator;
+        std::optional<sentinel_type> end;
+        bool finished = false;
+    };
+
+    /**
+     *  The rows of a query, fetched one at a time; returned by `async_storage::iterate()`.
+     *
+     *      auto users = storage.iterate<User>(where(c(&User::age) > 30));
+     *      while (std::optional<User> user = co_await users.next()) {
+     *          ...
+     *      }
+     *
+     *  The first `next()` prepares the statement; it is finalized when the rows are exhausted or the cursor is
+     *  destroyed. Between two rows the connection is free: other operations on the storage run in between,
+     *  further cursors included, as they may inside a loop over the synchronous `storage.iterate()`.
+     *
+     *  A cursor must not outlive its storage.
+     */
+    template<class AsyncStorage, class MakeView>
+    class async_cursor {
+        using position_type = internal::cursor_position<typename AsyncStorage::storage_type, MakeView>;
+
+      public:
+        using value_type = typename position_type::value_type;
+
+        async_cursor(AsyncStorage& storage_, MakeView makeView) :
+            storage(&storage_), position(std::make_shared<position_type>(std::move(makeView))) {}
+
+        async_cursor(async_cursor&& other) noexcept :
+            storage(other.storage), position(std::exchange(other.position, nullptr)) {}
+
+        async_cursor& operator=(async_cursor&& other) noexcept {
+            if (this != &other) {
+                this->close();
+                this->storage = other.storage;
+                this->position = std::exchange(other.position, nullptr);
+            }
+            return *this;
+        }
+
+        async_cursor(const async_cursor&) = delete;
+        async_cursor& operator=(const async_cursor&) = delete;
+
+        ~async_cursor() {
+            this->close();
+        }
+
+        /**
+         *  The next row, or `std::nullopt` after the last one.
+         */
+        async_task<std::optional<value_type>> next() {
+            return this->storage->run([position = this->position](typename AsyncStorage::storage_type& storage) {
+                return position->advance(storage);
+            });
+        }
+
+        /**
+         *  Stop fetching: the statement is finalized as soon as no operation is executing on the connection.
+         */
+        void close() noexcept {
+            if (this->position && this->position->holds_statement()) {
+                this->storage->retire(std::move(this->position));
+            }
+            this->position = nullptr;
+        }
+
+      private:
+        AsyncStorage* storage = nullptr;
+        std::shared_ptr<position_type> position;
+    };
+}
+#endif
+
+// #include "storage.h"
+
+// #include "storage_options.h"
+//  connection_control
+// #include "vfs/async_vfs.h"
+
+/** @file
+ *  Purpose: perform the file I/O of a connection through io_uring instead of blocking system calls.
+ *
+ *  Intention: realizes a VFS, SQLite's OS interface layer, registered next to the built-in ones of `builtin/vfs.h` and wrapping
+ *  the default one; uses `scheduler.h`, and is selected for a storage by `make_async_storage()` through `connection_control`.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <atomic>  //  std::atomic, std::memory_order_relaxed
+#include <cerrno>  //  EINTR, ENOSPC
+#include <cstddef>  //  std::size_t
+#include <cstdint>  //  std::int32_t
+#include <cstring>  //  std::memcpy, std::memset, std::strncmp
+#include <string>  //  std::string
+#include <string_view>  //  std::string_view
+#endif
+#include <fcntl.h>  //  open, fcntl, O_* flags
+#include <sqlite3.h>
+#include <sys/stat.h>  //  stat, fstat
+#include <unistd.h>  //  close
+#endif
+
+// #include "../../async/scheduler.h"
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+namespace sqlite_orm::internal {
+
+    /**
+     *  Name of the asynchronous VFS, as accepted by `connection_control::vfs_name`.
+     */
+    inline constexpr std::string_view async_vfs_name = "sqlite_orm_async";
+
+    /**
+     *  Counters of the asynchronous VFS, mostly for tests.
+     */
+    struct async_vfs_statistics {
+        sqlite3_int64 asyncReads = 0;
+        sqlite3_int64 asyncWrites = 0;
+        sqlite3_int64 asyncSyncs = 0;
+        sqlite3_int64 asyncSleeps = 0;
+        sqlite3_int64 syncReads = 0;
+        sqlite3_int64 syncWrites = 0;
+        sqlite3_int64 syncSyncs = 0;
+    };
+}
+
+/**
+ *  SQLite VFS that performs file I/O through the scheduler.
+ *
+ *  It wraps the VFS that is the default one when the first asynchronous storage is made. Locking, shared memory
+ *  (WAL index) and file open/delete are delegated to the wrapped VFS unchanged.
+ *  xRead / xWrite / xSync / xSleep are routed through the scheduler whenever they are called from inside a fiber
+ *  and the file has a descriptor to do so (see `wrapped_descriptor()`); otherwise they fall back to the wrapped
+ *  synchronous implementation, so a connection opened with this VFS is usable from plain code as well, and over
+ *  a default VFS other than SQLite's "unix".
+ */
+namespace sqlite_orm::internal::async_vfs {
+
+    /**
+     *  Incremented on every thread that runs an async_io_context.
+     */
+    struct atomic_statistics {
+        std::atomic<sqlite3_int64> asyncReads{0};
+        std::atomic<sqlite3_int64> asyncWrites{0};
+        std::atomic<sqlite3_int64> asyncSyncs{0};
+        std::atomic<sqlite3_int64> asyncSleeps{0};
+        std::atomic<sqlite3_int64> syncReads{0};
+        std::atomic<sqlite3_int64> syncWrites{0};
+        std::atomic<sqlite3_int64> syncSyncs{0};
+    };
+
+    inline atomic_statistics statistics{};
+
+    inline void count(std::atomic<sqlite3_int64>& counter) noexcept {
+        counter.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    /**
+     *  SQLite allocates this struct as raw memory (szOsFile bytes), so it holds
+     *  only trivially constructible members.
+     */
+    struct async_file {
+        sqlite3_file base{};  //  must be first
+        sqlite3_file* wrapped = nullptr;  //  file of the wrapped VFS (allocated right after this struct)
+        int descriptor = -1;  //  the wrapped file's descriptor, or -1: I/O goes through the wrapped file synchronously
+        const char* fileName = nullptr;  //  as passed to xOpen, which SQLite keeps valid until xClose
+        //  a journal or WAL file this open created: its directory entry is not durable yet
+        bool directorySyncPending = false;
+    };
+
+    inline bool in_fiber(scheduler*& currentScheduler) {
+        currentScheduler = scheduler::current();
+        return currentScheduler && fiber::current();
+    }
+
+    struct vfs_data {
+        sqlite3_vfs* wrapped = nullptr;
+    };
+
+    inline sqlite3_vfs* wrapped_vfs(sqlite3_vfs* vfs) {
+        return static_cast<vfs_data*>(vfs->pAppData)->wrapped;
+    }
+
+    /**
+     *  True for the VFSes of SQLite's os_unix.c: "unix", "unix-excl", "unix-none", "unix-dotfile".
+     */
+    inline bool is_unix_vfs(const sqlite3_vfs* vfs) noexcept {
+        return std::strncmp(vfs->zName, "unix", 4) == 0;
+    }
+
+    /**
+     *  The descriptor the wrapped "unix" file itself reads and writes, or -1.
+     *
+     *  The asynchronous I/O must go through that very descriptor. A second one for the same file would be
+     *  a hazard to the locks: closing any descriptor of a file drops every POSIX lock the process holds on it,
+     *  those of other connections to the file included, which is why the "unix" VFS itself defers closing
+     *  its descriptors while locks are held. And a second one opened in another mode could not serve the file.
+     *
+     *  SQLite offers no interface to ask for the descriptor, so it is read from where the files of os_unix.c
+     *  have kept it in every release sqlite_orm supports (`unixFile::h`, after three pointers), and trusted only
+     *  if it proves to be an open descriptor of this file in the mode the file was opened with. Anything else,
+     *  like a default VFS that is not "unix" or a file without a name, is served synchronously through the
+     *  wrapped file, which is always correct.
+     */
+    inline int wrapped_descriptor(const sqlite3_vfs* wrappedVfs,
+                                  const sqlite3_file* wrappedFile,
+                                  const char* fileName,
+                                  int openedFlags) {
+        if (!fileName || !is_unix_vfs(wrappedVfs)) {
+            return -1;
+        }
+        int descriptor = -1;
+        std::memcpy(&descriptor, reinterpret_cast<const char*>(wrappedFile) + 3 * sizeof(void*), sizeof descriptor);
+        struct stat fileStat{};
+        struct stat descriptorStat{};
+        if (descriptor < 0 || ::stat(fileName, &fileStat) != 0 || ::fstat(descriptor, &descriptorStat) != 0 ||
+            descriptorStat.st_dev != fileStat.st_dev || descriptorStat.st_ino != fileStat.st_ino) {
+            return -1;
+        }
+        const int statusFlags = ::fcntl(descriptor, F_GETFL);
+        const int expectedAccess = (openedFlags & SQLITE_OPEN_READWRITE) ? O_RDWR : O_RDONLY;
+        if (statusFlags < 0 || (statusFlags & O_ACCMODE) != expectedAccess) {
+            return -1;
+        }
+        return descriptor;
+    }
+
+    /**
+     *  Make the directory entry of a newly created journal or WAL file durable, as the "unix" VFS does in its
+     *  xSync: without it the file can be missing after a power loss, and with it the rollback of the transaction.
+     *  Like there, a failure is ignored: some file systems cannot sync a directory.
+     */
+    inline void sync_directory(scheduler& currentScheduler, const char* fileName) {
+        std::string directory{fileName};
+        const std::size_t slash = directory.find_last_of('/');
+        if (slash == std::string::npos) {
+            directory = ".";
+        } else if (slash == 0) {
+            directory = "/";
+        } else {
+            directory.resize(slash);
+        }
+        const int descriptor = ::open(directory.c_str(), O_RDONLY | O_CLOEXEC);
+        if (descriptor < 0) {
+            return;
+        }
+        currentScheduler.fsync(descriptor, false);
+        ::close(descriptor);
+    }
+
+    /**
+     *  False if SQLite was built with SQLITE_DISABLE_DIRSYNC, which makes the "unix" VFS skip the directory sync.
+     */
+    inline bool directory_sync_enabled() {
+#ifdef SQLITE_OMIT_COMPILEOPTION_DIAGS
+        return true;
+#else
+        return !sqlite3_compileoption_used("DISABLE_DIRSYNC");
+#endif
+    }
+
+    //  ------------------------------------------------------------ io methods
+
+    inline int file_close(sqlite3_file* file) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        int rc = SQLITE_OK;
+        if (asyncFile->wrapped->pMethods) {
+            rc = asyncFile->wrapped->pMethods->xClose(asyncFile->wrapped);
+        }
+        asyncFile->descriptor = -1;  //  it was the wrapped file's
+        return rc;
+    }
+
+    inline int file_read(sqlite3_file* file, void* buffer, int length, sqlite3_int64 offset) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        scheduler* currentScheduler = nullptr;
+        if (!in_fiber(currentScheduler) || asyncFile->descriptor < 0) {
+            count(statistics.syncReads);
+            if (currentScheduler) {
+                ++currentScheduler->synchronousFallbacks;
+            }
+            return asyncFile->wrapped->pMethods->xRead(asyncFile->wrapped, buffer, length, offset);
+        }
+        count(statistics.asyncReads);
+        auto* output = static_cast<char*>(buffer);
+        int got = 0;
+        while (got < length) {
+            const std::int32_t result = currentScheduler->read(asyncFile->descriptor,
+                                                               output + got,
+                                                               static_cast<unsigned>(length - got),
+                                                               offset + got);
+            if (result < 0) {
+                if (result == -EINTR) {
+                    continue;
+                }
+                return SQLITE_IOERR_READ;
+            }
+            if (result == 0) {
+                break;
+            }
+            got += result;
+        }
+        if (got < length) {
+            std::memset(output + got, 0, static_cast<std::size_t>(length - got));
+            return SQLITE_IOERR_SHORT_READ;
+        }
+        return SQLITE_OK;
+    }
+
+    inline int file_write(sqlite3_file* file, const void* buffer, int length, sqlite3_int64 offset) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        scheduler* currentScheduler = nullptr;
+        if (!in_fiber(currentScheduler) || asyncFile->descriptor < 0) {
+            count(statistics.syncWrites);
+            if (currentScheduler) {
+                ++currentScheduler->synchronousFallbacks;
+            }
+            return asyncFile->wrapped->pMethods->xWrite(asyncFile->wrapped, buffer, length, offset);
+        }
+        count(statistics.asyncWrites);
+        auto* input = static_cast<const char*>(buffer);
+        int done = 0;
+        while (done < length) {
+            const std::int32_t result = currentScheduler->write(asyncFile->descriptor,
+                                                                input + done,
+                                                                static_cast<unsigned>(length - done),
+                                                                offset + done);
+            if (result < 0) {
+                if (result == -EINTR) {
+                    continue;
+                }
+                return result == -ENOSPC ? SQLITE_FULL : SQLITE_IOERR_WRITE;
+            }
+            if (result == 0) {
+                return SQLITE_FULL;
+            }
+            done += result;
+        }
+        return SQLITE_OK;
+    }
+
+    inline int file_truncate(sqlite3_file* file, sqlite3_int64 size) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        return asyncFile->wrapped->pMethods->xTruncate(asyncFile->wrapped, size);
+    }
+
+    inline int file_sync(sqlite3_file* file, int flags) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        scheduler* currentScheduler = nullptr;
+        if (!in_fiber(currentScheduler) || asyncFile->descriptor < 0) {
+            count(statistics.syncSyncs);
+            if (currentScheduler) {
+                ++currentScheduler->synchronousFallbacks;
+            }
+            return asyncFile->wrapped->pMethods->xSync(asyncFile->wrapped, flags);
+        }
+        count(statistics.asyncSyncs);
+        const bool dataOnly = (flags & SQLITE_SYNC_DATAONLY) != 0;
+        if (currentScheduler->fsync(asyncFile->descriptor, dataOnly) < 0) {
+            return SQLITE_IOERR_FSYNC;
+        }
+        if (asyncFile->directorySyncPending) {
+            sync_directory(*currentScheduler, asyncFile->fileName);
+            asyncFile->directorySyncPending = false;
+        }
+        return SQLITE_OK;
+    }
+
+    inline int file_size(sqlite3_file* file, sqlite3_int64* size) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        return asyncFile->wrapped->pMethods->xFileSize(asyncFile->wrapped, size);
+    }
+
+    inline int file_lock(sqlite3_file* file, int lockType) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        return asyncFile->wrapped->pMethods->xLock(asyncFile->wrapped, lockType);
+    }
+
+    inline int file_unlock(sqlite3_file* file, int lockType) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        return asyncFile->wrapped->pMethods->xUnlock(asyncFile->wrapped, lockType);
+    }
+
+    inline int file_check_reserved_lock(sqlite3_file* file, int* result) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        return asyncFile->wrapped->pMethods->xCheckReservedLock(asyncFile->wrapped, result);
+    }
+
+    inline int file_control(sqlite3_file* file, int operation, void* argument) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        if (operation == SQLITE_FCNTL_VFSNAME) {
+            char* wrappedName = nullptr;
+            asyncFile->wrapped->pMethods->xFileControl(asyncFile->wrapped, operation, &wrappedName);
+            *static_cast<char**>(argument) =
+                sqlite3_mprintf("%s/%s", async_vfs_name.data(), wrappedName ? wrappedName : "?");
+            sqlite3_free(wrappedName);
+            return SQLITE_OK;
+        }
+        return asyncFile->wrapped->pMethods->xFileControl(asyncFile->wrapped, operation, argument);
+    }
+
+    inline int file_sector_size(sqlite3_file* file) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        return asyncFile->wrapped->pMethods->xSectorSize(asyncFile->wrapped);
+    }
+
+    inline int file_device_characteristics(sqlite3_file* file) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        return asyncFile->wrapped->pMethods->xDeviceCharacteristics(asyncFile->wrapped);
+    }
+
+    inline int file_shm_map(sqlite3_file* file, int page, int pageSize, int extend, void volatile** result) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        return asyncFile->wrapped->pMethods->xShmMap(asyncFile->wrapped, page, pageSize, extend, result);
+    }
+
+    inline int file_shm_lock(sqlite3_file* file, int offset, int count, int flags) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        return asyncFile->wrapped->pMethods->xShmLock(asyncFile->wrapped, offset, count, flags);
+    }
+
+    inline void file_shm_barrier(sqlite3_file* file) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        asyncFile->wrapped->pMethods->xShmBarrier(asyncFile->wrapped);
+    }
+
+    inline int file_shm_unmap(sqlite3_file* file, int deleteFlag) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        return asyncFile->wrapped->pMethods->xShmUnmap(asyncFile->wrapped, deleteFlag);
+    }
+
+    /**
+     *  No memory-mapped I/O: a page fault would be a hidden synchronous read.
+     */
+    inline int file_fetch(sqlite3_file*, sqlite3_int64, int, void** result) {
+        *result = nullptr;
+        return SQLITE_OK;
+    }
+
+    inline int file_unfetch(sqlite3_file*, sqlite3_int64, void*) {
+        return SQLITE_OK;
+    }
+
+    inline const sqlite3_io_methods ioMethods = {
+        3,
+        file_close,
+        file_read,
+        file_write,
+        file_truncate,
+        file_sync,
+        file_size,
+        file_lock,
+        file_unlock,
+        file_check_reserved_lock,
+        file_control,
+        file_sector_size,
+        file_device_characteristics,
+        file_shm_map,
+        file_shm_lock,
+        file_shm_barrier,
+        file_shm_unmap,
+        file_fetch,
+        file_unfetch,
+    };
+
+    //  ------------------------------------------------------------ vfs methods
+
+    inline int vfs_open(sqlite3_vfs* vfs, sqlite3_filename fileName, sqlite3_file* file, int flags, int* outputFlags) {
+        auto* asyncFile = reinterpret_cast<async_file*>(file);
+        sqlite3_vfs* wrapped = wrapped_vfs(vfs);
+        asyncFile->wrapped = reinterpret_cast<sqlite3_file*>(reinterpret_cast<char*>(asyncFile) + sizeof(async_file));
+        asyncFile->descriptor = -1;
+        asyncFile->fileName = fileName;
+        asyncFile->directorySyncPending = false;
+        std::memset(asyncFile->wrapped, 0, static_cast<std::size_t>(wrapped->szOsFile));
+        //  the wrapped VFS may open a file read-only that was asked for read-write, and says so in the output flags
+        int openedFlags = flags;
+        const int rc = wrapped->xOpen(wrapped, fileName, asyncFile->wrapped, flags, &openedFlags);
+        if (rc != SQLITE_OK) {
+            return rc;
+        }
+        if (outputFlags) {
+            *outputFlags = openedFlags;
+        }
+        asyncFile->descriptor = wrapped_descriptor(wrapped, asyncFile->wrapped, fileName, openedFlags);
+        constexpr int journalFiles = SQLITE_OPEN_MAIN_JOURNAL | SQLITE_OPEN_SUPER_JOURNAL | SQLITE_OPEN_WAL;
+        asyncFile->directorySyncPending =
+            (flags & SQLITE_OPEN_CREATE) && (flags & journalFiles) && directory_sync_enabled();
+        file->pMethods = &ioMethods;
+        return SQLITE_OK;
+    }
+
+    inline int vfs_delete(sqlite3_vfs* vfs, const char* fileName, int syncDirectory) {
+        sqlite3_vfs* wrapped = wrapped_vfs(vfs);
+        return wrapped->xDelete(wrapped, fileName, syncDirectory);
+    }
+
+    inline int vfs_access(sqlite3_vfs* vfs, const char* fileName, int flags, int* result) {
+        sqlite3_vfs* wrapped = wrapped_vfs(vfs);
+        return wrapped->xAccess(wrapped, fileName, flags, result);
+    }
+
+    inline int vfs_full_pathname(sqlite3_vfs* vfs, const char* fileName, int length, char* output) {
+        sqlite3_vfs* wrapped = wrapped_vfs(vfs);
+        return wrapped->xFullPathname(wrapped, fileName, length, output);
+    }
+
+    inline void* vfs_dlopen(sqlite3_vfs* vfs, const char* fileName) {
+        sqlite3_vfs* wrapped = wrapped_vfs(vfs);
+        return wrapped->xDlOpen(wrapped, fileName);
+    }
+
+    inline void vfs_dlerror(sqlite3_vfs* vfs, int length, char* output) {
+        sqlite3_vfs* wrapped = wrapped_vfs(vfs);
+        wrapped->xDlError(wrapped, length, output);
+    }
+
+    inline void (*vfs_dlsym(sqlite3_vfs* vfs, void* handle, const char* symbol))(void) {
+        sqlite3_vfs* wrapped = wrapped_vfs(vfs);
+        return wrapped->xDlSym(wrapped, handle, symbol);
+    }
+
+    inline void vfs_dlclose(sqlite3_vfs* vfs, void* handle) {
+        sqlite3_vfs* wrapped = wrapped_vfs(vfs);
+        wrapped->xDlClose(wrapped, handle);
+    }
+
+    inline int vfs_randomness(sqlite3_vfs* vfs, int length, char* output) {
+        sqlite3_vfs* wrapped = wrapped_vfs(vfs);
+        return wrapped->xRandomness(wrapped, length, output);
+    }
+
+    inline int vfs_sleep(sqlite3_vfs* vfs, int microseconds) {
+        scheduler* currentScheduler = nullptr;
+        if (in_fiber(currentScheduler)) {
+            count(statistics.asyncSleeps);
+            currentScheduler->sleep_microseconds(microseconds);
+            return microseconds;
+        }
+        sqlite3_vfs* wrapped = wrapped_vfs(vfs);
+        return wrapped->xSleep(wrapped, microseconds);
+    }
+
+    inline int vfs_current_time(sqlite3_vfs* vfs, double* result) {
+        sqlite3_vfs* wrapped = wrapped_vfs(vfs);
+        return wrapped->xCurrentTime(wrapped, result);
+    }
+
+    inline int vfs_get_last_error(sqlite3_vfs* vfs, int length, char* output) {
+        sqlite3_vfs* wrapped = wrapped_vfs(vfs);
+        return wrapped->xGetLastError ? wrapped->xGetLastError(wrapped, length, output) : 0;
+    }
+
+    inline int vfs_current_time_int64(sqlite3_vfs* vfs, sqlite3_int64* result) {
+        sqlite3_vfs* wrapped = wrapped_vfs(vfs);
+        return wrapped->xCurrentTimeInt64(wrapped, result);
+    }
+
+    /**
+     *  Register the VFS under `async_vfs_name` in SQLite's process-wide list of VFSes, not as the default one;
+     *  it wraps the VFS that is the default at that moment. Done once per process, from whichever thread comes first.
+     */
+    inline int register_vfs() {
+        static const int rc = [] {
+            static vfs_data data{};
+            static sqlite3_vfs vfs{};
+            sqlite3_vfs* wrapped = sqlite3_vfs_find(nullptr);
+            if (!wrapped) {
+                return SQLITE_ERROR;
+            }
+            data.wrapped = wrapped;
+            vfs.iVersion = 2;
+            vfs.szOsFile = static_cast<int>(sizeof(async_file)) + wrapped->szOsFile;
+            vfs.mxPathname = wrapped->mxPathname;
+            vfs.zName = async_vfs_name.data();
+            vfs.pAppData = &data;
+            vfs.xOpen = vfs_open;
+            vfs.xDelete = vfs_delete;
+            vfs.xAccess = vfs_access;
+            vfs.xFullPathname = vfs_full_pathname;
+            vfs.xDlOpen = vfs_dlopen;
+            vfs.xDlError = vfs_dlerror;
+            vfs.xDlSym = vfs_dlsym;
+            vfs.xDlClose = vfs_dlclose;
+            vfs.xRandomness = vfs_randomness;
+            vfs.xSleep = vfs_sleep;
+            vfs.xCurrentTime = vfs_current_time;
+            vfs.xGetLastError = vfs_get_last_error;
+            vfs.xCurrentTimeInt64 = vfs_current_time_int64;
+            return sqlite3_vfs_register(&vfs, 0);
+        }();
+        return rc;
+    }
+}
+
+namespace sqlite_orm::internal {
+
+    inline async_vfs_statistics get_async_vfs_statistics() {
+        const async_vfs::atomic_statistics& counters = async_vfs::statistics;
+        async_vfs_statistics snapshot;
+        snapshot.asyncReads = counters.asyncReads.load(std::memory_order_relaxed);
+        snapshot.asyncWrites = counters.asyncWrites.load(std::memory_order_relaxed);
+        snapshot.asyncSyncs = counters.asyncSyncs.load(std::memory_order_relaxed);
+        snapshot.asyncSleeps = counters.asyncSleeps.load(std::memory_order_relaxed);
+        snapshot.syncReads = counters.syncReads.load(std::memory_order_relaxed);
+        snapshot.syncWrites = counters.syncWrites.load(std::memory_order_relaxed);
+        snapshot.syncSyncs = counters.syncSyncs.load(std::memory_order_relaxed);
+        return snapshot;
+    }
+
+    inline void reset_async_vfs_statistics() {
+        async_vfs::atomic_statistics& counters = async_vfs::statistics;
+        for (std::atomic<sqlite3_int64>* counter: {&counters.asyncReads,
+                                                   &counters.asyncWrites,
+                                                   &counters.asyncSyncs,
+                                                   &counters.asyncSleeps,
+                                                   &counters.syncReads,
+                                                   &counters.syncWrites,
+                                                   &counters.syncSyncs}) {
+            counter->store(0, std::memory_order_relaxed);
+        }
+    }
+}
+#endif
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+namespace sqlite_orm::internal {
+
+    /**
+     *  Packs `args` into a callable `function(storage)` that invokes
+     *  `call(storage, args...)` with the arguments as rvalues. A tuple is used
+     *  instead of a pack init-capture on purpose: GCC 11 initializes pack
+     *  init-captures bytewise, which breaks captured strings in their
+     *  small-buffer state.
+     */
+    template<class Call, class... Args>
+    auto bind_arguments(Call call, Args&&... args) {
+        return
+            [call = std::move(call), arguments = std::make_tuple(std::forward<Args>(args)...)](auto& storage) mutable {
+                return std::apply(
+                    [&call, &storage](auto&... unpacked) {
+                        return call(storage, std::move(unpacked)...);
+                    },
+                    arguments);
+            };
+    }
+
+    /**
+     *  Coroutine-aware mutex: at most one operation uses the storage at a time,
+     *  the others wait in order without blocking the thread.
+     */
+    struct storage_turnstile {
+        struct waiter {
+            std::coroutine_handle<> handle;
+        };
+
+        bool busy = false;
+        std::deque<waiter*> waiters;
+    };
+
+    /**
+     *  Asynchronous front-end over an ordinary storage. Every operation runs the
+     *  unchanged synchronous storage code on a fiber, where the file I/O
+     *  underneath goes through io_uring, and is awaited with `co_await`.
+     *
+     *  One storage is one connection, like a network connection in an
+     *  asynchronous client: requests do not block the thread, but they are
+     *  executed one after another. Operations issued from several coroutines are
+     *  queued in order.
+     *
+     *      async_io_context io;
+     *      auto storage = make_async_storage(io, "app.db",
+     *                                        make_table("users", make_column("id", &User::id, primary_key()), ...));
+     *
+     *      auto users = co_await storage.get_all<User>(where(c(&User::age) > 30));
+     *      auto user  = co_await storage.get<User>(42);
+     *      co_await storage.transaction([&user](auto& storage) { storage.update(user); return true; });
+     *
+     *  The asynchronous VFS is selected for this connection through connection_control. It is registered
+     *  with SQLite process-wide under a name of its own, but not as the default VFS: other connections are
+     *  not affected. All coroutines using one async_storage run on the async_io_context it was created with.
+     */
+    template<class Storage>
+    class async_storage {
+      public:
+        using storage_type = Storage;
+
+        async_storage(async_io_context& context_, Storage storage_) :
+            context(&context_), storage(std::move(storage_)) {}
+
+        /**
+         *  Neither copyable nor movable: it is one connection, and its cursors and the operations waiting for
+         *  their turn refer to it. `make_async_storage()` returns it in place; keep it where it is made, or
+         *  on the heap.
+         */
+        async_storage(const async_storage&) = delete;
+        async_storage& operator=(const async_storage&) = delete;
+
+        /**
+         *  True while an operation is executing or queued.
+         */
+        bool is_busy() const noexcept {
+            return this->turnstile.busy;
+        }
+
+        /**
+         *  The primitive everything else is built on: run `function(storage)` on a
+         *  fiber, exclusively, and return its result. Use it for anything not
+         *  mirrored below (pragmas, limits, user-defined functions).
+         */
+        template<class F>
+        auto run(F function) {
+            //  The callable is moved to the heap before entering the coroutine: a
+            //  closure passed as a coroutine parameter is not copied correctly by
+            //  some compilers (GCC 11 relocates it bytewise, which breaks captured
+            //  strings in their small-buffer state).
+            return this->run_on_fiber(std::make_unique<F>(std::move(function)));
+        }
+
+        //  ---- transactions ----
+
+        /**
+         *  `function(storage)` returns true to commit, false to roll back. An
+         *  exception rolls back and propagates.
+         */
+        template<class F>
+        async_task<bool> transaction(F function) {
+            return this->run([function = std::move(function)](Storage& storage) mutable {
+                return storage.transaction([&function, &storage] {
+                    return function(storage);
+                });
+            });
+        }
+
+        template<class F>
+        async_task<bool> savepoint(std::string savepointName, F function) {
+            return this->run(
+                [savepointName = std::move(savepointName), function = std::move(function)](Storage& storage) mutable {
+                    return storage.savepoint(savepointName, [&function, &storage] {
+                        return function(storage);
+                    });
+                });
+        }
+
+        //  ---- CRUD, mirroring storage_t. Arguments are moved into the operation. ----
+
+        template<class O, class R = std::vector<O>, class... Args>
+        auto get_all(Args&&... args) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&&... args) {
+                    return storage.template get_all<O, R>(std::move(args)...);
+                },
+                std::forward<Args>(args)...));
+        }
+
+        template<class O, class R = std::vector<std::unique_ptr<O>>, class... Args>
+        auto get_all_pointer(Args&&... args) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&&... args) {
+                    return storage.template get_all_pointer<O, R>(std::move(args)...);
+                },
+                std::forward<Args>(args)...));
+        }
+
+        template<class O, class R = std::vector<std::optional<O>>, class... Args>
+        auto get_all_optional(Args&&... args) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&&... args) {
+                    return storage.template get_all_optional<O, R>(std::move(args)...);
+                },
+                std::forward<Args>(args)...));
+        }
+
+        template<class O, class... Ids>
+        auto get(Ids&&... ids) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&&... ids) {
+                    return storage.template get<O>(std::move(ids)...);
+                },
+                std::forward<Ids>(ids)...));
+        }
+
+        template<class O, class... Ids>
+        auto get_pointer(Ids&&... ids) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&&... ids) {
+                    return storage.template get_pointer<O>(std::move(ids)...);
+                },
+                std::forward<Ids>(ids)...));
+        }
+
+        template<class O, class... Ids>
+        auto get_optional(Ids&&... ids) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&&... ids) {
+                    return storage.template get_optional<O>(std::move(ids)...);
+                },
+                std::forward<Ids>(ids)...));
+        }
+
+        /**
+         *  Both `insert(object)` and the raw `insert(into<T>(), columns(...), values(...))`.
+         */
+        template<class... Args>
+        auto insert(Args&&... args) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&&... args) {
+                    return storage.insert(std::move(args)...);
+                },
+                std::forward<Args>(args)...));
+        }
+
+        template<class It, class Projection = polyfill::identity>
+        async_task<void> insert_range(It from, It to, Projection project = {}) {
+            return this->run([from, to, project = std::move(project)](Storage& storage) mutable {
+                storage.insert_range(from, to, std::move(project));
+            });
+        }
+
+        template<class... Args>
+        auto replace(Args&&... args) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&&... args) {
+                    return storage.replace(std::move(args)...);
+                },
+                std::forward<Args>(args)...));
+        }
+
+        template<class It, class Projection = polyfill::identity>
+        async_task<void> replace_range(It from, It to, Projection project = {}) {
+            return this->run([from, to, project = std::move(project)](Storage& storage) mutable {
+                storage.replace_range(from, to, std::move(project));
+            });
+        }
+
+        template<class O>
+        async_task<void> update(O&& object) {
+            return this->run([object = std::forward<O>(object)](Storage& storage) {
+                storage.update(object);
+            });
+        }
+
+        template<class S, class... Wargs>
+        async_task<void> update_all(S set, Wargs&&... conditions) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&& set, auto&&... conditions) {
+                    storage.update_all(std::move(set), std::move(conditions)...);
+                },
+                std::move(set),
+                std::forward<Wargs>(conditions)...));
+        }
+
+        template<class O, class... Ids>
+        async_task<void> remove(Ids&&... ids) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&&... ids) {
+                    storage.template remove<O>(std::move(ids)...);
+                },
+                std::forward<Ids>(ids)...));
+        }
+
+        template<class O, class... Args>
+        async_task<void> remove_all(Args&&... args) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&&... args) {
+                    storage.template remove_all<O>(std::move(args)...);
+                },
+                std::forward<Args>(args)...));
+        }
+
+        //  ---- aggregates ----
+
+        template<class O, class... Args>
+        async_task<int> count(Args&&... args) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&&... args) {
+                    return storage.template count<O>(std::move(args)...);
+                },
+                std::forward<Args>(args)...));
+        }
+
+        template<class F, class... Args>
+        async_task<int> count(F field, Args&&... args) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&& field, auto&&... args) {
+                    return storage.count(std::move(field), std::move(args)...);
+                },
+                std::move(field),
+                std::forward<Args>(args)...));
+        }
+
+        template<class F, class... Args>
+        async_task<double> avg(F field, Args&&... args) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&& field, auto&&... args) {
+                    return storage.avg(std::move(field), std::move(args)...);
+                },
+                std::move(field),
+                std::forward<Args>(args)...));
+        }
+
+        template<class F, class... Args>
+        auto sum(F field, Args&&... args) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&& field, auto&&... args) {
+                    return storage.sum(std::move(field), std::move(args)...);
+                },
+                std::move(field),
+                std::forward<Args>(args)...));
+        }
+
+        template<class F, class... Args>
+        async_task<double> total(F field, Args&&... args) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&& field, auto&&... args) {
+                    return storage.total(std::move(field), std::move(args)...);
+                },
+                std::move(field),
+                std::forward<Args>(args)...));
+        }
+
+        template<class F, class... Args>
+        auto max(F field, Args&&... args) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&& field, auto&&... args) {
+                    return storage.max(std::move(field), std::move(args)...);
+                },
+                std::move(field),
+                std::forward<Args>(args)...));
+        }
+
+        template<class F, class... Args>
+        auto min(F field, Args&&... args) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&& field, auto&&... args) {
+                    return storage.min(std::move(field), std::move(args)...);
+                },
+                std::move(field),
+                std::forward<Args>(args)...));
+        }
+
+        template<class F, class... Args>
+        async_task<std::string> group_concat(F field, Args&&... args) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&& field, auto&&... args) {
+                    return storage.group_concat(std::move(field), std::move(args)...);
+                },
+                std::move(field),
+                std::forward<Args>(args)...));
+        }
+
+        //  ---- queries ----
+
+        template<class T, class... Args>
+        auto select(T expression, Args&&... args) {
+            return this->run(internal::bind_arguments(
+                [](Storage& storage, auto&& expression, auto&&... args) {
+                    return storage.select(std::move(expression), std::move(args)...);
+                },
+                std::move(expression),
+                std::forward<Args>(args)...));
+        }
+
+        template<class CTE, class E>
+        auto with(CTE cte, E expression) {
+            return this->run([cte = std::move(cte), expression = std::move(expression)](Storage& storage) mutable {
+                return storage.with(std::move(cte), std::move(expression));
+            });
+        }
+
+        template<class CTE, class E>
+        auto with_recursive(CTE cte, E expression) {
+            return this->run([cte = std::move(cte), expression = std::move(expression)](Storage& storage) mutable {
+                return storage.with_recursive(std::move(cte), std::move(expression));
+            });
+        }
+
+        //  ---- row-by-row iteration ----
+
+        /**
+         *  The objects of a mapped type, fetched one at a time: `storage.iterate<User>(where(...))`.
+         *  Returns an `async_cursor`; no I/O happens before its first `next()`.
+         */
+        template<class O, class... Args>
+        auto iterate(Args&&... args) {
+            return this->make_cursor(internal::bind_arguments(
+                [](Storage& storage, auto&&... args) {
+                    return storage.template iterate<O>(std::move(args)...);
+                },
+                std::forward<Args>(args)...));
+        }
+
+        /**
+         *  The rows of a select statement, or of a select statement involving a common table expression,
+         *  fetched one at a time: `storage.iterate(select(columns(&User::id, &User::name)))`.
+         */
+        template<class Select>
+        auto iterate(Select expression) {
+            return this->make_cursor(internal::bind_arguments(
+                [](Storage& storage, auto&& expression) {
+                    return storage.iterate(std::move(expression));
+                },
+                std::move(expression)));
+        }
+
+        //  ---- prepared statements ----
+
+        /**
+         *  Prepared statements belong to this storage's connection and are executed
+         *  on it: `auto statement = co_await storage.prepare(select(...)); co_await storage.execute(statement);`.
+         *  Binding parameters with `get<N>(statement) = value` needs no await.
+         */
+        template<class T>
+        auto prepare(T statement) {
+            return this->run([statement = std::move(statement)](Storage& storage) mutable {
+                return storage.prepare(std::move(statement));
+            });
+        }
+
+        /**
+         *  `statement` must outlive the awaited operation.
+         */
+        template<class T>
+        auto execute(const T& statement) {
+            return this->run([&statement](Storage& storage) {
+                return storage.execute(statement);
+            });
+        }
+
+        //  ---- schema ----
+
+        auto sync_schema(bool preserve = false) {
+            return this->run([preserve](Storage& storage) {
+                return storage.sync_schema(preserve);
+            });
+        }
+
+        auto sync_schema_simulate(bool preserve = false) {
+            return this->run([preserve](Storage& storage) {
+                return storage.sync_schema_simulate(preserve);
+            });
+        }
+
+        async_task<bool> table_exists(std::string tableName) {
+            return this->run([tableName = std::move(tableName)](Storage& storage) {
+                return storage.table_exists(tableName);
+            });
+        }
+
+        async_task<bool> view_exists(std::string viewName) {
+            return this->run([viewName = std::move(viewName)](Storage& storage) {
+                return storage.view_exists(viewName);
+            });
+        }
+
+        async_task<void> drop_table(std::string tableName) {
+            return this->run([tableName = std::move(tableName)](Storage& storage) {
+                storage.drop_table(tableName);
+            });
+        }
+
+        async_task<void> drop_table_if_exists(std::string tableName) {
+            return this->run([tableName = std::move(tableName)](Storage& storage) {
+                storage.drop_table_if_exists(tableName);
+            });
+        }
+
+        template<class O>
+        async_task<void> rename_table(std::string name) {
+            return this->run([name = std::move(name)](Storage& storage) mutable {
+                storage.template rename_table<O>(std::move(name));
+            });
+        }
+
+        async_task<void> rename_table(std::string oldName, std::string newName) {
+            return this->run([oldName = std::move(oldName), newName = std::move(newName)](Storage& storage) {
+                storage.rename_table(oldName, newName);
+            });
+        }
+
+        async_task<void> drop_index(std::string indexName) {
+            return this->run([indexName = std::move(indexName)](Storage& storage) {
+                storage.drop_index(indexName);
+            });
+        }
+
+        async_task<void> drop_index_if_exists(std::string indexName) {
+            return this->run([indexName = std::move(indexName)](Storage& storage) {
+                storage.drop_index_if_exists(indexName);
+            });
+        }
+
+        async_task<void> drop_view(std::string viewName) {
+            return this->run([viewName = std::move(viewName)](Storage& storage) {
+                storage.drop_view(viewName);
+            });
+        }
+
+        async_task<void> drop_view_if_exists(std::string viewName) {
+            return this->run([viewName = std::move(viewName)](Storage& storage) {
+                storage.drop_view_if_exists(viewName);
+            });
+        }
+
+        async_task<void> drop_trigger(std::string triggerName) {
+            return this->run([triggerName = std::move(triggerName)](Storage& storage) {
+                storage.drop_trigger(triggerName);
+            });
+        }
+
+        async_task<void> drop_trigger_if_exists(std::string triggerName) {
+            return this->run([triggerName = std::move(triggerName)](Storage& storage) {
+                storage.drop_trigger_if_exists(triggerName);
+            });
+        }
+
+        async_task<std::vector<std::string>> table_names() {
+            return this->run([](Storage& storage) {
+                return storage.table_names();
+            });
+        }
+
+        async_task<std::vector<std::string>> view_names() {
+            return this->run([](Storage& storage) {
+                return storage.view_names();
+            });
+        }
+
+        async_task<std::vector<std::string>> trigger_names() {
+            return this->run([](Storage& storage) {
+                return storage.trigger_names();
+            });
+        }
+
+        async_task<void> vacuum() {
+            return this->run([](Storage& storage) {
+                storage.vacuum();
+            });
+        }
+
+        async_task<void> analyze() {
+            return this->run([](Storage& storage) {
+                storage.analyze();
+            });
+        }
+
+        async_task<void> analyze(std::string name) {
+            return this->run([name = std::move(name)](Storage& storage) {
+                storage.analyze(name);
+            });
+        }
+
+        //  ---- connection information ----
+
+        async_task<std::string> current_time() {
+            return this->run([](Storage& storage) {
+                return storage.current_time();
+            });
+        }
+
+        async_task<std::string> current_date() {
+            return this->run([](Storage& storage) {
+                return storage.current_date();
+            });
+        }
+
+        async_task<std::string> current_timestamp() {
+            return this->run([](Storage& storage) {
+                return storage.current_timestamp();
+            });
+        }
+
+        async_task<int> busy_timeout(int milliseconds) {
+            return this->run([milliseconds](Storage& storage) {
+                return storage.busy_timeout(milliseconds);
+            });
+        }
+
+        async_task<int64> last_insert_rowid() {
+            return this->run([](Storage& storage) {
+                return storage.last_insert_rowid();
+            });
+        }
+
+        async_task<int> changes() {
+            return this->run([](Storage& storage) {
+                return storage.changes();
+            });
+        }
+
+        async_task<int> total_changes() {
+            return this->run([](Storage& storage) {
+                return storage.total_changes();
+            });
+        }
+
+        async_task<int64> changes64() {
+            return this->run([](Storage& storage) {
+                return storage.changes64();
+            });
+        }
+
+        async_task<int64> total_changes64() {
+            return this->run([](Storage& storage) {
+                return storage.total_changes64();
+            });
+        }
+
+        async_task<bool> db_readonly() {
+            return this->run([](Storage& storage) {
+                return storage.db_readonly();
+            });
+        }
+
+        async_task<bool> get_autocommit() {
+            return this->run([](Storage& storage) {
+                return storage.get_autocommit();
+            });
+        }
+
+        auto txn_state() {
+            return this->run([](Storage& storage) {
+                return storage.txn_state();
+            });
+        }
+
+        auto db_name(int index) {
+            return this->run([index](Storage& storage) {
+                return storage.db_name(index);
+            });
+        }
+
+        async_task<void> backup_to(std::string fileName) {
+            return this->run([fileName = std::move(fileName)](Storage& storage) {
+                storage.backup_to(fileName);
+            });
+        }
+
+        async_task<void> backup_from(std::string fileName) {
+            return this->run([fileName = std::move(fileName)](Storage& storage) {
+                storage.backup_from(fileName);
+            });
+        }
+
+        //  ---- no I/O: available directly ----
+
+        const std::string& filename() const {
+            return this->storage.filename();
+        }
+
+        const std::string& vfs_name() const {
+            return this->storage.vfs_name();
+        }
+
+        db_open_mode open_mode() const {
+            return this->storage.open_mode();
+        }
+
+        bool is_opened() const {
+            return this->storage.is_opened();
+        }
+
+        template<class... Args>
+        std::string dump(Args&&... args) const {
+            return this->storage.dump(std::forward<Args>(args)...);
+        }
+
+        /**
+         *  Thread-safe: abort the statement currently executing, if any.
+         */
+        void interrupt() {
+            this->storage.interrupt();
+        }
+
+        std::string libversion() {
+            return this->storage.libversion();
+        }
+
+      private:
+        template<class AsyncStorage, class MakeView>
+        friend class async_cursor;
+
+        /**
+         *  Take over the statement of a cursor destroyed before its rows were exhausted.
+         *
+         *  A statement must not be finalized while another operation is executing on the connection: that
+         *  operation is suspended on its fiber in the middle of a call into SQLite. So the statement is destroyed
+         *  right here if the connection is free, and otherwise kept until the running operation releases it.
+         */
+        void retire(std::shared_ptr<void> statementOwner) noexcept {
+            if (this->turnstile.busy) {
+                this->retired.push_back(std::move(statementOwner));
+            }
+        }
+
+        template<class MakeView>
+        async_cursor<async_storage, MakeView> make_cursor(MakeView makeView) {
+            return {*this, std::move(makeView)};
+        }
+
+        template<class F>
+        auto run_on_fiber(std::unique_ptr<F> function) -> async_task<std::invoke_result_t<F&, Storage&>> {
+            using result_type = std::invoke_result_t<F&, Storage&>;
+            if (!function) {
+                throw std::logic_error("sqlite_orm async: no function to run");
+            }
+            co_await this->acquire();
+            release_guard guard{this};
+            Storage& storage = this->storage;
+            F& callable = *function;
+            if constexpr (std::is_void_v<result_type>) {
+                co_await this->context->async([&storage, &callable] {
+                    storage.open_forever();  //  no-op after the first call
+                    callable(storage);
+                });
+            } else {
+                co_return co_await this->context->async([&storage, &callable] {
+                    storage.open_forever();
+                    return callable(storage);
+                });
+            }
+        }
+
+        struct acquire_awaitable {
+            async_storage* self = nullptr;
+            internal::storage_turnstile::waiter waiter;
+
+            bool await_ready() noexcept {
+                if (this->self->turnstile.busy) {
+                    return false;
+                }
+                this->self->turnstile.busy = true;
+                return true;
+            }
+
+            void await_suspend(std::coroutine_handle<> handle) {
+                this->waiter.handle = handle;
+                this->self->turnstile.waiters.push_back(&this->waiter);
+            }
+
+            void await_resume() noexcept {}
+        };
+
+        acquire_awaitable acquire() {
+            return {this, {}};
+        }
+
+        /**
+         *  The turn is handed to the first waiter directly, so a newcomer cannot
+         *  overtake it between release and resumption.
+         */
+        void release() {
+            this->retired.clear();
+            if (this->turnstile.waiters.empty()) {
+                this->turnstile.busy = false;
+                return;
+            }
+            internal::storage_turnstile::waiter* next = this->turnstile.waiters.front();
+            this->turnstile.waiters.pop_front();
+            this->context->schedule(next->handle);
+        }
+
+        struct release_guard {
+            async_storage* self = nullptr;
+
+            ~release_guard() {
+                this->self->release();
+            }
+        };
+
+        async_io_context* context = nullptr;
+        Storage storage;
+        internal::storage_turnstile turnstile;
+        std::vector<std::shared_ptr<void>> retired;
+    };
+
+    /**
+     *  Force the asynchronous VFS and lazy opening on a user-supplied connection_control.
+     */
+    inline connection_control async_connection_control(connection_control control) {
+        control.vfs_name = std::string(async_vfs_name);
+        control.open_forever = false;  //  opened on first use, on a fiber
+        return control;
+    }
+
+    template<class A>
+    A&& async_connection_control(A&& argument) {
+        return std::forward<A>(argument);
+    }
+
+    inline void ensure_async_vfs() {
+        if (async_vfs::register_vfs() != SQLITE_OK) {
+            throw std::runtime_error("sqlite_orm async: cannot register the VFS");
+        }
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  Same arguments as make_storage, async_io_context first. The asynchronous VFS is
+     *  injected automatically; a connection_control among the arguments keeps its
+     *  other fields.
+     *
+     *      auto storage = make_async_storage(io, "app.db", make_table(...));
+     */
+    template<class... Args>
+    auto make_async_storage(async_io_context& context, std::string filename, Args&&... args) {
+        internal::ensure_async_vfs();
+        constexpr bool hasConnectionControl = (std::is_same_v<std::decay_t<Args>, connection_control> || ...);
+        if constexpr (hasConnectionControl) {
+            return internal::async_storage{
+                context,
+                make_storage(std::move(filename), internal::async_connection_control(std::forward<Args>(args))...)};
+        } else {
+            return internal::async_storage{context,
+                                           make_storage(std::move(filename),
+                                                        internal::async_connection_control(connection_control{}),
+                                                        std::forward<Args>(args)...)};
+        }
+    }
+}
+#endif
+#pragma once
+
+/** @file
+ *  Purpose: spread work over several threads, each with its own `async_io_context`.
+ *
+ *  Intention: a convenience on top of `io_context.h` for applications that want I/O parallelism across storages.
+ */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <atomic>  //  std::atomic
+#include <coroutine>  //  std::coroutine_handle
+#include <cstddef>  //  std::size_t
+#include <exception>  //  std::current_exception, std::terminate
+#include <future>  //  std::promise, std::future
+#include <memory>  //  std::unique_ptr, std::shared_ptr, std::make_shared
+#include <stdexcept>  //  std::logic_error
+#include <thread>  //  std::thread
+#include <type_traits>  //  std::invoke_result_t, std::is_void_v
+#include <utility>  //  std::move
+#include <vector>  //  std::vector
+#endif
+#endif
+
+// #include "io_context.h"
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  M:N: `size` worker threads, each running its own async_io_context. Work is
+     *  spread round-robin; a coroutine that awaits pool.async(function) is resumed
+     *  back on the async_io_context it was running on.
+     */
+    class async_io_pool {
+      public:
+        explicit async_io_pool(unsigned size, unsigned queueDepth = 256) {
+            for (unsigned index = 0; index < size; ++index) {
+                this->workers.push_back(std::make_unique<async_io_context>(queueDepth));
+            }
+            for (auto& worker: this->workers) {
+                this->threads.emplace_back([&worker] {
+                    worker->run_forever();
+                });
+            }
+        }
+
+        ~async_io_pool() {
+            this->shutdown();
+        }
+
+        async_io_pool(const async_io_pool&) = delete;
+        async_io_pool& operator=(const async_io_pool&) = delete;
+
+        std::size_t size() const noexcept {
+            return this->workers.size();
+        }
+
+        async_io_context& worker(std::size_t index) noexcept {
+            return *this->workers[index];
+        }
+
+        void shutdown() {
+            if (this->threads.empty()) {
+                return;
+            }
+            for (auto& worker: this->workers) {
+                worker->stop();
+            }
+            for (auto& thread: this->threads) {
+                thread.join();
+            }
+            this->threads.clear();
+        }
+
+        /**
+         *  Awaitable from a coroutine running on any async_io_context (pool worker or an
+         *  external one): run `function` on a fiber of some worker, resume the
+         *  awaiting coroutine on its own async_io_context.
+         */
+        template<class F>
+        auto async(F function) {
+            using result_type = std::invoke_result_t<F&>;
+            struct awaitable {
+                async_io_pool* pool = nullptr;
+                F function;
+                internal::result_box<result_type> box;
+
+                bool await_ready() const noexcept {
+                    return false;
+                }
+
+                void await_suspend(std::coroutine_handle<> handle) {
+                    async_io_context* origin = async_io_context::current();
+                    if (!origin) {
+                        std::terminate();  //  must be awaited from an async_io_context
+                    }
+                    async_io_context* worker = this->pool->pick();
+                    worker->post([this, handle, origin, worker] {
+                        worker->scheduler_.spawn([this, handle, origin] {
+                            try {
+                                if constexpr (std::is_void_v<result_type>) {
+                                    this->function();
+                                } else {
+                                    this->box.set(this->function());
+                                }
+                            } catch (...) {
+                                this->box.error = std::current_exception();
+                            }
+                            origin->resume_here(handle);
+                        });
+                    });
+                }
+
+                result_type await_resume() {
+                    return this->box.take();
+                }
+            };
+            return awaitable{this, std::move(function), {}};
+        }
+
+        /**
+         *  Blocking variant for plain (non-coroutine) callers, on any thread that does not run an async_io_context:
+         *  such a thread, a worker of this pool included, would wait for work that only it can do.
+         *  Code running there uses `co_await pool.async(function)`.
+         */
+        template<class F>
+        auto run_blocking(F function) -> std::invoke_result_t<F&> {
+            using result_type = std::invoke_result_t<F&>;
+            if (async_io_context::current()) {
+                throw std::logic_error(
+                    "sqlite_orm async: async_io_pool::run_blocking() called on a thread running an async_io_context");
+            }
+            auto promise = std::make_shared<std::promise<result_type>>();
+            std::future<result_type> future = promise->get_future();
+            auto sharedFunction = std::make_shared<F>(std::move(function));
+            async_io_context* worker = this->pick();
+            worker->post([worker, sharedFunction, promise] {
+                worker->scheduler_.spawn([sharedFunction, promise] {
+                    try {
+                        if constexpr (std::is_void_v<result_type>) {
+                            (*sharedFunction)();
+                            promise->set_value();
+                        } else {
+                            promise->set_value((*sharedFunction)());
+                        }
+                    } catch (...) {
+                        promise->set_exception(std::current_exception());
+                    }
+                });
+            });
+            return future.get();
+        }
+
+      private:
+        async_io_context* pick() {
+            const std::size_t index = this->next.fetch_add(1, std::memory_order_relaxed) % this->workers.size();
+            return this->workers[index].get();
+        }
+
+        std::vector<std::unique_ptr<async_io_context>> workers;
+        std::vector<std::thread> threads;
+        std::atomic<std::size_t> next{0};
+    };
+}
+#endif
+#pragma once
+
+/** @file
+ *  Purpose: await several tasks concurrently.
+ *
+ *  Intention: a convenience on top of `task.h` for applications, which the storage itself does not need.
+ */
+
+#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <coroutine>  //  std::coroutine_handle, std::suspend_never
+#include <cstddef>  //  std::size_t
+#include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception, std::terminate
+#include <optional>  //  std::optional
+#include <type_traits>  //  std::is_void_v
+#include <utility>  //  std::move
+#include <vector>  //  std::vector
+#endif
+#endif
+#endif
+
+// #include "task.h"
+
+#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+// general-purpose, but sqlite_orm offers its coroutine types with the asynchronous storage only
+#ifdef SQLITE_ORM_WITH_ASYNC
+namespace sqlite_orm::internal {
+
+    struct count_down {
+        std::size_t remaining = 0;
+        std::coroutine_handle<> waiter;
+    };
+
+    struct fire_and_forget {
+        struct promise_type {
+            fire_and_forget get_return_object() noexcept {
+                return {};
+            }
+
+            std::suspend_never initial_suspend() noexcept {
+                return {};
+            }
+
+            std::suspend_never final_suspend() noexcept {
+                return {};
+            }
+
+            void return_void() noexcept {}
+
+            void unhandled_exception() noexcept {
+                std::terminate();
+            }
+        };
+    };
+
+    template<class T>
+    fire_and_forget
+    start_one(async_task<T>& oneTask, count_down& countDown, std::optional<T>& result, std::exception_ptr& error) {
+        try {
+            result.emplace(co_await oneTask);
+        } catch (...) {
+            error = std::current_exception();
+        }
+        if (--countDown.remaining == 0) {
+            countDown.waiter.resume();
+        }
+    }
+
+    inline fire_and_forget start_one(async_task<void>& oneTask, count_down& countDown, std::exception_ptr& error) {
+        try {
+            co_await oneTask;
+        } catch (...) {
+            error = std::current_exception();
+        }
+        if (--countDown.remaining == 0) {
+            countDown.waiter.resume();
+        }
+    }
+
+    /**
+     *  Awaited by `async_when_all()`: starts every task with `start(index)` and resumes when the last one has finished.
+     */
+    template<class Start>
+    struct when_all_awaiter {
+        std::size_t count = 0;
+        Start start;
+        count_down& countDown;
+
+        bool await_ready() const noexcept {
+            return this->count == 0;
+        }
+
+        bool await_suspend(std::coroutine_handle<> handle) {
+            this->countDown.waiter = handle;
+            for (std::size_t index = 0; index < this->count; ++index) {
+                this->start(index);
+            }
+            return --this->countDown.remaining != 0;  //  false: everything finished synchronously
+        }
+
+        void await_resume() noexcept {}
+    };
+
+    template<class Start>
+    when_all_awaiter(std::size_t, Start, count_down&) -> when_all_awaiter<Start>;
+
+    inline void rethrow_first(const std::vector<std::exception_ptr>& errors) {
+        for (const std::exception_ptr& error: errors) {
+            if (error) {
+                std::rethrow_exception(error);
+            }
+        }
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  Start every task, run them concurrently, return all results in order.
+     *  Rethrows the first exception after all tasks have finished.
+     */
+    template<class T>
+        requires (!std::is_void_v<T>)
+    async_task<std::vector<T>> async_when_all(std::vector<async_task<T>> tasks) {
+        std::vector<std::optional<T>> results(tasks.size());
+        std::vector<std::exception_ptr> errors(tasks.size());
+        internal::count_down countDown{tasks.size() + 1, {}};  //  +1: held while starting
+        co_await internal::when_all_awaiter{
+            tasks.size(),
+            [&tasks, &countDown, &results, &errors](std::size_t index) {
+                internal::start_one(tasks[index], countDown, results[index], errors[index]);
+            },
+            countDown};
+        internal::rethrow_first(errors);
+        std::vector<T> output;
+        output.reserve(results.size());
+        for (std::optional<T>& result: results) {
+            output.push_back(std::move(*result));
+        }
+        co_return output;
+    }
+
+    /**
+     *  The same for tasks without a result, like those of `update()` or `remove()`.
+     */
+    inline async_task<void> async_when_all(std::vector<async_task<void>> tasks) {
+        std::vector<std::exception_ptr> errors(tasks.size());
+        internal::count_down countDown{tasks.size() + 1, {}};  //  +1: held while starting
+        co_await internal::when_all_awaiter{tasks.size(),
+                                            [&tasks, &countDown, &errors](std::size_t index) {
+                                                internal::start_one(tasks[index], countDown, errors[index]);
+                                            },
+                                            countDown};
+        internal::rethrow_first(errors);
+    }
+}
+#endif
+#endif
 #pragma once
 
 #ifdef __clang__

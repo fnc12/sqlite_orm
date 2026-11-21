@@ -24,6 +24,10 @@
 #define SQLITE_ORM_CPP20_VIEWS_SUPPORTED
 #endif
 
+#if __cpp_impl_coroutine >= 201902L && __cpp_lib_coroutine >= 201902L
+#define SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#endif
+
 #if __cpp_lib_generator >= 202207L
 #define SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
 #endif

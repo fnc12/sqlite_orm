@@ -13,6 +13,19 @@ module;
 // module `sqlite_orm` and conflict with those of the standard library modules.
 #include <version>
 #include <sqlite3.h>
+// the system headers of the asynchronous storage, and the error number macros, which `import std;` cannot provide
+#if defined(__linux__) && !defined(__ANDROID__)
+#include <errno.h>
+#include <fcntl.h>
+#include <linux/io_uring.h>
+#include <linux/time_types.h>
+#include <poll.h>
+#include <sys/eventfd.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+#endif
 
 export module sqlite_orm;
 

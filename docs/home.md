@@ -1,6 +1,7 @@
 # Topics
 
 * [Thread Safety](thread-safety.md)
+* [Asynchronous storage](async.md) — a storage awaited from C++20 coroutines, with its file I/O on io_uring (Linux).
 
 ## Changing the library itself
 

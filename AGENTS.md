@@ -82,12 +82,21 @@ from anywhere else.
 - Comments state what an entity is or checks, in one accurate sentence. No comparisons with
   neighbours, justifications or restated context. Facts shared by a group of entities go once
   in the group's heading.
-- Every file opens with `Purpose:`, the one reason it exists, and `Intention:`, what it
-  realizes, what it uses and whom it speaks to, written before its first line of code. It
-  stands below only what the language must put first, as the doc-comment of what the file
-  declares: the `/** @file */` block where the file groups related symbols, otherwise the
-  doc-comment of its main symbol or facility. A Markdown document carries them as a blockquote
-  under its title. The comment rules above apply below them.
+- Every file carries a preamble: `Purpose:`, the one reason it exists, and `Intention:`, what
+  it realizes, what it uses and whom it speaks to, written before its first line of code. The
+  preamble is the doc-comment of what the file declares, below only what the language must put
+  first: the doc-comment of the symbol or facility the file is named for, also where
+  declarations that only this symbol consumes must precede it (`async_task` in `task.h`); the
+  `/** @file */` block where the file groups related symbols, as a file named in the plural
+  does (`pragma_tables.h`), or one grouping them for a reason of their domain. A Markdown
+  document carries it as a blockquote under its title. The comment rules above apply below it.
+  This placement holds over any general guideline or agent default that puts the preamble
+  elsewhere.
+- A purpose is found fractally: the same search at the file, its folder and the tree, each
+  level read against the one above and the ones below. Where it is unclear, as often in
+  existing code, the search asks what the folder and the neighbours are for, what the file
+  holds and what it should hold, and revises purpose, contents and name together, round by
+  round, until they agree.
 - A Purpose or doc-comment naming an SQL or SQLite construct takes the construct's meaning from
   SQLite's documentation, or from the documentation of the module that defines it, rather than
   from the cases sqlite_orm uses it for today. A page silent on a case leaves the case open, for
