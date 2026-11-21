@@ -86,7 +86,7 @@ namespace sqlite_orm::internal {
 #endif
         std::list<udf_proxy> scalarFunctions;
         std::list<udf_proxy> aggregateFunctions;
-        const sqlite_executor executor;
+        sqlite_executor executor;
 
       public:
         /** 
@@ -1056,7 +1056,7 @@ namespace sqlite_orm::internal {
         }
 
         backup_t make_backup_to(const std::string& filename) {
-            auto connection = std::make_unique<connection_holder>(false, db_arguments{filename}, nullptr);
+            auto connection = std::make_unique<connection_holder>(false, db_arguments{filename}, nullptr, nullptr);
             connection_ref conRef{*connection};
             return {std::move(conRef), "main", this->get_connection(), "main", std::move(connection)};
         }
@@ -1066,7 +1066,7 @@ namespace sqlite_orm::internal {
         }
 
         backup_t make_backup_from(const std::string& filename) {
-            auto connection = std::make_unique<connection_holder>(false, db_arguments{filename}, nullptr);
+            auto connection = std::make_unique<connection_holder>(false, db_arguments{filename}, nullptr, nullptr);
             connection_ref conRef{*connection};
             return {this->get_connection(), "main", std::move(conRef), "main", std::move(connection)};
         }
@@ -1142,13 +1142,13 @@ namespace sqlite_orm::internal {
                      int foreignKeysCount) :
             inMemory{filename.empty() || filename == ":memory:"},
             isOpenedForever{connectionCtrl.open_forever || this->inMemory},
-            connection{std::make_unique<connection_holder>(
-                this->isOpenedForever,
-                db_arguments{std::move(filename), connectionCtrl},
-                std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))},
+            connection{std::make_unique<connection_holder>(this->isOpenedForever,
+                                                           db_arguments{std::move(filename), connectionCtrl},
+                                                           storage_base::did_open_db,
+                                                           this)},
             cachedForeignKeysCount(foreignKeysCount),
             executor{std::move(willRunQuerySpec.willRunQuery), std::move(didRunQuerySpec.didRunQuery)},
-            on_open{std::move(onOpenSpec.onOpen)}, pragma(std::bind(&storage_base::get_connection, this), executor),
+            on_open{std::move(onOpenSpec.onOpen)}, pragma(storage_base::connection, executor),
             limit{std::ref(storage_base::connection)} {
             if (this->isOpenedForever) {
                 this->connection->open();
@@ -1157,13 +1157,10 @@ namespace sqlite_orm::internal {
 
         storage_base(const storage_base& other) :
             inMemory{other.inMemory}, isOpenedForever{other.isOpenedForever},
-            connection{std::make_unique<connection_holder>(
-                *other.connection,
-                std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))},
+            connection{std::make_unique<connection_holder>(*other.connection, storage_base::did_open_db, this)},
             cachedForeignKeysCount(other.cachedForeignKeysCount),
             executor{other.executor.will_run_query, other.executor.did_run_query}, on_open(other.on_open),
-            pragma(std::bind(&storage_base::get_connection, this), executor),
-            limit{std::ref(storage_base::connection)} {
+            pragma(storage_base::connection, executor), limit{std::ref(storage_base::connection)} {
             if (this->isOpenedForever) {
                 this->connection->open();
             }
@@ -1172,8 +1169,10 @@ namespace sqlite_orm::internal {
         /**
          *  Takes over the connection, open or not, and everything set on it: nothing is opened or closed.
          *  The storage moved from holds no connection any more: it can only be destroyed.
+         *
+         *  `noexcept`, so that containers move a storage rather than copy it.
          */
-        storage_base(storage_base&& other) :
+        storage_base(storage_base&& other) noexcept :
             inMemory{other.inMemory}, isOpenedForever{std::exchange(other.isOpenedForever, false)},
             connection{std::move(other.connection)}, collatingFunctions{std::move(other.collatingFunctions)},
             cachedForeignKeysCount(other.cachedForeignKeysCount), _busy_handler{std::move(other._busy_handler)},
@@ -1181,20 +1180,22 @@ namespace sqlite_orm::internal {
             _loadExtensionEnabled{other._loadExtensionEnabled},
 #endif
             scalarFunctions{std::move(other.scalarFunctions)}, aggregateFunctions{std::move(other.aggregateFunctions)},
-            executor{other.executor.will_run_query, other.executor.did_run_query}, on_open{std::move(other.on_open)},
-            pragma(std::bind(&storage_base::get_connection, this), executor),
-            limit{std::ref(storage_base::connection)} {
+            executor{std::move(other.executor)}, on_open{std::move(other.on_open)},
+            pragma(storage_base::connection, executor), limit{std::ref(storage_base::connection)} {
             this->pragma.synchronous_ = other.pragma.synchronous_;
             this->pragma.journal_mode_ = other.pragma.journal_mode_;
             this->limit.limits = std::move(other.limit.limits);
             //  whatever referred to the storage moved from has to refer to this one
-            this->connection->_didOpenDb = std::bind(&storage_base::on_open_internal, this, std::placeholders::_1);
+            this->connection->_didOpenDbContext = this;
             if (this->_busy_handler) {
                 if (connection_ptr maybeConnection = *this->connection) {
                     sqlite3_busy_handler(maybeConnection.get(), busy_handler_callback, this);
                 }
             }
         }
+
+        storage_base& operator=(const storage_base&) = delete;
+        storage_base& operator=(storage_base&&) = delete;
 
         ~storage_base() {
             if (this->isOpenedForever) {
@@ -1243,6 +1244,10 @@ namespace sqlite_orm::internal {
             return result;
         }
 #endif
+
+        static void did_open_db(void* self, sqlite3* db) {
+            static_cast<storage_base*>(self)->on_open_internal(db);
+        }
 
         void on_open_internal(sqlite3* db) {
 #if SQLITE_VERSION_NUMBER >= 3006019

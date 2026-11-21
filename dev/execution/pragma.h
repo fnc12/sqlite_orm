@@ -3,7 +3,7 @@
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <cstdlib>  //  ::atoi
-#include <functional>  //  std::function
+#include <memory>  //  std::unique_ptr
 #include <sstream>  //  std::ostringstream
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
@@ -41,10 +41,8 @@ namespace sqlite_orm::internal {
     }
 
     struct pragma_t {
-        using get_connection_t = std::function<internal::connection_ref()>;
-
-        pragma_t(get_connection_t get_connection_, const sqlite_executor& executor) :
-            get_connection(std::move(get_connection_)), executor(executor) {}
+        pragma_t(std::unique_ptr<connection_holder>& connection, const sqlite_executor& executor) :
+            connection(connection), executor(executor) {}
 
         std::vector<std::string> module_list() {
             return this->get_pragma<std::vector<std::string>>("module_list");
@@ -228,8 +226,12 @@ namespace sqlite_orm::internal {
 
         int synchronous_ = -1;
         signed char journal_mode_ = -1;  //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
-        get_connection_t get_connection;
+        std::unique_ptr<connection_holder>& connection;
         const sqlite_executor& executor;
+
+        connection_ref get_connection() const {
+            return {*this->connection};
+        }
 
         template<class T>
         T get_pragma(std::string name) {
