@@ -1,0 +1,33 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-21: trueqbit's "Hmm" on #1633
+(refactor/async-runtime-surface).
+
+# Pivot
+From: #1633 narrows the public surface of the runtime (worker()
+removed, resume_here() private). To: the stack changes no public
+member; the question goes to the review of #1524. Why: trueqbit's
+objection to stripping scheduler covered the public classes as well,
+worker() above all; whether a member belongs to the public API is the
+author's decision. Invalidates: #1633, closed unmerged; its branch and
+worktree deleted.
+
+# Decided
+- trueqbit: worker() comes back; resume_here() is discussable; both go
+  into the review round, and #1633 closes.
+- On #1631's branch, which had merged #1633: 337567f6 restores both
+  where they stood instead of rewriting the pushed history; #1631 is
+  retargeted onto #1630, its diff adding or removing no member of
+  io_context.h or io_pool.h; its body says so.
+
+# Discussed
+- Claude read the earlier ruling ("I object to removing things" in
+  scheduler.h) as limited to that file. Kept as a memory: public members
+  are flagged in a review round, not removed.
+
+# Later
+- For the final review of #1524, besides the twelve points of 18be3c95:
+  async_io_pool::worker() (public, no caller in library, tests,
+  examples or docs); async_io_context::resume_here() (public, or private
+  with async_io_pool as friend); async_io_context::schedule() (called
+  only by async_storage::release()).
+- The stack is now #1632 -> #1630 -> #1631.
