@@ -34,7 +34,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 namespace sqlite_orm::internal {
     /*
      *  Implementation note: the technique of indirect expression testing is because
-     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
      *  It must also be a type that differs from those for `is_printable_v`, `is_preparable_statement_v`.
      */
     template<class Binder>

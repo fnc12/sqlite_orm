@@ -256,7 +256,7 @@
  *
  *  Intention: the internal tier of the configuration gathered by `config.h`: published only because
  *  `stdlib_features.h` and `capabilities.h` rest on it, and subject to change without notice. Keyed on `compiler.h` and
- *  `language_features.h`; sqlite_orm's headers test `SQLITE_ORM_BROKEN_*` to choose a workaround.
+ *  `language_features.h`; sqlite_orm's headers test `SQLITE_ORM_INTERNAL_BROKEN_*` to choose a workaround.
  */
 
 // #include "compiler.h"
@@ -284,13 +284,13 @@
 // #include "language_features.h"
 
 #if defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1920)
-#define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#define SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION
 // Type replacement may fail if an alias template has a non-type template parameter from a dependent expression in it,
 // `e.g. template<class T> using is_something = std::bool_constant<is_something_v<T>>;`
 // Remedies:
 // a. use a derived struct: `template<class T> struct is_something : std::bool_constant<is_something_v<T>>;`
 // b. hoist the result into a constexpr value: `static constexpr auto value = is_something_v<T>; using is_something : std::bool_constant<value>;`
-#define SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
+#define SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
 #endif
 
 // These compilers are known to have problems with alias templates in SFINAE contexts:
@@ -302,7 +302,7 @@
 // Note that the detection of specific compilers is so complicated because some compilers emulate other compilers,
 // so we simply exclude all compilers that do not support C++20, even though this test is actually inaccurate.
 #if (defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1920)) || (!defined(SQLITE_ORM_MS_MSVC) && (__cplusplus < 202002L))
-#define SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
+#define SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
 #endif
 
 // msvc 16.11 in C++20 mode fails to look up a type alias declared in an enclosing lambda if the use site is
@@ -312,18 +312,18 @@
 // Remedy: redeclare the alias in the generic lambda that uses it.
 // Verified broken with 19.29, verified fixed with 19.44 and 19.51; the versions in between were not tested.
 #if defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1944)
-#define SQLITE_ORM_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
+#define SQLITE_ORM_INTERNAL_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
 #endif
 
 // clang 10 chokes on concepts that don't depend on template parameters;
 // when it tries to instantiate an expression in a requires expression, which results in an error,
 // the compiler reports an error instead of dismissing the templated function.
 #if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && (defined(__clang__) && (__clang_major__ == 10))
-#define SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS
+#define SQLITE_ORM_INTERNAL_BROKEN_NONTEMPLATE_CONCEPTS
 #endif
 
 #if defined(__clang__) && (__clang_major__ <= 15)
-#define SQLITE_ORM_BROKEN_CPP20_VIEWS
+#define SQLITE_ORM_INTERNAL_BROKEN_CPP20_VIEWS
 #endif
 
 // gcc 11 and 12 relocate bytewise a temporary that lives across a suspension point of a `co_await` expression,
@@ -334,7 +334,7 @@
 // parameter, with the same effect on captured strings; `bind_arguments()` and `async_storage::run()` in
 // `execution/async_storage.h` avoid both, with a tuple and by moving the closure to the heap.
 #if defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 13)
-#define SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES
+#define SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES
 #endif
 
 // #include "language_features.h"
@@ -364,7 +364,7 @@
 #define SQLITE_ORM_CPP20_RANGES_SUPPORTED
 #endif
 
-#if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_BROKEN_CPP20_VIEWS)
+#if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_INTERNAL_BROKEN_CPP20_VIEWS)
 #define SQLITE_ORM_CPP20_VIEWS_SUPPORTED
 #endif
 
@@ -402,7 +402,7 @@
 // The asynchronous storage: its I/O engine is io_uring (Linux), its fibers switch stacks with inline assembly
 // written for GCC and Clang on x86_64 and aarch64.
 #if (defined(SQLITE_ORM_LINUX) && !defined(SQLITE_ORM_ANDROID)) &&                                                     \
-    (defined(SQLITE_ORM_CPP20_COROUTINES_SUPPORTED) && !defined(SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES)) &&           \
+    (defined(SQLITE_ORM_CPP20_COROUTINES_SUPPORTED) && !defined(SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES)) &&  \
     (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(__aarch64__))
 #define SQLITE_ORM_WITH_ASYNC
 #endif

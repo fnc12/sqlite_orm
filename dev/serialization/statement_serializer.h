@@ -392,7 +392,7 @@ namespace sqlite_orm::internal {
             //  note: msvc 141 resolves a `std::get<0>` at parse time, even here in a branch it has already ruled
             //  out for an empty argument tuple, and forming that call trips the "tuple index out of bounds"
             //  static_assert in `std::tuple_element`. Hoisting the index into a constexpr value defers the call
-            //  to instantiation time; the same remedy as b. of SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR,
+            //  to instantiation time; the same remedy as b. of SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR,
             //  although that quirk is about alias templates rather than calls.
             constexpr size_t windowRefIndex = 0;
             ss << " OVER " << std::get<windowRefIndex>(arguments).name;

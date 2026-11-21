@@ -255,7 +255,7 @@ namespace sqlite_orm::internal {
         return valid;
     }
 
-#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
+#ifndef SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
     template<size_t I, const char* PointerArg, const char* Binding>
     SQLITE_ORM_CONSTEVAL bool assert_same_pointer_tag() {
         constexpr bool valid = Binding == PointerArg;

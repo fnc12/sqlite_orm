@@ -8,7 +8,7 @@ using std::default_delete;
 using std::unique_ptr;
 
 // Wrap std::default_delete in a function
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#ifndef SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION
 template<typename T>
 void delete_default(mpl::ternary_t<std::is_array<T>, std::decay_t<T>, T*> o) noexcept(
     noexcept(std::default_delete<T>{}(o))) {
@@ -54,7 +54,7 @@ TEST_CASE("obtain_xdestroy_for") {
 
     {
         constexpr int* int_nullptr = nullptr;
-#if !defined(SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION) || defined(SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED)
+#if !defined(SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION) || defined(SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED)
         constexpr const int* const_int_nullptr = nullptr;
 #endif
 
@@ -97,7 +97,7 @@ TEST_CASE("obtain_xdestroy_for") {
         STATIC_REQUIRE(xDestroy5 == &xdestroy_proxy<default_delete<int>, int>);
         REQUIRE((xDestroy5 == &xdestroy_proxy<default_delete<int>, int>));
 
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#ifndef SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION
         // delete_default_f<int>(int*)
         constexpr xdestroy_fn_t xDestroy6 = obtain_xdestroy_for(delete_default_f<int>, int_nullptr);
         STATIC_REQUIRE(xDestroy6 == &xdestroy_proxy<delete_default_t<int>, int>);

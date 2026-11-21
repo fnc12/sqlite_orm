@@ -338,7 +338,7 @@ __pragma(push_macro("max"))
  *
  *  Intention: the internal tier of the configuration gathered by `config.h`: published only because
  *  `stdlib_features.h` and `capabilities.h` rest on it, and subject to change without notice. Keyed on `compiler.h` and
- *  `language_features.h`; sqlite_orm's headers test `SQLITE_ORM_BROKEN_*` to choose a workaround.
+ *  `language_features.h`; sqlite_orm's headers test `SQLITE_ORM_INTERNAL_BROKEN_*` to choose a workaround.
  */
 
 // #include "compiler.h"
@@ -366,13 +366,13 @@ __pragma(push_macro("max"))
 // #include "language_features.h"
 
 #if defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1920)
-#define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#define SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION
 // Type replacement may fail if an alias template has a non-type template parameter from a dependent expression in it,
 // `e.g. template<class T> using is_something = std::bool_constant<is_something_v<T>>;`
 // Remedies:
 // a. use a derived struct: `template<class T> struct is_something : std::bool_constant<is_something_v<T>>;`
 // b. hoist the result into a constexpr value: `static constexpr auto value = is_something_v<T>; using is_something : std::bool_constant<value>;`
-#define SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
+#define SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
 #endif
 
 // These compilers are known to have problems with alias templates in SFINAE contexts:
@@ -384,7 +384,7 @@ __pragma(push_macro("max"))
 // Note that the detection of specific compilers is so complicated because some compilers emulate other compilers,
 // so we simply exclude all compilers that do not support C++20, even though this test is actually inaccurate.
 #if (defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1920)) || (!defined(SQLITE_ORM_MS_MSVC) && (__cplusplus < 202002L))
-#define SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
+#define SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
 #endif
 
 // msvc 16.11 in C++20 mode fails to look up a type alias declared in an enclosing lambda if the use site is
@@ -394,18 +394,18 @@ __pragma(push_macro("max"))
 // Remedy: redeclare the alias in the generic lambda that uses it.
 // Verified broken with 19.29, verified fixed with 19.44 and 19.51; the versions in between were not tested.
 #if defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1944)
-#define SQLITE_ORM_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
+#define SQLITE_ORM_INTERNAL_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
 #endif
 
 // clang 10 chokes on concepts that don't depend on template parameters;
 // when it tries to instantiate an expression in a requires expression, which results in an error,
 // the compiler reports an error instead of dismissing the templated function.
 #if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && (defined(__clang__) && (__clang_major__ == 10))
-#define SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS
+#define SQLITE_ORM_INTERNAL_BROKEN_NONTEMPLATE_CONCEPTS
 #endif
 
 #if defined(__clang__) && (__clang_major__ <= 15)
-#define SQLITE_ORM_BROKEN_CPP20_VIEWS
+#define SQLITE_ORM_INTERNAL_BROKEN_CPP20_VIEWS
 #endif
 
 // gcc 11 and 12 relocate bytewise a temporary that lives across a suspension point of a `co_await` expression,
@@ -416,7 +416,7 @@ __pragma(push_macro("max"))
 // parameter, with the same effect on captured strings; `bind_arguments()` and `async_storage::run()` in
 // `execution/async_storage.h` avoid both, with a tuple and by moving the closure to the heap.
 #if defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 13)
-#define SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES
+#define SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES
 #endif
 
 // #include "language_features.h"
@@ -446,7 +446,7 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_CPP20_RANGES_SUPPORTED
 #endif
 
-#if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_BROKEN_CPP20_VIEWS)
+#if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_INTERNAL_BROKEN_CPP20_VIEWS)
 #define SQLITE_ORM_CPP20_VIEWS_SUPPORTED
 #endif
 
@@ -484,7 +484,7 @@ __pragma(push_macro("max"))
 // The asynchronous storage: its I/O engine is io_uring (Linux), its fibers switch stacks with inline assembly
 // written for GCC and Clang on x86_64 and aarch64.
 #if (defined(SQLITE_ORM_LINUX) && !defined(SQLITE_ORM_ANDROID)) &&                                                     \
-    (defined(SQLITE_ORM_CPP20_COROUTINES_SUPPORTED) && !defined(SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES)) &&           \
+    (defined(SQLITE_ORM_CPP20_COROUTINES_SUPPORTED) && !defined(SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES)) &&  \
     (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(__aarch64__))
 #define SQLITE_ORM_WITH_ASYNC
 #endif
@@ -1655,7 +1655,7 @@ namespace sqlite_orm::internal {
     extern const bool is_bindable_v;
 
     //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
-    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    //  [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
     template<class T>
     struct is_bindable : std::bool_constant<is_bindable_v<T>> {};
 
@@ -1666,7 +1666,7 @@ namespace sqlite_orm::internal {
     extern const bool is_printable_v;
 
     //  a derived struct in favor of an alias template to be on the safe side in case it is passed on as a template-template argument
-    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    //  [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
     template<class T>
     struct is_printable : std::bool_constant<is_printable_v<T>> {};
 }
@@ -2205,7 +2205,7 @@ namespace sqlite_orm::internal {
     /*
      *  Metafunction that casts the class type of a pointer-to-member from a base class to the specified derived class.
      *  note (implementation): go through `member_field_type_t<>` instead of `decltype(as_field_of())` because of
-     *  older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+     *  older compilers having problems with the detection of dependent templates [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
      */
     template<class O, class F>
     using as_field_of_t = member_field_type_t<F> O::*;
@@ -2416,7 +2416,7 @@ namespace sqlite_orm::internal::mpl {
      *  Determines whether a class template has a nested metafunction `fn`.
      *  
      *  Implementation note: the technique of specialiazing on the inline variable must come first because
-     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
+     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
      */
     template<class T, class SFINAE = void>
     constexpr bool is_quoted_metafunction_v = false;
@@ -2744,7 +2744,7 @@ namespace sqlite_orm::internal::mpl {
 
         template<template<class...> class Pack, class... T, class ProjectQ>
         struct invoke_this_fn<Pack<T...>, ProjectQ> {
-            // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+            // hoist result into `value` [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
             static constexpr size_t value =
                 find_first_true_helper({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
             using type = polyfill::index_constant<value>;
@@ -2771,7 +2771,7 @@ namespace sqlite_orm::internal::mpl {
 
         template<template<class...> class Pack, class... T, class ProjectQ>
         struct invoke_this_fn<Pack<T...>, ProjectQ> {
-            // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+            // hoist result into `value` [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
             static constexpr size_t value =
                 count_true_helper({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
             using type = polyfill::index_constant<value>;
@@ -2798,7 +2798,7 @@ namespace sqlite_orm::internal::mpl {
 
         template<template<class...> class Pack, class... T, class ProjectQ>
         struct invoke_this_fn<Pack<T...>, ProjectQ> {
-            // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+            // hoist result into `value` [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
             static constexpr size_t value = static_cast<bool>(
                 count_true_helper({TraitQ::template fn<typename ProjectQ::template fn<T>>::value...}));
             using type = std::bool_constant<value>;
@@ -5345,7 +5345,7 @@ namespace sqlite_orm::internal {
     /*
      *  Implementation note: a derived struct in favor of an alias template, because it is passed on as a
      *  template-template argument - type replacement of an alias template having a non-type template parameter
-     *  from a dependent expression in it may fail [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
+     *  from a dependent expression in it may fail [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
      */
     template<class T>
     struct select_clause_rank : polyfill::index_constant<select_clause_rank_v<T>> {};
@@ -5374,7 +5374,7 @@ namespace sqlite_orm::internal {
     constexpr size_t delete_clause_rank_v = clause_rank_v<T, is_where, is_any_order_by, is_limit>;
 
     //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
-    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    //  [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
     template<class T>
     struct delete_clause_rank : polyfill::index_constant<delete_clause_rank_v<T>> {};
 
@@ -5408,7 +5408,7 @@ namespace sqlite_orm::internal {
                                                           is_limit>;
 
     //  a derived struct in favor of an alias template, because it is passed on as a template-template argument
-    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+    //  [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
     template<class T>
     struct update_clause_rank : polyfill::index_constant<update_clause_rank_v<T>> {};
 
@@ -5532,7 +5532,7 @@ namespace sqlite_orm::internal {
     template<class Tpl, template<class...> class Pred, template<class...> class Proj, class Seq>
     struct filter_tuple_sequence;
 
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#ifndef SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION
     template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
     struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
         : flatten_idxseq<mpl::ternary_t<Pred<mpl::invoke_fn_t<Proj, std::tuple_element_t<Idx, Tpl>>>,
@@ -5582,7 +5582,7 @@ namespace sqlite_orm::internal {
      *  `FilterProj` is a metafunction
      *  
      *  Implementation note: must be distinct from a `count_tuple` w/o index sequence parameter because legacy compilers have problems
-     *  with a default Sequence in function template parameters [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
+     *  with a default Sequence in function template parameters [SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION].
      */
     template<class Tpl,
              template<class...> class Pred,
@@ -9298,7 +9298,7 @@ namespace sqlite_orm::internal {
 
     //  note: the definitions below are written in terms of the variable templates rather than of the `is_*` alias
     //  templates of the traits - msvc 141 fails to resolve an alias template in the initializer of a variable template
-    //  [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR];
+    //  [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR];
     //  and they name their template parameter like the declarations in `grammar_traits_fwd.h` do - msvc 141 resolves
     //  the initializer of a redeclared variable template with the parameter names of the first declaration
 
@@ -10155,7 +10155,7 @@ namespace sqlite_orm::internal {
         return valid;
     }
 
-#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
+#ifndef SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
     template<size_t I, const char* PointerArg, const char* Binding>
     SQLITE_ORM_CONSTEVAL bool assert_same_pointer_tag() {
         constexpr bool valid = Binding == PointerArg;
@@ -10683,7 +10683,7 @@ namespace sqlite_orm::internal {
      *  This is because of bug in MSVC, for more information, please visit
      *  https://stackoverflow.com/questions/34672441/stdis-base-of-for-template-classes/34672753#34672753
      */
-#ifdef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#ifdef SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION
     template<template<typename...> class Base>
     struct is_base_template_of_impl {
         template<typename... Ts>
@@ -18415,7 +18415,7 @@ namespace sqlite_orm::internal {
     template<class Lookup, class DBOs>
     using schema_find_table_t = typename schema_find_table<Lookup, std::remove_const_t<DBOs>>::type;
 
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#ifndef SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION
     template<class DBOs, class Lookup, class SFINAE = void>
     struct is_mapped : std::false_type {};
     template<class DBOs, class Lookup>
@@ -19640,7 +19640,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 namespace sqlite_orm::internal {
     /*
      *  Implementation note: the technique of indirect expression testing is because
-     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
      *  It must also be a type that differs from those for `is_preparable_statement_v`, `is_bindable_v`.
      */
     template<class Printer>
@@ -20324,7 +20324,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 namespace sqlite_orm::internal {
     /*
      *  Implementation note: the technique of indirect expression testing is because
-     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
      *  It must also be a type that differs from those for `is_printable_v`, `is_preparable_statement_v`.
      */
     template<class Binder>
@@ -23814,7 +23814,7 @@ namespace sqlite_orm::internal {
             //  note: msvc 141 resolves a `std::get<0>` at parse time, even here in a branch it has already ruled
             //  out for an empty argument tuple, and forming that call trips the "tuple index out of bounds"
             //  static_assert in `std::tuple_element`. Hoisting the index into a constexpr value defers the call
-            //  to instantiation time; the same remedy as b. of SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR,
+            //  to instantiation time; the same remedy as b. of SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR,
             //  although that quirk is about alias templates rather than calls.
             constexpr size_t windowRefIndex = 0;
             ss << " OVER " << std::get<windowRefIndex>(arguments).name;
@@ -28946,7 +28946,7 @@ namespace sqlite_orm::internal {
 namespace sqlite_orm::internal {
     /*
      *  Implementation note: the technique of indirect expression testing is because
-     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
      *  It must also be a type that differs from those for `is_printable_v`, `is_bindable_v`.
      */
     template<class Binder>
@@ -30528,7 +30528,7 @@ namespace sqlite_orm::internal {
 
                 table.template for_each_column_excluding<mpl::disjunction<is_pkcolumn_q, is_generated_always_q>>(
                     [&table, &bindValue, &object](auto& column) {
-#ifdef SQLITE_ORM_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
+#ifdef SQLITE_ORM_INTERNAL_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
                         using table_type = polyfill::remove_cvref_t<decltype(table)>;
 #endif
                         if (!table_type::is_without_rowid::value &&
@@ -38141,7 +38141,7 @@ namespace sqlite_orm::internal {
     /**
      *  Packs `args` into a callable `function(storage)` that invokes
      *  `call(storage, args...)` with the arguments as rvalues. A tuple rather than a pack init-capture: see
-     *  `SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES`.
+     *  `SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES`.
      */
     template<class Call, class... Args>
     auto bind_arguments(Call call, Args&&... args) {
@@ -38221,7 +38221,7 @@ namespace sqlite_orm::internal {
         template<class F>
         auto run(F function) {
             //  The callable is moved to the heap before entering the coroutine: see
-            //  `SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES`.
+            //  `SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES`.
             return this->run_on_fiber(std::make_unique<F>(std::move(function)));
         }
 

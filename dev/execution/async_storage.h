@@ -38,7 +38,7 @@ namespace sqlite_orm::internal {
     /**
      *  Packs `args` into a callable `function(storage)` that invokes
      *  `call(storage, args...)` with the arguments as rvalues. A tuple rather than a pack init-capture: see
-     *  `SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES`.
+     *  `SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES`.
      */
     template<class Call, class... Args>
     auto bind_arguments(Call call, Args&&... args) {
@@ -118,7 +118,7 @@ namespace sqlite_orm::internal {
         template<class F>
         auto run(F function) {
             //  The callable is moved to the heap before entering the coroutine: see
-            //  `SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES`.
+            //  `SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES`.
             return this->run_on_fiber(std::make_unique<F>(std::move(function)));
         }
 

@@ -9,7 +9,7 @@ namespace sqlite_orm::internal {
      *  This is because of bug in MSVC, for more information, please visit
      *  https://stackoverflow.com/questions/34672441/stdis-base-of-for-template-classes/34672753#34672753
      */
-#ifdef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#ifdef SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION
     template<template<typename...> class Base>
     struct is_base_template_of_impl {
         template<typename... Ts>

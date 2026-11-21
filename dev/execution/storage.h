@@ -72,7 +72,7 @@
 namespace sqlite_orm::internal {
     /*
      *  Implementation note: the technique of indirect expression testing is because
-     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_INTERNAL_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
      *  It must also be a type that differs from those for `is_printable_v`, `is_bindable_v`.
      */
     template<class Binder>
@@ -1654,7 +1654,7 @@ namespace sqlite_orm::internal {
 
                 table.template for_each_column_excluding<mpl::disjunction<is_pkcolumn_q, is_generated_always_q>>(
                     [&table, &bindValue, &object](auto& column) {
-#ifdef SQLITE_ORM_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
+#ifdef SQLITE_ORM_INTERNAL_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
                         using table_type = polyfill::remove_cvref_t<decltype(table)>;
 #endif
                         if (!table_type::is_without_rowid::value &&
