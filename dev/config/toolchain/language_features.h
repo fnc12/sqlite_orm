@@ -37,6 +37,11 @@
 #define SQLITE_ORM_CPP_CONCEPTS_SUPPORTED
 #endif
 
+// defaulted comparisons have no feature-test macro of their own; the standard reports them with three-way comparison
+#if __cpp_impl_three_way_comparison >= 201907L
+#define SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
+#endif
+
 #if __cpp_nontype_template_args >= 201911L
 #define SQLITE_ORM_CPP_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
@@ -72,6 +77,5 @@
 #endif
 
 #if __cplusplus >= 202002L
-#define SQLITE_ORM_CPP_DEFAULT_COMPARISONS_SUPPORTED
 #define SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED
 #endif
