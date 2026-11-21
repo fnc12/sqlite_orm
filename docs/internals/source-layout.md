@@ -83,7 +83,7 @@ which takes precedence where both apply.
   `<sqlite_orm/sqlite_orm_config.h>` for consumers of the named module, the macros sqlite_orm's
   own code is spelled with in `internal_macros.h`, and the `prologue.h`/`epilogue.h` pair around
   the library. `toolchain/` holds the detection of the C++ language, standard library, compiler
-  and platform sqlite_orm is built with, the check of its prerequisites, and in
+  and platform sqlite_orm is used with, the check of its prerequisites, and in
   `compiler_quirks.h` the internal tier: the workarounds for compiler defects, published with the
   rest only because the public tiers rest on them.
 - `dev/functional/` - General-purpose C++ utilities with no SQL or DSL meaning: the prelude

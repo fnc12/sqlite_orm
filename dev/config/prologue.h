@@ -1,8 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: suspend, for sqlite_orm's headers, the compiler warnings and the `min`/`max` macros of Windows headers
- *  that would interfere with them.
+ *  Purpose: suspend, for sqlite_orm's headers, the compiler warnings and the macros of operating system headers.
  *
  *  Intention: paired with `epilogue.h`, which restores them; both variants of <sqlite_orm/sqlite_orm.h> place it first.
  */

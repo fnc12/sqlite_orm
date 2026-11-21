@@ -1,8 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: suspend, for sqlite_orm's headers, the compiler warnings and the `min`/`max` macros of Windows headers
- *  that would interfere with them.
+ *  Purpose: suspend, for sqlite_orm's headers, the compiler warnings and the macros of operating system headers.
  *
  *  Intention: paired with `epilogue.h`, which restores them; both variants of <sqlite_orm/sqlite_orm.h> place it first.
  */
@@ -83,21 +82,13 @@ __pragma(push_macro("max"))
 #pragma once
 
 /** @file
- *  Purpose: gather the public configuration, macros only.
+ *  Purpose: gather the public configuration.
  *
- *  Intention: gathers one header per tier:
- *  - `toolchain/language_features.h`, the C++ language features;
- *  - `toolchain/stdlib_features.h`, the C++ standard library features;
- *  - `toolchain/compiler.h` and `toolchain/platform.h`, the compiler and the platform;
- *  - `sqlite3/sqlite3_config.h`, the SQLite features;
- *  - `capabilities.h`, sqlite_orm's capabilities;
- *  - `toolchain/compiler_quirks.h`, the internal tier: published only because the tiers above rest on it, and subject
- *    to change without notice.
- *  `internal_macros.h` builds sqlite_orm's own spelling on the tiers, and `toolchain/check_prerequisites.h`, outside
- *  them, rejects a toolchain short of C++17.
+ *  Intention: each of its tiers has a header of its own, which names the tier; `internal_macros.h` builds sqlite_orm's
+ *  own spelling on it.
  *
- *  Published as <sqlite_orm/sqlite_orm_config.h> for consumers of the named module, which cannot export macros:
- *  include it ahead of `import sqlite_orm;` and `import std;`.
+ *  Published, macros only, as <sqlite_orm/sqlite_orm_config.h> for consumers of the named module, which cannot export
+ *  macros: include it ahead of `import sqlite_orm;` and `import std;`.
  *  The standard permits either order, but GCC rejects including it after either import: it does not merge
  *  the standard library's inline definitions from `<version>` with those reachable from the module
  *  [see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=99000].
@@ -110,8 +101,7 @@ __pragma(push_macro("max"))
 // #include "capabilities.h"
 
 /** @file
- *  Purpose: tell which optional features sqlite_orm offers with the C++ language, standard library, platform and
- *  SQLite in use.
+ *  Purpose: define, in one place, the guards of sqlite_orm's major features.
  *
  *  Intention: the capabilities tier of the configuration gathered by `config.h`, built on the other tiers;
  *  sqlite_orm's headers and its consumers test `SQLITE_ORM_WITH_*` for a feature.
@@ -206,9 +196,8 @@ __pragma(push_macro("max"))
  *  Purpose: detect the C++ core language features sqlite_orm can use.
  *
  *  Intention: the language tier of the configuration gathered by `config.h`, read from the feature-test macros
- *  `__cpp_*` and from `__cplusplus`, and amended where a compiler supports a feature it does not report;
- *  `compiler_quirks.h`, `stdlib_features.h` and `capabilities.h` build on it. Its macros are named
- *  `SQLITE_ORM_CPP_<feature>_SUPPORTED`, after the standard's prefix `__cpp_`.
+ *  `__cpp_*` and from `__cplusplus`; `compiler_quirks.h`, `stdlib_features.h` and `capabilities.h` build on it. Its
+ *  macros are named `SQLITE_ORM_CPP_<feature>_SUPPORTED`, after the standard's prefix `__cpp_`.
  */
 
 #if __cpp_generic_lambdas >= 201707L
@@ -281,11 +270,10 @@ __pragma(push_macro("max"))
 // #include "toolchain/platform.h"
 
 /** @file
- *  Purpose: identify the platform sqlite_orm is built for.
+ *  Purpose: identify the platform sqlite_orm is used on.
  *
  *  Intention: the platform tier of the configuration gathered by `config.h`; `capabilities.h` builds on it. Its macros
- *  are named `SQLITE_ORM_PLATFORM_<platform>`; `SQLITE_ORM_PLATFORM_UNIX` accompanies each platform but Windows, and an
- *  unknown platform stops the build.
+ *  are named `SQLITE_ORM_PLATFORM_<platform>`.
  */
 
 #if defined(_WIN32)
@@ -329,9 +317,9 @@ __pragma(push_macro("max"))
  *  Purpose: detect the C++ standard library features sqlite_orm can use.
  *
  *  Intention: the standard library tier of the configuration gathered by `config.h`, read from the feature-test macros
- *  `__cpp_lib_*` of `<version>`, and from the language features and compiler quirks a library feature needs;
- *  `capabilities.h` builds on it. Its macros are named `SQLITE_ORM_CPPxx_LIB_<feature>_SUPPORTED`, after the
- *  standard's prefix `__cpp_lib_` and the standard the feature came with.
+ *  `__cpp_lib_*` of `<version>`; `capabilities.h` builds on it. Its macros are named
+ *  `SQLITE_ORM_CPPxx_LIB_<feature>_SUPPORTED`, after the standard's prefix `__cpp_lib_` and the standard the feature
+ *  came with.
  */
 
 // #include "compiler_quirks.h"
@@ -340,8 +328,8 @@ __pragma(push_macro("max"))
  *  Purpose: work around the compiler defects sqlite_orm's own code meets.
  *
  *  Intention: the internal tier of the configuration gathered by `config.h`: published only because
- *  `stdlib_features.h` and `capabilities.h` rest on it, and subject to change without notice. Keyed on `compiler.h` and
- *  `language_features.h`; sqlite_orm's headers test `SQLITE_ORM_INTERNAL_BROKEN_*` to choose a workaround.
+ *  `stdlib_features.h` and `capabilities.h` rest on it, and subject to change without notice; sqlite_orm's headers
+ *  test `SQLITE_ORM_INTERNAL_BROKEN_*` to choose a workaround.
  */
 
 // #include "compiler.h"
@@ -514,11 +502,10 @@ __pragma(push_macro("max"))
 #pragma once
 
 /** @file
- *  Purpose: provide the macros sqlite_orm's own code is spelled with: module export, keywords and attributes
- *  depending on the language version, and the suppression of compiler diagnostics.
+ *  Purpose: provide the macros sqlite_orm's own code is spelled with.
  *
- *  Intention: builds on the configuration of `config.h`, outside the published <sqlite_orm/sqlite_orm_config.h>;
- *  both variants of <sqlite_orm/sqlite_orm.h> place it right after `config.h`.
+ *  Intention: outside the published <sqlite_orm/sqlite_orm_config.h>; both variants of <sqlite_orm/sqlite_orm.h> place
+ *  it right after `config.h`.
  */
 
 // #include "config.h"
@@ -39229,7 +39216,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #pragma once
 
 /** @file
- *  Purpose: restore the compiler warnings and the `min`/`max` macros `prologue.h` suspended.
+ *  Purpose: restore the compiler warnings and macros `prologue.h` suspended.
  *
  *  Intention: paired with `prologue.h`; both variants of <sqlite_orm/sqlite_orm.h> place it last.
  */

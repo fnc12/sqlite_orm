@@ -1,8 +1,7 @@
 #pragma once
 
 /** @file
- *  Purpose: tell which optional features sqlite_orm offers with the C++ language, standard library, platform and
- *  SQLite in use.
+ *  Purpose: define, in one place, the guards of sqlite_orm's major features.
  *
  *  Intention: the capabilities tier of the configuration gathered by `config.h`, built on the other tiers;
  *  sqlite_orm's headers and its consumers test `SQLITE_ORM_WITH_*` for a feature.

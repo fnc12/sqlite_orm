@@ -1,11 +1,10 @@
 #pragma once
 
 /** @file
- *  Purpose: identify the platform sqlite_orm is built for.
+ *  Purpose: identify the platform sqlite_orm is used on.
  *
  *  Intention: the platform tier of the configuration gathered by `config.h`; `capabilities.h` builds on it. Its macros
- *  are named `SQLITE_ORM_PLATFORM_<platform>`; `SQLITE_ORM_PLATFORM_UNIX` accompanies each platform but Windows, and an
- *  unknown platform stops the build.
+ *  are named `SQLITE_ORM_PLATFORM_<platform>`.
  */
 
 #if defined(_WIN32)

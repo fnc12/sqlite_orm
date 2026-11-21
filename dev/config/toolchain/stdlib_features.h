@@ -4,9 +4,9 @@
  *  Purpose: detect the C++ standard library features sqlite_orm can use.
  *
  *  Intention: the standard library tier of the configuration gathered by `config.h`, read from the feature-test macros
- *  `__cpp_lib_*` of `<version>`, and from the language features and compiler quirks a library feature needs;
- *  `capabilities.h` builds on it. Its macros are named `SQLITE_ORM_CPPxx_LIB_<feature>_SUPPORTED`, after the
- *  standard's prefix `__cpp_lib_` and the standard the feature came with.
+ *  `__cpp_lib_*` of `<version>`; `capabilities.h` builds on it. Its macros are named
+ *  `SQLITE_ORM_CPPxx_LIB_<feature>_SUPPORTED`, after the standard's prefix `__cpp_lib_` and the standard the feature
+ *  came with.
  */
 
 #include "compiler_quirks.h"
