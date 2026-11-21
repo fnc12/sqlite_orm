@@ -1,0 +1,35 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-21: the released names of the
+config macro review.
+
+# Decided
+- 9 language features -> SQLITE_ORM_CPP_<F>_SUPPORTED, no aliases (trueqbit:
+  reporting the compiler's language support is not sqlite_orm's concern).
+- CPP20_CONCEPTS -> CPP20_LIB_CONCEPTS, CPP20_RANGES -> CPP20_LIB_RANGES,
+  STL_HAS_DEFAULT_SENTINEL -> CPP20_LIB_DEFAULT_SENTINEL_SUPPORTED, no aliases
+  for now.
+- SQLITE_ORM_OMITS_CODECVT -> SQLITE_ORM_OMIT_CODECVT with a deprecated alias
+  (trueqbit: a real public contract). CMake: only option(SQLITE_ORM_OMIT_CODECVT);
+  the old name from -D or a cache gives message(DEPRECATION) and sets the new
+  one; capabilities.h maps the old macro for projects defining it by hand.
+- The tier preambles state the naming as a pattern after the standard's
+  prefixes __cpp_ / __cpp_lib_ - not one-to-one: DEDUCING_THIS,
+  DEFAULT_COMPARISONS, INITSTMT_RANGE_BASED_FOR, DEFAULT_SENTINEL differ.
+- trueqbit: the commit leaves the open alias question to the record and the
+  pull request; it would be stale as a stated state.
+
+# Discussed
+- Checks: -E -dM of both published headers through the full mapping
+  identical (C++17/20/26, g++-16, clang++); the alias in all four
+  combinations; CMake 4.4.1 configure of a wrapper project: none -> no
+  definition, new -> =1, old -> deprecation + =1, old removed from cache ->
+  none.
+
+# Dissent
+- Open, for fnc12: deprecated aliases for the three released library
+  macros (asked in #1635).
+
+# Later
+- Whichever of #1634 and this stack lands second adds the config include
+  to tests/simple_query.cpp and tests/tests3.cpp: they test
+  SQLITE_ORM_OMIT_CODECVT, which the config can now define.
