@@ -1,0 +1,19 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-21: compiler and platform macros
+of the config macro review.
+
+# Decided
+- trueqbit (a): SQLITE_ORM_COMPILER_<maker>_<compiler> and
+  SQLITE_ORM_PLATFORM_<platform>, after compiler.h / platform.h - every
+  public tier carries a marker. Weighed and rejected: Boost.Predef's
+  COMP_/OS_/PLAT_ (from memory; it files Android under PLAT, and UNIX as a
+  family fits neither), and leaving them bare.
+- trueqbit settles the open alias question (dissent of ca2c2970 closed):
+  no hypothetical backward-compatibility macros. Someone using an
+  undocumented guard switches to the new name when upgrading, unless a
+  complicated multi-version setup; addressed once it becomes a problem.
+  SQLITE_ORM_OMITS_CODECVT keeps its alias - a real contract.
+
+# Discussed
+- 71 replacements in 12 files; open PRs: only this stack (#1524 below).
+- -E -dM through the mapping identical (C++17/20/26, g++-16, clang++).
