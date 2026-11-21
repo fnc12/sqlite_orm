@@ -1,0 +1,29 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-21: first commit of the public
+config macro review, branch chore/config-macro-consistency stacked on
+#1631 (top of the async stack, 337567f6) - async reaches dev and v1.10.
+No issue yet: assess first.
+
+# Decided
+- Contract tiers documented, clear internals moved out (1 c);
+  SQLITE_ORM_HAS_CPP_ATTRIBUTE -> internal_macros.h here.
+- trueqbit: SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS stays while the legacy
+  compilers are supported (no reader since ddee5003, 2023-03).
+- Renames: unreleased names first (a); released names in a separate
+  commit on top (b), deprecated aliases subject to trueqbit asking fnc12.
+  trueqbit: the config was never meant for public consumption; tests and
+  examples are its own consumers by necessity.
+- The 24 macros defined in v1.9.1 and gone now are listed in the PR.
+- __cplusplus-keyed detection (DEFAULT_COMPARISONS, INITSTMT_RANGE_BASED_FOR)
+  is a separate change; MSVC without /Zc:__cplusplus is out of scope
+  (trueqbit).
+- trueqbit: BROKEN_* go internal; internal macros carry an "internal"
+  notion in their names; OMITS_CODECVT gets a deprecated alias.
+
+# Discussed
+- 58 macros in sqlite_orm_config.h on 337567f6; 19 were in v1.9.1.
+- SQLite's convention OMIT/ENABLE makes ENABLE_LOAD_EXTENSION right and
+  OMITS_CODECVT the odd one.
+- cppreference feature_test: __cpp_impl_three_way_comparison 201907L,
+  "Three-way comparison (compiler support)", P0515R3, P0768R1, P1185R2,
+  P1630R1; no feature-test macro listed for P0614 (range-for init).
