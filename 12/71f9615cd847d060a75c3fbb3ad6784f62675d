@@ -1,0 +1,23 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-21: the unreleased public names of
+the config macro review.
+
+# Decided
+- 11 renames (language: CPP_TRIVIAL_DEFAULTINIT, CPP_DEDUCING_THIS,
+  CPP_STATIC_CALL_OPERATOR, CPP_STRUCTURED_BINDING_PACK, CPP_CONTRACTS,
+  CPP_REFLECTION, CPP_INITSTMT_RANGE_BASED_FOR; library:
+  CPP20_LIB_IS_CONSTANT_EVALUATED, CPP20_LIB_VIEWS, CPP20_LIB_COROUTINES,
+  CPP23_LIB_GENERATOR; all _SUPPORTED), 55 files.
+- COROUTINES and CONCEPTS of the library tier also require the language
+  feature; filed under the library tier, which rests on it.
+- trueqbit for the released names: language-feature macros get no alias
+  ("not our public domain"); aliases for the three stdlib ones are an open
+  question for fnc12, asked in the draft PR; SQLITE_ORM_OMITS_CODECVT keeps
+  an alias - a real public contract. The capabilities (WITH_*), the real
+  contract, are unchanged.
+
+# Discussed
+- Open PRs: only draft #1570 (reflected column names) uses a renamed name,
+  SQLITE_ORM_REFLECTION_SUPPORTED x10; it needs the rename when it next
+  merges dev. #1629 uses none.
+- -E -dM through the rename mapping: identical at C++17/20/26.
