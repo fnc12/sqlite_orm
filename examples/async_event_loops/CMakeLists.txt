@@ -1,4 +1,7 @@
-# Examples of embedding the asynchronous storage into the event loop an application already has.
+# Purpose: build the examples of embedding the asynchronous storage into an event loop an application already has.
+#
+# Intention: added by `examples/CMakeLists.txt`; on Linux with C++20 it fetches libhv and libuv, and builds the GLib, Qt
+# and Asio examples where those are found.
 
 function(add_async_event_loop_example name source)
     add_executable(${name} ${source})

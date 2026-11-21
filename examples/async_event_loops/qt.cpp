@@ -1,18 +1,17 @@
 /**
- *  This example embeds the asynchronous storage into the event loop of Qt [https://www.qt.io].
+ *  Purpose: show the asynchronous storage embedded into the event loop of Qt.
  *
- *  The `async_io_context` of the storage offers a descriptor, `native_handle()`, that is readable whenever it has
- *  something to do, and `poll()`, which does what can be done without waiting and returns. A `QSocketNotifier` watches
- *  the descriptor and calls `poll()`.
- *  The coroutine is resumed from inside `poll()`, hence on the thread of the loop, next to the loop's own
- *  events; here a timer firing every millisecond.
+ *  Intention: uses Qt [https://www.qt.io]; `epoll.cpp` next to this file shows the same with a hand-written loop.
  *
- *  `epoll.cpp` next to this file shows the same with a hand-written loop.
+ *  A `QSocketNotifier` watches the `async_io_context`'s descriptor, `native_handle()`, and calls `poll()` when it is readable.
+ *  The coroutine is resumed from inside `poll()`, on the thread of the loop, next to the loop's own events; here a
+ *  timer firing every millisecond.
  */
 
 #include <cstdio>  //  std::remove
 #include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>  //  SQLITE_ORM_WITH_ASYNC
 #include <string>
 
 #ifdef SQLITE_ORM_WITH_ASYNC
@@ -60,7 +59,7 @@ async_task<void> store_measurements(Storage& storage, QCoreApplication& applicat
 }
 #endif
 
-int main(int argc, char** argv) {
+int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
 #ifdef SQLITE_ORM_WITH_ASYNC
     if (!io_uring_available()) {
         cout << "io_uring is not available in this environment" << endl;

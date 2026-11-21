@@ -1,12 +1,5 @@
 #pragma once
 
-/** @file
- *  Purpose: give a synchronous call a stack of its own, so that it can be suspended in the middle and resumed later.
- *
- *  Intention: realizes the stackful coroutine SQLite's synchronous VFS callbacks suspend on inside `sqlite3_step()`;
- *  uses `context_switch.h`, is run by `scheduler.h`.
- */
-
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <cstddef>  //  std::size_t
@@ -27,9 +20,13 @@
 namespace sqlite_orm::internal {
 
     /**
-     *  Stackful coroutine. One OS thread, many stacks; switching is explicit and
-     *  cooperative. Used so that SQLite's synchronous VFS callbacks can suspend in
-     *  the middle of sqlite3_step() without blocking the thread.
+     *  Purpose: give a synchronous call a stack of its own, so that it can be suspended in the middle and resumed
+     *  later.
+     *
+     *  Intention: the stackful coroutine a synchronous call suspends on, such as SQLite's VFS callbacks inside
+     *  `sqlite3_step()`; uses the stack switch of `context_switch.h`, is run by `scheduler`.
+     *
+     *  One OS thread, many stacks; switching is explicit and cooperative, and a suspended call leaves the thread free.
      */
     class fiber {
       public:

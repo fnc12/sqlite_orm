@@ -335,6 +335,9 @@
 // which breaks any type with a non-trivial move constructor, e.g. a `std::string` in its small-buffer state
 // in `co_await storage.insert(User{...})`.
 // Verified broken with 11.4 and 12.5, verified fixed with 13.4.
+// gcc 11 also initializes a pack init-capture bytewise and relocates bytewise a closure passed as a coroutine
+// parameter, with the same effect on captured strings; `bind_arguments()` and `async_storage::run()` in
+// `execution/async_storage.h` avoid both, with a tuple and by moving the closure to the heap.
 #if defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 13)
 #define SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES
 #endif

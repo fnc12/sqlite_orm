@@ -364,6 +364,9 @@ __pragma(push_macro("max"))
 // which breaks any type with a non-trivial move constructor, e.g. a `std::string` in its small-buffer state
 // in `co_await storage.insert(User{...})`.
 // Verified broken with 11.4 and 12.5, verified fixed with 13.4.
+// gcc 11 also initializes a pack init-capture bytewise and relocates bytewise a closure passed as a coroutine
+// parameter, with the same effect on captured strings; `bind_arguments()` and `async_storage::run()` in
+// `execution/async_storage.h` avoid both, with a tuple and by moving the closure to the heap.
 #if defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 13)
 #define SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES
 #endif
@@ -35811,8 +35814,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 /** @file
  *  Purpose: offer the storage's interface to coroutines, without blocking the thread on file I/O.
  *
- *  Intention: realizes `async_storage` and `make_async_storage()` over the unchanged synchronous storage of
- *  `execution/storage.h`, each operation running on a fiber of the storage's `async_io_context`; uses `async_vfs.h`.
+ *  Intention: wraps the unchanged synchronous storage of `execution/storage.h`, each operation running on a fiber of
+ *  an `async_io_context`; selects the VFS of `async_vfs.h` for its connection.
  */
 
 #ifdef SQLITE_ORM_WITH_ASYNC
@@ -35835,13 +35838,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../functional/cxx_polyfill/functional.h"
 //  polyfill::identity
 // #include "../functional/coroutines/task.h"
-
-/** @file
- *  Purpose: be the coroutine type an asynchronous storage operation returns.
- *
- *  Intention: realizes a lazy C++20 coroutine that any coroutine can `co_await`; used by `io_context.h`, `when_all.h`,
- *  `async_storage.h` and `async_cursor.h`.
- */
 
 #ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
@@ -36004,9 +36000,12 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
-     *  Lazy coroutine type returned by asynchronous storage operations. Starts
-     *  when awaited; the awaiting coroutine is resumed with the value or the
-     *  exception.
+     *  Purpose: represent a computation whose result arrives later.
+     *
+     *  Intention: realizes a lazy C++20 coroutine type that any coroutine can `co_await`; returned by the operations of
+     *  `async_storage` and `async_cursor`, awaited by `async_io_context` and `async_when_all()`.
+     *
+     *  Starts when awaited; the awaiting coroutine is resumed with the value or the exception.
      */
     template<class T>
     class async_task {
@@ -36067,13 +36066,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
 // #include "../async/io_context.h"
-
-/** @file
- *  Purpose: drive the asynchronous storages of one thread: their I/O, their fibers and the coroutines awaiting them.
- *
- *  Intention: realizes the event loop applications either run themselves or embed into the event loop they already have;
- *  uses `scheduler.h` and `task.h`.
- */
 
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -36140,13 +36132,6 @@ namespace sqlite_orm::internal {
 
 // #include "scheduler.h"
 
-/** @file
- *  Purpose: run fibers on one thread and resume each when the I/O it waits for has completed.
- *
- *  Intention: realizes the loop underneath `io_context.h`; uses `fiber.h` and `io_uring_engine.h`,
- *  and is called by `async_vfs.h` from inside a fiber.
- */
-
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <algorithm>  //  std::find_if
@@ -36164,13 +36149,6 @@ namespace sqlite_orm::internal {
 #endif
 
 // #include "fiber/fiber.h"
-
-/** @file
- *  Purpose: give a synchronous call a stack of its own, so that it can be suspended in the middle and resumed later.
- *
- *  Intention: realizes the stackful coroutine SQLite's synchronous VFS callbacks suspend on inside `sqlite3_step()`;
- *  uses `context_switch.h`, is run by `scheduler.h`.
- */
 
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -36191,14 +36169,9 @@ namespace sqlite_orm::internal {
 /** @file
  *  Purpose: switch between machine stacks on one thread.
  *
- *  Intention: the foundation of `fiber.h`: two naked functions per supported architecture (x86_64 System V, aarch64 AAPCS64),
- *  inline so that the library stays header-only; speaks to nobody else.
- */
-
-#ifdef SQLITE_ORM_WITH_ASYNC
-/**
- *  Minimal stackful context switch for x86_64 (SysV) and aarch64 (AAPCS64),
- *  GCC or Clang, as inline naked functions so that the library stays header-only.
+ *  Intention: used by `fiber` alone; inline naked functions, so that the library stays header-only.
+ *
+ *  For x86_64 (System V) and aarch64 (AAPCS64), with GCC or Clang:
  *
  *      void sqlite_orm_switch_context(void** saveStackPointer, void* loadStackPointer);
  *
@@ -36211,6 +36184,8 @@ namespace sqlite_orm::internal {
  *  "returns" into sqlite_orm_context_trampoline with the entry function and its
  *  argument in two callee-saved registers.
  */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
 extern "C" {
 
 #if defined(__x86_64__)
@@ -36294,9 +36269,13 @@ __attribute__((naked, noinline)) inline void sqlite_orm_context_trampoline() {
 namespace sqlite_orm::internal {
 
     /**
-     *  Stackful coroutine. One OS thread, many stacks; switching is explicit and
-     *  cooperative. Used so that SQLite's synchronous VFS callbacks can suspend in
-     *  the middle of sqlite3_step() without blocking the thread.
+     *  Purpose: give a synchronous call a stack of its own, so that it can be suspended in the middle and resumed
+     *  later.
+     *
+     *  Intention: the stackful coroutine a synchronous call suspends on, such as SQLite's VFS callbacks inside
+     *  `sqlite3_step()`; uses the stack switch of `context_switch.h`, is run by `scheduler`.
+     *
+     *  One OS thread, many stacks; switching is explicit and cooperative, and a suspended call leaves the thread free.
      */
     class fiber {
       public:
@@ -36444,12 +36423,6 @@ namespace sqlite_orm::internal {
 
 // #include "io_operation.h"
 
-/** @file
- *  Purpose: describe one asynchronous I/O request in flight.
- *
- *  Intention: the record shared by `io_uring_engine.h`, which submits and completes it, and `scheduler.h`, which parks a fiber on it.
- */
-
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <cstdint>  //  std::int32_t
@@ -36459,30 +36432,25 @@ namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
 
-    class fiber;
-
     /**
-     *  One asynchronous I/O request in flight. Either a fiber waits for it, or a
-     *  callback runs on completion (the cross-thread wake operation).
+     *  Purpose: describe one asynchronous request in flight to the I/O engine.
+     *
+     *  Intention: the record shared by `io_uring_engine`, which submits and completes it, and `scheduler`, which parks
+     *  a fiber on it.
+     *
+     *  Either a fiber waits for it, or a callback runs on completion (the cross-thread wake operation).
      */
     struct io_operation {
-        fiber* waiter = nullptr;
+        class fiber* waiter = nullptr;
         void (*onComplete)(io_operation*, void*) = nullptr;
         void* context = nullptr;
-        std::int32_t result = 0;  //  bytes transferred, or -errno
+        std::int32_t result = 0;  //  bytes transferred, 0, or -errno
         bool completed = false;
     };
 }
 #endif
 
 // #include "io_uring_engine.h"
-
-/** @file
- *  Purpose: submit file I/O to io_uring and collect its completions.
- *
- *  Intention: realizes the I/O engine of `scheduler.h` on the raw io_uring system calls, without liburing;
- *  publishes `io_uring_available()` for applications that have to check before creating an `async_io_context`.
- */
 
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -36512,11 +36480,14 @@ namespace sqlite_orm::internal {
 namespace sqlite_orm::internal {
 
     /**
-     *  io_uring on raw syscalls (no liburing). One submission queue and one
-     *  completion queue, mmap'd from the ring descriptor. submit() only publishes
-     *  the submission tail; the io_uring_enter syscall happens in reap(), so one
-     *  loop iteration costs one syscall, or none when nothing was queued and the
-     *  caller does not block.
+     *  Purpose: submit requests to io_uring and collect their completions.
+     *
+     *  Intention: the I/O engine `scheduler` drives, on the raw io_uring system calls, without liburing;
+     *  `io_uring_available()` lets applications check before creating an `async_io_context`.
+     *
+     *  One submission queue and one completion queue, mmap'd from the ring descriptor. submit() only publishes the
+     *  submission tail; the io_uring_enter syscall happens in reap(), so one loop iteration costs one syscall, or none
+     *  when nothing was queued and the caller does not block.
      */
     class io_uring_engine {
       public:
@@ -36719,6 +36690,7 @@ namespace sqlite_orm::internal {
             while (head != tail) {
                 const io_uring_cqe& completion = this->completionEntries[head & this->completionMask];
                 auto* operation = reinterpret_cast<io_operation*>(static_cast<std::uintptr_t>(completion.user_data));
+                //  A timeout that fires completes with -ETIME, which is its success.
                 operation->result = completion.res == -ETIME ? 0 : completion.res;
                 this->timeouts.erase(operation);
                 completed.push_back(operation);
@@ -36804,12 +36776,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 namespace sqlite_orm::internal {
 
     /**
-     *  Single-threaded cooperative scheduler: runs fibers and drives io_uring.
-     *  Fibers park on I/O by calling read/write/fsync/sleep below; the scheduler
-     *  resumes them when the completion arrives.
+     *  Purpose: schedule the work items of one thread and resume each when what it waits for has completed.
      *
-     *  Cross-thread use is limited to post() and wake(): another thread may hand a
-     *  callable to this scheduler, which runs it on the scheduler's own thread.
+     *  Intention: the loop underneath `async_io_context`, its work items being fibers and functions posted
+     *  from other threads; uses `fiber` and `io_uring_engine`; the VFS of `async_vfs.h` parks fibers on it from inside
+     *  them.
+     *
+     *  Fibers park on I/O by calling read/write/fsync/sleep below; the scheduler resumes them when the completion
+     *  arrives. Cross-thread use is limited to post() and wake(): another thread may hand a callable to this scheduler,
+     *  which runs it on the scheduler's own thread.
      */
     class scheduler {
       public:
@@ -36827,7 +36802,8 @@ namespace sqlite_orm::internal {
         }
 
         /**
-         *  Create a fiber and make it runnable.
+         *  Run `function` on a fiber, on the stack of a finished one of that size where there is one, and make it
+         *  runnable.
          */
         void spawn(std::function<void()> function, std::size_t stackSize = fiber::defaultStackSize) {
             std::unique_ptr<fiber> newFiber = this->take_idle(fiber::rounded_stack_size(stackSize));
@@ -36858,8 +36834,8 @@ namespace sqlite_orm::internal {
         }
 
         /**
-         *  One loop iteration; blocks for I/O only if no fiber is runnable.
-         *  Returns false when there is nothing left to do.
+         *  One loop iteration; blocks for I/O only if no fiber is runnable and the hook of `set_external_ready()`
+         *  reports no work of its own. Returns false when there is nothing left to do.
          */
         bool run_one() {
             return this->step(true);
@@ -37075,7 +37051,7 @@ namespace sqlite_orm::internal {
         std::vector<std::unique_ptr<fiber>> fibers;
         /**
          *  Finished fibers kept for their stacks: mapping a stack and faulting its pages in costs more than
-         *  a typical storage operation. Bounded, so that a burst of concurrent operations does not pin its
+         *  the work a fiber typically runs. Bounded, so that a burst of concurrent operations does not pin its
          *  stacks forever.
          */
         static constexpr std::size_t maxIdleFibers = 64;
@@ -37096,8 +37072,13 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
-     *  Event loop of the asynchronous storage: one per thread. It submits the file I/O of its storages to io_uring,
-     *  runs the fibers their operations execute on, and resumes the coroutines awaiting them.
+     *  Purpose: run asynchronous work on one thread.
+     *
+     *  Intention: the event loop applications either run themselves or embed into the event loop they already have;
+     *  uses `scheduler` for the fibers and their file I/O, and `async_task` for the coroutines; `async_storage` and
+     *  `async_io_pool` run on it.
+     *
+     *  It submits file I/O to io_uring, runs synchronous calls on fibers, and resumes the coroutines awaiting them.
      *
      *  It is not a general-purpose executor, and an application needs no second event loop because of it.
      *  There are three ways to drive it:
@@ -37124,6 +37105,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     class async_io_context {
       public:
+        /**
+         *  `queueDepth` is the number of entries of the io_uring submission queue. Throws std::runtime_error where
+         *  `io_uring_available()` is false.
+         */
         explicit async_io_context(unsigned queueDepth = 256) : scheduler_(queueDepth) {
             this->scheduler_.set_external_ready([this] {
                 return !this->ready.empty() || !this->pendingRoots.empty();
@@ -37181,8 +37166,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
-         *  Awaitable: run a synchronous callable on a fiber. Everything inside
-         *  (sqlite3_step and friends) may park on I/O without blocking the thread.
+         *  Awaitable: run a synchronous callable on a fiber. Everything inside it, such as `sqlite3_step()`, may park
+         *  on I/O without blocking the thread.
          */
         template<class F>
         auto async(F function) {
@@ -37279,7 +37264,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
-         *  Thread-safe.
+         *  Thread-safe: makes `run_forever()` return after its current turn.
          */
         void stop() {
             this->scheduler_.post([this] {
@@ -37376,14 +37361,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../result_set/async_cursor.h"
 
-/** @file
- *  Purpose: fetch the rows of a query one at a time from a coroutine.
- *
- *  Intention: realizes `async_cursor`, what `async_storage::iterate()` returns, over the views of
- *  `result_set/mapped_view.h` and `result_set/result_set_view.h` that the synchronous `storage_t::iterate()` returns;
- *  uses `task.h`, and the storage's `run()` for every step.
- */
-
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::shared_ptr, std::make_shared
@@ -37420,6 +37397,8 @@ namespace sqlite_orm::internal {
             }
             try {
                 if (!this->iterator) {
+                    //  The view's connection reference ends with this block while the iterator keeps the statement:
+                    //  sound because async_storage keeps its connection open.
                     view_type view = (*this->makeView)(storage);
                     this->makeView.reset();
                     this->iterator.emplace(view.begin());
@@ -37461,16 +37440,20 @@ namespace sqlite_orm::internal {
     };
 
     /**
-     *  The rows of a query, fetched one at a time; returned by `async_storage::iterate()`.
+     *  Purpose: fetch the rows of a query one at a time from a coroutine.
+     *
+     *  Intention: what `async_storage::iterate()` returns, over the views `mapped_view` and `result_set_view` that the
+     *  synchronous `storage_t::iterate()` returns; uses `async_task`, and the storage's `run()` for every step.
      *
      *      auto users = storage.iterate<User>(where(c(&User::age) > 30));
      *      while (std::optional<User> user = co_await users.next()) {
      *          ...
      *      }
      *
-     *  The first `next()` prepares the statement; it is finalized when the rows are exhausted or the cursor is
-     *  destroyed. Between two rows the connection is free: other operations on the storage run in between,
-     *  further cursors included, as they may inside a loop over the synchronous `storage.iterate()`.
+     *  The first `next()` prepares the statement; it is finalized when the rows are exhausted, when an error ends
+     *  the iteration, or when the cursor is closed or destroyed. Between two rows the connection is free: other
+     *  operations on the storage run in between, further cursors included, as they may inside a loop over the
+     *  synchronous `storage.iterate()`.
      *
      *  A cursor must not outlive its storage.
      */
@@ -37536,10 +37519,11 @@ namespace sqlite_orm::internal {
 // #include "vfs/async_vfs.h"
 
 /** @file
- *  Purpose: perform the file I/O of a connection through io_uring instead of blocking system calls.
+ *  Purpose: let a connection wait for its file I/O, or sleep, without blocking its thread.
  *
- *  Intention: realizes a VFS, SQLite's OS interface layer, registered next to the built-in ones of `builtin/vfs.h` and wrapping
- *  the default one; uses `scheduler.h`, and is selected for a storage by `make_async_storage()` through `connection_control`.
+ *  Intention: realizes a VFS, SQLite's OS interface layer, handing that I/O to io_uring, registered next to the
+ *  built-in ones of `builtin/vfs.h` and wrapping the default one; uses `scheduler.h`, and is selected for a storage
+ *  by `make_async_storage()` through `connection_control`.
  */
 
 #ifdef SQLITE_ORM_WITH_ASYNC
@@ -37569,7 +37553,7 @@ namespace sqlite_orm::internal {
     inline constexpr std::string_view async_vfs_name = "sqlite_orm_async";
 
     /**
-     *  Counters of the asynchronous VFS, mostly for tests.
+     *  Counters of the asynchronous VFS, read by the tests.
      */
     struct async_vfs_statistics {
         sqlite3_int64 asyncReads = 0;
@@ -37595,7 +37579,7 @@ namespace sqlite_orm::internal {
 namespace sqlite_orm::internal::async_vfs {
 
     /**
-     *  Incremented on every thread that runs an async_io_context.
+     *  Process-wide, incremented from every thread that runs an async_io_context, hence atomic.
      */
     struct atomic_statistics {
         std::atomic<sqlite3_int64> asyncReads{0};
@@ -38086,10 +38070,8 @@ namespace sqlite_orm::internal {
 
     /**
      *  Packs `args` into a callable `function(storage)` that invokes
-     *  `call(storage, args...)` with the arguments as rvalues. A tuple is used
-     *  instead of a pack init-capture on purpose: GCC 11 initializes pack
-     *  init-captures bytewise, which breaks captured strings in their
-     *  small-buffer state.
+     *  `call(storage, args...)` with the arguments as rvalues. A tuple rather than a pack init-capture: see
+     *  `SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES`.
      */
     template<class Call, class... Args>
     auto bind_arguments(Call call, Args&&... args) {
@@ -38168,10 +38150,8 @@ namespace sqlite_orm::internal {
          */
         template<class F>
         auto run(F function) {
-            //  The callable is moved to the heap before entering the coroutine: a
-            //  closure passed as a coroutine parameter is not copied correctly by
-            //  some compilers (GCC 11 relocates it bytewise, which breaks captured
-            //  strings in their small-buffer state).
+            //  The callable is moved to the heap before entering the coroutine: see
+            //  `SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES`.
             return this->run_on_fiber(std::make_unique<F>(std::move(function)));
         }
 
@@ -38881,12 +38861,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #pragma once
 
-/** @file
- *  Purpose: spread work over several threads, each with its own `async_io_context`.
- *
- *  Intention: a convenience on top of `io_context.h` for applications that want I/O parallelism across storages.
- */
-
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <atomic>  //  std::atomic
@@ -38911,12 +38885,18 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
-     *  M:N: `size` worker threads, each running its own async_io_context. Work is
-     *  spread round-robin; a coroutine that awaits pool.async(function) is resumed
+     *  Purpose: spread work over several threads, each with its own `async_io_context`.
+     *
+     *  Intention: a convenience on top of `async_io_context` for applications that want I/O parallelism across threads.
+     *
+     *  M:N: `size` worker threads. Work is spread round-robin; a coroutine that awaits pool.async(function) is resumed
      *  back on the async_io_context it was running on.
      */
     class async_io_pool {
       public:
+        /**
+         *  Starts `size` worker threads, each running an async_io_context of `queueDepth` io_uring entries.
+         */
         explicit async_io_pool(unsigned size, unsigned queueDepth = 256) {
             for (unsigned index = 0; index < size; ++index) {
                 this->workers.push_back(std::make_unique<async_io_context>(queueDepth));
@@ -38935,6 +38915,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         async_io_pool(const async_io_pool&) = delete;
         async_io_pool& operator=(const async_io_pool&) = delete;
 
+        /**
+         *  The number of worker threads.
+         */
         std::size_t size() const noexcept {
             return this->workers.size();
         }
@@ -38943,6 +38926,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return *this->workers[index];
         }
 
+        /**
+         *  Stops every worker and joins its thread; the destructor calls it.
+         */
         void shutdown() {
             if (this->threads.empty()) {
                 return;
@@ -39041,12 +39027,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #pragma once
 
-/** @file
- *  Purpose: await several tasks concurrently.
- *
- *  Intention: a convenience on top of `task.h` for applications, which the storage itself does not need.
- */
-
 #ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -39122,8 +39102,12 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
-     *  Start every task, run them concurrently, return all results in order.
-     *  Rethrows the first exception after all tasks have finished.
+     *  Purpose: await several tasks concurrently.
+     *
+     *  Intention: a convenience on top of `async_task` for applications awaiting several tasks at once.
+     *
+     *  Start every task, run them concurrently, return all results in order. Rethrows the first exception after all
+     *  tasks have finished.
      */
     template<class T>
         requires (!std::is_void_v<T>)
@@ -39144,7 +39128,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  The same for tasks without a result, like those of `update()` or `remove()`.
+     *  The same for tasks without a result.
      */
     inline async_task<void> async_when_all(std::vector<async_task<void>> tasks) {
         std::vector<internal::result_box<void>> boxes(tasks.size());

@@ -3,8 +3,8 @@
 /** @file
  *  Purpose: offer the storage's interface to coroutines, without blocking the thread on file I/O.
  *
- *  Intention: realizes `async_storage` and `make_async_storage()` over the unchanged synchronous storage of
- *  `execution/storage.h`, each operation running on a fiber of the storage's `async_io_context`; uses `async_vfs.h`.
+ *  Intention: wraps the unchanged synchronous storage of `execution/storage.h`, each operation running on a fiber of
+ *  an `async_io_context`; selects the VFS of `async_vfs.h` for its connection.
  */
 
 #ifdef SQLITE_ORM_WITH_ASYNC
@@ -37,10 +37,8 @@ namespace sqlite_orm::internal {
 
     /**
      *  Packs `args` into a callable `function(storage)` that invokes
-     *  `call(storage, args...)` with the arguments as rvalues. A tuple is used
-     *  instead of a pack init-capture on purpose: GCC 11 initializes pack
-     *  init-captures bytewise, which breaks captured strings in their
-     *  small-buffer state.
+     *  `call(storage, args...)` with the arguments as rvalues. A tuple rather than a pack init-capture: see
+     *  `SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES`.
      */
     template<class Call, class... Args>
     auto bind_arguments(Call call, Args&&... args) {
@@ -119,10 +117,8 @@ namespace sqlite_orm::internal {
          */
         template<class F>
         auto run(F function) {
-            //  The callable is moved to the heap before entering the coroutine: a
-            //  closure passed as a coroutine parameter is not copied correctly by
-            //  some compilers (GCC 11 relocates it bytewise, which breaks captured
-            //  strings in their small-buffer state).
+            //  The callable is moved to the heap before entering the coroutine: see
+            //  `SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES`.
             return this->run_on_fiber(std::make_unique<F>(std::move(function)));
         }
 

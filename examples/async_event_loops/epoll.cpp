@@ -1,21 +1,22 @@
 /**
- *  This example embeds the asynchronous storage into an event loop the application already has;
- *  here a hand-written epoll loop, to show everything there is to it.
+ *  Purpose: show everything it takes to embed the asynchronous storage into an event loop the application already has.
  *
- *  The `async_io_context` of the storage is not a second loop the application has to run. It offers a descriptor,
- *  `native_handle()`, that becomes readable whenever it has something to do, and a function, `poll()`, that
- *  does what can be done without waiting and returns. The host loop watches the descriptor like any socket:
+ *  Intention: a hand-written epoll loop is the host; the other files next to this one do the same with libuv, Qt, GLib,
+ *  libhv and Asio.
+ *
+ *  The host loop watches the `async_io_context`'s descriptor like any socket:
  *
  *      on readable(io.native_handle()):  io.poll();
  *      after io.spawn(...):              io.poll();
  *
- *  The coroutines are resumed from inside `poll()`, hence on the thread of the host loop.
- *  The other files next to this one do the same with libuv, Qt, GLib, libhv and Asio.
+ *  `poll()` does what can be done without waiting and returns; the coroutines are resumed from inside it, on the
+ *  thread of the host loop.
  */
 
 #include <cstdio>  //  std::remove
 #include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>  //  SQLITE_ORM_WITH_ASYNC
 #include <string>
 
 #ifdef SQLITE_ORM_WITH_ASYNC
