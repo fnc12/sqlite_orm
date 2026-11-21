@@ -1,0 +1,21 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-21: the internal renames of the
+config macro review.
+
+# Decided
+- SQLITE_ORM_BROKEN_* -> SQLITE_ORM_INTERNAL_BROKEN_* (all seven, 37
+  occurrences in 19 files, tests included); no deprecated aliases - the
+  internal tier changes without notice, also for the four from v1.9.1.
+
+# Discussed
+- A renamed macro in an #ifdef turns silently false: after merging any
+  branch, `git grep 'SQLITE_ORM_BROKEN_'` must come back empty. PR #1629
+  (movable storage, approved, soon merged) adds only
+  SQLITE_ORM_LOAD_EXTENSION_SUPPORTED, which is not renamed.
+- -E -dM of both published headers at C++17/20/26 (g++-16, clang++):
+  identical modulo the rename.
+
+# Later
+- Unreleased public names to SQLITE_ORM_CPP_<F>_SUPPORTED (language) and
+  SQLITE_ORM_CPPxx_LIB_<F>_SUPPORTED (library); released ones in a commit
+  of their own with deprecated aliases, pending trueqbit asking fnc12.
