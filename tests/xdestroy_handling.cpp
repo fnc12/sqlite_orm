@@ -54,7 +54,8 @@ TEST_CASE("obtain_xdestroy_for") {
 
     {
         constexpr int* int_nullptr = nullptr;
-#if !defined(SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION) || defined(SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED)
+#if !defined(SQLITE_ORM_INTERNAL_BROKEN_VARIADIC_PACK_EXPANSION) ||                                                    \
+    defined(SQLITE_ORM_CPP_TRIVIAL_DEFAULTINIT_SUPPORTED)
         constexpr const int* const_int_nullptr = nullptr;
 #endif
 
@@ -109,7 +110,7 @@ TEST_CASE("obtain_xdestroy_for") {
         REQUIRE((xDestroy7 == &xdestroy_proxy<delete_default_t<int>, const int>));
 #endif
 
-#ifdef SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
+#ifdef SQLITE_ORM_CPP_TRIVIAL_DEFAULTINIT_SUPPORTED
 #ifndef SQLITE_ORM_CLANG_MSVC
         // xdestroy_holder{ free }(int*)
         constexpr xdestroy_fn_t xDestroy8 = obtain_xdestroy_for(xdestroy_holder{free}, int_nullptr);

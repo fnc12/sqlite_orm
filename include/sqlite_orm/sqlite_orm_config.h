@@ -149,7 +149,7 @@
 #endif
 
 #if __cpp_constexpr >= 201907L
-#define SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
+#define SQLITE_ORM_CPP_TRIVIAL_DEFAULTINIT_SUPPORTED
 #endif
 
 #if __cpp_concepts >= 201907L
@@ -167,11 +167,11 @@
 #endif
 
 #if __cpp_explicit_this_parameter >= 202110L
-#define SQLITE_ORM_DEDUCING_THIS_SUPPORTED
+#define SQLITE_ORM_CPP_DEDUCING_THIS_SUPPORTED
 #endif
 
 #if __cpp_static_call_operator >= 202207L
-#define SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#define SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
 #endif
 
 #if __cpp_pack_indexing >= 202311L
@@ -179,20 +179,20 @@
 #endif
 
 #if __cpp_structured_bindings >= 202411L
-#define SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#define SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED
 #endif
 
 #if __cpp_contracts >= 202502L
-#define SQLITE_ORM_CONTRACTS_SUPPORTED
+#define SQLITE_ORM_CPP_CONTRACTS_SUPPORTED
 #endif
 
 #if __cpp_impl_reflection >= 202506L
-#define SQLITE_ORM_REFLECTION_SUPPORTED
+#define SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 #endif
 
 #if __cplusplus >= 202002L
 #define SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
-#define SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+#define SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED
 #endif
 
 // #include "toolchain/platform.h"
@@ -353,7 +353,7 @@
 #endif
 
 #if __cpp_lib_is_constant_evaluated >= 201811L
-#define SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
+#define SQLITE_ORM_CPP20_LIB_IS_CONSTANT_EVALUATED_SUPPORTED
 #endif
 
 #if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
@@ -365,15 +365,15 @@
 #endif
 
 #if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_INTERNAL_BROKEN_CPP20_VIEWS)
-#define SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+#define SQLITE_ORM_CPP20_LIB_VIEWS_SUPPORTED
 #endif
 
 #if __cpp_impl_coroutine >= 201902L && __cpp_lib_coroutine >= 201902L
-#define SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#define SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED
 #endif
 
 #if __cpp_lib_generator >= 202207L
-#define SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+#define SQLITE_ORM_CPP23_LIB_GENERATOR_SUPPORTED
 #endif
 
 // C++20 or later (unfortunately there's no feature test macro).
@@ -395,14 +395,15 @@
 
 #define SQLITE_ORM_WITH_CTE
 
-#if defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+#if defined(SQLITE_ORM_CPP_REFLECTION_SUPPORTED)
 #define SQLITE_ORM_WITH_VIEW
 #endif
 
 // The asynchronous storage: its I/O engine is io_uring (Linux), its fibers switch stacks with inline assembly
 // written for GCC and Clang on x86_64 and aarch64.
 #if (defined(SQLITE_ORM_LINUX) && !defined(SQLITE_ORM_ANDROID)) &&                                                     \
-    (defined(SQLITE_ORM_CPP20_COROUTINES_SUPPORTED) && !defined(SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES)) &&  \
+    (defined(SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED) &&                                                             \
+     !defined(SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES)) &&                                                    \
     (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(__aarch64__))
 #define SQLITE_ORM_WITH_ASYNC
 #endif

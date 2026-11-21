@@ -85,7 +85,7 @@ namespace sqlite_orm::internal {
         return stream_identifier(ss, std::get<Is>(tpl)...);
     }
 
-#if defined(SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED) && defined(SQLITE_ORM_CONCEPTS_SUPPORTED)
+#if defined(SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED) && defined(SQLITE_ORM_CONCEPTS_SUPPORTED)
     template<typename Tpl>
         requires polyfill::is_detected_v<type_t, std::tuple_size<Tpl>>
     void stream_identifier(std::ostream& ss, const Tpl& tpl) {
@@ -266,7 +266,7 @@ namespace sqlite_orm::internal {
         const auto& strings = std::get<1>(tpl);
 
         static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
-#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED
         for (bool first = true; auto& s: strings) {
             ss << sep[std::exchange(first, false)] << s;
         }

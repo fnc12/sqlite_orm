@@ -168,7 +168,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
     /**
      *  Factory function for a virtual table definition of module M, mapping the data structure O:

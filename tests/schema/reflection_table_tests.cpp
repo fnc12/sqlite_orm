@@ -1,7 +1,7 @@
 #include <catch2/catch_all.hpp>
 #include <sqlite_orm/sqlite_orm.h>
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 #include <algorithm>  //  std::ranges::find
 
 using namespace sqlite_orm;

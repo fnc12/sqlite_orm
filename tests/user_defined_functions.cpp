@@ -216,7 +216,7 @@ struct SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(2 * __STDCPP_DEFAULT_NEW_A
     }
 };
 
-#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
 struct StaticCallOpFunction {
     static bool operator()(int x, int y) {
         return x == y;
@@ -488,7 +488,7 @@ TEST_CASE("custom functions") {
         REQUIRE_NOTHROW(storage.delete_aggregate_function<OverAlignedAggregateFunction>());
     }
 
-#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
     storage.create_scalar_function<StaticCallOpFunction>();
     {
         auto rows = storage.select(func<StaticCallOpFunction>(1, 1));
@@ -548,13 +548,13 @@ TEST_CASE("generalized scalar udf") {
             return true;
         }
 
-#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
         static bool operator()(int, int) {
             return true;
         }
 #endif
     };
-#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
     // note: this static lambda lives up here because of GCC 13.2 and mangling issues
     constexpr auto lambda_static_dummy = [](unsigned long errcode) static {
         return errcode != 0;
@@ -594,7 +594,7 @@ TEST_CASE("generalized scalar udf") {
         storage.delete_scalar_function<is_fatal_error_f>();
 #endif
     }
-#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
     SECTION("stateless static lambda") {
         constexpr auto is_fatal_error_f = "is_fatal_error"_scalar.quote([](unsigned long errcode) static {
             return errcode != 0;
@@ -666,7 +666,7 @@ TEST_CASE("generalized scalar udf") {
         storage.delete_scalar_function<equal_to_int_f>();
 #endif
     }
-#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
     SECTION("function object instance with static call operator") {
         constexpr auto f = "f"_scalar.quote<bool(int, int)>(functor{});
         storage.create_scalar_function<f>();

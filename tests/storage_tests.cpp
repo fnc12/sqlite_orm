@@ -266,7 +266,7 @@ TEST_CASE("drop table") {
 }
 
 #ifdef SQLITE_ORM_WITH_VIEW
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 namespace {
     constexpr auto usersViewName = "users_view"_orm_name;
 

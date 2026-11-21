@@ -1472,7 +1472,7 @@ namespace sqlite_orm::internal {
 
         static int busy_handler_callback(void* selfPointer, int triesCount) {
             auto& storage = *static_cast<storage_base*>(selfPointer);
-#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CONTRACTS_SUPPORTED
             // `sqlite3_busy_handler()` was called properly before so `busy_handler_callback()` will not be called.
             contract_assert(storage._busy_handler);
 #endif

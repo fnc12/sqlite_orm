@@ -59,7 +59,7 @@ namespace sqlite_orm::internal {
 
         explicit tuple_parameter_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED
         template<class Tpl, class Projection>
         void operator()(const Tpl& tpl, Projection project) const {
             int nthSqlParameter = 0;
@@ -74,7 +74,7 @@ namespace sqlite_orm::internal {
 #endif
 
       private:
-#ifndef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#ifndef SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED
         template<class Tpl, size_t... Idx, class Projection>
         void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
             (this->bind(std::invoke(project, std::get<Idx>(tpl)), int(Idx + 1)), ...);

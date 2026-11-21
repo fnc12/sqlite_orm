@@ -80,7 +80,7 @@ namespace sqlite_orm::internal {
     template<class O, class WithoutRowId, class... Cs>
     struct base_table : table_identifier,
                         base_table_definition<Cs...>,
-#ifdef SQLITE_ORM_DEDUCING_THIS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEDUCING_THIS_SUPPORTED
                         mapped_object_mixin<O>
 #else
                         mapped_object_mixin<O, table_definition<Cs...>>
@@ -124,7 +124,7 @@ namespace sqlite_orm::internal {
         }
     }
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
     template<class O, class... Cs>
     auto make_reflected_table(Cs... constraints) {
         auto classAnnotations = extract_type_annotations<O>();
@@ -178,7 +178,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a base table.

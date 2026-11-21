@@ -2,7 +2,7 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_VIEW
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 #include <meta>  // std::meta::info, std::meta::identifier_of
 #include <utility>  // std::forward, std::move, std::index_sequence, std::make_index_sequence
 #endif
@@ -41,7 +41,7 @@ namespace sqlite_orm::internal {
 }
 
 #ifdef SQLITE_ORM_WITH_VIEW
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
     template<class O, class Select>
     auto make_reflected_view(Select select) {

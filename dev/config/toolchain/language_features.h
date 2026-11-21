@@ -29,7 +29,7 @@
 #endif
 
 #if __cpp_constexpr >= 201907L
-#define SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
+#define SQLITE_ORM_CPP_TRIVIAL_DEFAULTINIT_SUPPORTED
 #endif
 
 #if __cpp_concepts >= 201907L
@@ -47,11 +47,11 @@
 #endif
 
 #if __cpp_explicit_this_parameter >= 202110L
-#define SQLITE_ORM_DEDUCING_THIS_SUPPORTED
+#define SQLITE_ORM_CPP_DEDUCING_THIS_SUPPORTED
 #endif
 
 #if __cpp_static_call_operator >= 202207L
-#define SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#define SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
 #endif
 
 #if __cpp_pack_indexing >= 202311L
@@ -59,18 +59,18 @@
 #endif
 
 #if __cpp_structured_bindings >= 202411L
-#define SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#define SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED
 #endif
 
 #if __cpp_contracts >= 202502L
-#define SQLITE_ORM_CONTRACTS_SUPPORTED
+#define SQLITE_ORM_CPP_CONTRACTS_SUPPORTED
 #endif
 
 #if __cpp_impl_reflection >= 202506L
-#define SQLITE_ORM_REFLECTION_SUPPORTED
+#define SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 #endif
 
 #if __cplusplus >= 202002L
 #define SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
-#define SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+#define SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED
 #endif

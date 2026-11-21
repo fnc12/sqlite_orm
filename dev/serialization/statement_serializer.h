@@ -1513,7 +1513,7 @@ namespace sqlite_orm::internal {
                                                         const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             std::ostringstream ss;
             ss << "SET ";
-#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_VIEWS_SUPPORTED
             ss << streaming_serialized(statement | std::views::transform(&dynamic_set_entry::serialized_value));
 #else
             int index = 0;
@@ -1858,7 +1858,7 @@ namespace sqlite_orm::internal {
                << streaming_identifier(table.name) << " WHERE ";
 
             const auto primaryKeyColumnNames = table.primary_key_column_names();
-#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
             for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {
                 ss << sep[std::exchange(first, false)] << streaming_identifier(pkName) << " = ?";

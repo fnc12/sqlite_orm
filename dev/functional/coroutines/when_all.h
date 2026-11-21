@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <coroutine>  //  std::coroutine_handle
@@ -16,7 +16,7 @@
 #include "result_box.h"
 #include "task.h"
 
-#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED
 // general-purpose, but sqlite_orm offers its coroutine types with the asynchronous storage only
 #ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {

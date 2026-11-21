@@ -15,7 +15,7 @@
 #include <type_traits>  //  std::remove_reference, std::remove_cvref, std::decay
 #include <utility>  //  std::forward, std::pair
 #include <vector>  //  std::vector
-#ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP23_LIB_GENERATOR_SUPPORTED
 #include <generator>
 #endif
 #endif
@@ -347,7 +347,7 @@ namespace sqlite_orm::internal {
             return {this->db_objects, std::move(conRef), std::move(expression)};
         }
 
-#ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP23_LIB_GENERATOR_SUPPORTED
         /*  
          *  Iterate over objects of a type mapped as a table, lazily fetched from a result set in a coroutine.
          */

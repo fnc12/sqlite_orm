@@ -53,7 +53,7 @@ namespace sqlite_orm::internal {
          *  Open the database once and for all from a single-threaded context when it should be opened permanently.
          */
         void open() {
-#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CONTRACTS_SUPPORTED
             contract_assert(_control.openedForeverHint);
             contract_assert(!_control.db);
 #endif
@@ -69,7 +69,7 @@ namespace sqlite_orm::internal {
          *  Close the database from a single-threaded context when the database has already been opened permanently.
          */
         void close() {
-#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CONTRACTS_SUPPORTED
             contract_assert(_control.openedForeverHint);
             contract_assert(_control.db);
 #endif
@@ -119,7 +119,7 @@ namespace sqlite_orm::internal {
         void release() {
             // optional optimization for permanently opened connections;
             if (_control.openedForeverHint) {
-#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CONTRACTS_SUPPORTED
                 contract_assert(_control.db);
 #endif
                 return;
@@ -177,7 +177,7 @@ namespace sqlite_orm::internal {
         sqlite3* _try_retain_if_open(const bool yieldIfContended) {
             // optional optimization for permanently opened connections;
             if (_control.openedForeverHint) {
-#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CONTRACTS_SUPPORTED
                 contract_assert(_control.db);
 #endif
                 return _control.db;

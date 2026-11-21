@@ -74,7 +74,7 @@ namespace sqlite_orm::internal {
             std::ostringstream ss;
             ss << static_cast<std::string>(orderBy) << " ";
             static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
-#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             for (bool first = true; const dynamic_order_by_entry_t& entry: orderBy) {
                 ss << sep[std::exchange(first, false)] << entry.name;
                 seralize_collate(ss, entry);

@@ -231,7 +231,7 @@ __pragma(push_macro("max"))
 #endif
 
 #if __cpp_constexpr >= 201907L
-#define SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
+#define SQLITE_ORM_CPP_TRIVIAL_DEFAULTINIT_SUPPORTED
 #endif
 
 #if __cpp_concepts >= 201907L
@@ -249,11 +249,11 @@ __pragma(push_macro("max"))
 #endif
 
 #if __cpp_explicit_this_parameter >= 202110L
-#define SQLITE_ORM_DEDUCING_THIS_SUPPORTED
+#define SQLITE_ORM_CPP_DEDUCING_THIS_SUPPORTED
 #endif
 
 #if __cpp_static_call_operator >= 202207L
-#define SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#define SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
 #endif
 
 #if __cpp_pack_indexing >= 202311L
@@ -261,20 +261,20 @@ __pragma(push_macro("max"))
 #endif
 
 #if __cpp_structured_bindings >= 202411L
-#define SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#define SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED
 #endif
 
 #if __cpp_contracts >= 202502L
-#define SQLITE_ORM_CONTRACTS_SUPPORTED
+#define SQLITE_ORM_CPP_CONTRACTS_SUPPORTED
 #endif
 
 #if __cpp_impl_reflection >= 202506L
-#define SQLITE_ORM_REFLECTION_SUPPORTED
+#define SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 #endif
 
 #if __cplusplus >= 202002L
 #define SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
-#define SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+#define SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED
 #endif
 
 // #include "toolchain/platform.h"
@@ -435,7 +435,7 @@ __pragma(push_macro("max"))
 #endif
 
 #if __cpp_lib_is_constant_evaluated >= 201811L
-#define SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
+#define SQLITE_ORM_CPP20_LIB_IS_CONSTANT_EVALUATED_SUPPORTED
 #endif
 
 #if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
@@ -447,15 +447,15 @@ __pragma(push_macro("max"))
 #endif
 
 #if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_INTERNAL_BROKEN_CPP20_VIEWS)
-#define SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+#define SQLITE_ORM_CPP20_LIB_VIEWS_SUPPORTED
 #endif
 
 #if __cpp_impl_coroutine >= 201902L && __cpp_lib_coroutine >= 201902L
-#define SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#define SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED
 #endif
 
 #if __cpp_lib_generator >= 202207L
-#define SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+#define SQLITE_ORM_CPP23_LIB_GENERATOR_SUPPORTED
 #endif
 
 // C++20 or later (unfortunately there's no feature test macro).
@@ -477,14 +477,15 @@ __pragma(push_macro("max"))
 
 #define SQLITE_ORM_WITH_CTE
 
-#if defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+#if defined(SQLITE_ORM_CPP_REFLECTION_SUPPORTED)
 #define SQLITE_ORM_WITH_VIEW
 #endif
 
 // The asynchronous storage: its I/O engine is io_uring (Linux), its fibers switch stacks with inline assembly
 // written for GCC and Clang on x86_64 and aarch64.
 #if (defined(SQLITE_ORM_LINUX) && !defined(SQLITE_ORM_ANDROID)) &&                                                     \
-    (defined(SQLITE_ORM_CPP20_COROUTINES_SUPPORTED) && !defined(SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES)) &&  \
+    (defined(SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED) &&                                                             \
+     !defined(SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES)) &&                                                    \
     (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(__aarch64__))
 #define SQLITE_ORM_WITH_ASYNC
 #endif
@@ -557,7 +558,7 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_CONSTEVAL constexpr
 #endif
 
-#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
 #define SQLITE_ORM_STATIC_CALLOP static
 #define SQLITE_ORM_OR_CONST_CALLOP
 #else
@@ -2099,7 +2100,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <tuple>  //  std::tuple
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_member_object_pointer, std::is_signed
 #include <utility>  //  std::move, std::index_sequence, std::make_index_sequence
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 #include <meta>  //  std::meta::info, std::meta::identifier_of
 #endif
 #endif
@@ -2214,7 +2215,7 @@ namespace sqlite_orm::internal {
 // #include "../functional/meta_util.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 #include <array>  //  std::array
 #include <meta>  //  std::define_static_array, std::meta::access_context, std::meta::nonstatic_data_members_of, std::meta::identifier_of, std::meta::annotations_of, std::meta::members_of
 #include <string_view>  //  std::string_view
@@ -2223,7 +2224,7 @@ namespace sqlite_orm::internal {
 #endif
 #endif
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
     /**
      *  Reflects the non-static data members of `T` and its base classes
@@ -5477,7 +5478,7 @@ namespace sqlite_orm::internal {
     template<size_t Pos, size_t... Idx>
     SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
         static_assert(Pos < sizeof...(Idx));
-#ifdef SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
+#ifdef SQLITE_ORM_CPP_TRIVIAL_DEFAULTINIT_SUPPORTED
         size_t result;
 #else
         size_t result = 0;
@@ -6269,7 +6270,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
     /**
      *  The columns of the non-static data members of `O`: named after the members' identifiers,
@@ -6510,7 +6511,7 @@ namespace sqlite_orm::internal {
         return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
     }
 
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED
     /*
      *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
      */
@@ -6536,7 +6537,7 @@ namespace sqlite_orm::internal {
         return R{std::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
     }
 
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED
     /*
      *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
      */
@@ -6634,7 +6635,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "dbo_name.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 #include <string_view>  //  std::string_view
 #include <tuple>  //  std::tuple
 #include <type_traits>  //  std::bool_constant
@@ -6652,7 +6653,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/tuple_helper/tuple_filter.h"
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
     /**
      *  Class-scope annotation that overrides the database object name (table or view).
@@ -6770,7 +6771,7 @@ namespace sqlite_orm::internal {
     constexpr void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
         if constexpr (reversed) {
             // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
-#ifdef SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
+#ifdef SQLITE_ORM_CPP_TRIVIAL_DEFAULTINIT_SUPPORTED
             [[maybe_unused]] int sink;
 #else
             [[maybe_unused]] int sink = 0;
@@ -7060,7 +7061,7 @@ namespace sqlite_orm::internal {
      *  Implementation note: it is provided as a mixin to reduce the number of involved template parameters,
      *  which is possible in C++23 mode for 'getters'.
      */
-#ifdef SQLITE_ORM_DEDUCING_THIS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEDUCING_THIS_SUPPORTED
     template<class O>
 #else
     template<class O, class Definition>
@@ -7082,7 +7083,7 @@ namespace sqlite_orm::internal {
 
         template<class M, class... Cs, satisfies<is_setter, M> = true>
         const member_field_type_t<M>*
-#ifdef SQLITE_ORM_DEDUCING_THIS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEDUCING_THIS_SUPPORTED
         object_field_value(this const table_definition<Cs...>& self, const object_type& object, M memberPointer) {
             using elements_type = elements_type_t<table_definition<Cs...>>;
 #else
@@ -7164,7 +7165,7 @@ namespace sqlite_orm::internal {
     template<class O, class WithoutRowId, class... Cs>
     struct base_table : table_identifier,
                         base_table_definition<Cs...>,
-#ifdef SQLITE_ORM_DEDUCING_THIS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEDUCING_THIS_SUPPORTED
                         mapped_object_mixin<O>
 #else
                         mapped_object_mixin<O, table_definition<Cs...>>
@@ -7208,7 +7209,7 @@ namespace sqlite_orm::internal {
         }
     }
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
     template<class O, class... Cs>
     auto make_reflected_table(Cs... constraints) {
         auto classAnnotations = extract_type_annotations<O>();
@@ -7262,7 +7263,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a base table.
@@ -8751,7 +8752,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_VIEW
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 #include <meta>  // std::meta::info, std::meta::identifier_of
 #include <utility>  // std::forward, std::move, std::index_sequence, std::make_index_sequence
 #endif
@@ -8796,7 +8797,7 @@ namespace sqlite_orm::internal {
 }
 
 #ifdef SQLITE_ORM_WITH_VIEW
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
     template<class O, class Select>
     auto make_reflected_view(Select select) {
@@ -9032,7 +9033,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
     /**
      *  Factory function for a virtual table definition of module M, mapping the data structure O:
@@ -16818,7 +16819,7 @@ namespace sqlite_orm::internal {
     struct quoted_expression_t {
         T _value;
 
-#ifdef SQLITE_ORM_DEDUCING_THIS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_DEDUCING_THIS_SUPPORTED
         template<class Self, class R>
         assign_t<T, R> operator=(this Self&& self, R right) {
             return {polyfill::forward_like<Self>(self._value), std::move(right)};
@@ -17494,7 +17495,7 @@ namespace sqlite_orm::internal {
 #include <type_traits>  //  std::remove_reference, std::remove_cvref, std::decay
 #include <utility>  //  std::forward, std::pair
 #include <vector>  //  std::vector
-#ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP23_LIB_GENERATOR_SUPPORTED
 #include <generator>
 #endif
 #endif
@@ -17631,7 +17632,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     };
 }
 
-#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_CPP_REFLECTION_SUPPORTED)
 namespace sqlite_orm::internal {
     struct pragma_table_info_module_tag : eponymous_module {
         // simplify conceptual/meta programming
@@ -18304,7 +18305,7 @@ namespace sqlite_orm::internal {
         return std::tuple_cat(unpack_db_objects<K, std::tuple<Spec...>>(std::get<K>(std::move(specs)))...);
     }
 
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED
     /**
      *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
      */
@@ -19473,7 +19474,7 @@ namespace sqlite_orm::internal {
 
         // 3. fill in blanks with numerical column identifiers
         {
-#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             for (size_t n = 1; std::string& name: columnNames) {
                 if (name.empty()) {
                     name = std::to_string(n);
@@ -20580,7 +20581,7 @@ namespace sqlite_orm::internal {
 
         explicit tuple_parameter_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED
         template<class Tpl, class Projection>
         void operator()(const Tpl& tpl, Projection project) const {
             int nthSqlParameter = 0;
@@ -20595,7 +20596,7 @@ namespace sqlite_orm::internal {
 #endif
 
       private:
-#ifndef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#ifndef SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED
         template<class Tpl, size_t... Idx, class Projection>
         void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
             (this->bind(std::invoke(project, std::get<Idx>(tpl)), int(Idx + 1)), ...);
@@ -21022,7 +21023,7 @@ namespace sqlite_orm::internal {
          *  Open the database once and for all from a single-threaded context when it should be opened permanently.
          */
         void open() {
-#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CONTRACTS_SUPPORTED
             contract_assert(_control.openedForeverHint);
             contract_assert(!_control.db);
 #endif
@@ -21038,7 +21039,7 @@ namespace sqlite_orm::internal {
          *  Close the database from a single-threaded context when the database has already been opened permanently.
          */
         void close() {
-#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CONTRACTS_SUPPORTED
             contract_assert(_control.openedForeverHint);
             contract_assert(_control.db);
 #endif
@@ -21088,7 +21089,7 @@ namespace sqlite_orm::internal {
         void release() {
             // optional optimization for permanently opened connections;
             if (_control.openedForeverHint) {
-#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CONTRACTS_SUPPORTED
                 contract_assert(_control.db);
 #endif
                 return;
@@ -21146,7 +21147,7 @@ namespace sqlite_orm::internal {
         sqlite3* _try_retain_if_open(const bool yieldIfContended) {
             // optional optimization for permanently opened connections;
             if (_control.openedForeverHint) {
-#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CONTRACTS_SUPPORTED
                 contract_assert(_control.db);
 #endif
                 return _control.db;
@@ -22704,7 +22705,7 @@ namespace sqlite_orm::internal {
         return stream_identifier(ss, std::get<Is>(tpl)...);
     }
 
-#if defined(SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED) && defined(SQLITE_ORM_CONCEPTS_SUPPORTED)
+#if defined(SQLITE_ORM_CPP_STRUCTURED_BINDING_PACK_SUPPORTED) && defined(SQLITE_ORM_CONCEPTS_SUPPORTED)
     template<typename Tpl>
         requires polyfill::is_detected_v<type_t, std::tuple_size<Tpl>>
     void stream_identifier(std::ostream& ss, const Tpl& tpl) {
@@ -22885,7 +22886,7 @@ namespace sqlite_orm::internal {
         const auto& strings = std::get<1>(tpl);
 
         static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
-#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED
         for (bool first = true; auto& s: strings) {
             ss << sep[std::exchange(first, false)] << s;
         }
@@ -23372,7 +23373,7 @@ namespace sqlite_orm::internal {
             std::ostringstream ss;
             ss << static_cast<std::string>(orderBy) << " ";
             static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
-#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             for (bool first = true; const dynamic_order_by_entry_t& entry: orderBy) {
                 ss << sep[std::exchange(first, false)] << entry.name;
                 seralize_collate(ss, entry);
@@ -24935,7 +24936,7 @@ namespace sqlite_orm::internal {
                                                         const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             std::ostringstream ss;
             ss << "SET ";
-#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_VIEWS_SUPPORTED
             ss << streaming_serialized(statement | std::views::transform(&dynamic_set_entry::serialized_value));
 #else
             int index = 0;
@@ -25280,7 +25281,7 @@ namespace sqlite_orm::internal {
                << streaming_identifier(table.name) << " WHERE ";
 
             const auto primaryKeyColumnNames = table.primary_key_column_names();
-#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
             for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {
                 ss << sep[std::exchange(first, false)] << streaming_identifier(pkName) << " = ?";
@@ -26153,7 +26154,7 @@ namespace sqlite_orm::internal {
     struct tuple_from_values {
         SQLITE_ORM_STATIC_CALLOP Tpl operator()(sqlite3_value** values,
                                                 [[maybe_unused]] int nValues) SQLITE_ORM_OR_CONST_CALLOP {
-#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CONTRACTS_SUPPORTED
             contract_assert(nValues == std::tuple_size<Tpl>::value);
 #endif
             return tuple_from_values::create_from(values, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
@@ -28742,7 +28743,7 @@ namespace sqlite_orm::internal {
 
         static int busy_handler_callback(void* selfPointer, int triesCount) {
             auto& storage = *static_cast<storage_base*>(selfPointer);
-#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP_CONTRACTS_SUPPORTED
             // `sqlite3_busy_handler()` was called properly before so `busy_handler_callback()` will not be called.
             contract_assert(storage._busy_handler);
 #endif
@@ -29221,7 +29222,7 @@ namespace sqlite_orm::internal {
             return {this->db_objects, std::move(conRef), std::move(expression)};
         }
 
-#ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP23_LIB_GENERATOR_SUPPORTED
         /*  
          *  Iterate over objects of a type mapped as a table, lazily fetched from a result set in a coroutine.
          */
@@ -31137,7 +31138,7 @@ namespace sqlite_orm::internal {
                              column.template is<is_generated_always>());
         });
         const auto tableKeyColumnNames = this->table_key_columns_names();
-#if defined(SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
+#if defined(SQLITE_ORM_CPP_INITSTMT_RANGE_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
         for (int n = 1; const std::string& columnName: tableKeyColumnNames) {
             if (auto it = std::ranges::find(res, columnName, &table_xinfo::name); it != res.end()) {
                 it->pk = n;
@@ -32258,7 +32259,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     constexpr internal::
         builtin_function_t<internal::argument<0>, internal::likelihood_string, X, internal::literal_holder<double>>
         likelihood(X x, double probability) {
-#ifdef SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_IS_CONSTANT_EVALUATED_SUPPORTED
         //  a probability outside [0.0, 1.0] makes SQLite reject the statement at prepare time;
         //  when the call is constant-evaluated the error surfaces right here, at compile time
         if (std::is_constant_evaluated() && !(probability >= 0.0 && probability <= 1.0)) {
@@ -32723,7 +32724,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class X>
     constexpr auto likelihood(X x, double probability) {
-#ifdef SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_IS_CONSTANT_EVALUATED_SUPPORTED
         //  a probability outside [0.0, 1.0] makes SQLite reject the statement at prepare time;
         //  when the call is constant-evaluated the error surfaces right here, at compile time
         if (std::is_constant_evaluated() && !(probability >= 0.0 && probability <= 1.0)) {
@@ -33181,7 +33182,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
     /**
      *  Factory function for a FTS5 virtual table definition.
      *
@@ -35506,7 +35507,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert(std::is_convertible<input_value_types, final_expected_types>::value,
                       "The schema name must be a string value, the aggregate flag a boolean value");
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
         return make_reflected_virtual_table_definition<dbstat_module_tag, dbstat>(
             literal_holder<Value>{std::move(tableValues)}...);
 #else
@@ -35558,7 +35559,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_DBSTAT_SUPPORTED
                               std::tuple{make_dbstat_table()},
 #endif
-#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_CPP_REFLECTION_SUPPORTED)
                               make_pragma_tables(),
 #endif
                               std::tuple<>{});
@@ -35725,7 +35726,7 @@ namespace sqlite_orm::internal {
      *  The hidden generate_series columns 'start', 'stop' and 'step' are mapped into each table definition.
      */
     inline auto using_generate_series() {
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
         return make_reflected_virtual_table_definition<generate_series_module_tag, generate_series>();
 #else
         return make_virtual_table_definition<generate_series_module_tag>(
@@ -35829,7 +35830,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
     /**
      *  Factory function for a RTREE virtual table definition.
      *
@@ -35857,7 +35858,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
     /**
      *  Factory function for a RTREE_I32 virtual table definition.
      *
@@ -35909,7 +35910,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 //  polyfill::identity
 // #include "../functional/coroutines/task.h"
 
-#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <coroutine>  //  std::coroutine_handle, std::suspend_always, std::noop_coroutine
@@ -35922,7 +35923,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "result_box.h"
 
-#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <exception>  //  std::exception_ptr, std::current_exception, std::rethrow_exception
@@ -35932,7 +35933,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED
 // general-purpose, but sqlite_orm offers its coroutine types with the asynchronous storage only
 #ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
@@ -36000,7 +36001,7 @@ namespace sqlite_orm::internal {
 #endif
 #endif
 
-#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED
 // general-purpose, but sqlite_orm offers its coroutine types with the asynchronous storage only
 #ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
@@ -36151,7 +36152,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/coroutines/fire_and_forget.h"
 
-#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <coroutine>  //  std::suspend_never
@@ -36160,7 +36161,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED
 // general-purpose, but sqlite_orm offers its coroutine types with the asynchronous storage only
 #ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {
@@ -39097,7 +39098,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #pragma once
 
-#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <coroutine>  //  std::coroutine_handle
@@ -39115,7 +39116,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "task.h"
 
-#ifdef SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED
 // general-purpose, but sqlite_orm offers its coroutine types with the asynchronous storage only
 #ifdef SQLITE_ORM_WITH_ASYNC
 namespace sqlite_orm::internal {

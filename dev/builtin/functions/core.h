@@ -663,7 +663,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     constexpr internal::
         builtin_function_t<internal::argument<0>, internal::likelihood_string, X, internal::literal_holder<double>>
         likelihood(X x, double probability) {
-#ifdef SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_IS_CONSTANT_EVALUATED_SUPPORTED
         //  a probability outside [0.0, 1.0] makes SQLite reject the statement at prepare time;
         //  when the call is constant-evaluated the error surfaces right here, at compile time
         if (std::is_constant_evaluated() && !(probability >= 0.0 && probability <= 1.0)) {
@@ -1128,7 +1128,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class X>
     constexpr auto likelihood(X x, double probability) {
-#ifdef SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_LIB_IS_CONSTANT_EVALUATED_SUPPORTED
         //  a probability outside [0.0, 1.0] makes SQLite reject the statement at prepare time;
         //  when the call is constant-evaluated the error surfaces right here, at compile time
         if (std::is_constant_evaluated() && !(probability >= 0.0 && probability <= 1.0)) {

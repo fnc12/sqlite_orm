@@ -25,7 +25,7 @@
 #endif
 
 #if __cpp_lib_is_constant_evaluated >= 201811L
-#define SQLITE_ORM_CPP20_IS_CONSTANT_EVALUATED_SUPPORTED
+#define SQLITE_ORM_CPP20_LIB_IS_CONSTANT_EVALUATED_SUPPORTED
 #endif
 
 #if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
@@ -37,15 +37,15 @@
 #endif
 
 #if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_INTERNAL_BROKEN_CPP20_VIEWS)
-#define SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+#define SQLITE_ORM_CPP20_LIB_VIEWS_SUPPORTED
 #endif
 
 #if __cpp_impl_coroutine >= 201902L && __cpp_lib_coroutine >= 201902L
-#define SQLITE_ORM_CPP20_COROUTINES_SUPPORTED
+#define SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED
 #endif
 
 #if __cpp_lib_generator >= 202207L
-#define SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+#define SQLITE_ORM_CPP23_LIB_GENERATOR_SUPPORTED
 #endif
 
 // C++20 or later (unfortunately there's no feature test macro).

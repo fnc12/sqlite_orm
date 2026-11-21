@@ -92,7 +92,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     };
 }
 
-#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+#if SQLITE_VERSION_NUMBER >= 3016000 && defined(SQLITE_ORM_CPP_REFLECTION_SUPPORTED)
 namespace sqlite_orm::internal {
     struct pragma_table_info_module_tag : eponymous_module {
         // simplify conceptual/meta programming

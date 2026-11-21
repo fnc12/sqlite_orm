@@ -20,14 +20,15 @@
 
 #define SQLITE_ORM_WITH_CTE
 
-#if defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+#if defined(SQLITE_ORM_CPP_REFLECTION_SUPPORTED)
 #define SQLITE_ORM_WITH_VIEW
 #endif
 
 // The asynchronous storage: its I/O engine is io_uring (Linux), its fibers switch stacks with inline assembly
 // written for GCC and Clang on x86_64 and aarch64.
 #if (defined(SQLITE_ORM_LINUX) && !defined(SQLITE_ORM_ANDROID)) &&                                                     \
-    (defined(SQLITE_ORM_CPP20_COROUTINES_SUPPORTED) && !defined(SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES)) &&  \
+    (defined(SQLITE_ORM_CPP20_LIB_COROUTINES_SUPPORTED) &&                                                             \
+     !defined(SQLITE_ORM_INTERNAL_BROKEN_COROUTINE_TEMPORARIES)) &&                                                    \
     (defined(__GNUC__) || defined(__clang__)) && (defined(__x86_64__) || defined(__aarch64__))
 #define SQLITE_ORM_WITH_ASYNC
 #endif

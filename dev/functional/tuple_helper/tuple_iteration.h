@@ -11,7 +11,7 @@ namespace sqlite_orm::internal {
     constexpr void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
         if constexpr (reversed) {
             // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
-#ifdef SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
+#ifdef SQLITE_ORM_CPP_TRIVIAL_DEFAULTINIT_SUPPORTED
             [[maybe_unused]] int sink;
 #else
             [[maybe_unused]] int sink = 0;

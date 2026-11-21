@@ -247,7 +247,7 @@ TEST_CASE("function static") {
             }
             int operator()(int) const;
         };
-#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
         struct SFunction2 {
             static const char* name() {
                 return "";
@@ -281,7 +281,7 @@ TEST_CASE("function static") {
         STATIC_REQUIRE(std::is_same<app_function<SFunction>::callable_type, SFunction>::value);
         STATIC_REQUIRE(std::is_same<app_function<SFunction>::udf_type, SFunction>::value);
 
-#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
         constexpr auto scalar2 = func<SFunction2>;
 
         STATIC_REQUIRE(std::is_same<decltype(scalar2), const app_function<SFunction2>>::value);
@@ -302,7 +302,7 @@ TEST_CASE("function static") {
         STATIC_REQUIRE(storage_aggregate_callable<storage_type, aggregate>);
         STATIC_REQUIRE_FALSE(storage_scalar_callable<storage_type, aggregate>);
 
-#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
         STATIC_REQUIRE(orm_scalar_function<decltype(scalar2)>);
         STATIC_REQUIRE_FALSE(orm_aggregate_function<decltype(scalar2)>);
 
@@ -320,13 +320,13 @@ TEST_CASE("function static") {
                 return true;
             }
 
-#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
             static bool operator()(int, int) {
                 return true;
             }
 #endif
         };
-#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
         // note: this static lambda lives up here because of GCC 13.2 and mangling issues
         constexpr auto lambda_static_dummy = [](unsigned long errcode) static {
             return errcode != 0;
@@ -342,7 +342,7 @@ TEST_CASE("function static") {
             STATIC_REQUIRE_FALSE(
                 polyfill::is_detected_v<internal::overloaded_static_callop_t, void(unsigned long) const, lambda_type>);
         }
-#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
         SECTION("detect overloaded static call operator") {
             constexpr auto lambda = [](unsigned long) static {};
             using lambda_type = std::remove_const_t<decltype(lambda)>;
@@ -447,7 +447,7 @@ TEST_CASE("function static") {
             using storage_type = decltype(make_storage(""));
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
         }
-#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
         SECTION("static lambda") {
             constexpr auto lambda = [](unsigned long errcode) static {
                 return errcode != 0;
@@ -549,7 +549,7 @@ TEST_CASE("function static") {
             using storage_type = decltype(make_storage(""));
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
         }
-#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#ifdef SQLITE_ORM_CPP_STATIC_CALL_OPERATOR_SUPPORTED
         SECTION("function object with static call operator") {
             constexpr auto quotedScalar = "f"_scalar.quote<bool(int, int)>(functor{});
             using quoted_type = decltype("f"_scalar.quote<bool(int, int)>(functor{}));

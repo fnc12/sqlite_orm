@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 #include <string_view>  //  std::string_view
 #include <tuple>  //  std::tuple
 #include <type_traits>  //  std::bool_constant
@@ -15,7 +15,7 @@
 #include "../functional/mpl/convenience.h"
 #include "../functional/tuple_helper/tuple_filter.h"
 
-#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#ifdef SQLITE_ORM_CPP_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
     /**
      *  Class-scope annotation that overrides the database object name (table or view).
