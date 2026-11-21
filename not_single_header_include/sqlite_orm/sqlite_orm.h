@@ -9,6 +9,7 @@
  */
 
 #include "../../dev/config/prologue.h"
+#include "../../dev/config/toolchain/check_prerequisites.h"
 // Although every header file typically needs to contain all the necessary files, the configuration is an exception (as it would be easily forgotten).
 // Therefore, we include the configuration and all underlying C++ core features to make them universally available.
 #include "../../dev/config/config.h"

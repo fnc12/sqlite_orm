@@ -11,8 +11,8 @@
  *  - `capabilities.h`, sqlite_orm's capabilities;
  *  - `toolchain/compiler_quirks.h`, the internal tier: published only because the tiers above rest on it, and subject
  *    to change without notice.
- *  `toolchain/check_prerequisites.h` rejects a toolchain short of C++17, and `internal_macros.h` builds sqlite_orm's
- *  own spelling on the tiers.
+ *  `internal_macros.h` builds sqlite_orm's own spelling on the tiers, and `toolchain/check_prerequisites.h`, outside
+ *  them, rejects a toolchain short of C++17.
  *
  *  Published as <sqlite_orm/sqlite_orm_config.h> for consumers of the named module, which cannot export macros:
  *  include it ahead of `import sqlite_orm;` and `import std;`.
@@ -26,7 +26,6 @@
 #define SQLITE_ORM_CONFIG_INCLUDED
 
 #include "capabilities.h"
-#include "toolchain/check_prerequisites.h"
 #include "toolchain/compiler.h"
 #include "toolchain/compiler_quirks.h"
 #include "toolchain/language_features.h"
