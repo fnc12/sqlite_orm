@@ -1,0 +1,32 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-21: the __cplusplus-keyed detection
+left out of #1635 (ba1d22f), its default comparisons half, on a branch of its
+own stacked on chore/config-macro-consistency.
+
+# Decided
+- trueqbit (1): own branch and draft pull request, stacked on #1635.
+- trueqbit (2): gcc 10 at C++20 newly on is accepted without a CI job of its
+  own (its job builds C++17).
+- INITSTMT_RANGE_BASED_FOR stays on __cplusplus (no feature-test macro for P0614).
+- The test sits beside __cpp_concepts >= 201907L, ordered by value.
+- trueqbit: a comment beside the test says why it is three-way comparison's
+  macro. Claude first wrote a doc-comment describing what the macro covers;
+  trueqbit corrected it. No ontocratic-feedback amendment: file-header.md
+  already asks a comment for the why; the slip was in applying it.
+- trueqbit: "go, commit and push". Not compiled locally; CI builds it.
+
+# Discussed
+- Sides, probed: every CI job unchanged (MSVC 14.16/14.29/14.44/14.52 locally
+  with /Zc:__cplusplus as CMake adds it; gcc 9.5-16, clang 9-21 locally and on
+  Compiler Explorer). Changes: gcc 10.x at C++20 (__cplusplus 201709L, impl
+  201907L) off -> on; MSVC 16.10 (/std:c++latest) and 16.11+ without
+  /Zc:__cplusplus (199711L, impl 201907L) off -> on. Unchanged: MSVC 16.0
+  (impl undefined), gcc <= 9 and clang <= 9 in C++2a mode.
+- trueqbit ran a snippet of the guarded patterns (defaulted friend ==, !=
+  rewritten from ==, iterator vs sentinel both ways) on gcc 10.1, gcc 11.1,
+  MSVC 16.10 and 16.11 on Compiler Explorer: all "comparisons: ok".
+- -E -dM of sqlite_orm_config.h, g++-16 and clang++ at C++17/20/26: identical
+  SQLITE_ORM_* sets.
+
+# Later
+- The draft pull request on #1635, on trueqbit's yes to its body.
