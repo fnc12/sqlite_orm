@@ -37150,6 +37150,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
+         *  Thread-safe: resume a coroutine on this context's thread.
+         */
+        void resume_here(std::coroutine_handle<> handle) {
+            this->scheduler_.post([this, handle] {
+                this->ready.push_back(handle);
+            });
+        }
+
+        /**
          *  Same-thread: resume `handle` on the next turn (never inline).
          */
         void schedule(std::coroutine_handle<> handle) {
@@ -37269,15 +37278,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         std::size_t fiberStackSize = internal::fiber::defaultStackSize;
 
       private:
-        /**
-         *  Thread-safe: resume a coroutine on this context's thread.
-         */
-        void resume_here(std::coroutine_handle<> handle) {
-            this->scheduler_.post([this, handle] {
-                this->ready.push_back(handle);
-            });
-        }
-
         static async_io_context*& current_slot() noexcept {
             thread_local async_io_context* currentContext = nullptr;
             return currentContext;
@@ -38920,6 +38920,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
          */
         std::size_t size() const noexcept {
             return this->workers.size();
+        }
+
+        async_io_context& worker(std::size_t index) noexcept {
+            return *this->workers[index];
         }
 
         /**

@@ -60,6 +60,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return this->workers.size();
         }
 
+        async_io_context& worker(std::size_t index) noexcept {
+            return *this->workers[index];
+        }
+
         /**
          *  Stops every worker and joins its thread; the destructor calls it.
          */
