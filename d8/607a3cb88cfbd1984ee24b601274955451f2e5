@@ -1,0 +1,32 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-21: on origin/dev a202bd11,
+worktree C:\projects\wt-include-config-header.
+
+# Decided
+- "Needs a config guard" means a file whose #if/#ifdef/#ifndef/#elif
+  reads a macro that include/sqlite_orm/sqlite_orm_config.h #defines
+  (55 on dev). 83 files match; named_module.cpp already had the include,
+  so 82 get it: 13 examples, 68 tests, prepared_common.h.
+- Placement: directly after <sqlite_orm/sqlite_orm.h>, where sorted
+  includes put it; no comment on the line.
+- Inputs stay out: SQLITE_ORM_OMITS_CODECVT is public (#1591; on dev a
+  CMake option, INTERFACE definition on target sqlite_orm), but the build
+  defines it, the config header only reads it - like
+  SQLITE_ORM_ENABLE_LOAD_EXTENSION. Hence simple_query.cpp and tests3.cpp
+  (only OMITS_CODECVT / SERIES_*) are left alone.
+- trueqbit: the commit body drops "today"; the include states the
+  dependency for the named-module case, no breakage is fixed.
+
+# Discussed
+- No guard precedes the sqlite_orm include in any of the files.
+- Checks: amalgamation and clang-format-20 change nothing beyond the 82
+  files; LF kept. Not compiled (trueqbit verifies builds; CI).
+
+# Later
+- Consistency check of the public config macros before v1.10, as its own
+  issue and PR; base (dev vs. the async branch, which adds
+  CPP20_COROUTINES_SUPPORTED, BROKEN_COROUTINE_TEMPORARIES, WITH_ASYNC)
+  still trueqbit's to choose. Name-only findings so far: CONCEPTS_SUPPORTED
+  beside CPP20_CONCEPTS_SUPPORTED; CPP20_/CPP23_ prefixes on some features;
+  *_SUPPORTED vs WITH_* vs STL_HAS_*; OMITS_ vs ENABLE_ inputs; MS_MSVC /
+  GNU_GCC vs CLANG_MSVC; BROKEN_*, HAS_CPP_ATTRIBUTE, CONFIG_INCLUDED public.
