@@ -130,7 +130,6 @@ __pragma(push_macro("max"))
 
 /*
  *  Detection of the C++ core language features.
- *  May be amended by compiler_quirks.h.
  */
 
 #if __cpp_generic_lambdas >= 201707L
@@ -162,6 +161,12 @@ __pragma(push_macro("max"))
 #endif
 
 #if __cpp_nontype_template_args >= 201911L
+#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#endif
+
+// overwrite SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#if (__cpp_nontype_template_args < 201911L) &&                                                                         \
+    (defined(__clang__) && (__clang_major__ >= 12) && (__cplusplus >= 202002L))
 #define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
@@ -287,11 +292,16 @@ __pragma(push_macro("max"))
 // #include "compiler_quirks.h"
 
 /*
- *  Compiler detection, and the workarounds for compiler quirks sqlite_orm depends on.
- *  May amend language_features.h.
+ *  The workarounds for compiler quirks sqlite_orm depends on.
  */
 
-// #include "language_features.h"
+// #include "compiler.h"
+
+/** @file
+ *  Purpose: identify the compiler that translates sqlite_orm.
+ *
+ *  Intention: part of the public configuration gathered by `config.h`; `compiler_quirks.h` keys its workarounds on it.
+ */
 
 #if defined(_MSC_VER) && !defined(__clang__)
 #define SQLITE_ORM_MS_MSVC
@@ -304,6 +314,8 @@ __pragma(push_macro("max"))
 #if defined(__GNUC__) && !defined(__clang__)
 #define SQLITE_ORM_GNU_GCC
 #endif
+
+// #include "language_features.h"
 
 #if defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1920)
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
@@ -335,12 +347,6 @@ __pragma(push_macro("max"))
 // Verified broken with 19.29, verified fixed with 19.44 and 19.51; the versions in between were not tested.
 #if defined(SQLITE_ORM_MS_MSVC) && (_MSC_VER < 1944)
 #define SQLITE_ORM_BROKEN_NESTED_LAMBDA_SCOPE_LOOKUP
-#endif
-
-// overwrite SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-#if (__cpp_nontype_template_args < 201911L) &&                                                                         \
-    (defined(__clang__) && (__clang_major__ >= 12) && (__cplusplus >= 202002L))
-#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
 // clang 10 chokes on concepts that don't depend on template parameters;
@@ -423,6 +429,8 @@ __pragma(push_macro("max"))
 #endif
 
 // #include "toolchain/check_prerequisites.h"
+
+// #include "toolchain/compiler.h"
 
 // #include "toolchain/compiler_quirks.h"
 

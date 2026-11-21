@@ -2,7 +2,6 @@
 
 /*
  *  Detection of the C++ core language features.
- *  May be amended by compiler_quirks.h.
  */
 
 #if __cpp_generic_lambdas >= 201707L
@@ -34,6 +33,12 @@
 #endif
 
 #if __cpp_nontype_template_args >= 201911L
+#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#endif
+
+// overwrite SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#if (__cpp_nontype_template_args < 201911L) &&                                                                         \
+    (defined(__clang__) && (__clang_major__ >= 12) && (__cplusplus >= 202002L))
 #define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 

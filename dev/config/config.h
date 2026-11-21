@@ -18,6 +18,7 @@
 
 #include "capabilities.h"
 #include "toolchain/check_prerequisites.h"
+#include "toolchain/compiler.h"
 #include "toolchain/compiler_quirks.h"
 #include "toolchain/language_features.h"
 #include "toolchain/platform.h"
