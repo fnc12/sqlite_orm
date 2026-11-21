@@ -1,0 +1,31 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-21: the preambles of dev/config/
+re-read against irreducible-code, after trueqbit asked why the Purposes
+carried prose.
+
+# Decided
+- trueqbit's wording: prologue.h "suspend, for sqlite_orm's headers, the
+  compiler warnings and the macros of operating system headers"; epilogue.h
+  "restore the compiler warnings and macros prologue.h suspended".
+- platform.h "is used on" rather than "is built for" (header-only);
+  source-layout.md "used with" likewise.
+- internal_macros.h: the list of what it declares goes.
+- capabilities.h (trueqbit): not "optional features" - nothing is opted in
+  or out from outside; it is the one place the guards of the major features
+  are visibly defined: "define, in one place, the guards of sqlite_orm's
+  major features".
+- config.h (lean 1): the tier list goes - it was the list of included
+  headers, which each name their tier; "macros only" moves into the
+  publishing paragraph. The naming sentences in the four tier headers stay
+  (lean 2): a rule for whoever adds a macro, not a contents list.
+- Cut as included headers or members' doing: language_features.h
+  "amended where ...", stdlib_features.h "from the language features and
+  compiler quirks ...", compiler_quirks.h "Keyed on ...", internal_macros.h
+  "builds on config.h", platform.h "UNIX accompanies ... unknown stops".
+
+# Discussed
+- Cause, said to trueqbit: the old description comments were relabelled
+  as Purposes; irreducible-code was not loaded though the local rule asks
+  it; scripts/pre-commit.sh was skipped for eight commits (the memory note
+  listed manual steps first). The final tree passes the script (exit 0)
+  with GIT_DIR/GIT_WORK_TREE set for the worktree.
