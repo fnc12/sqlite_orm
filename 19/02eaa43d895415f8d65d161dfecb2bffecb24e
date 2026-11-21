@@ -1,0 +1,23 @@
+# Scene
+trueqbit with Claude (Opus 5.5), 2026-11-21: the prerequisites check leaves
+the published configuration.
+
+# Decided
+- trueqbit: check_prerequisites.h is not part of sqlite_orm_config.h, so
+  code can test sqlite_orm's features without the C++17 #error; both
+  variants of sqlite_orm.h include it right after prologue.h.
+- trueqbit (b): check_prerequisites.h keeps its own copy of the guarded
+  <version>/<ciso646> include rather than including stdlib_features.h (it
+  reads only the standard's __cpp_lib_*) or a shared header: <version> is
+  a given since C++20, and the fallback goes once C++20 is the baseline.
+  Marked "on purpose:"; the exception is trueqbit's, so the mark is settled.
+- The <version> block is guarded with defined(__has_include): a toolchain
+  short of C++17 evaluating __has_include(...) unguarded fails on that line.
+
+# Discussed
+- Preprocessor check, g++-16/clang++ with a stub sqlite3.h (created in the
+  same wsl call - /tmp does not persist across calls): SQLITE_ORM_* sets of
+  both published headers identical at C++17/20/26; at C++14 the config
+  raises 0 #errors (was 2), sqlite_orm.h still 2.
+- Not pinned by a test: the suite builds at C++17+; a CI step preprocessing
+  the config at -std=c++14 was offered, not added.
