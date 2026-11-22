@@ -22,6 +22,7 @@
 #endif
 #endif
 
+#include "../functional/coroutines/result_box.h"
 #include "io_context.h"
 
 #ifdef SQLITE_ORM_WITH_ASYNC
@@ -98,15 +99,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                     async_io_context* worker = this->pool->pick();
                     worker->post([this, handle, origin, worker] {
                         worker->scheduler_.spawn([this, handle, origin] {
-                            try {
-                                if constexpr (std::is_void_v<result_type>) {
-                                    this->function();
-                                } else {
-                                    this->box.set(this->function());
-                                }
-                            } catch (...) {
-                                this->box.error = std::current_exception();
-                            }
+                            this->box.invoke(this->function);
                             origin->resume_here(handle);
                         });
                     });
