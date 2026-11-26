@@ -3,10 +3,10 @@
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <atomic>  // std::atomic_int, memory order flags
-#include <functional>  //  std::function
 #include <mutex>  //  std::mutex, std::lock_guard
 #include <string>  //  std::string
 #include <thread>  // std::thread::id
+#include <type_traits>  //  std::true_type
 #include <utility>  // std::swap, std::exchange
 #endif
 
@@ -35,19 +35,29 @@ namespace sqlite_orm::internal {
      *  3. concurrent open/close
      */
     struct connection_holder {
+        /*
+         *  Called with the connection just opened. A function pointer and its context rather than a `std::function`,
+         *  so that the storage owning this holder can bind it again without allocating when it is moved.
+         */
+        using did_open_db_t = void (*)(void* context, sqlite3* db);
+
         explicit connection_holder(bool openedForeverHint,
                                    db_arguments dbArgs,
-                                   std::function<void(sqlite3*)> didOpenDb) :
-            _control{openedForeverHint}, dbArgs{std::move(dbArgs)}, _didOpenDb{std::move(didOpenDb)} {}
+                                   did_open_db_t didOpenDb,
+                                   void* didOpenDbContext) :
+            _control{openedForeverHint}, dbArgs{std::move(dbArgs)}, _didOpenDb{didOpenDb},
+            _didOpenDbContext{didOpenDbContext} {}
 
         connection_holder(const connection_holder&) = delete;
         connection_holder& operator=(const connection_holder&) = delete;
 
-        explicit connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
-            _control{other._control.openedForeverHint}, dbArgs{other.dbArgs}, _didOpenDb{std::move(didOpenDb)} {}
+        explicit connection_holder(const connection_holder& other, did_open_db_t didOpenDb, void* didOpenDbContext) :
+            _control{other._control.openedForeverHint}, dbArgs{other.dbArgs}, _didOpenDb{didOpenDb},
+            _didOpenDbContext{didOpenDbContext} {}
 
         explicit connection_holder(const connection_holder& other, std::true_type /*openedForeverHint*/) :
-            _control{true}, dbArgs{other.dbArgs}, _didOpenDb{other._didOpenDb} {}
+            _control{true}, dbArgs{other.dbArgs}, _didOpenDb{other._didOpenDb},
+            _didOpenDbContext{other._didOpenDbContext} {}
 
         /*  
          *  Open the database once and for all from a single-threaded context when it should be opened permanently.
@@ -61,7 +71,7 @@ namespace sqlite_orm::internal {
             _do_open();
 
             if (_didOpenDb) {
-                _didOpenDb(_control.db);
+                _didOpenDb(_didOpenDbContext, _control.db);
             }
         }
 
@@ -107,7 +117,7 @@ namespace sqlite_orm::internal {
                         threadId.store(std::thread::id{}, std::memory_order_release);
                     }};
                     // note: may incur recursion in user-provided `on_open` callback
-                    _didOpenDb(_control.db);
+                    _didOpenDb(_didOpenDbContext, _control.db);
                 }
             }
 
@@ -225,7 +235,9 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(destructive_interference_size))
         std::mutex _sync;
         const db_arguments dbArgs;
-        const std::function<void(sqlite3* db)> _didOpenDb;
+        const did_open_db_t _didOpenDb = nullptr;
+        // replaced when the storage owning this holder is moved, from a single-threaded context
+        void* _didOpenDbContext = nullptr;
     };
 
     /*  
