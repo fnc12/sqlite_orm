@@ -1,18 +1,17 @@
 /**
- *  This example embeds the asynchronous storage into the event loop of GLib [https://docs.gtk.org/glib/main-loop.html], the one GTK applications run on.
+ *  Purpose: show the asynchronous storage embedded into the event loop of GLib, the one GTK applications run on.
  *
- *  The `async_io_context` of the storage offers a descriptor, `native_handle()`, that is readable whenever it has
- *  something to do, and `poll()`, which does what can be done without waiting and returns. `g_unix_fd_add()`
- *  watches the descriptor and calls `poll()`.
- *  The coroutine is resumed from inside `poll()`, hence on the thread of the loop, next to the loop's own
- *  events; here a timer firing every millisecond.
+ *  Intention: uses GLib [https://docs.gtk.org/glib/main-loop.html]; `epoll.cpp` next to this file shows the same with a hand-written loop.
  *
- *  `epoll.cpp` next to this file shows the same with a hand-written loop.
+ *  `g_unix_fd_add()` watches the `async_io_context`'s descriptor, `native_handle()`, and calls `poll()` when it is readable.
+ *  The coroutine is resumed from inside `poll()`, on the thread of the loop, next to the loop's own events; here a
+ *  timer firing every millisecond.
  */
 
 #include <cstdio>  //  std::remove
 #include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>  //  SQLITE_ORM_WITH_ASYNC
 #include <string>
 
 #ifdef SQLITE_ORM_WITH_ASYNC

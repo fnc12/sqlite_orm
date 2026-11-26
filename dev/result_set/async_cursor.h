@@ -1,13 +1,5 @@
 #pragma once
 
-/** @file
- *  Purpose: fetch the rows of a query one at a time from a coroutine.
- *
- *  Intention: realizes `async_cursor`, what `async_storage::iterate()` returns, over the views of
- *  `result_set/mapped_view.h` and `result_set/result_set_view.h` that the synchronous `storage_t::iterate()` returns;
- *  uses `task.h`, and the storage's `run()` for every step.
- */
-
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::shared_ptr, std::make_shared
@@ -44,6 +36,8 @@ namespace sqlite_orm::internal {
             }
             try {
                 if (!this->iterator) {
+                    //  The view's connection reference ends with this block while the iterator keeps the statement:
+                    //  sound because async_storage keeps its connection open.
                     view_type view = (*this->makeView)(storage);
                     this->makeView.reset();
                     this->iterator.emplace(view.begin());
@@ -85,16 +79,20 @@ namespace sqlite_orm::internal {
     };
 
     /**
-     *  The rows of a query, fetched one at a time; returned by `async_storage::iterate()`.
+     *  Purpose: fetch the rows of a query one at a time from a coroutine.
+     *
+     *  Intention: what `async_storage::iterate()` returns, over the views `mapped_view` and `result_set_view` that the
+     *  synchronous `storage_t::iterate()` returns; uses `async_task`, and the storage's `run()` for every step.
      *
      *      auto users = storage.iterate<User>(where(c(&User::age) > 30));
      *      while (std::optional<User> user = co_await users.next()) {
      *          ...
      *      }
      *
-     *  The first `next()` prepares the statement; it is finalized when the rows are exhausted or the cursor is
-     *  destroyed. Between two rows the connection is free: other operations on the storage run in between,
-     *  further cursors included, as they may inside a loop over the synchronous `storage.iterate()`.
+     *  The first `next()` prepares the statement; it is finalized when the rows are exhausted, when an error ends
+     *  the iteration, or when the cursor is closed or destroyed. Between two rows the connection is free: other
+     *  operations on the storage run in between, further cursors included, as they may inside a loop over the
+     *  synchronous `storage.iterate()`.
      *
      *  A cursor must not outlive its storage.
      */

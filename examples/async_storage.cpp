@@ -1,18 +1,19 @@
 /**
- *  This example demonstrates the asynchronous storage: the ordinary storage, awaited from C++20 coroutines.
+ *  Purpose: show the ordinary storage awaited from C++20 coroutines, in an application without an event loop of its own.
  *
- *  While an operation waits for the disk, the thread is free to run other coroutines; the file I/O of SQLite
- *  goes through io_uring instead of blocking system calls. The `async_io_context` is what submits that I/O and resumes
- *  the coroutines. Here the application has no event loop of its own, so it simply calls `io.run()`;
- *  `examples/async_event_loops/` shows how the `async_io_context` is embedded into a loop the application already has.
+ *  Intention: uses `make_async_storage()` and drives its `async_io_context` with `run()`; `docs/async.md` documents
+ *  what it shows, and `examples/async_event_loops/` embeds the `async_io_context` into a loop the application already
+ *  has.
  *
- *  Available on Linux with C++20 coroutines, see `docs/async.md`.
+ *  While an operation waits for the disk, the thread runs other coroutines: SQLite's file I/O goes through io_uring.
+ *  Available on Linux with C++20 coroutines.
  */
 
 #include <cstdio>  //  std::remove
 #include <iostream>
 #include <optional>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>  //  SQLITE_ORM_WITH_ASYNC
 #include <string>
 #include <utility>
 #include <vector>

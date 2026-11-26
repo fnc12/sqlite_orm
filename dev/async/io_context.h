@@ -1,12 +1,5 @@
 #pragma once
 
-/** @file
- *  Purpose: drive the asynchronous storages of one thread: their I/O, their fibers and the coroutines awaiting them.
- *
- *  Intention: realizes the event loop applications either run themselves or embed into the event loop they already have;
- *  uses `scheduler.h` and `task.h`.
- */
-
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <coroutine>  //  std::coroutine_handle
@@ -28,8 +21,13 @@
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
-     *  Event loop of the asynchronous storage: one per thread. It submits the file I/O of its storages to io_uring,
-     *  runs the fibers their operations execute on, and resumes the coroutines awaiting them.
+     *  Purpose: run asynchronous work on one thread.
+     *
+     *  Intention: the event loop applications either run themselves or embed into the event loop they already have;
+     *  uses `scheduler` for the fibers and their file I/O, and `async_task` for the coroutines; `async_storage` and
+     *  `async_io_pool` run on it.
+     *
+     *  It submits file I/O to io_uring, runs synchronous calls on fibers, and resumes the coroutines awaiting them.
      *
      *  It is not a general-purpose executor, and an application needs no second event loop because of it.
      *  There are three ways to drive it:
@@ -56,6 +54,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     class async_io_context {
       public:
+        /**
+         *  `queueDepth` is the number of entries of the io_uring submission queue. Throws std::runtime_error where
+         *  `io_uring_available()` is false.
+         */
         explicit async_io_context(unsigned queueDepth = 256) : scheduler_(queueDepth) {
             this->scheduler_.set_external_ready([this] {
                 return !this->ready.empty() || !this->pendingRoots.empty();
@@ -113,8 +115,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
-         *  Awaitable: run a synchronous callable on a fiber. Everything inside
-         *  (sqlite3_step and friends) may park on I/O without blocking the thread.
+         *  Awaitable: run a synchronous callable on a fiber. Everything inside it, such as `sqlite3_step()`, may park
+         *  on I/O without blocking the thread.
          */
         template<class F>
         auto async(F function) {
@@ -211,7 +213,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
 
         /**
-         *  Thread-safe.
+         *  Thread-safe: makes `run_forever()` return after its current turn.
          */
         void stop() {
             this->scheduler_.post([this] {

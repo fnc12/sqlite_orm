@@ -3,14 +3,9 @@
 /** @file
  *  Purpose: switch between machine stacks on one thread.
  *
- *  Intention: the foundation of `fiber.h`: two naked functions per supported architecture (x86_64 System V, aarch64 AAPCS64),
- *  inline so that the library stays header-only; speaks to nobody else.
- */
-
-#ifdef SQLITE_ORM_WITH_ASYNC
-/**
- *  Minimal stackful context switch for x86_64 (SysV) and aarch64 (AAPCS64),
- *  GCC or Clang, as inline naked functions so that the library stays header-only.
+ *  Intention: used by `fiber` alone; inline naked functions, so that the library stays header-only.
+ *
+ *  For x86_64 (System V) and aarch64 (AAPCS64), with GCC or Clang:
  *
  *      void sqlite_orm_switch_context(void** saveStackPointer, void* loadStackPointer);
  *
@@ -23,6 +18,8 @@
  *  "returns" into sqlite_orm_context_trampoline with the entry function and its
  *  argument in two callee-saved registers.
  */
+
+#ifdef SQLITE_ORM_WITH_ASYNC
 extern "C" {
 
 #if defined(__x86_64__)

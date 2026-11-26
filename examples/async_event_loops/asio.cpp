@@ -1,19 +1,18 @@
 /**
- *  This example uses the asynchronous storage from coroutines of Asio (Boost.Asio or the standalone library),
- *  on Asio's own event loop.
+ *  Purpose: show the asynchronous storage awaited from Asio's coroutines, on Asio's own event loop.
  *
- *  Two things are shown:
+ *  Intention: uses Asio, Boost.Asio or the standalone library; `epoll.cpp` next to this file shows the embedding alone.
  *
  *  1. `storage_driver` embeds the storage's `async_io_context` into `asio::io_context`: Asio watches its descriptor and
  *     calls `poll()` whenever it is readable. Asio's loop stays the only one that runs.
- *  2. `await_task()` lets an `asio::awaitable` coroutine await a storage operation. Asio's coroutines only await
- *     Asio's own asynchronous operations, so the function presents an `async_task` as one; with it comes everything a
- *     completion token offers, e.g. `use_awaitable`, `use_future` or a plain callback.
+ *  2. `await_task()` presents an `async_task` as an Asio asynchronous operation, the only kind Asio's coroutines
+ *     await; with it comes every completion token, e.g. `use_awaitable`, `use_future` or a plain callback.
  */
 
 #include <cstdio>  //  std::remove
 #include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>  //  SQLITE_ORM_WITH_ASYNC
 
 #if defined(SQLITE_ORM_WITH_ASYNC) && __has_include(<boost/asio.hpp>)
 #include <boost/asio.hpp>
