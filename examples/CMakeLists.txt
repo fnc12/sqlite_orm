@@ -41,3 +41,5 @@ endforeach()
 add_custom_target(run_all_examples
     DEPENDS ${run_example_targets}
 )
+
+add_subdirectory(async_event_loops)

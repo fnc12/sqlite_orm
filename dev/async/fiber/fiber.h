@@ -1,0 +1,176 @@
+#pragma once
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <cstddef>  //  std::size_t
+#include <cstdint>  //  std::uintptr_t
+#include <cstring>  //  std::memset
+#include <exception>  //  std::terminate
+#include <functional>  //  std::function
+#include <stdexcept>  //  std::runtime_error
+#include <utility>  //  std::move
+#endif
+#include <sys/mman.h>  //  mmap, mprotect, munmap
+#include <unistd.h>  //  sysconf
+#endif
+
+#include "context_switch.h"
+
+#ifdef SQLITE_ORM_WITH_ASYNC
+namespace sqlite_orm::internal {
+
+    /**
+     *  Purpose: give a synchronous call a stack of its own, so that it can be suspended in the middle and resumed
+     *  later.
+     *
+     *  Intention: the stackful coroutine a synchronous call suspends on, such as SQLite's VFS callbacks inside
+     *  `sqlite3_step()`; uses the stack switch of `context_switch.h`, is run by `scheduler`.
+     *
+     *  One OS thread, many stacks; switching is explicit and cooperative, and a suspended call leaves the thread free.
+     */
+    class fiber {
+      public:
+        static constexpr std::size_t defaultStackSize = 512 * 1024;
+
+        explicit fiber(std::function<void()> function_, std::size_t stackSize_ = defaultStackSize) {
+            const std::size_t pageSize = fiber::page_size();
+            this->stackSize = fiber::rounded_stack_size(stackSize_);
+            const std::size_t totalSize = this->stackSize + pageSize;  //  plus a guard page at the bottom
+            void* memory = ::mmap(nullptr, totalSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            if (memory == MAP_FAILED) {
+                throw std::runtime_error("sqlite_orm async: mmap of a fiber stack failed");
+            }
+            if (::mprotect(memory, pageSize, PROT_NONE) != 0) {
+                ::munmap(memory, totalSize);
+                throw std::runtime_error("sqlite_orm async: mprotect of a fiber stack's guard page failed");
+            }
+            this->stack = memory;
+            this->restart(std::move(function_));
+        }
+
+        ~fiber() {
+            if (this->stack) {
+                ::munmap(this->stack, this->stackSize + fiber::page_size());
+            }
+        }
+
+        fiber(const fiber&) = delete;
+        fiber& operator=(const fiber&) = delete;
+
+        /**
+         *  Give a finished fiber a new function to run, on the stack it already has.
+         */
+        void restart(std::function<void()> function_) {
+            this->function = std::move(function_);
+            this->done = false;
+            char* stackTop = static_cast<char*>(this->stack) + this->stackSize + fiber::page_size();
+            this->stackPointer = fiber::make_initial_frame(stackTop, &fiber::entry, this);
+        }
+
+        /**
+         *  The usable size of a stack requested with `stackSize`: rounded up to whole pages.
+         */
+        static std::size_t rounded_stack_size(std::size_t stackSize) {
+            const std::size_t pageSize = fiber::page_size();
+            return (stackSize + pageSize - 1) / pageSize * pageSize;
+        }
+
+        std::size_t stack_size() const noexcept {
+            return this->stackSize;
+        }
+
+        /**
+         *  Switch from the caller (the scheduler) into this fiber. Returns when the
+         *  fiber yields or finishes.
+         */
+        void resume() {
+            fiber* previous = fiber::current_slot();
+            fiber::current_slot() = this;
+            sqlite_orm_switch_context(&this->callerStackPointer, this->stackPointer);
+            fiber::current_slot() = previous;
+        }
+
+        /**
+         *  Switch from the running fiber back to whoever resumed it.
+         */
+        static void yield() {
+            fiber* self = fiber::current_slot();
+            sqlite_orm_switch_context(&self->stackPointer, self->callerStackPointer);
+        }
+
+        /**
+         *  The fiber currently executing on this thread, or nullptr when running on
+         *  the thread's native stack.
+         */
+        static fiber* current() noexcept {
+            return fiber::current_slot();
+        }
+
+        bool is_done() const noexcept {
+            return this->done;
+        }
+
+      private:
+        static fiber*& current_slot() noexcept {
+            thread_local fiber* currentFiber = nullptr;
+            return currentFiber;
+        }
+
+        static std::size_t page_size() {
+            static const std::size_t pageSize = static_cast<std::size_t>(::sysconf(_SC_PAGESIZE));
+            return pageSize;
+        }
+
+        /**
+         *  Build the initial frame that sqlite_orm_switch_context will "pop" on the first resume.
+         */
+        static void* make_initial_frame(void* stackTop, void (*entry)(void*), void* argument) {
+            auto top = reinterpret_cast<std::uintptr_t>(stackTop) & ~std::uintptr_t{15};
+#if defined(__x86_64__)
+            //  Frame popped by the switch: r15 r14 r13 r12 rbx rbp, then ret. After ret
+            //  rsp == top, which is 16-byte aligned, so that the trampoline's `call`
+            //  leaves the callee with (rsp + 8) % 16 == 0.
+            auto* frame = reinterpret_cast<void**>(top) - 7;
+            frame[0] = nullptr;  //  r15
+            frame[1] = nullptr;  //  r14
+            frame[2] = argument;  //  r13
+            frame[3] = reinterpret_cast<void*>(entry);  //  r12
+            frame[4] = nullptr;  //  rbx
+            frame[5] = nullptr;  //  rbp
+            frame[6] = reinterpret_cast<void*>(&sqlite_orm_context_trampoline);  //  return address
+            return frame;
+#elif defined(__aarch64__)
+            auto* frame = reinterpret_cast<void**>(top - 176);
+            std::memset(frame, 0, 176);
+            frame[0] = reinterpret_cast<void*>(entry);  //  x19
+            frame[1] = argument;  //  x20
+            frame[11] = reinterpret_cast<void*>(&sqlite_orm_context_trampoline);  //  x30 (lr)
+            return frame;
+#endif
+        }
+
+        static void entry(void* self) noexcept {
+            auto* thisFiber = static_cast<fiber*>(self);
+            try {
+                thisFiber->function();
+                thisFiber->function = nullptr;
+            } catch (...) {
+                //  A fiber body must handle its own exceptions; there is no stack to
+                //  propagate them through.
+                std::terminate();
+            }
+            thisFiber->done = true;
+            for (;;) {
+                fiber::yield();  //  hand control back for the last time; never returns
+            }
+        }
+
+        std::function<void()> function;
+        void* stack = nullptr;  //  mmap'd region including the guard page
+        std::size_t stackSize = 0;  //  usable size (without the guard page)
+        void* stackPointer = nullptr;  //  saved stack pointer while suspended
+        void* callerStackPointer = nullptr;  //  saved stack pointer of whoever resumed us
+        bool done = false;
+    };
+}
+#endif

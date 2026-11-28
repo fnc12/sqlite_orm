@@ -67,3 +67,11 @@
 #if defined(__clang__) && (__clang_major__ <= 15)
 #define SQLITE_ORM_BROKEN_CPP20_VIEWS
 #endif
+
+// gcc 11 and 12 relocate bytewise a temporary that lives across a suspension point of a `co_await` expression,
+// which breaks any type with a non-trivial move constructor, e.g. a `std::string` in its small-buffer state
+// in `co_await storage.insert(User{...})`.
+// Verified broken with 11.4 and 12.5, verified fixed with 13.4.
+#if defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 13)
+#define SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES
+#endif

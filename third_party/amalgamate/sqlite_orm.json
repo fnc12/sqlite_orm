@@ -27,6 +27,10 @@
     "dev/builtin/functions.h",
     "dev/builtin/dbos.h",
 
+    "dev/execution/async_storage.h",
+    "dev/async/io_pool.h",
+    "dev/functional/coroutines/when_all.h",
+
     "dev/config/epilogue.h"
   ],
   "include_paths": [ "dev" ]

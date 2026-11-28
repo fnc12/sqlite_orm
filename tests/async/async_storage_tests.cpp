@@ -1,0 +1,1051 @@
+/** @file
+ *  Purpose: the asynchronous storage, its cursor and the runtime beneath them do what the synchronous storage does,
+ *  awaited from coroutines, without blocking the thread on file I/O.
+ *
+ *  Intention: runs on the host's io_uring, skipped where the kernel refuses it, over database files in the temporary
+ *  directory; a forked child asks for the locks another process sees, since POSIX locks do not conflict within one
+ *  process; a minimal epoll loop stands in for an application's event loop.
+ */
+
+#include <sqlite_orm/sqlite_orm.h>
+#include <sqlite_orm/sqlite_orm_config.h>  //  SQLITE_ORM_WITH_ASYNC, SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_ASYNC
+#include <algorithm>  //  std::find
+#include <atomic>  //  std::atomic
+#include <catch2/catch_all.hpp>
+#include <cerrno>  //  errno, EINTR
+#include <chrono>  //  std::chrono::milliseconds, std::chrono::steady_clock
+#include <cstdint>  //  std::uint64_t
+#include <fcntl.h>  //  open, fcntl, F_GETLK
+#include <filesystem>  //  std::filesystem::path, temp_directory_path
+#include <memory>  //  std::unique_ptr
+#include <optional>  //  std::optional
+#include <random>  //  std::mt19937, std::random_device
+#include <stdexcept>  //  std::logic_error, std::runtime_error
+#include <string>  //  std::string
+#include <sys/epoll.h>  //  epoll_create1, epoll_ctl, epoll_wait
+#include <sys/resource.h>  //  getrlimit, setrlimit, RLIMIT_NOFILE
+#include <sys/wait.h>  //  waitpid
+#include <system_error>  //  std::system_error
+#include <thread>  //  std::thread, std::this_thread
+#include <tuple>  //  std::tuple, std::get
+#include <type_traits>  //  std::is_move_constructible_v, std::is_copy_constructible_v
+#include <unistd.h>  //  close, fork, _exit
+#include <utility>  //  std::move
+#include <vector>  //  std::vector
+
+using namespace sqlite_orm;
+
+//  Note: awaited expressions are always stored in a variable before an
+//  assertion. Catch2's assertion macros mention the expression twice (once in
+//  `__builtin_constant_p`, which GCC evaluates when it contains `co_await`),
+//  so `REQUIRE(co_await ...)` would run the operation twice.
+
+namespace {
+    struct User {
+        int id = 0;
+        std::string name;
+        int age = 0;
+    };
+
+    auto users_table() {
+        return make_table("users",
+                          make_column("id", &User::id, primary_key().autoincrement()),
+                          make_column("name", &User::name),
+                          make_column("age", &User::age));
+    }
+
+    using Storage = decltype(make_async_storage(std::declval<async_io_context&>(), "", users_table()));
+
+    //  one connection, referred to by its cursors and by the operations waiting for their turn
+    static_assert(!std::is_move_constructible_v<Storage> && !std::is_copy_constructible_v<Storage>);
+
+    struct temp_database {
+        std::filesystem::path directory;
+        std::string path;
+
+        temp_database() {
+            this->directory =
+                std::filesystem::temp_directory_path() / ("sqlite_orm_async_" + std::to_string(std::random_device{}()));
+            std::filesystem::create_directories(this->directory);
+            this->path = (this->directory / "test.sqlite").string();
+        }
+
+        ~temp_database() {
+            std::error_code error;
+            std::filesystem::remove_all(this->directory, error);
+        }
+    };
+
+    void require_io_uring() {
+        if (!io_uring_available()) {
+            SKIP("io_uring is not available in this environment");
+        }
+    }
+
+    async_task<void> mark_done(async_task<void> body, bool& done) {
+        co_await std::move(body);
+        done = true;
+    }
+
+    /**
+     *  Coroutine lambdas must outlive their frames: test bodies are stored in a
+     *  named variable by the caller and only the task is handed over here.
+     */
+    void run_test(async_io_context& io, async_task<void> body) {
+        bool done = false;
+        io.spawn(mark_done(std::move(body), done));
+        io.run();
+        REQUIRE(done);
+    }
+
+    template<class S>
+    async_task<void> fill_users(S& storage, int count) {
+        co_await storage.sync_schema();
+        co_await storage.transaction([count](auto& storage) {
+            for (int index = 1; index <= count; ++index) {
+                storage.insert(User{0, "user-" + std::to_string(index), index % 90});
+            }
+            return true;
+        });
+    }
+}
+
+TEST_CASE("async storage: factory - VFS injection and lazy open") {
+    require_io_uring();
+    temp_database database;
+    async_io_context io;
+    auto storage = make_async_storage(io, database.path, users_table());
+
+    //  Nothing is opened until the first operation, and nothing global changed.
+    REQUIRE_FALSE(storage.is_opened());
+    REQUIRE_FALSE(std::filesystem::exists(database.path));
+    REQUIRE(sqlite3_vfs_find(nullptr) != sqlite3_vfs_find(internal::async_vfs_name.data()));
+    REQUIRE(storage.vfs_name() == internal::async_vfs_name);
+    REQUIRE(storage.open_mode() == db_open_mode::default_);
+    REQUIRE(storage.filename() == database.path);
+    REQUIRE_FALSE(storage.is_busy());
+
+    auto body = [&storage, &database]() -> async_task<void> {
+        co_await storage.sync_schema();
+        REQUIRE(std::filesystem::exists(database.path));
+        REQUIRE(storage.is_opened());
+    };
+    run_test(io, body());
+    REQUIRE_FALSE(storage.is_busy());
+}
+
+TEST_CASE("async storage: user connection_control keeps its other fields") {
+    require_io_uring();
+    temp_database database;
+    async_io_context io;
+    connection_control control{};
+    control.open_mode = db_open_mode::create_readwrite;
+    control.vfs_name = "unix";  //  overridden by the asynchronous VFS
+    auto storage = make_async_storage(io, database.path, control, users_table());
+    REQUIRE(storage.vfs_name() == internal::async_vfs_name);
+    REQUIRE(storage.open_mode() == db_open_mode::create_readwrite);
+}
+
+TEST_CASE("async storage: CRUD") {
+    require_io_uring();
+    temp_database database;
+    async_io_context io;
+    internal::reset_async_vfs_statistics();
+    auto storage = make_async_storage(io, database.path, users_table());
+
+    auto body = [&storage]() -> async_task<void> {
+        co_await fill_users(storage, 200);
+        {
+            const auto value = co_await storage.count<User>();
+            REQUIRE(value == 200);
+        }
+
+        //  get / get_pointer / get_optional
+        User seventh = co_await storage.get<User>(7);
+        REQUIRE(seventh.name == "user-7");
+        auto pointer = co_await storage.get_pointer<User>(7);
+        REQUIRE(pointer);
+        REQUIRE(pointer->age == 7);
+        auto optional = co_await storage.get_optional<User>(7);
+        REQUIRE(optional.has_value());
+        {
+            const auto value = co_await storage.get_pointer<User>(999999);
+            REQUIRE_FALSE(value);
+        }
+        {
+            const auto value = co_await storage.get_optional<User>(999999);
+            REQUIRE_FALSE(value.has_value());
+        }
+
+        //  insert returns the rowid; last_insert_rowid agrees
+        int newId = co_await storage.insert(User{0, "new", 1});
+        REQUIRE(newId == 201);
+        {
+            const auto value = co_await storage.last_insert_rowid();
+            REQUIRE(value == 201);
+        }
+        {
+            const auto value = co_await storage.changes();
+            REQUIRE(value == 1);
+        }
+
+        //  update / replace / remove
+        seventh.age = 120;
+        co_await storage.update(seventh);
+        {
+            const User updated = co_await storage.get<User>(7);
+            REQUIRE(updated.age == 120);
+        }
+        co_await storage.replace(User{7, "replaced", 121});
+        {
+            const User replaced = co_await storage.get<User>(7);
+            REQUIRE(replaced.name == "replaced");
+        }
+        co_await storage.remove<User>(7);
+        {
+            const auto value = co_await storage.get_pointer<User>(7);
+            REQUIRE_FALSE(value);
+        }
+
+        //  get_all with the DSL; rvalue arguments are moved, not copied
+        auto olds = co_await storage.get_all<User>(where(c(&User::age) >= 85), order_by(&User::id), limit(10));
+        REQUIRE(olds.size() == 10);
+        std::string wanted = "user-42";
+        auto names = co_await storage.select(columns(&User::name), where(c(&User::name) == std::move(wanted)));
+        REQUIRE(names.size() == 1);
+        REQUIRE(std::get<0>(names[0]) == "user-42");
+        auto pointers = co_await storage.get_all_pointer<User>(where(c(&User::id) <= 3));
+        REQUIRE(pointers.size() == 3);
+        auto optionals = co_await storage.get_all_optional<User>(where(c(&User::id) <= 2));
+        REQUIRE(optionals.size() == 2);
+
+        //  update_all / remove_all
+        co_await storage.update_all(set(c(&User::age) = 1), where(c(&User::id) <= 10));
+        {
+            const auto value = co_await storage.count<User>(where(c(&User::age) == 1 and c(&User::id) <= 10));
+            REQUIRE(value == 9);
+        }
+        co_await storage.remove_all<User>(where(c(&User::id) > 150));
+        {
+            const auto value = co_await storage.count<User>();
+            REQUIRE(value == 149);
+        }
+
+        //  insert_range / replace_range
+        std::vector<User> batch{{0, "batch-1", 5}, {0, "batch-2", 6}};
+        co_await storage.insert_range(batch.begin(), batch.end());
+        {
+            const auto value = co_await storage.count<User>(where(like(&User::name, "batch-%")));
+            REQUIRE(value == 2);
+        }
+        std::vector<User> replacements{{1, "first", 50}};
+        co_await storage.replace_range(replacements.begin(), replacements.end());
+        {
+            const User first = co_await storage.get<User>(1);
+            REQUIRE(first.name == "first");
+        }
+
+        //  not-found error crosses the fiber boundary
+        bool caught = false;
+        try {
+            co_await storage.get<User>(999999);
+        } catch (const std::system_error& error) {
+            caught = error.code() == orm_error_code::not_found;
+        }
+        REQUIRE(caught);
+    };
+    run_test(io, body());
+
+    internal::async_vfs_statistics statistics = internal::get_async_vfs_statistics();
+    REQUIRE(statistics.asyncReads > 0);
+    REQUIRE(statistics.asyncWrites > 0);
+    REQUIRE(statistics.asyncSyncs > 0);
+    //  nothing was handed to the wrapped VFS, which would have blocked the thread
+    REQUIRE(statistics.syncReads == 0);
+    REQUIRE(statistics.syncWrites == 0);
+    REQUIRE(statistics.syncSyncs == 0);
+}
+
+TEST_CASE("async storage: aggregates") {
+    require_io_uring();
+    temp_database database;
+    async_io_context io;
+    auto storage = make_async_storage(io, database.path, users_table());
+
+    auto body = [&storage]() -> async_task<void> {
+        co_await fill_users(storage, 10);
+        {
+            const auto value = co_await storage.count(&User::age);
+            REQUIRE(value == 10);
+        }
+        {
+            const auto value = co_await storage.avg(&User::age);
+            REQUIRE(value == Catch::Approx(5.5));
+        }
+        auto sum = co_await storage.sum(&User::age);
+        REQUIRE(sum);
+        REQUIRE(*sum == 55);
+        {
+            const auto value = co_await storage.total(&User::age);
+            REQUIRE(value == Catch::Approx(55));
+        }
+        auto maximum = co_await storage.max(&User::age);
+        REQUIRE(maximum);
+        REQUIRE(*maximum == 10);
+        auto minimum = co_await storage.min(&User::age, where(c(&User::age) > 3));
+        REQUIRE(minimum);
+        REQUIRE(*minimum == 4);
+        {
+            const auto value = co_await storage.group_concat(&User::name, ",", where(c(&User::id) <= 2));
+            REQUIRE(value == "user-1,user-2");
+        }
+    };
+    run_test(io, body());
+}
+
+TEST_CASE("async storage: prepared statements") {
+    require_io_uring();
+    temp_database database;
+    async_io_context io;
+    auto storage = make_async_storage(io, database.path, users_table());
+
+    auto body = [&storage]() -> async_task<void> {
+        co_await fill_users(storage, 20);
+
+        auto selectStatement = co_await storage.prepare(select(columns(&User::name), where(c(&User::id) == 5)));
+        auto rows = co_await storage.execute(selectStatement);
+        REQUIRE(rows.size() == 1);
+        REQUIRE(std::get<0>(rows[0]) == "user-5");
+        get<0>(selectStatement) = 6;  //  rebinding needs no await
+        rows = co_await storage.execute(selectStatement);
+        REQUIRE(std::get<0>(rows[0]) == "user-6");
+
+        auto insertStatement = co_await storage.prepare(insert(User{0, "prepared", 33}));
+        int64 rowid = co_await storage.execute(insertStatement);
+        REQUIRE(rowid == 21);
+        get<0>(insertStatement).name = "prepared-2";
+        {
+            const auto value = co_await storage.execute(insertStatement);
+            REQUIRE(value == 22);
+        }
+
+        auto getStatement = co_await storage.prepare(get<User>(21));
+        User user = co_await storage.execute(getStatement);
+        REQUIRE(user.name == "prepared");
+
+        auto removeStatement = co_await storage.prepare(remove<User>(22));
+        co_await storage.execute(removeStatement);
+        {
+            const auto value = co_await storage.count<User>();
+            REQUIRE(value == 21);
+        }
+
+        REQUIRE(storage.dump(getStatement) == R"(SELECT "id", "name", "age" FROM "users" WHERE "id" = ?)");
+    };
+    run_test(io, body());
+}
+
+TEST_CASE("async storage: transactions and savepoints") {
+    require_io_uring();
+    temp_database database;
+    async_io_context io;
+    auto storage = make_async_storage(io, database.path, users_table());
+
+    auto body = [&storage]() -> async_task<void> {
+        co_await fill_users(storage, 5);
+
+        //  returning false rolls back
+        co_await storage.transaction([](auto& storage) {
+            storage.insert(User{0, "ghost", 1});
+            return false;
+        });
+        {
+            const auto value = co_await storage.count<User>();
+            REQUIRE(value == 5);
+        }
+
+        //  an exception rolls back and propagates
+        bool caught = false;
+        try {
+            co_await storage.transaction([](auto& storage) -> bool {
+                storage.insert(User{0, "ghost", 1});
+                throw std::runtime_error("boom");
+            });
+        } catch (const std::runtime_error& error) {
+            caught = std::string(error.what()) == "boom";
+        }
+        REQUIRE(caught);
+        {
+            const auto value = co_await storage.count<User>();
+            REQUIRE(value == 5);
+        }
+
+        {
+            const bool committed = co_await storage.savepoint("inner", [](auto& storage) {
+                storage.insert(User{0, "kept", 1});
+                return true;
+            });
+            REQUIRE(committed);
+        }
+        {
+            const auto value = co_await storage.count<User>();
+            REQUIRE(value == 6);
+        }
+        {
+            const auto value = co_await storage.get_autocommit();
+            REQUIRE(value);
+        }
+    };
+    run_test(io, body());
+}
+
+TEST_CASE("async storage: schema and connection information") {
+    require_io_uring();
+    temp_database database;
+    async_io_context io;
+    auto storage = make_async_storage(io, database.path, users_table());
+
+    auto body = [&storage, &database]() -> async_task<void> {
+        auto simulated = co_await storage.sync_schema_simulate();
+        REQUIRE(simulated.at("users") == sync_schema_result::new_table_created);
+        auto results = co_await storage.sync_schema();
+        REQUIRE(results.at("users") == sync_schema_result::new_table_created);
+        {
+            const auto value = co_await storage.table_exists("users");
+            REQUIRE(value);
+        }
+        {
+            const auto value = co_await storage.table_exists("nope");
+            REQUIRE_FALSE(value);
+        }
+        auto tables = co_await storage.table_names();
+        REQUIRE(tables.size() == 2);  //  users and sqlite_sequence (autoincrement)
+        REQUIRE(std::find(tables.begin(), tables.end(), "users") != tables.end());
+        {
+            const auto views = co_await storage.view_names();
+            REQUIRE(views.empty());
+            const auto triggers = co_await storage.trigger_names();
+            REQUIRE(triggers.empty());
+        }
+        co_await storage.run([](auto& storage) {
+            storage.pragma.journal_mode(journal_mode::WAL);
+        });
+        co_await storage.vacuum();
+        co_await storage.analyze();
+        {
+            const auto value = co_await storage.db_readonly();
+            REQUIRE_FALSE(value);
+        }
+        {
+            const auto value = (co_await storage.current_date()).size();
+            REQUIRE(value == 10);
+        }
+        {
+            const auto value = (co_await storage.current_time()).size();
+            REQUIRE(value == 8);
+        }
+        {
+            const auto value = (co_await storage.current_timestamp()).size();
+            REQUIRE(value == 19);
+        }
+        {
+            const auto value = co_await storage.busy_timeout(1000);
+            REQUIRE(value == SQLITE_OK);
+        }
+        {
+            const auto value = co_await storage.total_changes();
+            const auto value64 = co_await storage.total_changes64();
+            REQUIRE(value == value64);
+        }
+        {
+            const auto value = co_await storage.db_name(0);
+            REQUIRE(value == std::optional<std::string>{"main"});
+        }
+        {
+            const auto value = co_await storage.txn_state();
+            REQUIRE(value == transaction_state::none);
+        }
+
+        const std::string backupPath = database.path + ".backup";
+        co_await storage.insert(User{0, "backed up", 1});
+        co_await storage.backup_to(backupPath);
+        REQUIRE(std::filesystem::exists(backupPath));
+        co_await storage.remove_all<User>();
+        {
+            const auto value = co_await storage.count<User>();
+            REQUIRE(value == 0);
+        }
+        co_await storage.backup_from(backupPath);
+        {
+            const auto value = co_await storage.count<User>();
+            REQUIRE(value == 1);
+        }
+
+        co_await storage.drop_table("users");
+        {
+            const auto value = co_await storage.table_exists("users");
+            REQUIRE_FALSE(value);
+        }
+        REQUIRE(storage.libversion() == SQLITE_VERSION);
+    };
+    run_test(io, body());
+}
+
+TEST_CASE("async storage: operations from several coroutines are queued and the thread stays free") {
+    require_io_uring();
+    temp_database database;
+    async_io_context io;
+    auto storage = make_async_storage(io, database.path, users_table());
+
+    std::uint64_t epoch = 0;
+    std::uint64_t interleaved = 0;
+    auto reader = [&storage, &epoch, &interleaved](int seed) -> async_task<long> {
+        std::mt19937 generator(static_cast<unsigned>(seed));
+        long total = 0;
+        for (int index = 0; index < 30; ++index) {
+            const int id = static_cast<int>(generator() % 2000) + 1;
+            const std::uint64_t before = ++epoch;
+            User user = co_await storage.get<User>(id);
+            if (epoch != before) {
+                ++interleaved;
+            }
+            REQUIRE(user.id == id);
+            total += user.age;
+        }
+        co_return total;
+    };
+
+    auto body = [&storage, &reader, &interleaved]() -> async_task<void> {
+        co_await fill_users(storage, 2000);
+        std::vector<async_task<long>> readers;
+        for (int index = 0; index < 8; ++index) {
+            readers.push_back(reader(index + 1));
+        }
+        std::vector<long> totals = co_await async_when_all(std::move(readers));
+        REQUIRE(totals.size() == 8);
+        //  Requests from the eight coroutines were interleaved on one connection...
+        REQUIRE(interleaved > 0);
+        //  ...and the storage is free again.
+        REQUIRE_FALSE(storage.is_busy());
+    };
+    run_test(io, body());
+}
+
+TEST_CASE("async storage: async_io_pool spreads work over threads and resumes on the origin") {
+    require_io_uring();
+    temp_database database;
+    async_io_context io;
+    async_io_pool pool(3);
+    auto storage = make_async_storage(io, database.path, users_table());
+
+    auto body = [&storage, &pool]() -> async_task<void> {
+        co_await storage.sync_schema();
+        const std::thread::id origin = std::this_thread::get_id();
+        int answer = co_await pool.async([origin] {
+            REQUIRE(std::this_thread::get_id() != origin);
+            return 42;
+        });
+        REQUIRE(answer == 42);
+        REQUIRE(std::this_thread::get_id() == origin);
+    };
+    run_test(io, body());
+    REQUIRE(pool.run_blocking([] {
+        return 7;
+    }) == 7);
+    //  a worker waiting for the pool would wait for itself
+    const bool refused = pool.run_blocking([&pool] {
+        try {
+            pool.run_blocking([] {});
+        } catch (const std::logic_error&) {
+            return true;
+        }
+        return false;
+    });
+    REQUIRE(refused);
+
+    //  outside an async_io_context there is nowhere to resume the awaiting coroutine
+    bool refusedOutside = false;
+    auto outside = [&pool, &refusedOutside]() -> internal::fire_and_forget {
+        try {
+            co_await pool.async([] {});
+        } catch (const std::logic_error&) {
+            refusedOutside = true;
+        }
+    };
+    outside();
+    REQUIRE(refusedOutside);
+
+    //  a pool that was shut down refuses work instead of waiting for it forever
+    pool.shutdown();
+    REQUIRE_THROWS_AS(pool.run_blocking([] {}), std::logic_error);
+    bool refusedAfterShutdown = false;
+    auto late = [&pool, &refusedAfterShutdown]() -> async_task<void> {
+        try {
+            co_await pool.async([] {});
+        } catch (const std::logic_error&) {
+            refusedAfterShutdown = true;
+        }
+    };
+    run_test(io, late());
+    REQUIRE(refusedAfterShutdown);
+}
+
+TEST_CASE("async storage: async_when_all of operations without a result") {
+    require_io_uring();
+    temp_database database;
+    async_io_context io;
+    auto storage = make_async_storage(io, database.path, users_table());
+
+    auto body = [&storage]() -> async_task<void> {
+        co_await fill_users(storage, 20);
+        std::vector<async_task<void>> updates;
+        for (int id = 1; id <= 20; ++id) {
+            updates.push_back(storage.update(User{id, "renamed", id}));
+        }
+        co_await async_when_all(std::move(updates));
+        const int renamed = co_await storage.count<User>(where(c(&User::name) == "renamed"));
+        REQUIRE(renamed == 20);
+
+        //  the first failure is rethrown after all of them have finished
+        std::vector<async_task<void>> removals;
+        removals.push_back(storage.remove<User>(1));
+        removals.push_back(storage.run([](auto&) {
+            throw std::logic_error("failed on purpose");
+        }));
+        removals.push_back(storage.remove<User>(2));
+        bool thrown = false;
+        try {
+            co_await async_when_all(std::move(removals));
+        } catch (const std::logic_error&) {
+            thrown = true;
+        }
+        REQUIRE(thrown);
+        const int left = co_await storage.count<User>();
+        REQUIRE(left == 18);
+
+        co_await async_when_all(std::vector<async_task<void>>{});
+    };
+    run_test(io, body());
+}
+
+TEST_CASE("async storage: awaiting an empty task is an error, not a crash") {
+    async_io_context io;
+    bool thrownForValue = false;
+    bool thrownForVoid = false;
+    bool thrownForSecondAwait = false;
+    auto body = [&thrownForValue, &thrownForVoid, &thrownForSecondAwait]() -> async_task<void> {
+        async_task<int> moved = []() -> async_task<int> {
+            co_return 1;
+        }();
+        async_task<int> taken = std::move(moved);
+        try {
+            (void)co_await moved;
+        } catch (const std::logic_error&) {
+            thrownForValue = true;
+        }
+        try {
+            co_await async_task<void>{};
+        } catch (const std::logic_error&) {
+            thrownForVoid = true;
+        }
+        const int value = co_await taken;
+        REQUIRE(value == 1);
+        //  a task hands its result over once
+        try {
+            (void)co_await taken;
+        } catch (const std::logic_error&) {
+            thrownForSecondAwait = true;
+        }
+    };
+    if (io_uring_available()) {
+        run_test(io, body());
+        REQUIRE(thrownForValue);
+        REQUIRE(thrownForVoid);
+        REQUIRE(thrownForSecondAwait);
+    }
+}
+
+TEST_CASE("async storage: an async_io_context that cannot be made leaves no descriptor open") {
+    require_io_uring();
+    const auto lowest_free_descriptor = [] {
+        const int descriptor = ::open("/dev/null", O_RDONLY);
+        ::close(descriptor);
+        return descriptor;
+    };
+    //  the lowest free descriptor becomes the last one allowed: the ring gets it, the wake descriptor after it fails
+    const int lowestFree = lowest_free_descriptor();
+    REQUIRE(lowestFree >= 0);
+    rlimit original{};
+    REQUIRE(::getrlimit(RLIMIT_NOFILE, &original) == 0);
+    rlimit limited = original;
+    limited.rlim_cur = static_cast<rlim_t>(lowestFree) + 1;
+    REQUIRE(::setrlimit(RLIMIT_NOFILE, &limited) == 0);
+    bool thrown = false;
+    try {
+        async_io_context io;
+    } catch (const std::runtime_error&) {
+        thrown = true;
+    }
+    REQUIRE(::setrlimit(RLIMIT_NOFILE, &original) == 0);
+    REQUIRE(thrown);
+    REQUIRE(lowest_free_descriptor() == lowestFree);
+}
+
+namespace {
+    /**
+     *  Whether another process holds a lock on the bytes SQLite's "unix" VFS locks for a writer.
+     *  POSIX locks do not conflict within a process, so the question is asked from a child.
+     */
+    bool locked_by_this_process(const std::string& path) {
+        const pid_t child = ::fork();
+        if (child == 0) {
+            const int descriptor = ::open(path.c_str(), O_RDWR);
+            struct flock probe{};
+            probe.l_type = F_WRLCK;
+            probe.l_whence = SEEK_SET;
+            probe.l_start = 0x40000000;  //  PENDING_BYTE, followed by the reserved byte and the shared range
+            probe.l_len = 512;
+            const bool locked = descriptor >= 0 && ::fcntl(descriptor, F_GETLK, &probe) == 0 && probe.l_type != F_UNLCK;
+            ::_exit(locked ? 0 : 1);
+        }
+        int status = 0;
+        ::waitpid(child, &status, 0);
+        return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+    }
+}
+
+TEST_CASE("async storage: shares the file with other connections of the process") {
+    require_io_uring();
+    temp_database database;
+    async_io_context io;
+    {
+        auto storage = make_async_storage(io, database.path, users_table());
+        auto body = [&storage]() -> async_task<void> {
+            co_await fill_users(storage, 10);
+        };
+        run_test(io, body());
+    }
+
+    SECTION("a read-write connection after a read-only one writes") {
+        connection_control readOnly{};
+        readOnly.open_mode = db_open_mode::readonly;
+        auto reader = make_async_storage(io, database.path, readOnly, users_table());
+        auto writer = make_async_storage(io, database.path, users_table());
+        auto body = [&reader, &writer]() -> async_task<void> {
+            const int before = co_await reader.count<User>();
+            REQUIRE(before == 10);
+            internal::reset_async_vfs_statistics();
+            co_await writer.insert(User{0, "written", 1});
+            REQUIRE(internal::get_async_vfs_statistics().asyncWrites > 0);
+            const int after = co_await reader.count<User>();
+            REQUIRE(after == 11);
+        };
+        run_test(io, body());
+    }
+    SECTION("closing an asynchronous connection leaves the locks of a synchronous one alone") {
+        auto synchronous = make_storage(database.path, users_table());
+        synchronous.begin_exclusive_transaction();
+        REQUIRE(locked_by_this_process(database.path));
+        {
+            auto storage = make_async_storage(io, database.path, users_table());
+            auto body = [&storage]() -> async_task<void> {
+                //  opens the file; reading it is refused, the other connection being in an exclusive transaction
+                bool refused = false;
+                try {
+                    co_await storage.count<User>();
+                } catch (const std::system_error&) {
+                    refused = true;
+                }
+                REQUIRE(refused);
+            };
+            run_test(io, body());
+        }
+        REQUIRE(locked_by_this_process(database.path));
+        synchronous.rollback();
+        REQUIRE_FALSE(locked_by_this_process(database.path));
+    }
+}
+
+TEST_CASE("async storage: iterate fetches row by row") {
+    require_io_uring();
+    temp_database database;
+    async_io_context io;
+    sqlite3* connection = nullptr;
+    auto storage = make_async_storage(io, database.path, users_table(), on_open([&connection](sqlite3* handle) {
+                                          connection = handle;
+                                      }));
+    using storage_type = decltype(storage);
+
+    SECTION("objects of a mapped type") {
+        auto body = [&storage, &connection]() -> async_task<void> {
+            co_await fill_users(storage, 500);
+            std::vector<User> expected = co_await storage.get_all<User>(where(c(&User::age) > 30), order_by(&User::id));
+            REQUIRE_FALSE(expected.empty());
+
+            auto users = storage.iterate<User>(where(c(&User::age) > 30), order_by(&User::id));
+            REQUIRE(sqlite3_next_stmt(connection, nullptr) == nullptr);
+            std::vector<User> fetched;
+            for (;;) {
+                std::optional<User> user = co_await users.next();
+                if (!user) {
+                    break;
+                }
+                //  the connection is free between two rows
+                REQUIRE_FALSE(storage.is_busy());
+                if (fetched.size() % 100 == 0) {
+                    const int count = co_await storage.count<User>();
+                    REQUIRE(count == 500);
+                }
+                fetched.push_back(std::move(*user));
+            }
+            REQUIRE(fetched.size() == expected.size());
+            for (std::size_t index = 0; index < fetched.size(); ++index) {
+                REQUIRE(fetched[index].id == expected[index].id);
+                REQUIRE(fetched[index].name == expected[index].name);
+            }
+            //  exhausted: the statement is finalized, and further calls keep answering "no more rows"
+            REQUIRE(sqlite3_next_stmt(connection, nullptr) == nullptr);
+            std::optional<User> afterTheEnd = co_await users.next();
+            REQUIRE_FALSE(afterTheEnd);
+        };
+        run_test(io, body());
+    }
+    //  guarded like the iteration over a select statement in tests/iterate.cpp
+#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+    SECTION("rows of a select statement") {
+        auto body = [&storage]() -> async_task<void> {
+            co_await fill_users(storage, 50);
+            auto rows = storage.iterate(select(columns(&User::id, &User::name), order_by(&User::id)));
+            int expectedId = 0;
+            for (;;) {
+                std::optional<std::tuple<int, std::string>> row = co_await rows.next();
+                if (!row) {
+                    break;
+                }
+                ++expectedId;
+                REQUIRE(std::get<0>(*row) == expectedId);
+                REQUIRE(std::get<1>(*row) == "user-" + std::to_string(expectedId));
+            }
+            REQUIRE(expectedId == 50);
+        };
+        run_test(io, body());
+    }
+#endif
+    SECTION("two cursors interleave on one connection") {
+        auto body = [&storage]() -> async_task<void> {
+            co_await fill_users(storage, 20);
+            auto ascending = storage.iterate<User>(order_by(&User::id));
+            auto descending = storage.iterate<User>(order_by(&User::id).desc());
+            for (int index = 1; index <= 20; ++index) {
+                std::optional<User> low = co_await ascending.next();
+                std::optional<User> high = co_await descending.next();
+                REQUIRE(low.has_value());
+                REQUIRE(high.has_value());
+                REQUIRE(low->id == index);
+                REQUIRE(high->id == 21 - index);
+            }
+        };
+        run_test(io, body());
+    }
+    SECTION("a cursor abandoned while the connection is free finalizes its statement at once") {
+        auto body = [&storage, &connection]() -> async_task<void> {
+            co_await fill_users(storage, 50);
+            {
+                auto users = storage.iterate<User>();
+                std::optional<User> first = co_await users.next();
+                REQUIRE(first.has_value());
+                REQUIRE(sqlite3_next_stmt(connection, nullptr) != nullptr);
+            }
+            REQUIRE(sqlite3_next_stmt(connection, nullptr) == nullptr);
+            co_await storage.remove_all<User>();
+        };
+        run_test(io, body());
+    }
+    SECTION("a cursor abandoned while an operation is executing finalizes its statement after it") {
+        auto body = [&storage, &connection]() -> async_task<void> {
+            co_await fill_users(storage, 50);
+            auto users = storage.iterate<User>();
+            std::optional<User> first = co_await users.next();
+            REQUIRE(first.has_value());
+
+            auto countUsers = [](storage_type& storage) -> async_task<int> {
+                co_return co_await storage.template count<User>();
+            };
+            auto abandon = [](storage_type& storage, sqlite3* connection, decltype(users) users) -> async_task<int> {
+                REQUIRE(storage.is_busy());
+                users.close();
+                //  the statement outlives the cursor for as long as the other operation is executing
+                REQUIRE(sqlite3_next_stmt(connection, nullptr) != nullptr);
+                co_return 0;
+            };
+            std::vector<async_task<int>> tasks;
+            tasks.push_back(countUsers(storage));
+            tasks.push_back(abandon(storage, connection, std::move(users)));
+            std::vector<int> results = co_await async_when_all(std::move(tasks));
+            REQUIRE(results[0] == 50);
+            REQUIRE(sqlite3_next_stmt(connection, nullptr) == nullptr);
+        };
+        run_test(io, body());
+    }
+    SECTION("a closed or moved-from cursor has no rows") {
+        auto body = [&storage]() -> async_task<void> {
+            co_await fill_users(storage, 3);
+            auto users = storage.iterate<User>();
+            std::optional<User> first = co_await users.next();
+            REQUIRE(first.has_value());
+
+            auto taken = std::move(users);
+            std::optional<User> fromMovedFrom = co_await users.next();
+            REQUIRE_FALSE(fromMovedFrom);
+
+            taken.close();
+            std::optional<User> fromClosed = co_await taken.next();
+            REQUIRE_FALSE(fromClosed);
+        };
+        run_test(io, body());
+    }
+    SECTION("an error ends the iteration") {
+        auto body = [&storage]() -> async_task<void> {
+            //  no sync_schema(): the table does not exist
+            auto users = storage.iterate<User>();
+            bool thrown = false;
+            try {
+                co_await users.next();
+            } catch (const std::system_error&) {
+                thrown = true;
+            }
+            REQUIRE(thrown);
+            std::optional<User> afterTheError = co_await users.next();
+            REQUIRE_FALSE(afterTheError);
+        };
+        run_test(io, body());
+    }
+}
+
+namespace {
+    /**
+     *  The smallest event loop an async_io_context can be embedded into: it watches descriptors for readability.
+     */
+    struct epoll_loop {
+        int descriptor = ::epoll_create1(EPOLL_CLOEXEC);
+
+        ~epoll_loop() {
+            ::close(this->descriptor);
+        }
+
+        void watch_readable(int watched) {
+            epoll_event event{};
+            event.events = EPOLLIN;
+            event.data.fd = watched;
+            REQUIRE(::epoll_ctl(this->descriptor, EPOLL_CTL_ADD, watched, &event) == 0);
+        }
+
+        /**
+         *  Wait until a watched descriptor is readable; false when none became readable in time.
+         *  As in every event loop the wait is repeated when a signal interrupts it, which is how the kernel
+         *  gets the thread to deliver a completion.
+         */
+        bool wait(std::chrono::milliseconds timeout) {
+            const auto deadline = std::chrono::steady_clock::now() + timeout;
+            for (;;) {
+                const auto remaining =
+                    std::chrono::duration_cast<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now());
+                epoll_event event{};
+                const int ready = ::epoll_wait(this->descriptor, &event, 1, static_cast<int>(remaining.count()));
+                if (ready == 1) {
+                    return true;
+                }
+                if (ready == 0 || errno != EINTR || remaining.count() <= 0) {
+                    return false;
+                }
+            }
+        }
+    };
+}
+
+TEST_CASE("async storage: async_io_context embedded into another event loop") {
+    require_io_uring();
+    temp_database database;
+    async_io_context io;
+    auto storage = make_async_storage(io, database.path, users_table());
+    epoll_loop loop;
+    loop.watch_readable(io.native_handle());
+    const std::chrono::milliseconds timeout{10000};
+
+    SECTION("the descriptor is readable whenever poll() has work to do") {
+        bool done = false;
+        int turns = 0;
+        auto body = [&storage, &io, &done]() -> async_task<void> {
+            co_await fill_users(storage, 300);
+            //  a call from inside poll() returns at once
+            REQUIRE(io.poll());
+            std::vector<User> users = co_await storage.get_all<User>();
+            REQUIRE(users.size() == 300);
+            REQUIRE(async_io_context::current() == &io);
+            done = true;
+        };
+        io.spawn(body());
+        bool working = io.poll();
+        while (working) {
+            REQUIRE(loop.wait(timeout));
+            working = io.poll();
+            ++turns;
+        }
+        REQUIRE(done);
+        //  the commit alone waits for the disk several times
+        REQUIRE(turns > 0);
+        //  nothing is left that would make the descriptor readable
+        REQUIRE_FALSE(loop.wait(std::chrono::milliseconds{0}));
+    }
+    SECTION("a post() from another thread shows on the descriptor, before the first poll() as well") {
+        std::atomic<bool> posted{false};
+        const std::thread::id loopThread = std::this_thread::get_id();
+        std::thread::id ranOn;
+        std::thread other([&io, &posted, &ranOn] {
+            io.post([&posted, &ranOn] {
+                ranOn = std::this_thread::get_id();
+                posted = true;
+            });
+        });
+        while (!posted) {
+            REQUIRE(loop.wait(timeout));
+            io.poll();
+        }
+        other.join();
+        REQUIRE(ranOn == loopThread);
+        REQUIRE_FALSE(io.poll());
+    }
+    SECTION("no post() from another thread is left without a wake") {
+        constexpr int count = 20000;
+        int received = 0;
+        std::thread other([&io, &received] {
+            for (int index = 0; index < count; ++index) {
+                io.post([&received] {
+                    ++received;
+                });
+            }
+        });
+        while (received < count) {
+            REQUIRE(loop.wait(timeout));
+            io.poll();
+        }
+        other.join();
+    }
+    SECTION("an exception escaping a root coroutine is rethrown by poll()") {
+        auto body = [&storage]() -> async_task<void> {
+            co_await storage.get<User>(1);  //  no such table
+        };
+        io.spawn(body());
+        bool thrown = false;
+        try {
+            while (io.poll()) {
+                REQUIRE(loop.wait(timeout));
+            }
+        } catch (const std::system_error&) {
+            thrown = true;
+        }
+        REQUIRE(thrown);
+    }
+}
+#endif
