@@ -40,7 +40,10 @@ namespace sqlite_orm::internal {
             if (memory == MAP_FAILED) {
                 throw std::runtime_error("sqlite_orm async: mmap of a fiber stack failed");
             }
-            ::mprotect(memory, pageSize, PROT_NONE);
+            if (::mprotect(memory, pageSize, PROT_NONE) != 0) {
+                ::munmap(memory, totalSize);
+                throw std::runtime_error("sqlite_orm async: mprotect of a fiber stack's guard page failed");
+            }
             this->stack = memory;
             this->restart(std::move(function_));
         }

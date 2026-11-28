@@ -10,6 +10,7 @@
 
 #ifdef SQLITE_ORM_WITH_ASYNC
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <array>  //  std::array
 #include <atomic>  //  std::atomic, std::memory_order_relaxed
 #include <cerrno>  //  EINTR, ENOSPC
 #include <cstddef>  //  std::size_t
@@ -35,17 +36,31 @@ namespace sqlite_orm::internal {
     inline constexpr std::string_view async_vfs_name = "sqlite_orm_async";
 
     /**
-     *  Counters of the asynchronous VFS, read by the tests.
+     *  Counters of the asynchronous VFS, read by the tests: the calls it served through the scheduler, and those
+     *  it handed to the wrapped VFS, which blocks the thread.
      */
-    struct async_vfs_statistics {
-        sqlite3_int64 asyncReads = 0;
-        sqlite3_int64 asyncWrites = 0;
-        sqlite3_int64 asyncSyncs = 0;
-        sqlite3_int64 asyncSleeps = 0;
-        sqlite3_int64 syncReads = 0;
-        sqlite3_int64 syncWrites = 0;
-        sqlite3_int64 syncSyncs = 0;
+    template<class Counter>
+    struct async_vfs_counters {
+        Counter asyncReads{0};
+        Counter asyncWrites{0};
+        Counter asyncSyncs{0};
+        Counter asyncSleeps{0};
+        Counter syncReads{0};
+        Counter syncWrites{0};
+        Counter syncSyncs{0};
+
+        std::array<Counter*, 7> all() noexcept {
+            return {&this->asyncReads,
+                    &this->asyncWrites,
+                    &this->asyncSyncs,
+                    &this->asyncSleeps,
+                    &this->syncReads,
+                    &this->syncWrites,
+                    &this->syncSyncs};
+        }
     };
+
+    using async_vfs_statistics = async_vfs_counters<sqlite3_int64>;
 }
 
 /**
@@ -63,21 +78,7 @@ namespace sqlite_orm::internal::async_vfs {
     /**
      *  Process-wide, incremented from every thread that runs an async_io_context, hence atomic.
      */
-    struct atomic_statistics {
-        std::atomic<sqlite3_int64> asyncReads{0};
-        std::atomic<sqlite3_int64> asyncWrites{0};
-        std::atomic<sqlite3_int64> asyncSyncs{0};
-        std::atomic<sqlite3_int64> asyncSleeps{0};
-        std::atomic<sqlite3_int64> syncReads{0};
-        std::atomic<sqlite3_int64> syncWrites{0};
-        std::atomic<sqlite3_int64> syncSyncs{0};
-    };
-
-    inline atomic_statistics statistics{};
-
-    inline void count(std::atomic<sqlite3_int64>& counter) noexcept {
-        counter.fetch_add(1, std::memory_order_relaxed);
-    }
+    inline async_vfs_counters<std::atomic<sqlite3_int64>> statistics{};
 
     /**
      *  SQLite allocates this struct as raw memory (szOsFile bytes), so it holds
@@ -92,9 +93,23 @@ namespace sqlite_orm::internal::async_vfs {
         bool directorySyncPending = false;
     };
 
-    inline bool in_fiber(scheduler*& currentScheduler) {
-        currentScheduler = scheduler::current();
-        return currentScheduler && fiber::current();
+    /**
+     *  The scheduler of the fiber this call is made on, or nullptr outside a fiber.
+     */
+    inline scheduler* fiber_scheduler() noexcept {
+        return fiber::current() ? scheduler::current() : nullptr;
+    }
+
+    /**
+     *  The scheduler to do the I/O of `file` with, or nullptr where the wrapped file has to do it synchronously:
+     *  outside a fiber, or the file has no descriptor. Counts the call either way.
+     */
+    inline scheduler* io_scheduler(const async_file& file,
+                                   std::atomic<sqlite3_int64>& asyncCalls,
+                                   std::atomic<sqlite3_int64>& syncCalls) noexcept {
+        scheduler* currentScheduler = file.descriptor >= 0 ? fiber_scheduler() : nullptr;
+        (currentScheduler ? asyncCalls : syncCalls).fetch_add(1, std::memory_order_relaxed);
+        return currentScheduler;
     }
 
     struct vfs_data {
@@ -197,15 +212,10 @@ namespace sqlite_orm::internal::async_vfs {
 
     inline int file_read(sqlite3_file* file, void* buffer, int length, sqlite3_int64 offset) {
         auto* asyncFile = reinterpret_cast<async_file*>(file);
-        scheduler* currentScheduler = nullptr;
-        if (!in_fiber(currentScheduler) || asyncFile->descriptor < 0) {
-            count(statistics.syncReads);
-            if (currentScheduler) {
-                ++currentScheduler->synchronousFallbacks;
-            }
+        scheduler* currentScheduler = io_scheduler(*asyncFile, statistics.asyncReads, statistics.syncReads);
+        if (!currentScheduler) {
             return asyncFile->wrapped->pMethods->xRead(asyncFile->wrapped, buffer, length, offset);
         }
-        count(statistics.asyncReads);
         auto* output = static_cast<char*>(buffer);
         int got = 0;
         while (got < length) {
@@ -233,15 +243,10 @@ namespace sqlite_orm::internal::async_vfs {
 
     inline int file_write(sqlite3_file* file, const void* buffer, int length, sqlite3_int64 offset) {
         auto* asyncFile = reinterpret_cast<async_file*>(file);
-        scheduler* currentScheduler = nullptr;
-        if (!in_fiber(currentScheduler) || asyncFile->descriptor < 0) {
-            count(statistics.syncWrites);
-            if (currentScheduler) {
-                ++currentScheduler->synchronousFallbacks;
-            }
+        scheduler* currentScheduler = io_scheduler(*asyncFile, statistics.asyncWrites, statistics.syncWrites);
+        if (!currentScheduler) {
             return asyncFile->wrapped->pMethods->xWrite(asyncFile->wrapped, buffer, length, offset);
         }
-        count(statistics.asyncWrites);
         auto* input = static_cast<const char*>(buffer);
         int done = 0;
         while (done < length) {
@@ -270,15 +275,10 @@ namespace sqlite_orm::internal::async_vfs {
 
     inline int file_sync(sqlite3_file* file, int flags) {
         auto* asyncFile = reinterpret_cast<async_file*>(file);
-        scheduler* currentScheduler = nullptr;
-        if (!in_fiber(currentScheduler) || asyncFile->descriptor < 0) {
-            count(statistics.syncSyncs);
-            if (currentScheduler) {
-                ++currentScheduler->synchronousFallbacks;
-            }
+        scheduler* currentScheduler = io_scheduler(*asyncFile, statistics.asyncSyncs, statistics.syncSyncs);
+        if (!currentScheduler) {
             return asyncFile->wrapped->pMethods->xSync(asyncFile->wrapped, flags);
         }
-        count(statistics.asyncSyncs);
         const bool dataOnly = (flags & SQLITE_SYNC_DATAONLY) != 0;
         if (currentScheduler->fsync(asyncFile->descriptor, dataOnly) < 0) {
             return SQLITE_IOERR_FSYNC;
@@ -455,9 +455,8 @@ namespace sqlite_orm::internal::async_vfs {
     }
 
     inline int vfs_sleep(sqlite3_vfs* vfs, int microseconds) {
-        scheduler* currentScheduler = nullptr;
-        if (in_fiber(currentScheduler)) {
-            count(statistics.asyncSleeps);
+        if (scheduler* currentScheduler = fiber_scheduler()) {
+            statistics.asyncSleeps.fetch_add(1, std::memory_order_relaxed);
             currentScheduler->sleep_microseconds(microseconds);
             return microseconds;
         }
@@ -520,27 +519,17 @@ namespace sqlite_orm::internal::async_vfs {
 namespace sqlite_orm::internal {
 
     inline async_vfs_statistics get_async_vfs_statistics() {
-        const async_vfs::atomic_statistics& counters = async_vfs::statistics;
         async_vfs_statistics snapshot;
-        snapshot.asyncReads = counters.asyncReads.load(std::memory_order_relaxed);
-        snapshot.asyncWrites = counters.asyncWrites.load(std::memory_order_relaxed);
-        snapshot.asyncSyncs = counters.asyncSyncs.load(std::memory_order_relaxed);
-        snapshot.asyncSleeps = counters.asyncSleeps.load(std::memory_order_relaxed);
-        snapshot.syncReads = counters.syncReads.load(std::memory_order_relaxed);
-        snapshot.syncWrites = counters.syncWrites.load(std::memory_order_relaxed);
-        snapshot.syncSyncs = counters.syncSyncs.load(std::memory_order_relaxed);
+        const auto counters = async_vfs::statistics.all();
+        const auto values = snapshot.all();
+        for (std::size_t index = 0; index < counters.size(); ++index) {
+            *values[index] = counters[index]->load(std::memory_order_relaxed);
+        }
         return snapshot;
     }
 
     inline void reset_async_vfs_statistics() {
-        async_vfs::atomic_statistics& counters = async_vfs::statistics;
-        for (std::atomic<sqlite3_int64>* counter: {&counters.asyncReads,
-                                                   &counters.asyncWrites,
-                                                   &counters.asyncSyncs,
-                                                   &counters.asyncSleeps,
-                                                   &counters.syncReads,
-                                                   &counters.syncWrites,
-                                                   &counters.syncSyncs}) {
+        for (std::atomic<sqlite3_int64>* counter: async_vfs::statistics.all()) {
             counter->store(0, std::memory_order_relaxed);
         }
     }

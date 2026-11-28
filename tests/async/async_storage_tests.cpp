@@ -21,9 +21,10 @@
 #include <memory>  //  std::unique_ptr
 #include <optional>  //  std::optional
 #include <random>  //  std::mt19937, std::random_device
-#include <stdexcept>  //  std::logic_error
+#include <stdexcept>  //  std::logic_error, std::runtime_error
 #include <string>  //  std::string
 #include <sys/epoll.h>  //  epoll_create1, epoll_ctl, epoll_wait
+#include <sys/resource.h>  //  getrlimit, setrlimit, RLIMIT_NOFILE
 #include <sys/wait.h>  //  waitpid
 #include <system_error>  //  std::system_error
 #include <thread>  //  std::thread, std::this_thread
@@ -260,7 +261,10 @@ TEST_CASE("async storage: CRUD") {
     REQUIRE(statistics.asyncReads > 0);
     REQUIRE(statistics.asyncWrites > 0);
     REQUIRE(statistics.asyncSyncs > 0);
-    REQUIRE(io.scheduler().synchronousFallbacks == 0);
+    //  nothing was handed to the wrapped VFS, which would have blocked the thread
+    REQUIRE(statistics.syncReads == 0);
+    REQUIRE(statistics.syncWrites == 0);
+    REQUIRE(statistics.syncSyncs == 0);
 }
 
 TEST_CASE("async storage: aggregates") {
@@ -559,7 +563,32 @@ TEST_CASE("async storage: async_io_pool spreads work over threads and resumes on
         return false;
     });
     REQUIRE(refused);
+
+    //  outside an async_io_context there is nowhere to resume the awaiting coroutine
+    bool refusedOutside = false;
+    auto outside = [&pool, &refusedOutside]() -> internal::fire_and_forget {
+        try {
+            co_await pool.async([] {});
+        } catch (const std::logic_error&) {
+            refusedOutside = true;
+        }
+    };
+    outside();
+    REQUIRE(refusedOutside);
+
+    //  a pool that was shut down refuses work instead of waiting for it forever
     pool.shutdown();
+    REQUIRE_THROWS_AS(pool.run_blocking([] {}), std::logic_error);
+    bool refusedAfterShutdown = false;
+    auto late = [&pool, &refusedAfterShutdown]() -> async_task<void> {
+        try {
+            co_await pool.async([] {});
+        } catch (const std::logic_error&) {
+            refusedAfterShutdown = true;
+        }
+    };
+    run_test(io, late());
+    REQUIRE(refusedAfterShutdown);
 }
 
 TEST_CASE("async storage: async_when_all of operations without a result") {
@@ -604,7 +633,8 @@ TEST_CASE("async storage: awaiting an empty task is an error, not a crash") {
     async_io_context io;
     bool thrownForValue = false;
     bool thrownForVoid = false;
-    auto body = [&thrownForValue, &thrownForVoid]() -> async_task<void> {
+    bool thrownForSecondAwait = false;
+    auto body = [&thrownForValue, &thrownForVoid, &thrownForSecondAwait]() -> async_task<void> {
         async_task<int> moved = []() -> async_task<int> {
             co_return 1;
         }();
@@ -621,12 +651,45 @@ TEST_CASE("async storage: awaiting an empty task is an error, not a crash") {
         }
         const int value = co_await taken;
         REQUIRE(value == 1);
+        //  a task hands its result over once
+        try {
+            (void)co_await taken;
+        } catch (const std::logic_error&) {
+            thrownForSecondAwait = true;
+        }
     };
     if (io_uring_available()) {
         run_test(io, body());
         REQUIRE(thrownForValue);
         REQUIRE(thrownForVoid);
+        REQUIRE(thrownForSecondAwait);
     }
+}
+
+TEST_CASE("async storage: an async_io_context that cannot be made leaves no descriptor open") {
+    require_io_uring();
+    const auto lowest_free_descriptor = [] {
+        const int descriptor = ::open("/dev/null", O_RDONLY);
+        ::close(descriptor);
+        return descriptor;
+    };
+    //  the lowest free descriptor becomes the last one allowed: the ring gets it, the wake descriptor after it fails
+    const int lowestFree = lowest_free_descriptor();
+    REQUIRE(lowestFree >= 0);
+    rlimit original{};
+    REQUIRE(::getrlimit(RLIMIT_NOFILE, &original) == 0);
+    rlimit limited = original;
+    limited.rlim_cur = static_cast<rlim_t>(lowestFree) + 1;
+    REQUIRE(::setrlimit(RLIMIT_NOFILE, &limited) == 0);
+    bool thrown = false;
+    try {
+        async_io_context io;
+    } catch (const std::runtime_error&) {
+        thrown = true;
+    }
+    REQUIRE(::setrlimit(RLIMIT_NOFILE, &original) == 0);
+    REQUIRE(thrown);
+    REQUIRE(lowest_free_descriptor() == lowestFree);
 }
 
 namespace {
@@ -822,6 +885,23 @@ TEST_CASE("async storage: iterate fetches row by row") {
             std::vector<int> results = co_await async_when_all(std::move(tasks));
             REQUIRE(results[0] == 50);
             REQUIRE(sqlite3_next_stmt(connection, nullptr) == nullptr);
+        };
+        run_test(io, body());
+    }
+    SECTION("a closed or moved-from cursor has no rows") {
+        auto body = [&storage]() -> async_task<void> {
+            co_await fill_users(storage, 3);
+            auto users = storage.iterate<User>();
+            std::optional<User> first = co_await users.next();
+            REQUIRE(first.has_value());
+
+            auto taken = std::move(users);
+            std::optional<User> fromMovedFrom = co_await users.next();
+            REQUIRE_FALSE(fromMovedFrom);
+
+            taken.close();
+            std::optional<User> fromClosed = co_await taken.next();
+            REQUIRE_FALSE(fromClosed);
         };
         run_test(io, body());
     }

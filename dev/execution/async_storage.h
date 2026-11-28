@@ -12,12 +12,10 @@
 #include <coroutine>  //  std::coroutine_handle
 #include <cstddef>  //  std::size_t
 #include <deque>  //  std::deque
-#include <functional>  //  std::function
-#include <memory>  //  std::unique_ptr, std::make_unique, std::shared_ptr
-#include <stdexcept>  //  std::logic_error, std::runtime_error
+#include <memory>  //  std::unique_ptr, std::shared_ptr
+#include <stdexcept>  //  std::runtime_error
 #include <string>  //  std::string
 #include <string_view>  //  std::string_view
-#include <tuple>  //  std::tuple, std::make_tuple, std::apply
 #include <type_traits>  //  std::invoke_result_t, std::is_void_v, std::is_same_v, std::decay_t
 #include <utility>  //  std::forward, std::move
 #include <vector>  //  std::vector
@@ -37,19 +35,13 @@ namespace sqlite_orm::internal {
 
     /**
      *  Packs `args` into a callable `function(storage)` that invokes
-     *  `call(storage, args...)` with the arguments as rvalues. A tuple rather than a pack init-capture: see
-     *  `SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES`.
+     *  `call(storage, args...)` with the arguments as rvalues.
      */
     template<class Call, class... Args>
     auto bind_arguments(Call call, Args&&... args) {
-        return
-            [call = std::move(call), arguments = std::make_tuple(std::forward<Args>(args)...)](auto& storage) mutable {
-                return std::apply(
-                    [&call, &storage](auto&... unpacked) {
-                        return call(storage, std::move(unpacked)...);
-                    },
-                    arguments);
-            };
+        return [call = std::move(call), ... arguments = std::forward<Args>(args)](auto& storage) mutable {
+            return call(storage, std::move(arguments)...);
+        };
     }
 
     /**
@@ -116,10 +108,22 @@ namespace sqlite_orm::internal {
          *  mirrored below (pragmas, limits, user-defined functions).
          */
         template<class F>
-        auto run(F function) {
-            //  The callable is moved to the heap before entering the coroutine: see
-            //  `SQLITE_ORM_BROKEN_COROUTINE_TEMPORARIES`.
-            return this->run_on_fiber(std::make_unique<F>(std::move(function)));
+        auto run(F function) -> async_task<std::invoke_result_t<F&, Storage&>> {
+            using result_type = std::invoke_result_t<F&, Storage&>;
+            co_await this->acquire();
+            release_guard guard{this};
+            Storage& storage = this->storage;
+            if constexpr (std::is_void_v<result_type>) {
+                co_await this->context->async([&storage, &function] {
+                    storage.open_forever();  //  no-op after the first call
+                    function(storage);
+                });
+            } else {
+                co_return co_await this->context->async([&storage, &function] {
+                    storage.open_forever();
+                    return function(storage);
+                });
+            }
         }
 
         //  ---- transactions ----
@@ -701,29 +705,6 @@ namespace sqlite_orm::internal {
         template<class MakeView>
         async_cursor<async_storage, MakeView> make_cursor(MakeView makeView) {
             return {*this, std::move(makeView)};
-        }
-
-        template<class F>
-        auto run_on_fiber(std::unique_ptr<F> function) -> async_task<std::invoke_result_t<F&, Storage&>> {
-            using result_type = std::invoke_result_t<F&, Storage&>;
-            if (!function) {
-                throw std::logic_error("sqlite_orm async: no function to run");
-            }
-            co_await this->acquire();
-            release_guard guard{this};
-            Storage& storage = this->storage;
-            F& callable = *function;
-            if constexpr (std::is_void_v<result_type>) {
-                co_await this->context->async([&storage, &callable] {
-                    storage.open_forever();  //  no-op after the first call
-                    callable(storage);
-                });
-            } else {
-                co_return co_await this->context->async([&storage, &callable] {
-                    storage.open_forever();
-                    return callable(storage);
-                });
-            }
         }
 
         struct acquire_awaitable {

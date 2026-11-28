@@ -5,7 +5,7 @@
 #include <algorithm>  //  std::find_if
 #include <cassert>  //  assert
 #include <cstddef>  //  std::size_t
-#include <cstdint>  //  std::int32_t, std::int64_t, std::uint64_t
+#include <cstdint>  //  std::int32_t, std::int64_t
 #include <deque>  //  std::deque
 #include <functional>  //  std::function
 #include <iterator>  //  std::next
@@ -63,14 +63,6 @@ namespace sqlite_orm::internal {
             this->ready.push_back(newFiber.get());
             this->fibers.push_back(std::move(newFiber));
             ++this->alive;
-        }
-
-        /**
-         *  Run until every fiber has finished.
-         */
-        void run() {
-            while (this->run_one()) {
-            }
         }
 
         /**
@@ -163,11 +155,6 @@ namespace sqlite_orm::internal {
         void set_external_ready(std::function<bool()> predicate) {
             this->externalReady = std::move(predicate);
         }
-
-        /**
-         *  VFS calls made on this scheduler's thread outside a fiber, which therefore did their I/O synchronously.
-         */
-        std::uint64_t synchronousFallbacks = 0;
 
       private:
         static scheduler*& current_slot() noexcept {

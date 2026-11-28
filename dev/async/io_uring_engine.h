@@ -44,90 +44,86 @@ namespace sqlite_orm::internal {
          *  EPERM: blocked by seccomp or the io_uring_disabled sysctl).
          */
         explicit io_uring_engine(unsigned entries) {
-            io_uring_params params{};
-            const int ringDescriptor = static_cast<int>(::syscall(__NR_io_uring_setup, entries, &params));
-            if (ringDescriptor < 0) {
-                io_uring_engine::fail("io_uring_setup");
-            }
-            this->ringDescriptor = ringDescriptor;
+            //  a constructor that throws runs no destructor
+            try {
+                io_uring_params params{};
+                const int ringDescriptor = static_cast<int>(::syscall(__NR_io_uring_setup, entries, &params));
+                if (ringDescriptor < 0) {
+                    io_uring_engine::fail("io_uring_setup");
+                }
+                this->ringDescriptor = ringDescriptor;
 
-            this->submissionRingSize = params.sq_off.array + params.sq_entries * sizeof(std::uint32_t);
-            this->completionRingSize = params.cq_off.cqes + params.cq_entries * sizeof(io_uring_cqe);
-            const bool singleMapping = (params.features & IORING_FEAT_SINGLE_MMAP) != 0;
-            if (singleMapping) {
-                this->submissionRingSize = this->completionRingSize =
-                    std::max(this->submissionRingSize, this->completionRingSize);
-            }
-            this->submissionRing = ::mmap(nullptr,
-                                          this->submissionRingSize,
-                                          PROT_READ | PROT_WRITE,
-                                          MAP_SHARED | MAP_POPULATE,
-                                          ringDescriptor,
-                                          IORING_OFF_SQ_RING);
-            if (this->submissionRing == MAP_FAILED) {
-                io_uring_engine::fail("mmap of the submission ring");
-            }
-            if (singleMapping) {
-                this->completionRing = this->submissionRing;
-            } else {
-                this->completionRing = ::mmap(nullptr,
-                                              this->completionRingSize,
+                this->submissionRingSize = params.sq_off.array + params.sq_entries * sizeof(std::uint32_t);
+                this->completionRingSize = params.cq_off.cqes + params.cq_entries * sizeof(io_uring_cqe);
+                const bool singleMapping = (params.features & IORING_FEAT_SINGLE_MMAP) != 0;
+                if (singleMapping) {
+                    this->submissionRingSize = this->completionRingSize =
+                        std::max(this->submissionRingSize, this->completionRingSize);
+                }
+                this->submissionRing = ::mmap(nullptr,
+                                              this->submissionRingSize,
                                               PROT_READ | PROT_WRITE,
                                               MAP_SHARED | MAP_POPULATE,
                                               ringDescriptor,
-                                              IORING_OFF_CQ_RING);
-                if (this->completionRing == MAP_FAILED) {
-                    io_uring_engine::fail("mmap of the completion ring");
+                                              IORING_OFF_SQ_RING);
+                if (this->submissionRing == MAP_FAILED) {
+                    io_uring_engine::fail("mmap of the submission ring");
                 }
-            }
-            this->entriesSize = params.sq_entries * sizeof(io_uring_sqe);
-            this->entries = static_cast<io_uring_sqe*>(::mmap(nullptr,
-                                                              this->entriesSize,
-                                                              PROT_READ | PROT_WRITE,
-                                                              MAP_SHARED | MAP_POPULATE,
-                                                              ringDescriptor,
-                                                              IORING_OFF_SQES));
-            if (this->entries == MAP_FAILED) {
-                io_uring_engine::fail("mmap of the submission entries");
-            }
+                if (singleMapping) {
+                    this->completionRing = this->submissionRing;
+                } else {
+                    this->completionRing = ::mmap(nullptr,
+                                                  this->completionRingSize,
+                                                  PROT_READ | PROT_WRITE,
+                                                  MAP_SHARED | MAP_POPULATE,
+                                                  ringDescriptor,
+                                                  IORING_OFF_CQ_RING);
+                    if (this->completionRing == MAP_FAILED) {
+                        io_uring_engine::fail("mmap of the completion ring");
+                    }
+                }
+                this->entriesSize = params.sq_entries * sizeof(io_uring_sqe);
+                this->entries = static_cast<io_uring_sqe*>(::mmap(nullptr,
+                                                                  this->entriesSize,
+                                                                  PROT_READ | PROT_WRITE,
+                                                                  MAP_SHARED | MAP_POPULATE,
+                                                                  ringDescriptor,
+                                                                  IORING_OFF_SQES));
+                if (this->entries == MAP_FAILED) {
+                    io_uring_engine::fail("mmap of the submission entries");
+                }
 
-            auto* submissionBase = static_cast<char*>(this->submissionRing);
-            this->submissionHead = reinterpret_cast<std::atomic<std::uint32_t>*>(submissionBase + params.sq_off.head);
-            this->submissionTail = reinterpret_cast<std::atomic<std::uint32_t>*>(submissionBase + params.sq_off.tail);
-            this->submissionMask = *reinterpret_cast<std::uint32_t*>(submissionBase + params.sq_off.ring_mask);
-            this->submissionEntries = *reinterpret_cast<std::uint32_t*>(submissionBase + params.sq_off.ring_entries);
-            this->submissionArray = reinterpret_cast<std::uint32_t*>(submissionBase + params.sq_off.array);
+                auto* submissionBase = static_cast<char*>(this->submissionRing);
+                this->submissionHead =
+                    reinterpret_cast<std::atomic<std::uint32_t>*>(submissionBase + params.sq_off.head);
+                this->submissionTail =
+                    reinterpret_cast<std::atomic<std::uint32_t>*>(submissionBase + params.sq_off.tail);
+                this->submissionMask = *reinterpret_cast<std::uint32_t*>(submissionBase + params.sq_off.ring_mask);
+                this->submissionEntries =
+                    *reinterpret_cast<std::uint32_t*>(submissionBase + params.sq_off.ring_entries);
+                this->submissionArray = reinterpret_cast<std::uint32_t*>(submissionBase + params.sq_off.array);
 
-            auto* completionBase = static_cast<char*>(this->completionRing);
-            this->completionHead = reinterpret_cast<std::atomic<std::uint32_t>*>(completionBase + params.cq_off.head);
-            this->completionTail = reinterpret_cast<std::atomic<std::uint32_t>*>(completionBase + params.cq_off.tail);
-            this->completionMask = *reinterpret_cast<std::uint32_t*>(completionBase + params.cq_off.ring_mask);
-            this->completionEntries = reinterpret_cast<io_uring_cqe*>(completionBase + params.cq_off.cqes);
+                auto* completionBase = static_cast<char*>(this->completionRing);
+                this->completionHead =
+                    reinterpret_cast<std::atomic<std::uint32_t>*>(completionBase + params.cq_off.head);
+                this->completionTail =
+                    reinterpret_cast<std::atomic<std::uint32_t>*>(completionBase + params.cq_off.tail);
+                this->completionMask = *reinterpret_cast<std::uint32_t*>(completionBase + params.cq_off.ring_mask);
+                this->completionEntries = reinterpret_cast<io_uring_cqe*>(completionBase + params.cq_off.cqes);
 
-            this->wakeDescriptor = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-            if (this->wakeDescriptor < 0) {
-                io_uring_engine::fail("eventfd");
+                this->wakeDescriptor = ::eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+                if (this->wakeDescriptor < 0) {
+                    io_uring_engine::fail("eventfd");
+                }
+                this->localTail = this->submissionTail->load(std::memory_order_relaxed);
+            } catch (...) {
+                this->release();
+                throw;
             }
-            this->localTail = this->submissionTail->load(std::memory_order_relaxed);
         }
 
         ~io_uring_engine() {
-            if (this->entries && this->entries != MAP_FAILED) {
-                ::munmap(this->entries, this->entriesSize);
-            }
-            if (this->completionRing && this->completionRing != this->submissionRing &&
-                this->completionRing != MAP_FAILED) {
-                ::munmap(this->completionRing, this->completionRingSize);
-            }
-            if (this->submissionRing && this->submissionRing != MAP_FAILED) {
-                ::munmap(this->submissionRing, this->submissionRingSize);
-            }
-            if (this->ringDescriptor >= 0) {
-                ::close(this->ringDescriptor);
-            }
-            if (this->wakeDescriptor >= 0) {
-                ::close(this->wakeDescriptor);
-            }
+            this->release();
         }
 
         io_uring_engine(const io_uring_engine&) = delete;
@@ -250,6 +246,25 @@ namespace sqlite_orm::internal {
         }
 
       private:
+        void release() noexcept {
+            if (this->entries && this->entries != MAP_FAILED) {
+                ::munmap(this->entries, this->entriesSize);
+            }
+            if (this->completionRing && this->completionRing != this->submissionRing &&
+                this->completionRing != MAP_FAILED) {
+                ::munmap(this->completionRing, this->completionRingSize);
+            }
+            if (this->submissionRing && this->submissionRing != MAP_FAILED) {
+                ::munmap(this->submissionRing, this->submissionRingSize);
+            }
+            if (this->ringDescriptor >= 0) {
+                ::close(this->ringDescriptor);
+            }
+            if (this->wakeDescriptor >= 0) {
+                ::close(this->wakeDescriptor);
+            }
+        }
+
         [[noreturn]] static void fail(const char* what) {
             const int error = errno;
             throw std::runtime_error(std::string("sqlite_orm async: io_uring: ") + what + ": " + std::strerror(error));

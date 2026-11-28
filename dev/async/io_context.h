@@ -18,6 +18,12 @@
 #include "scheduler.h"
 
 #ifdef SQLITE_ORM_WITH_ASYNC
+namespace sqlite_orm::internal {
+
+    template<class Storage>
+    class async_storage;
+}
+
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
@@ -70,10 +76,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         async_io_context(const async_io_context&) = delete;
         async_io_context& operator=(const async_io_context&) = delete;
 
-        internal::scheduler& scheduler() noexcept {
-            return this->scheduler_;
-        }
-
         /**
          *  The async_io_context whose run()/poll()/run_forever() is executing on this
          *  thread, or nullptr.
@@ -96,22 +98,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
          */
         void post(std::function<void()> function) {
             this->scheduler_.post(std::move(function));
-        }
-
-        /**
-         *  Thread-safe: resume a coroutine on this context's thread.
-         */
-        void resume_here(std::coroutine_handle<> handle) {
-            this->scheduler_.post([this, handle] {
-                this->ready.push_back(handle);
-            });
-        }
-
-        /**
-         *  Same-thread: resume `handle` on the next turn (never inline).
-         */
-        void schedule(std::coroutine_handle<> handle) {
-            this->ready.push_back(handle);
         }
 
         /**
@@ -256,6 +242,22 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             }
         };
 
+        /**
+         *  Thread-safe: resume a coroutine on this context's thread.
+         */
+        void resume_here(std::coroutine_handle<> handle) {
+            this->scheduler_.post([this, handle] {
+                this->ready.push_back(handle);
+            });
+        }
+
+        /**
+         *  Same-thread: resume `handle` on the next turn (never inline).
+         */
+        void schedule(std::coroutine_handle<> handle) {
+            this->ready.push_back(handle);
+        }
+
         bool has_runnable() const noexcept {
             return !this->ready.empty() || !this->pendingRoots.empty() || this->scheduler_.has_runnable();
         }
@@ -304,6 +306,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         bool polling = false;
 
         friend class async_io_pool;
+        template<class Storage>
+        friend class internal::async_storage;
     };
 }
 #endif

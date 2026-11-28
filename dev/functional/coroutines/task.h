@@ -6,7 +6,7 @@
 #include <coroutine>  //  std::coroutine_handle, std::suspend_always, std::noop_coroutine
 #include <exception>  //  std::current_exception
 #include <stdexcept>  //  std::logic_error
-#include <utility>  //  std::exchange, std::forward
+#include <utility>  //  std::exchange, std::forward, std::move
 #endif
 #endif
 #endif
@@ -88,7 +88,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Intention: realizes a lazy C++20 coroutine type that any coroutine can `co_await`; returned by the operations of
      *  `async_storage` and `async_cursor`, awaited by `async_io_context` and `async_when_all()`.
      *
-     *  Starts when awaited; the awaiting coroutine is resumed with the value or the exception.
+     *  Starts when awaited; the awaiting coroutine is resumed with the value or the exception. A task hands its
+     *  result over once: awaited again it is empty, as a moved-from one.
      */
     template<class T>
     class async_task {
@@ -131,7 +132,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         T await_resume() {
             internal::require_task(this->handle);
-            return this->handle.promise().box.take();
+            internal::result_box<T> box = std::move(this->handle.promise().box);
+            this->reset();
+            return box.take();
         }
 
       private:

@@ -5,7 +5,7 @@
 #include <atomic>  //  std::atomic
 #include <coroutine>  //  std::coroutine_handle
 #include <cstddef>  //  std::size_t
-#include <exception>  //  std::current_exception, std::terminate
+#include <exception>  //  std::current_exception
 #include <future>  //  std::promise, std::future
 #include <memory>  //  std::unique_ptr, std::shared_ptr, std::make_shared
 #include <stdexcept>  //  std::logic_error
@@ -60,12 +60,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return this->workers.size();
         }
 
-        async_io_context& worker(std::size_t index) noexcept {
-            return *this->workers[index];
-        }
-
         /**
-         *  Stops every worker and joins its thread; the destructor calls it.
+         *  Stops every worker and joins its thread; the destructor calls it. Work handed to the pool afterwards is
+         *  refused with std::logic_error.
          */
         void shutdown() {
             if (this->threads.empty()) {
@@ -83,7 +80,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         /**
          *  Awaitable from a coroutine running on any async_io_context (pool worker or an
          *  external one): run `function` on a fiber of some worker, resume the
-         *  awaiting coroutine on its own async_io_context.
+         *  awaiting coroutine on its own async_io_context. Awaited anywhere else, it throws std::logic_error.
          */
         template<class F>
         auto async(F function) {
@@ -100,7 +97,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                 void await_suspend(std::coroutine_handle<> handle) {
                     async_io_context* origin = async_io_context::current();
                     if (!origin) {
-                        std::terminate();  //  must be awaited from an async_io_context
+                        throw std::logic_error(
+                            "sqlite_orm async: async_io_pool::async() awaited outside an async_io_context");
                     }
                     async_io_context* worker = this->pool->pick();
                     worker->post([this, handle, origin, worker] {
@@ -153,6 +151,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
       private:
         async_io_context* pick() {
+            if (this->threads.empty()) {
+                throw std::logic_error("sqlite_orm async: the async_io_pool has no running worker");
+            }
             const std::size_t index = this->next.fetch_add(1, std::memory_order_relaxed) % this->workers.size();
             return this->workers[index].get();
         }

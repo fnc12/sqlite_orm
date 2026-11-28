@@ -126,11 +126,11 @@ namespace sqlite_orm::internal {
         }
 
         /**
-         *  The next row, or `std::nullopt` after the last one.
+         *  The next row, or `std::nullopt` after the last one; a closed or moved-from cursor has no rows.
          */
         async_task<std::optional<value_type>> next() {
             return this->storage->run([position = this->position](typename AsyncStorage::storage_type& storage) {
-                return position->advance(storage);
+                return position ? position->advance(storage) : std::nullopt;
             });
         }
 
